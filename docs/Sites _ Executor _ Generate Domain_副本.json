@@ -1,0 +1,552 @@
+{
+  "name": "Sites | Executor | Generate Domain",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sites-domain-ai-suggest-check-writeback-v1",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "c60b1b22-9c8c-41be-87be-d65a282ea161",
+      "name": "Webhook In",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        5120,
+        3216
+      ],
+      "webhookId": "ff684b9d-9e09-41fe-93c8-b946cf0a79a5"
+    },
+    {
+      "parameters": {
+        "jsCode": "const trigger = $input.first().json || {};\nconst body = trigger.body || trigger;\n\nconst coerce = (value) => {\n  if (Array.isArray(value)) return value;\n  if (typeof value === 'string') {\n    const trimmed = value.trim();\n    if (!trimmed) return [];\n    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {\n      try {\n        const parsed = JSON.parse(trimmed);\n        if (Array.isArray(parsed)) return parsed;\n      } catch (error) {}\n    }\n    if (trimmed.includes(',')) return trimmed.split(',').map((v) => v.trim());\n    return [trimmed];\n  }\n  if (value !== undefined && value !== null) return [value];\n  return [];\n};\n\nconst toBool = (value) => {\n  if (typeof value === 'boolean') return value;\n  if (typeof value === 'number') return value !== 0;\n  const s = String(value || '').trim().toLowerCase();\n  return s === 'true' || s === '1' || s === 'yes' || s === 'on';\n};\n\nlet keys = coerce(body.keys ?? body.site_ids ?? body.site_id ?? body.id);\nkeys = keys\n  .map((v) => String(v || '').trim())\n  .filter((v) => v && v !== 'undefined' && v !== 'null');\n\nif (!keys.length) throw new Error('keys/site_id missing');\n\nconst force = toBool(body.force ?? body.force_create);\n\nreturn keys.map((site_id) => ({\n  json: {\n    site_id,\n    force,\n    requested_at: new Date().toISOString(),\n    ai_model: String(body.ai_model || 'google/gemini-2.5-flash').trim() || 'google/gemini-2.5-flash'\n  }\n}));"
+      },
+      "id": "13624e0f-d4ea-49a2-be2e-6efa2e2a228e",
+      "name": "Normalize Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5344,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://directus-xsg8sgc4sg8o4kgs8w4os08g:8055/items/sites/{{$json.site_id}}?fields=id,site_name,main_product,site_domain,niche_data,log",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "directusApi",
+        "options": {}
+      },
+      "id": "8a5b69c5-0cdf-439a-b9d3-298046eda000",
+      "name": "Get Site (Directus)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5568,
+        3216
+      ],
+      "credentials": {
+        "directusApi": {
+          "id": "sd37jKuosg0fyA3p",
+          "name": "Admin User UUID"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const row = ($json && typeof $json.data === 'object') ? $json.data : $json;\nif (!row || row.id === undefined || row.id === null) throw new Error('Site not found');\n\nlet niche = {};\nif (row.niche_data && typeof row.niche_data === 'object') niche = row.niche_data;\nif (typeof row.niche_data === 'string') {\n  try {\n    const parsed = JSON.parse(row.niche_data);\n    if (parsed && typeof parsed === 'object') niche = parsed;\n  } catch (error) {}\n}\n\nreturn {\n  json: {\n    site_id: String(row.id),\n    site_name: String(row.site_name || '').trim(),\n    main_product: String(row.main_product || '').trim(),\n    site_domain: String(row.site_domain || '').trim(),\n    current_log: String(row.log || ''),\n    niche_data: niche,\n    force: $('Normalize Request').item.json.force === true,\n    ai_model: $('Normalize Request').item.json.ai_model\n  }\n};"
+      },
+      "id": "99d01aad-27b2-4c6f-afb0-1a035b2ffba0",
+      "name": "Normalize Site",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5744,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const mainProduct = String($json.main_product || '').trim();\nconst siteName = String($json.site_name || '').trim();\nconst niche = String($json?.niche_data?.niche || '').trim();\n\nconst selectedAudience = String($json.selected_audience || $json?.niche_data?.target_audience || '').trim();\nconst audienceCandidates = Array.isArray($json.audience_candidates)\n  ? $json.audience_candidates.map((v) => String(v || '').trim()).filter(Boolean).slice(0, 5)\n  : [];\n\nconst baseTopic = (mainProduct || siteName || niche).trim();\nif (!baseTopic) throw new Error('main_product/site_name/niche are all empty');\n\nconst systemPrompt = [\n  'You are a senior domain naming strategist for content/affiliate websites.',\n  'Generate niche-relevant, trustworthy, professional domains aligned with E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness).',\n  'Output strictly JSON only: {\"items\":[{\"domain\":\"BestCoffeeHub.com\",\"site_name\":\"Best Coffee Hub\"}]}',\n  'Hard rules:',\n  '1) .com ONLY (no other TLDs).',\n  '2) Exactly 20 unique items.',\n  '3) domain must use English letters only (a-z/A-Z) in second-level name; no hyphens, no numbers, no special characters, no spaces.',\n  '4) Use PascalCase in domain for readability (e.g., BestCoffeeHub.com).',\n  '5) site_name must be the domain split into words with spaces, and each word must be Title Case (e.g., Best Coffee Hub).',\n  '6) site_name must correspond to the returned domain words.',\n  '7) Prioritize clarity, credibility, and topical relevance to the niche/main product.',\n  '8) Avoid trademark-heavy or famous brand terms.',\n  '9) Tailor naming tone to the chosen target audience.',\n  '10) English-only words and ASCII letters only; do not use Chinese, Japanese, Korean, accented characters, or transliteration.',\n  '11) Forbidden token in domain: the exact word \\'domain\\' must not appear anywhere in second-level domain.',\n  '12) Return strict JSON only.'\n].join('\\n');\n\nconst userPrompt = [\n  `main_product: ${mainProduct || '(empty)'}`,\n  `site_name: ${siteName || '(empty)'}`,\n  `niche: ${niche || '(empty)'}`,\n  `selected_target_audience: ${selectedAudience || '(empty)'}`,\n  `audience_candidates: ${audienceCandidates.length ? audienceCandidates.join(' | ') : '(empty)'}`,\n  `current_site_domain: ${$json.site_domain || '(empty)'}`,\n  '',\n  'Task:',\n  'Generate 20 brandable domain candidates for this niche and selected target audience.',\n  'For each candidate, return domain (PascalCase .com) and site_name (same words with spaces, each word Title Case).',\n  'Return JSON only.'\n].join('\\n');\n\nreturn {\n  json: {\n    ...$json,\n    target_audience_selected: selectedAudience,\n    audience_candidates: audienceCandidates,\n    system_prompt: systemPrompt,\n    user_prompt: userPrompt\n  }\n};"
+      },
+      "id": "04b79174-684f-47f0-b559-dd56146d7a3b",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6496,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.user_prompt || '' }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "={{ $json.system_prompt || 'You are a senior domain naming strategist for content/affiliate websites.' }}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "75ed3a3d-0d46-4149-8f81-696dff7ed726",
+      "name": "AI Suggest Domains",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        5152,
+        3488
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const base = $('Build Prompt').item.json;\nconst raw = $json || {};\n\nconst normalizeDomain = (input) => {\n  if (input === undefined || input === null) return null;\n\n  let value = String(input).trim();\n  if (!value) return null;\n\n  value = value\n    .replace(/^https?:\\/\\//i, '')\n    .replace(/\\/.*/, '')\n    .replace(/\\.$/, '');\n\n  const host = value.split('@').pop() || value;\n  const namePart = host.includes('.') ? host.split('.').slice(0, -1).join('.') : host;\n  const name = String(namePart || '').replace(/[^a-zA-Z]/g, '').toLowerCase();\n\n  if (!name || name.length < 4) return null;\n  return `${name}.com`;\n};\n\nconst toTitleCase = (value) => {\n  const words = String(value || '')\n    .trim()\n    .split(/\\s+/)\n    .filter(Boolean);\n\n  if (!words.length) return '';\n\n  return words\n    .map((word) => {\n      const s = String(word || '').replace(/[^a-zA-Z0-9]/g, '');\n      if (!s) return '';\n      return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();\n    })\n    .filter(Boolean)\n    .join(' ')\n    .slice(0, 80)\n    .trim();\n};\n\nconst domainToSiteName = (domain) => {\n  let value = String(domain || '').trim();\n  if (!value) return '';\n\n  value = value\n    .replace(/^https?:\\/\\//i, '')\n    .replace(/\\/.*/, '');\n\n  if (value.includes('.')) {\n    const parts = value.split('.');\n    if (parts.length > 1) value = parts.slice(0, -1).join('.');\n  }\n\n  const segmented = value\n    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')\n    .replace(/[^a-zA-Z0-9]+/g, ' ')\n    .trim();\n\n  return toTitleCase(segmented);\n};\n\nconst parseAiText = (payload) => {\n  let text = payload?.choices?.[0]?.message?.content || payload?.text || payload?.output || payload?.response?.text;\n  if (!text && payload?.candidates?.[0]?.content?.parts?.[0]?.text) {\n    text = payload.candidates[0].content.parts[0].text;\n  }\n  if (!text || typeof text !== 'string') return { text: '', parsed: null };\n\n  const cleaned = text.trim()\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/\\s*```$/i, '');\n\n  try {\n    return { text: cleaned, parsed: JSON.parse(cleaned) };\n  } catch (error) {\n    return { text: cleaned, parsed: null };\n  }\n};\n\nconst makeFallbackItems = () => {\n  const rawSeed = String(base.main_product || base.site_name || '').trim();\n  const seedWords = rawSeed\n    .replace(/[^a-zA-Z0-9]+/g, ' ')\n    .trim()\n    .split(/\\s+/)\n    .filter(Boolean)\n    .map((w) => w.toLowerCase());\n\n  if (!seedWords.length) return [];\n\n  const cap = (w) => w.charAt(0).toUpperCase() + w.slice(1);\n  const root = seedWords.map(cap).join('');\n\n  const bases = [\n    root,\n    `${root}Guide`,\n    `${root}Insider`,\n    `${root}Central`,\n    `${root}Expert`,\n    `Trusted${root}`,\n    `Pure${root}`,\n    `Best${root}`,\n    `${root}World`,\n    `${root}Hub`,\n    `${root}Lab`,\n    `${root}Home`,\n    `${root}Today`,\n    `${root}Focus`,\n    `${root}Pro`,\n    `${root}Advisor`,\n    `${root}Insight`,\n    `${root}Source`,\n    `${root}Choice`,\n    `${root}Life`\n  ];\n\n  return bases.map((name) => ({\n    domain: `${name}.com`,\n    site_name: domainToSiteName(name)\n  }));\n};\n\nconst coerceItems = (payload, parsed, text) => {\n  if (payload && Array.isArray(payload.items)) return payload.items;\n  if (payload && Array.isArray(payload.domains)) return payload.domains.map((d) => ({ domain: d }));\n  if (payload && payload.data && Array.isArray(payload.data.items)) return payload.data.items;\n  if (payload && payload.data && Array.isArray(payload.data.domains)) {\n    return payload.data.domains.map((d) => ({ domain: d }));\n  }\n\n  if (parsed && Array.isArray(parsed.items)) return parsed.items;\n  if (parsed && Array.isArray(parsed.domains)) return parsed.domains.map((d) => ({ domain: d }));\n  if (Array.isArray(parsed)) return parsed;\n\n  if (text) {\n    const lines = text\n      .split('\\n')\n      .map((line) => line.replace(/^[-*\\d.)\\s]+/, '').trim())\n      .filter(Boolean);\n\n    return lines.map((line) => ({ domain: line }));\n  }\n\n  return [];\n};\n\nlet aiItems = [];\nlet aiMessage = '';\n\nif (raw.error) {\n  aiMessage = String(raw.error.message || raw.message || 'AI request failed');\n} else {\n  const { text, parsed } = parseAiText(raw);\n  aiMessage = text || '';\n  aiItems = coerceItems(raw, parsed, text);\n}\n\nif (!aiItems.length) aiItems = makeFallbackItems();\n\nconst seen = new Set();\nconst candidates = [];\nconst siteNameMap = {};\n\nconst pushItem = (entry) => {\n  const domainInput = typeof entry === 'object' && entry !== null\n    ? (entry.domain ?? entry.url ?? entry.name ?? '')\n    : entry;\n\n  const siteNameInput = typeof entry === 'object' && entry !== null\n    ? (entry.site_name ?? entry.siteName ?? '')\n    : '';\n\n  const normalizedDomain = normalizeDomain(domainInput);\n  if (!normalizedDomain || seen.has(normalizedDomain)) return;\n\n  const computedSiteName = toTitleCase(siteNameInput) || domainToSiteName(domainInput || normalizedDomain);\n  if (!computedSiteName) return;\n\n  seen.add(normalizedDomain);\n  candidates.push(normalizedDomain);\n  siteNameMap[normalizedDomain] = computedSiteName;\n};\n\nfor (const entry of aiItems) {\n  pushItem(entry);\n  if (candidates.length >= 20) break;\n}\n\nif (candidates.length < 20) {\n  for (const entry of makeFallbackItems()) {\n    pushItem(entry);\n    if (candidates.length >= 20) break;\n  }\n}\n\nif (!candidates.length) throw new Error('No valid .com domains generated under letters-only policy');\n\nreturn {\n  json: {\n    ...base,\n    candidates,\n    site_name_map: siteNameMap,\n    ai_message: aiMessage ? String(aiMessage).slice(0, 1000) : 'ok'\n  }\n};"
+      },
+      "id": "a57840d2-d508-4b65-b437-dd0746b81c35",
+      "name": "Parse AI Domains",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5440,
+        3488
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://spaceship.dev/api/v1/domains/available",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "<REDACTED_SPACESHIP_API_KEY>"
+            },
+            {
+              "name": "X-API-Secret",
+              "value": "<REDACTED_SPACESHIP_API_SECRET>"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ domains: $json.candidates }) }}",
+        "options": {}
+      },
+      "id": "db54f62e-2959-4141-bf4c-b8f0acc62b03",
+      "name": "Check Spaceship",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5632,
+        3488
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const base = $('Parse AI Domains').item.json;\nconst resp = $json || {};\n\nconst now = new Date().toISOString();\nconst candidates = Array.isArray(base.candidates) ? base.candidates : [];\nconst force = base.force === true || String(base.force || '').toLowerCase() === 'true';\nconst currentDomainRaw = String(base.site_domain || '').trim();\nconst currentDomain = currentDomainRaw.toLowerCase();\nconst siteNameMap = (base.site_name_map && typeof base.site_name_map === 'object' && !Array.isArray(base.site_name_map))\n  ? base.site_name_map\n  : {};\n\nconst resultRows = Array.isArray(resp.domains) ? resp.domains : [];\n\nconst isPremium = (row) => {\n  if (!row || typeof row !== 'object') return false;\n  if (row.premium === true || row.isPremium === true || row.premiumDomain === true) return true;\n\n  const pp = row.premiumPricing;\n  if (Array.isArray(pp)) return pp.length > 0;\n  if (pp && typeof pp === 'object') return Object.keys(pp).length > 0;\n  if (typeof pp === 'number') return pp > 0;\n  if (typeof pp === 'string') {\n    const t = pp.trim();\n    return t !== '' && t !== '0' && t.toLowerCase() !== 'false' && t.toLowerCase() !== 'null';\n  }\n\n  return false;\n};\n\nconst availabilityMap = new Map();\nfor (const row of resultRows) {\n  const domain = String(row?.domain || '').toLowerCase();\n  if (!domain) continue;\n\n  const result = String(row?.result || row?.status || '').toLowerCase();\n  const available = row?.available === true || result === 'available';\n  const premium = isPremium(row);\n\n  availabilityMap.set(domain, {\n    available,\n    premium,\n    result,\n    message: row?.message || row?.reason || result || ''\n  });\n}\n\nlet selectedDomain = null;\nconst availableDomains = [];\nconst premiumAvailableDomains = [];\nfor (const d of candidates) {\n  const key = String(d).toLowerCase();\n  const info = availabilityMap.get(key);\n  if (!info?.available) continue;\n\n  if (info.premium) {\n    premiumAvailableDomains.push(d);\n    continue;\n  }\n\n  availableDomains.push(d);\n}\n\nif (availableDomains.length) {\n  if (force && currentDomain) {\n    const different = availableDomains.find((d) => String(d).toLowerCase() !== currentDomain);\n    selectedDomain = different || availableDomains[0];\n  } else {\n    selectedDomain = availableDomains[0];\n  }\n}\n\nlet status = 'unavailable';\nlet availableFlag = false;\nlet message = `Checked ${candidates.length} domains; no standard-price domain available. Existing site_domain kept unchanged.`;\n\nif (resp.error) {\n  status = 'error';\n  availableFlag = null;\n  message = String(resp.error?.message || resp.message || 'Spaceship request failed').slice(0, 1000);\n} else if (selectedDomain) {\n  status = 'available';\n  availableFlag = true;\n  if (force) {\n    if (currentDomain && String(selectedDomain).toLowerCase() === currentDomain) {\n      message = `Force enabled; only current domain available in standard list. Kept: ${selectedDomain}`;\n    } else if (currentDomain) {\n      message = `Force enabled; replaced ${currentDomainRaw} with ${selectedDomain} (standard available: ${availableDomains.length}).`;\n    } else {\n      message = `Force enabled; selected ${selectedDomain} from ${availableDomains.length} standard available domain(s).`;\n    }\n  } else if (currentDomain) {\n    message = `Found ${availableDomains.length} standard available domain(s). Force disabled; kept existing domain ${currentDomainRaw}. Top candidate: ${selectedDomain}`;\n  } else {\n    message = `Found ${availableDomains.length} standard available domain(s). Selected: ${selectedDomain}`;\n  }\n\n  if (premiumAvailableDomains.length) {\n    message += ` Ignored ${premiumAvailableDomains.length} premium domain(s).`;\n  }\n} else if (premiumAvailableDomains.length) {\n  status = 'unavailable';\n  availableFlag = false;\n  message = `Only premium domains are available (${premiumAvailableDomains.length}); existing site_domain kept unchanged.`;\n}\n\nconst selectedAudience = String(base.target_audience_selected || base.selected_audience || '').trim();\nconst audienceCandidates = Array.isArray(base.audience_candidates)\n  ? base.audience_candidates.map((v) => String(v || '').trim()).filter(Boolean).slice(0, 5)\n  : [];\n\nconst appliedDomain = force ? (selectedDomain || currentDomainRaw || null) : (currentDomainRaw || selectedDomain || null);\nconst stamp = now.replace('T', ' ').replace('Z', ' UTC');\nconst logLines = [\n  `[${stamp}] [AI-Domain] force=${force}; audience=${selectedAudience || '-'}; status=${status}; current=${currentDomainRaw || '-'}; selected=${selectedDomain || '-'}; applied=${appliedDomain || '-'}; standard_available=${availableDomains.length}/${candidates.length}; premium_available=${premiumAvailableDomains.length}`,\n  `[AI-Domain] selected_audience=${selectedAudience || '-'}`,\n  `[AI-Domain] audience_candidates=${audienceCandidates.join(' | ') || '-'}`,\n  `[AI-Domain] candidates=${candidates.join(', ') || '-'}`,\n  `[AI-Domain] available_domains=${availableDomains.join(', ') || '-'}`,\n  `[AI-Domain] premium_available_domains=${premiumAvailableDomains.join(', ') || '-'}`,\n  `[AI-Domain] availability_rows=${JSON.stringify(resultRows)}`,\n  `[AI-Domain] message=${String(message).slice(0, 500)}`\n];\nconst newLogEntry = logLines.join('\\n');\nconst prevLog = String(base.current_log || '').trim();\nconst mergedLog = prevLog ? `${prevLog}\\n\\n${newLogEntry}` : newLogEntry;\n\nlet nextNicheData = {};\nif (base.niche_data && typeof base.niche_data === 'object' && !Array.isArray(base.niche_data)) {\n  nextNicheData = { ...base.niche_data };\n}\n\n// Keep only target_audience from this workflow in niche_data.\ndelete nextNicheData.target_audience_candidates;\ndelete nextNicheData.target_audience_updated_at;\ndelete nextNicheData.domain_suggestions;\ndelete nextNicheData.domain_availability;\ndelete nextNicheData.domain_selected;\ndelete nextNicheData.domain_generation_at;\nif (selectedAudience) {\n  nextNicheData.target_audience = selectedAudience;\n}\n\nconst payload = {\n  domain_check_status: status,\n  domain_check_available: availableFlag,\n  domain_check_at: now,\n  domain_check_message: String(message).slice(0, 1000),\n  log: mergedLog.slice(-12000),\n  niche_data: nextNicheData\n};\n\nif (selectedDomain) {\n  if (force) {\n    payload.site_domain = selectedDomain;\n  } else if (!currentDomainRaw) {\n    payload.site_domain = selectedDomain;\n  }\n}\n\nreturn {\n  json: {\n    site_id: base.site_id,\n    force,\n    current_domain: currentDomainRaw || null,\n    applied_domain: appliedDomain,\n    payload,\n    site_name_map: siteNameMap,\n    selected_audience: selectedAudience,\n    audience_candidates: audienceCandidates,\n    selected_domain: selectedDomain,\n    available_domains: availableDomains,\n    premium_available_domains: premiumAvailableDomains,\n    candidates\n  }\n};"
+      },
+      "id": "6a86a243-2ef8-4620-b708-6132aa0b0ac4",
+      "name": "Build Site Update Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5808,
+        3488
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://directus-xsg8sgc4sg8o4kgs8w4os08g:8055/items/sites/{{$json.site_id}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "directusApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.payload}}",
+        "options": {}
+      },
+      "id": "8ff2aca7-dd4c-4a85-816b-ecbfed39f0b6",
+      "name": "Update Site (Directus)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6176,
+        3488
+      ],
+      "credentials": {
+        "directusApi": {
+          "id": "sd37jKuosg0fyA3p",
+          "name": "Admin User UUID"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const detail = $('Build Site Update Payload').item.json;\nreturn {\n  json: {\n    site_id: detail.site_id,\n    force: detail.force,\n    current_domain: detail.current_domain,\n    applied_domain: detail.applied_domain,\n    selected_audience: detail.selected_audience || null,\n    audience_candidates: detail.audience_candidates || [],\n    selected_domain: detail.selected_domain,\n    available_domains: detail.available_domains,\n    checked_domains: detail.candidates,\n    status: detail.payload.domain_check_status,\n    message: detail.payload.domain_check_message\n  }\n};"
+      },
+      "id": "f09e58e3-ca71-48e3-af6e-c5d427b64d02",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6512,
+        3488
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const mainProduct = String($json.main_product || '').trim();\nconst siteName = String($json.site_name || '').trim();\nconst niche = String($json?.niche_data?.niche || '').trim();\nconst currentAudience = String($json?.niche_data?.target_audience || '').trim();\n\nconst baseTopic = (mainProduct || siteName || niche).trim();\nif (!baseTopic) throw new Error('main_product/site_name/niche are all empty');\n\nconst systemPrompt = [\n  'You are a market researcher for niche content websites.',\n  'Generate exactly 5 distinct target audiences for the niche/product.',\n  'Each audience should be specific, practical, and commercially relevant.',\n  'Output strict JSON only: {\"audiences\":[\"...\"]}',\n  'Rules:',\n  '1) Exactly 5 items',\n  '2) All items must be unique',\n  '3) Each item <= 12 words',\n  '4) English only'\n].join('\\n');\n\nconst userPrompt = [\n  `main_product: ${mainProduct || '(empty)'}`,\n  `site_name: ${siteName || '(empty)'}`,\n  `niche: ${niche || '(empty)'}`,\n  `existing_target_audience: ${currentAudience || '(empty)'}`,\n  '',\n  'Task: Provide 5 target audience options for domain naming strategy.',\n  'Return JSON only.'\n].join('\\n');\n\nreturn {\n  json: {\n    ...$json,\n    audience_system_prompt: systemPrompt,\n    audience_user_prompt: userPrompt\n  }\n};"
+      },
+      "id": "288359fd-a782-459f-8ab5-2cb974e9bccc",
+      "name": "Build Audience Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5888,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.audience_user_prompt || '' }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "={{ $json.audience_system_prompt || 'You are a market researcher for niche content websites.' }}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "fc8b2926-c74a-405a-bba2-0abdafa55c88",
+      "name": "AI Suggest Audiences",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        6048,
+        3216
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const base = $('Build Audience Prompt').item.json;\nconst raw = $json || {};\n\nconst toText = (payload) => {\n  let text = payload?.choices?.[0]?.message?.content || payload?.text || payload?.output || payload?.response?.text;\n  if (!text && payload?.candidates?.[0]?.content?.parts?.[0]?.text) {\n    text = payload.candidates[0].content.parts[0].text;\n  }\n  return typeof text === 'string' ? text : '';\n};\n\nconst parseJson = (text) => {\n  if (!text) return null;\n  const cleaned = text.trim()\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/\\s*```$/i, '');\n  try {\n    return JSON.parse(cleaned);\n  } catch (error) {\n    return null;\n  }\n};\n\nconst normalizeAudience = (value) => {\n  const s = String(value || '').replace(/\\s+/g, ' ').trim();\n  if (!s) return null;\n  return s.length > 80 ? s.slice(0, 80).trim() : s;\n};\n\nconst makeFallback = () => {\n  const product = String(base.main_product || base.site_name || 'this product').trim();\n  return [\n    `first-time ${product} buyers`,\n    `busy families using ${product} daily`,\n    `budget-conscious shoppers for ${product}`,\n    `${product} enthusiasts comparing features`,\n    `quality-focused home users of ${product}`\n  ];\n};\n\nlet audiences = [];\nif (raw.error) {\n  audiences = [];\n} else {\n  const text = toText(raw);\n  const parsed = parseJson(text);\n\n  if (parsed && Array.isArray(parsed.audiences)) {\n    audiences = parsed.audiences;\n  } else if (Array.isArray(parsed)) {\n    audiences = parsed;\n  } else if (text) {\n    audiences = text.split('\\n').map((line) => line.replace(/^[-*\\d.)\\s]+/, '').trim());\n  }\n}\n\nconst deduped = [];\nconst seen = new Set();\nfor (const item of audiences) {\n  const v = normalizeAudience(item);\n  if (!v) continue;\n  const k = v.toLowerCase();\n  if (seen.has(k)) continue;\n  seen.add(k);\n  deduped.push(v);\n  if (deduped.length >= 5) break;\n}\n\nconst fallback = makeFallback();\nfor (const item of fallback) {\n  if (deduped.length >= 5) break;\n  const v = normalizeAudience(item);\n  const k = String(v || '').toLowerCase();\n  if (!v || seen.has(k)) continue;\n  seen.add(k);\n  deduped.push(v);\n}\n\nif (!deduped.length) throw new Error('No audience candidates generated');\n\nconst selectedIndex = Math.floor(Math.random() * deduped.length);\nconst selectedAudience = deduped[selectedIndex];\n\nreturn {\n  json: {\n    ...base,\n    audience_candidates: deduped,\n    selected_audience: selectedAudience,\n    selected_audience_index: selectedIndex\n  }\n};"
+      },
+      "id": "b8a6f1c0-b21f-42ca-b4f8-ac7c34364d20",
+      "name": "Parse + Pick Audience",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6352,
+        3216
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst placeholder = '????????,?????';\n\nconst normalizeDomain = (input) => {\n  if (input === undefined || input === null) return null;\n\n  let value = String(input).trim();\n  if (!value) return null;\n\n  value = value\n    .replace(/^https?:\\/\\//i, '')\n    .replace(/\\/.*/, '')\n    .replace(/\\.$/, '');\n\n  const host = value.split('@').pop() || value;\n  const namePart = host.includes('.') ? host.split('.').slice(0, -1).join('.') : host;\n  const name = String(namePart || '').replace(/[^a-zA-Z]/g, '').toLowerCase();\n\n  if (!name) return null;\n  return `${name}.com`;\n};\n\nconst toTitleCase = (value) => {\n  const parts = String(value || '')\n    .replace(/[^a-zA-Z0-9]+/g, ' ')\n    .trim()\n    .split(/\\s+/)\n    .filter(Boolean);\n\n  if (!parts.length) return '';\n\n  return parts\n    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())\n    .join(' ')\n    .slice(0, 80)\n    .trim();\n};\n\nconst domainToSiteName = (domain) => {\n  let value = String(domain || '').trim();\n  if (!value) return '';\n\n  value = value\n    .replace(/^https?:\\/\\//i, '')\n    .replace(/\\/.*/, '');\n\n  if (value.includes('.')) {\n    const parts = value.split('.');\n    if (parts.length > 1) value = parts.slice(0, -1).join('.');\n  }\n\n  const segmented = value\n    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')\n    .replace(/[^a-zA-Z0-9]+/g, ' ')\n    .trim();\n\n  return toTitleCase(segmented);\n};\n\nreturn items.map((item) => {\n  const data = item.json || {};\n  const payload = { ...(data.payload || {}) };\n\n  const mapRaw = (data.site_name_map && typeof data.site_name_map === 'object' && !Array.isArray(data.site_name_map))\n    ? data.site_name_map\n    : {};\n\n  const siteNameMap = Object.fromEntries(\n    Object.entries(mapRaw)\n      .map(([k, v]) => [String(k || '').trim().toLowerCase(), toTitleCase(v)])\n      .filter(([k, v]) => k && v)\n  );\n\n  const effectiveDomain = String(\n    payload.site_domain || data.applied_domain || data.current_domain || ''\n  ).trim();\n\n  if (effectiveDomain && effectiveDomain !== placeholder) {\n    const normalized = normalizeDomain(effectiveDomain);\n    const mapped = normalized ? siteNameMap[normalized] : '';\n    const siteName = mapped || domainToSiteName(effectiveDomain);\n\n    if (siteName) payload.site_name = siteName;\n  }\n\n  const out = { ...data, payload };\n  delete out.json;\n\n  return { json: out, pairedItem: item.pairedItem };\n});"
+      },
+      "id": "fa735d20-49eb-482d-8b17-43bf21c08910",
+      "name": "Attach Site Name",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6000,
+        3488
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://directus-xsg8sgc4sg8o4kgs8w4os08g:8055/items/sites/{{$('Build Site Update Payload').item.json.site_id}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "directusApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { status: 'generate_domain_done' } }}",
+        "options": {}
+      },
+      "id": "a33a580d-2aa0-4b91-9d07-9e855620466a",
+      "name": "Update Site Status Done (Directus)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6320,
+        3488
+      ],
+      "credentials": {
+        "directusApi": {
+          "id": "sd37jKuosg0fyA3p",
+          "name": "Admin User UUID"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "google/gemini-2.5-flash",
+        "options": {
+          "responseFormat": "json_object",
+          "temperature": 0.3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        5152,
+        3632
+      ],
+      "id": "87fac523-a71f-4a09-b0e0-6652f7463516",
+      "name": "OpenRouter Chat Model - Domains",
+      "credentials": {
+        "openRouterApi": {
+          "id": "lqOEifeO09BDQsym",
+          "name": "happygammon@gmail.com"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "google/gemini-2.5-flash",
+        "options": {
+          "responseFormat": "json_object",
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        6048,
+        3328
+      ],
+      "id": "a6b985f8-1d47-40a4-86b1-9e933a4ecd89",
+      "name": "OpenRouter Chat Model - Audiences",
+      "credentials": {
+        "openRouterApi": {
+          "id": "lqOEifeO09BDQsym",
+          "name": "happygammon@gmail.com"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook In": {
+      "main": [
+        [
+          {
+            "node": "Normalize Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Request": {
+      "main": [
+        [
+          {
+            "node": "Get Site (Directus)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Site (Directus)": {
+      "main": [
+        [
+          {
+            "node": "Normalize Site",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Suggest Domains",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Suggest Domains": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Domains",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Domains": {
+      "main": [
+        [
+          {
+            "node": "Check Spaceship",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Spaceship": {
+      "main": [
+        [
+          {
+            "node": "Build Site Update Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Site (Directus)": {
+      "main": [
+        [
+          {
+            "node": "Update Site Status Done (Directus)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Site": {
+      "main": [
+        [
+          {
+            "node": "Build Audience Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Audience Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Suggest Audiences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Suggest Audiences": {
+      "main": [
+        [
+          {
+            "node": "Parse + Pick Audience",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse + Pick Audience": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Site Update Payload": {
+      "main": [
+        [
+          {
+            "node": "Attach Site Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Site Name": {
+      "main": [
+        [
+          {
+            "node": "Update Site (Directus)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Site Status Done (Directus)": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model - Domains": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Suggest Domains",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model - Audiences": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Suggest Audiences",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "5e63a151-6687-49ef-a23a-281bbf1d6ac0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "851a2d848e5ce2e1d89d7a19117ff7e03cd7fc4eee04753cef03c559878dda88"
+  },
+  "id": "rCXs1tIupWjOcNON",
+  "tags": []
+}

@@ -1,0 +1,13 @@
+diff --git a/dist/utils/schemaConversion/convertCollectionSchemaToZod.js b/dist/utils/schemaConversion/convertCollectionSchemaToZod.js
+index 07a2628fdc987d663885c7e918152539ca7c1766..b189995fb7cefe72866fb8e86fbcd7c7fb3c2912 100644
+--- a/dist/utils/schemaConversion/convertCollectionSchemaToZod.js
++++ b/dist/utils/schemaConversion/convertCollectionSchemaToZod.js
+@@ -36,7 +36,7 @@ export const convertCollectionSchemaToZod = (schema)=>{
+         // crash entirely. The tool will still be listed but without strict validation.
+         // See: https://github.com/colinhacks/zod/issues/5821
+         console.warn(`[plugin-mcp] Schema conversion failed, using permissive fallback:`, error instanceof Error ? error.message : error);
+-        return z.record(z.any());
++        return z.object({}).passthrough();
+     }
+ };
+ 

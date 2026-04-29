@@ -1,0 +1,193 @@
+import type { CollectionConfig } from 'payload'
+
+import { syncBlueprintsMirroredLayoutAfterSiteChange } from '@/collections/hooks/syncBlueprintMirroredLayout'
+import { fillSitesOptionalDbFields } from '@/collections/hooks/fillSitesOptionalDbFields'
+import { auditSitesMatrixChange } from '@/collections/hooks/sitesMatrixAudit'
+import { siteTrustPagesInstantiate } from '@/collections/hooks/siteTrustPagesInstantiate'
+import { enforceSitesMatrixQuota } from '@/collections/hooks/sitesMatrixQuota'
+import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { adminGroups } from '@/constants/adminGroups'
+
+export const Sites: CollectionConfig = {
+  slug: 'sites',
+  labels: { singular: '站点', plural: '站点' },
+  admin: {
+    group: adminGroups.website,
+    useAsTitle: 'name',
+    defaultColumns: [
+      'name',
+      'slug',
+      'portfolio',
+      'status',
+      'domainWorkflowStatus',
+      'primaryDomain',
+      'updatedAt',
+    ],
+    components: {
+      views: {
+        list: {
+          actions: ['./components/CollectionQuickActions#SiteListQuickAction'],
+        },
+      },
+    },
+  },
+  access: loggedInSuperAdminAccessFor('sites'),
+  hooks: {
+    beforeChange: [fillSitesOptionalDbFields, enforceSitesMatrixQuota],
+    afterChange: [
+      syncBlueprintsMirroredLayoutAfterSiteChange,
+      siteTrustPagesInstantiate,
+      auditSitesMatrixChange,
+    ],
+  },
+  fields: [
+    {
+      name: 'name',
+      type: 'text',
+      required: true,
+    },
+    {
+      name: 'slug',
+      type: 'text',
+      index: true,
+      admin: {
+        description:
+          'URL-safe key; pair with tenant for uniqueness in your workflows. 列表「快捷操作 · 生成域名」在写回主域名时会将 slug 同步为小写并把域名中的点替换为连字符。新建时若留空，会按名称自动生成占位 slug。',
+      },
+    },
+    {
+      name: 'primaryDomain',
+      type: 'text',
+      label: 'Primary domain',
+      admin: {
+        description: '可留空；入库前会存为空字符串，稍后可由域名生成流程或手工补全。',
+      },
+    },
+    {
+      name: 'status',
+      type: 'select',
+      defaultValue: 'draft',
+      admin: {
+        description: '可留空；未选择时按 draft 写入数据库。',
+      },
+      options: [
+        { label: 'Draft', value: 'draft' },
+        { label: 'Active', value: 'active' },
+        { label: 'Archived', value: 'archived' },
+      ],
+    },
+    {
+      name: 'portfolio',
+      type: 'relationship',
+      relationTo: 'site-portfolios',
+      label: '站点组合',
+      admin: {
+        description: 'SEO 矩阵：项目/批次分组，便于筛选与批量运营。',
+      },
+    },
+    {
+      name: 'siteLayout',
+      type: 'select',
+      label: '站点布局',
+      defaultValue: 'template1',
+      options: [
+        { label: 'Template1（整站顶栏 + 主从栏 + 页脚）', value: 'template1' },
+        {
+          label: 'Template2（同结构 · 第二套主题；文案 t2LocaleJson）',
+          value: 'template2',
+        },
+        {
+          label: 'amz-template-1（Amazon 联盟测评风 · 顶栏/底栏/主题变量）',
+          value: 'amz-template-1',
+        },
+      ],
+      admin: {
+        description:
+          'Template1 / Template2：文案在「设计」t1LocaleJson / t2LocaleJson。amz-template-1：壳层与配色见「设计」amzSiteConfigJson（与 amz-template-1 仓库 site.config 同形）。说明与预览链接见「站点布局」目录。',
+      },
+    },
+    {
+      name: 'operators',
+      type: 'relationship',
+      relationTo: 'users',
+      hasMany: true,
+      admin: {
+        description: 'Users who operate this site (optional; tenant scoping still applies).',
+      },
+    },
+    {
+      type: 'collapsible',
+      label: '域名生成 / AI（n8n Generate Domain 等价）',
+      admin: {
+        description:
+          '由 POST /api/sites/generate-domain（x-internal-token）写入；含 OpenRouter 建议与 Spaceship 可查结果。',
+        initCollapsed: true,
+      },
+      fields: [
+        {
+          name: 'mainProduct',
+          type: 'text',
+          label: '主品 / Main product',
+          admin: { description: '用于域名与受众提示词（对应原 n8n main_product）。' },
+        },
+        {
+          name: 'nicheData',
+          type: 'json',
+          label: '细分数据 niche_data',
+          admin: {
+            description: 'JSON：建议含 niche、target_audience；流程会清理临时域名建议键。',
+          },
+        },
+        {
+          name: 'domainWorkflowStatus',
+          type: 'text',
+          label: '域名流程状态',
+          defaultValue: 'idle',
+          admin: {
+            description:
+              '推荐取值（小写英文）：idle 代办 · running 运行中 · done 已完成 · error 错误。API 与列表徽章按此约定；任意其他值在列表中按代办样式显示。',
+            components: {
+              Cell: './components/DomainWorkflowStatusCell#DomainWorkflowStatusCell',
+            },
+          },
+        },
+        {
+          name: 'domainCheckStatus',
+          type: 'text',
+          label: '可查状态 domain_check_status',
+          admin: { description: 'available | unavailable | error（多由 API 写入）。' },
+        },
+        {
+          name: 'domainCheckAvailable',
+          type: 'checkbox',
+          label: '标准价可用',
+          defaultValue: false,
+          admin: { description: '由 Spaceship 批量可查结果写入。' },
+        },
+        {
+          name: 'domainCheckAt',
+          type: 'date',
+          label: '可查时间',
+          admin: { date: { pickerAppearance: 'dayAndTime' } },
+        },
+        {
+          name: 'domainCheckMessage',
+          type: 'textarea',
+          label: '可查说明',
+        },
+        {
+          name: 'domainGenerationLog',
+          type: 'textarea',
+          label: '域名生成日志',
+          admin: {
+            description: '追加日志，末尾截断约 12000 字符（与 n8n 一致）。',
+          },
+        },
+      ],
+    },
+    {
+      name: 'notes',
+      type: 'textarea',
+    },
+  ],
+}

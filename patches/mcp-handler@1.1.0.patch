@@ -1,0 +1,268 @@
+diff --git a/dist/index.js b/dist/index.js
+index 11072f724e74ff9e0b4c3bfec04a6fafa1b0a7bd..4bd435ea40c6c3afbcf9348aa2ee0e7de54a8a11 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -306,10 +306,22 @@ function initializeMcpApiHandler(initializeServer, serverOptions = {}, config =
+           return;
+         }
+         if (req.method === "POST") {
+-          const eventRes = new EventEmittingResponse(
+-            createFakeIncomingMessage(),
+-            config.onEvent
+-          );
++          let eventRes;
++          try {
++            eventRes = new EventEmittingResponse(
++              createFakeIncomingMessage(),
++              config.onEvent
++            );
++          } catch (_) {
++            eventRes = {
++              requestCompleted() {
++              },
++              requestReceived() {
++              },
++              error() {
++              }
++            };
++          }
+           let bodyContent;
+           const contentType = req.headers.get("content-type") || "";
+           if (contentType.includes("application/json")) {
+@@ -318,7 +330,8 @@ function initializeMcpApiHandler(initializeServer, serverOptions = {}, config =
+             bodyContent = yield req.text();
+           }
+           const transport = new webStandardStreamableHttp_js.WebStandardStreamableHTTPServerTransport({
+-            sessionIdGenerator
++            sessionIdGenerator,
++            enableJsonResponse: disableSse
+           });
+           const server = new mcp_js.McpServer(serverInfo, mcpServerOptions);
+           yield initializeServer(server);
+@@ -808,7 +821,26 @@ function createServerResponseAdapter(signal, fn) {
+     signal.addEventListener("abort", () => {
+       eventEmitter.emit("close");
+     });
+-    void fn(fakeServerResponse);
++    void (async () => {
++      try {
++        await Promise.resolve(fn(fakeServerResponse));
++      } catch (err) {
++        try {
++          if (!wroteHead) {
++            writeHead(500, { "Content-Type": "application/json" });
++          }
++          const message = err instanceof Error ? err.message : String(err);
++          fakeServerResponse.end(
++            JSON.stringify({
++              jsonrpc: "2.0",
++              error: { code: -32603, message },
++              id: null
++            })
++          );
++        } catch {
++        }
++      }
++    })();
+     void (() => chunkUILOG6SR_js.__async(this, null, function* () {
+       const head = yield writeHeadPromise;
+       const response = new Response(
+@@ -841,9 +873,7 @@ function createMcpRouteHandler(initializeServer, serverOptions, config) {
+     config
+   );
+   return (request) => {
+-    return createServerResponseAdapter(request.signal, (res) => {
+-      mcpHandler(request, res);
+-    });
++    return createServerResponseAdapter(request.signal, (res) => mcpHandler(request, res));
+   };
+ }
+ 
+diff --git a/dist/index.mjs b/dist/index.mjs
+index c1110409315d81bd1d440dc5910ba720c17f3722..4be6542fca71624c4eb361be30afef6c83134164 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -300,10 +300,22 @@ function initializeMcpApiHandler(initializeServer, serverOptions = {}, config =
+           return;
+         }
+         if (req.method === "POST") {
+-          const eventRes = new EventEmittingResponse(
+-            createFakeIncomingMessage(),
+-            config.onEvent
+-          );
++          let eventRes;
++          try {
++            eventRes = new EventEmittingResponse(
++              createFakeIncomingMessage(),
++              config.onEvent
++            );
++          } catch (_) {
++            eventRes = {
++              requestCompleted() {
++              },
++              requestReceived() {
++              },
++              error() {
++              }
++            };
++          }
+           let bodyContent;
+           const contentType = req.headers.get("content-type") || "";
+           if (contentType.includes("application/json")) {
+@@ -312,7 +324,8 @@ function initializeMcpApiHandler(initializeServer, serverOptions = {}, config =
+             bodyContent = yield req.text();
+           }
+           const transport = new WebStandardStreamableHTTPServerTransport({
+-            sessionIdGenerator
++            sessionIdGenerator,
++            enableJsonResponse: disableSse
+           });
+           const server = new McpServer(serverInfo, mcpServerOptions);
+           yield initializeServer(server);
+@@ -802,7 +815,26 @@ function createServerResponseAdapter(signal, fn) {
+     signal.addEventListener("abort", () => {
+       eventEmitter.emit("close");
+     });
+-    void fn(fakeServerResponse);
++    void (async () => {
++      try {
++        await Promise.resolve(fn(fakeServerResponse));
++      } catch (err) {
++        try {
++          if (!wroteHead) {
++            writeHead(500, { "Content-Type": "application/json" });
++          }
++          const message = err instanceof Error ? err.message : String(err);
++          fakeServerResponse.end(
++            JSON.stringify({
++              jsonrpc: "2.0",
++              error: { code: -32603, message },
++              id: null
++            })
++          );
++        } catch {
++        }
++      }
++    })();
+     void (() => __async(this, null, function* () {
+       const head = yield writeHeadPromise;
+       const response = new Response(
+@@ -835,9 +867,7 @@ function createMcpRouteHandler(initializeServer, serverOptions, config) {
+     config
+   );
+   return (request) => {
+-    return createServerResponseAdapter(request.signal, (res) => {
+-      mcpHandler(request, res);
+-    });
++    return createServerResponseAdapter(request.signal, (res) => mcpHandler(request, res));
+   };
+ }
+ 
+diff --git a/node_modules/.bin/create-mcp-route b/node_modules/.bin/create-mcp-route
+new file mode 100755
+index 0000000000000000000000000000000000000000..a84efea9f3caf7642bcfdec09c6b50ce385057ed
+--- /dev/null
++++ b/node_modules/.bin/create-mcp-route
+@@ -0,0 +1,21 @@
++#!/bin/sh
++basedir=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")
++
++case `uname` in
++    *CYGWIN*|*MINGW*|*MSYS*)
++        if command -v cygpath > /dev/null 2>&1; then
++            basedir=`cygpath -w "$basedir"`
++        fi
++    ;;
++esac
++
++if [ -z "$NODE_PATH" ]; then
++  export NODE_PATH="/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/mcp-handler@1.1.0_patch_hash=a6a2847827acdc1af91281f47602f27861ac3aeb2840691f6cb4c467e6_0874afcde504e04c6d35233e1f74b029/node_modules/mcp-handler/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/mcp-handler@1.1.0_patch_hash=a6a2847827acdc1af91281f47602f27861ac3aeb2840691f6cb4c467e6_0874afcde504e04c6d35233e1f74b029/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/node_modules"
++else
++  export NODE_PATH="/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/mcp-handler@1.1.0_patch_hash=a6a2847827acdc1af91281f47602f27861ac3aeb2840691f6cb4c467e6_0874afcde504e04c6d35233e1f74b029/node_modules/mcp-handler/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/mcp-handler@1.1.0_patch_hash=a6a2847827acdc1af91281f47602f27861ac3aeb2840691f6cb4c467e6_0874afcde504e04c6d35233e1f74b029/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/node_modules:$NODE_PATH"
++fi
++if [ -x "$basedir/node" ]; then
++  exec "$basedir/node"  "$basedir/../../dist/cli/index.js" "$@"
++else
++  exec node  "$basedir/../../dist/cli/index.js" "$@"
++fi
+diff --git a/node_modules/.bin/mcp-adapter b/node_modules/.bin/mcp-adapter
+new file mode 100755
+index 0000000000000000000000000000000000000000..a84efea9f3caf7642bcfdec09c6b50ce385057ed
+--- /dev/null
++++ b/node_modules/.bin/mcp-adapter
+@@ -0,0 +1,21 @@
++#!/bin/sh
++basedir=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")
++
++case `uname` in
++    *CYGWIN*|*MINGW*|*MSYS*)
++        if command -v cygpath > /dev/null 2>&1; then
++            basedir=`cygpath -w "$basedir"`
++        fi
++    ;;
++esac
++
++if [ -z "$NODE_PATH" ]; then
++  export NODE_PATH="/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/mcp-handler@1.1.0_patch_hash=a6a2847827acdc1af91281f47602f27861ac3aeb2840691f6cb4c467e6_0874afcde504e04c6d35233e1f74b029/node_modules/mcp-handler/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/mcp-handler@1.1.0_patch_hash=a6a2847827acdc1af91281f47602f27861ac3aeb2840691f6cb4c467e6_0874afcde504e04c6d35233e1f74b029/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/node_modules"
++else
++  export NODE_PATH="/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/mcp-handler@1.1.0_patch_hash=a6a2847827acdc1af91281f47602f27861ac3aeb2840691f6cb4c467e6_0874afcde504e04c6d35233e1f74b029/node_modules/mcp-handler/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/mcp-handler@1.1.0_patch_hash=a6a2847827acdc1af91281f47602f27861ac3aeb2840691f6cb4c467e6_0874afcde504e04c6d35233e1f74b029/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/node_modules:$NODE_PATH"
++fi
++if [ -x "$basedir/node" ]; then
++  exec "$basedir/node"  "$basedir/../../dist/cli/index.js" "$@"
++else
++  exec node  "$basedir/../../dist/cli/index.js" "$@"
++fi
+diff --git a/node_modules/.bin/mcp-handler b/node_modules/.bin/mcp-handler
+new file mode 100755
+index 0000000000000000000000000000000000000000..a84efea9f3caf7642bcfdec09c6b50ce385057ed
+--- /dev/null
++++ b/node_modules/.bin/mcp-handler
+@@ -0,0 +1,21 @@
++#!/bin/sh
++basedir=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")
++
++case `uname` in
++    *CYGWIN*|*MINGW*|*MSYS*)
++        if command -v cygpath > /dev/null 2>&1; then
++            basedir=`cygpath -w "$basedir"`
++        fi
++    ;;
++esac
++
++if [ -z "$NODE_PATH" ]; then
++  export NODE_PATH="/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/mcp-handler@1.1.0_patch_hash=a6a2847827acdc1af91281f47602f27861ac3aeb2840691f6cb4c467e6_0874afcde504e04c6d35233e1f74b029/node_modules/mcp-handler/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/mcp-handler@1.1.0_patch_hash=a6a2847827acdc1af91281f47602f27861ac3aeb2840691f6cb4c467e6_0874afcde504e04c6d35233e1f74b029/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/node_modules"
++else
++  export NODE_PATH="/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/mcp-handler@1.1.0_patch_hash=a6a2847827acdc1af91281f47602f27861ac3aeb2840691f6cb4c467e6_0874afcde504e04c6d35233e1f74b029/node_modules/mcp-handler/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/mcp-handler@1.1.0_patch_hash=a6a2847827acdc1af91281f47602f27861ac3aeb2840691f6cb4c467e6_0874afcde504e04c6d35233e1f74b029/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/node_modules:$NODE_PATH"
++fi
++if [ -x "$basedir/node" ]; then
++  exec "$basedir/node"  "$basedir/../../dist/cli/index.js" "$@"
++else
++  exec node  "$basedir/../../dist/cli/index.js" "$@"
++fi
+diff --git a/node_modules/.bin/next b/node_modules/.bin/next
+new file mode 100755
+index 0000000000000000000000000000000000000000..e77d3804d2ff12b6b490e3bc849f03042946bda1
+--- /dev/null
++++ b/node_modules/.bin/next
+@@ -0,0 +1,21 @@
++#!/bin/sh
++basedir=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")
++
++case `uname` in
++    *CYGWIN*|*MINGW*|*MSYS*)
++        if command -v cygpath > /dev/null 2>&1; then
++            basedir=`cygpath -w "$basedir"`
++        fi
++    ;;
++esac
++
++if [ -z "$NODE_PATH" ]; then
++  export NODE_PATH="/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/next@15.4.11_@babel+core@7.29.0_@playwright+test@1.58.2_react-dom@19.2.1_react@19.2.1__react@19.2.1_sass@1.77.4/node_modules/next/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/next@15.4.11_@babel+core@7.29.0_@playwright+test@1.58.2_react-dom@19.2.1_react@19.2.1__react@19.2.1_sass@1.77.4/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/node_modules"
++else
++  export NODE_PATH="/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/next@15.4.11_@babel+core@7.29.0_@playwright+test@1.58.2_react-dom@19.2.1_react@19.2.1__react@19.2.1_sass@1.77.4/node_modules/next/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/next@15.4.11_@babel+core@7.29.0_@playwright+test@1.58.2_react-dom@19.2.1_react@19.2.1__react@19.2.1_sass@1.77.4/node_modules:/Users/sunny/yourprojects/payload-1/node_modules/.pnpm/node_modules:$NODE_PATH"
++fi
++if [ -x "$basedir/node" ]; then
++  exec "$basedir/node"  "$basedir/../../../../../next@15.4.11_@babel+core@7.29.0_@playwright+test@1.58.2_react-dom@19.2.1_react@19.2.1__react@19.2.1_sass@1.77.4/node_modules/next/dist/bin/next" "$@"
++else
++  exec node  "$basedir/../../../../../next@15.4.11_@babel+core@7.29.0_@playwright+test@1.58.2_react-dom@19.2.1_react@19.2.1__react@19.2.1_sass@1.77.4/node_modules/next/dist/bin/next" "$@"
++fi

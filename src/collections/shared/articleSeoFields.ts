@@ -1,0 +1,90 @@
+import type { Field } from 'payload'
+
+/** Appended to post-like base fields for `articles` only (SEO pipeline + lifecycle). */
+export const articleSeoFields: Field[] = [
+  {
+    type: 'row',
+    fields: [
+      { name: 'primaryKeyword', type: 'relationship', relationTo: 'keywords' },
+      {
+        name: 'secondaryKeywords',
+        type: 'relationship',
+        relationTo: 'keywords',
+        hasMany: true,
+      },
+    ],
+  },
+  {
+    name: 'contentTemplate',
+    type: 'select',
+    defaultValue: 'howto',
+    options: [
+      { label: 'Review', value: 'review' },
+      { label: 'Comparison', value: 'comparison' },
+      { label: 'How-to', value: 'howto' },
+      { label: 'Listicle', value: 'listicle' },
+      { label: 'Buying guide', value: 'buyingGuide' },
+      { label: 'Pillar', value: 'pillar' },
+    ],
+  },
+  { name: 'qualityScore', type: 'number', admin: { readOnly: true } },
+  { name: 'eeatCheck', type: 'json', admin: { readOnly: true } },
+  { name: 'schemaJsonLd', type: 'json' },
+  { name: 'vetoCodes', type: 'json' },
+  {
+    name: 'featuredOffers',
+    type: 'relationship',
+    relationTo: 'offers',
+    hasMany: true,
+  },
+  {
+    name: 'author',
+    type: 'relationship',
+    relationTo: 'authors',
+    admin: { description: 'Required when status is Published (enforced in hook)' },
+  },
+  { name: 'reviewedBy', type: 'relationship', relationTo: 'authors' },
+  {
+    name: 'originalEvidence',
+    type: 'relationship',
+    relationTo: 'original-evidence',
+    hasMany: true,
+  },
+  { name: 'sourceBrief', type: 'relationship', relationTo: 'content-briefs' },
+  { name: 'mergedInto', type: 'relationship', relationTo: 'articles' },
+  { name: 'sectionSummaries', type: 'json' },
+  { name: 'metaVariants', type: 'json' },
+  {
+    name: 'lifecycleStage',
+    type: 'select',
+    defaultValue: 'n_a',
+    options: [
+      { label: 'N/A (not published to SERP track)', value: 'n_a' },
+      { label: 'Probation', value: 'probation' },
+      { label: 'Winner', value: 'winner' },
+      { label: 'Borderline', value: 'borderline' },
+      { label: 'Loser', value: 'loser' },
+      { label: 'Stable watch', value: 'stable_watch' },
+      { label: 'Repaired', value: 'repaired' },
+      { label: 'Dying', value: 'dying' },
+      { label: 'Merged', value: 'merged' },
+      { label: 'Lifecycle archived', value: 'archived' },
+    ],
+  },
+  { name: 'probationEndsAt', type: 'date', admin: { date: { pickerAppearance: 'dayAndTime' } } },
+  { name: 'bestPosition', type: 'number' },
+  { name: 'currentPosition', type: 'number' },
+  { name: 'impressions30d', type: 'number' },
+  { name: 'clicks30d', type: 'number' },
+  { name: 'nextActionAt', type: 'date', admin: { date: { pickerAppearance: 'dayAndTime' } } },
+  { name: 'optimizationHistory', type: 'json' },
+  {
+    name: 'linkBudgetWarnings',
+    type: 'json',
+    admin: {
+      readOnly: true,
+      description: 'Populated when body outlink count is in the warn band (see link budget hook).',
+    },
+  },
+  { name: 'skipLinkBudgetCheck', type: 'checkbox', defaultValue: false },
+]

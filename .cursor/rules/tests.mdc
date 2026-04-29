@@ -1,0 +1,14 @@
+---
+description: Vitest integration and Playwright e2e practices for tests/
+globs: "tests/**/*.ts"
+alwaysApply: false
+---
+
+# Tests (`tests/`)
+
+- **Self-contained**: create data in a test only if you **delete** it before the test ends (or in `afterEach` / `afterAll`). Track created IDs in an array and clean up in a loop when useful.
+- **Names**: use **`should …`** descriptions (e.g. `should return 401 when unauthenticated`).
+- **E2E**: prefer Playwright lifecycle hooks for cleanup; avoid `try/finally` patterns the repo does not use.
+- **Seed users**: `tests/helpers/seedUser.ts` must satisfy current **`users`** schema (e.g. required `roles`). Run `pnpm run test:int` / `pnpm run test:e2e` after auth or collection changes.
+
+Reuse shared slugs or constants when the same collection appears in multiple tests.

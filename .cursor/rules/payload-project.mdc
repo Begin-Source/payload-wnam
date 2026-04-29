@@ -1,0 +1,23 @@
+---
+description: Payload 3 + Next + Cloudflare stack, paths, and workflows for this repo
+alwaysApply: true
+---
+
+# This repository
+
+- **Stack**: Payload 3, Next.js (App Router), Cloudflare D1 + R2 via `@payloadcms/db-d1-sqlite`, `@payloadcms/storage-r2`, OpenNext (`@opennextjs/cloudflare`).
+- **Package manager**: `pnpm` only (see `package.json` engines).
+- **Config**: `src/payload.config.ts` (`@payload-config` alias). Collections live in `src/collections/`.
+- **Types**: After schema or plugin changes, run `pnpm run generate:types` (and `pnpm run generate:importmap` when admin UI/import map changes).
+- **Migrations**: `src/migrations/`; new tables/columns need a migration and `pnpm payload migrate` (or your deploy pipeline’s migrate step). Use a real `PAYLOAD_SECRET` for local CLI migrate if required. **Site FK drift**: if inserts into `pages`/`articles` fail with `FOREIGN KEY` despite valid `site_id`, check `PRAGMA foreign_key_list(…)` — `site_id` must reference `sites`, not `sites_mig_old_20260629`. See [.cursor/docs/d1-site-id-fk-backup-table-sites.md](.cursor/docs/d1-site-id-fk-backup-table-sites.md).
+- **When adding a new collection**: extend `payload_locked_documents_rels` in the same migration (FK column per collection); otherwise Admin document views can break with a blank main panel. See [docs/payload-d1-admin-troubleshooting.md](docs/payload-d1-admin-troubleshooting.md).
+- **Multi-tenant**: `@payloadcms/plugin-multi-tenant` is enabled; `Config['user']` may be a **union** (e.g. `User` and MCP API keys)—narrow with `user.collection === 'users'` before assuming admin user fields like `roles` or `email`.
+- **Super admin**: `src/utilities/superAdmin.ts`; optional env `PAYLOAD_SUPER_ADMIN_EMAILS` (comma-separated).
+- **Do not** edit generated admin files under `src/app/(payload)/` that Payload marks as auto-generated unless you know the workflow.
+- **Public `/` routing**: Middleware redirects `/` → `/en` on every host except `localhost`/`127.0.0.1`/`::1` (dev passthrough for `?site=`) and hosts listed in `PUBLIC_WELCOME_ROOT_HOSTS` (comma-separated). Put system gateway hosts like `sys.beginos.org` there so they keep `(welcome)`; custom `sites.primaryDomain` hosts should omit the list.
+
+When suggesting commands, prefer existing scripts in `package.json` (`dev`, `build`, `test`, `lint`, `payload`, `deploy`).
+
+## Commits (when writing PR/commit messages)
+
+Use Conventional Commits: `feat|fix|chore|test|docs(scope): lowercase summary` (e.g. `fix(tests): align seed user with roles`).

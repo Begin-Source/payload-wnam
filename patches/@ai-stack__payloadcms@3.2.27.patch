@@ -1,0 +1,201 @@
+diff --git a/dist/libraries/handlebars/helpers.js b/dist/libraries/handlebars/helpers.js
+index 66e1ffebe503e9ee9f5569a8eb56e200c85494ba..c8db7f6f7827d2d1c8a5a87548b53b677cdf06bd 100644
+--- a/dist/libraries/handlebars/helpers.js
++++ b/dist/libraries/handlebars/helpers.js
+@@ -1,14 +1,15 @@
+ import { getFieldInfo } from '../../utilities/getFieldInfo.js';
+ import { lexicalToHTML } from '../../utilities/lexicalToHTML.js';
+ import { asyncHandlebars } from './asyncHandlebars.js';
++import { registerPayloadAiHandlebarsHelper } from './pluginHandlebarsRegistry.js';
+ import { handlebarsHelpersMap } from './helpersMap.js';
+ export const registerEditorHelper = (payload, schemaPath)=>{
+     //TODO: add autocomplete ability using handlebars template on PromptEditorField and include custom helpers in dropdown
+     let fieldInfo = getFieldInfo(payload.collections, schemaPath);
+     const schemaPathChunks = schemaPath.split('.');
+-    asyncHandlebars.registerHelper(handlebarsHelpersMap.toHTML.name, async function(content, options) {
++    registerPayloadAiHandlebarsHelper(handlebarsHelpersMap.toHTML.name, async function(content, options) {
+         const collectionSlug = schemaPathChunks[0];
+-        const { ids } = options;
++        const { ids = [] } = options || {};
+         for (const id of ids){
+             //TODO: Find a better way to get schemaPath of defined field in prompt editor
+             const path = `${collectionSlug}.${id}`;
+diff --git a/dist/libraries/handlebars/pluginHandlebarsRegistry.js b/dist/libraries/handlebars/pluginHandlebarsRegistry.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..8f45c2d2f97856379b937c03809c47a7263c2a38
+--- /dev/null
++++ b/dist/libraries/handlebars/pluginHandlebarsRegistry.js
+@@ -0,0 +1,13 @@
++/**
++ * Shared registry for eval-free prompt placeholder rendering.
++ * Populated by registerEditorHelper in helpers.js; read by replacePlaceholders.js.
++ */
++const helpers = new Map();
++export function registerPayloadAiHandlebarsHelper(name, fn) {
++    helpers.set(name, fn);
++}
++export function getPayloadAiHandlebarsHelper(name) {
++    return helpers.get(name);
++}
++
++//# sourceMappingURL=pluginHandlebarsRegistry.js.map
+diff --git a/dist/libraries/handlebars/replacePlaceholders.js b/dist/libraries/handlebars/replacePlaceholders.js
+index a70c763d10d2999c8c5c3f1d10ca8344fc7d3a1f..8aecad2822ae16c64a41de2dbff58975895e5437 100644
+--- a/dist/libraries/handlebars/replacePlaceholders.js
++++ b/dist/libraries/handlebars/replacePlaceholders.js
+@@ -1,8 +1,151 @@
+ import { asyncHandlebars } from './asyncHandlebars.js';
+-export const replacePlaceholders = (prompt, values)=>{
+-    return asyncHandlebars.compile(prompt, {
+-        trackIds: true
+-    })(values);
++import { getPayloadAiHandlebarsHelper } from './pluginHandlebarsRegistry.js';
++const ENT = {
++    '&': '&amp;',
++    '<': '&lt;',
++    '>': '&gt;',
++    '"': '&quot;',
++    "'": '&#x27;',
++    '`': '&#x60;',
++    '=': '&#x3D;'
+ };
++function escapeHtml(s) {
++    return String(s).replace(/[&<>"'`=]/g, (c)=>ENT[c] || c);
++}
++function isSafeString(v) {
++    return v != null && v instanceof asyncHandlebars.SafeString;
++}
++async function unwrapPromise(v) {
++    while (v && typeof v === 'object' && v !== null && typeof v.then === 'function')v = await v;
++    return v;
++}
++async function getPath(ctx, pathStr) {
++    if (pathStr == null) return undefined;
++    const raw = String(pathStr).trim();
++    if (raw === '') return undefined;
++    const parts = raw.split('.');
++    let cur = ctx;
++    for (let pi = 0; pi < parts.length; pi++){
++        const key = parts[pi];
++        if (cur == null) return undefined;
++        cur = await unwrapPromise(cur);
++        if (isSafeString(cur)) {
++            return pi === parts.length - 1 ? cur : undefined;
++        }
++        cur = cur?.[key];
++    }
++    return await unwrapPromise(cur);
++}
++async function toDisplayString(v, escaped) {
++    v = await unwrapPromise(v);
++    if (v == null) return '';
++    if (isSafeString(v)) return v.toString();
++    const str = String(v);
++    return escaped ? escapeHtml(str) : str;
++}
++function isBlockish(inner) {
++    const t = inner.trim();
++    return t.startsWith('#') || t.startsWith('^') || t.startsWith('/') || t === 'else' || t.startsWith('else ') || t.startsWith('>') || t.startsWith('@');
++}
++/**
++ * Renders @ai-stack/payloadcms prompt strings without Handlebars `compile()`,
++ * which uses `new Function` and is blocked on Cloudflare Workers.
++ */
++export async function replacePlaceholders(prompt, values) {
++    if (prompt == null) {
++        return Promise.resolve('');
++    }
++    let s = String(prompt);
++    s = s.replace(/\{\{!--[\s\S]*?--\}\}/g, '');
++    s = s.replace(/\{\{![^}]*\}\}/g, '');
++    let out = '';
++    let i = 0;
++    let blockWarned = false;
++    const warnBlock = ()=>{
++        if (!blockWarned) {
++            blockWarned = true;
++            if (typeof console !== 'undefined' && console.warn) {
++                console.warn('[plugin-ai] Handlebars block/partial mustaches in prompts are not supported in Workers; passing them through as literal text.');
++            }
++        }
++    };
++    while(i < s.length){
++        if (i + 2 < s.length && s[i] === '{' && s[i + 1] === '{' && s[i + 2] === '{') {
++            const end = s.indexOf('}}}', i + 3);
++            if (end === -1) {
++                out += s.slice(i);
++                break;
++            }
++            const inner = s.slice(i + 3, end);
++            const t = inner.trim();
++            if (isBlockish(t)) {
++                warnBlock();
++                out += s.slice(i, end + 3);
++            } else if (t === '') {
++                out += '';
++            } else {
++                const words = t.split(/\s+/).filter((w)=>w.length > 0);
++                const helper = getPayloadAiHandlebarsHelper(words[0]);
++                if (helper) {
++                    const first = words[1];
++                    const content = first != null ? await getPath(values, first) : undefined;
++                    const result = await helper(content, {
++                        ids: words.slice(2),
++                        data: values,
++                        name: {
++                            first: 0,
++                            last: 0
++                        }
++                    });
++                    out += await toDisplayString(result, false);
++                } else {
++                    const pval = await getPath(values, t);
++                    out += await toDisplayString(pval, false);
++                }
++            }
++            i = end + 3;
++            continue;
++        }
++        if (i + 1 < s.length && s[i] === '{' && s[i + 1] === '{') {
++            const end = s.indexOf('}}', i + 2);
++            if (end === -1) {
++                out += s.slice(i);
++                break;
++            }
++            const inner = s.slice(i + 2, end);
++            const t = inner.trim();
++            if (isBlockish(t)) {
++                warnBlock();
++                out += s.slice(i, end + 2);
++            } else if (t === '') {
++                out += '';
++            } else {
++                const words = t.split(/\s+/).filter((w)=>w.length > 0);
++                const helper = getPayloadAiHandlebarsHelper(words[0]);
++                if (helper) {
++                    const first = words[1];
++                    const content = first != null ? await getPath(values, first) : undefined;
++                    const result = await helper(content, {
++                        ids: words.slice(2),
++                        data: values,
++                        name: {
++                            first: 0,
++                            last: 0
++                        }
++                    });
++                    out += await toDisplayString(result, true);
++                } else {
++                    const pval = await getPath(values, t);
++                    out += await toDisplayString(pval, true);
++                }
++            }
++            i = end + 2;
++            continue;
++        }
++        out += s[i];
++        i += 1;
++    }
++    return out;
++}
+ 
+ //# sourceMappingURL=replacePlaceholders.js.map

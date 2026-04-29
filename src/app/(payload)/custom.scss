@@ -1,0 +1,34 @@
+/* Admin white-label: primary actions (see `.btn--style-primary` in @payloadcms/ui styles) */
+:root[data-admin-branding] {
+  .btn--style-primary {
+    --bg-color: var(--admin-brand-primary);
+    --hover-bg: var(--admin-brand-primary-hover);
+  }
+}
+
+.admin-branding__logo {
+  display: block;
+  max-height: 2.71875rem;
+  width: auto;
+  object-fit: contain;
+}
+
+.admin-branding__logo-text {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--theme-elevation-1000);
+}
+
+.admin-branding__icon-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--theme-elevation-1000);
+}

@@ -1,0 +1,13 @@
+---
+description: Next.js App Router and React patterns for src/
+globs: "src/**/*.tsx"
+alwaysApply: false
+---
+
+# React / Next.js
+
+- Default to **Server Components**; add `'use client'` only when hooks, browser APIs, or client-only libraries require it.
+- Follow **existing** layout and styling in `src/app/` (e.g. Payload admin under `(payload)`). New **feature UI** can use one folder per component: `ComponentName/index.tsx` (and colocated styles if needed), re-export from a parent `index.ts` when grouping.
+- Keep **admin customizations** consistent with Payload 3 patterns (import map, `custom.scss`, server functions where applicable).
+
+Do not introduce a second styling system unless the user asks; prefer what the template already uses.

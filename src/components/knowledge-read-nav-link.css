@@ -1,0 +1,15 @@
+/**
+ * 集合项样式由 Payload 全局 `.nav__link` / `.nav__link-label` 提供（与「通知公告」相同）。
+ * 仅补：与侧栏分组标题「首页」一致的字号（1rem，随 Admin 根字号 / 断点）。
+ */
+.knowledgeReadNavEntry {
+  width: 100%;
+  margin: 0 0 var(--base, 0.5rem);
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.knowledgeReadNavEntry .nav__link-label {
+  font-size: 1rem;
+  line-height: 1.45;
+}

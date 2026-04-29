@@ -1,0 +1,27 @@
+/**
+ * Second visual theme for template2: same `Template1*` components; token overrides on `html.template2-root`.
+ * Loaded after template1-globals; primary reads bluish rather than forest green.
+ */
+html.template2-root {
+  --background: oklch(0.99 0.006 255);
+  --foreground: oklch(0.2 0.02 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.02 255);
+  --primary: oklch(0.42 0.14 255);
+  --primary-foreground: oklch(0.99 0.01 255);
+  --secondary: oklch(0.95 0.01 255);
+  --secondary-foreground: oklch(0.3 0.02 255);
+  --muted: oklch(0.95 0.008 255);
+  --muted-foreground: oklch(0.48 0.02 255);
+  --accent: oklch(0.72 0.12 55);
+  --accent-foreground: oklch(0.2 0.02 40);
+  --border: oklch(0.9 0.015 255);
+  --ring: oklch(0.42 0.14 255);
+  --sidebar: oklch(0.99 0.006 255);
+  --sidebar-foreground: oklch(0.2 0.02 255);
+  --sidebar-primary: oklch(0.42 0.14 255);
+  --sidebar-primary-foreground: oklch(0.99 0.01 255);
+  --sidebar-accent: oklch(0.95 0.01 255);
+  --sidebar-border: oklch(0.9 0.015 255);
+  --sidebar-ring: oklch(0.42 0.14 255);
+}

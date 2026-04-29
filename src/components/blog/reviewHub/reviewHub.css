@@ -1,0 +1,351 @@
+/* Full-site shell: sites.siteLayout = affiliate_reviews */
+
+.reviewHubHeader {
+  background: var(--blog-primary);
+  color: var(--blog-header-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.reviewHubHeaderTop {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.4rem 0;
+}
+
+.reviewHubHeaderNavWrap {
+  padding: 0.5rem 0;
+}
+
+.reviewHubHeaderInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 44px;
+}
+
+.reviewHubBrand {
+  font-weight: 700;
+  font-size: 1.2rem;
+  text-decoration: none;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.reviewHubTopNav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reviewHubTopNavList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reviewHubTopNavList a {
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.9rem;
+  opacity: 0.95;
+}
+
+.reviewHubAdminCta {
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.12);
+  font-size: 0.85rem;
+}
+
+.reviewHubMainNav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.1rem;
+  width: 100%;
+}
+
+.reviewHubMainNav a {
+  color: inherit;
+  text-decoration: none;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.reviewHubMainNav a:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.blogShell--affiliate_reviews .blogMain {
+  max-width: 1200px;
+}
+
+/* Home */
+
+.reviewHubHero {
+  text-align: center;
+  padding: 2.5rem 0 1.5rem;
+}
+
+.reviewHubHero h1 {
+  margin: 0 0 0.75rem;
+  font-size: 2.1rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--blog-heading);
+}
+
+.reviewHubHeroLead {
+  margin: 0 auto;
+  max-width: 46rem;
+  font-size: 1.1rem;
+  line-height: 1.55;
+  color: var(--blog-body);
+}
+
+.reviewHubSearch {
+  max-width: 32rem;
+  margin: 1.5rem auto 0;
+  text-align: left;
+}
+
+.reviewHubSearchHint {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  color: var(--blog-muted);
+}
+
+.reviewHubSearchInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.9rem;
+  font-size: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  background: var(--blog-card-bg);
+  color: var(--blog-body);
+}
+
+.reviewHubSection {
+  margin-top: 2.5rem;
+}
+
+.reviewHubSectionTitle {
+  margin: 0 0 0.35rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--blog-heading);
+}
+
+.reviewHubSectionSub {
+  margin: 0 0 1.25rem;
+  color: var(--blog-body);
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.reviewHubCategoryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.25rem;
+}
+
+.reviewHubCategoryCard {
+  display: block;
+  background: var(--blog-card-bg);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.15s ease;
+}
+
+.reviewHubCategoryCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.reviewHubCategoryThumb {
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--blog-primary) 0%, #1a4d36 100%);
+  color: var(--blog-header-text);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.reviewHubCategoryBody {
+  padding: 0.9rem 1rem 1.1rem;
+}
+
+.reviewHubCategoryBody h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--blog-heading);
+}
+
+.reviewHubCategoryBody p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--blog-muted);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.reviewHubFeatured {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.reviewHubSubscribe {
+  margin-top: 2.5rem;
+  padding: 1.75rem 1.25rem;
+  background: var(--blog-card-bg);
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.reviewHubSubscribe h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  color: var(--blog-heading);
+}
+
+.reviewHubSubscribe p {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: var(--blog-body);
+}
+
+.reviewHubSubscribeForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  max-width: 24rem;
+  margin: 0 auto;
+}
+
+.reviewHubSubscribeForm input {
+  flex: 1 1 12rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: #fff;
+}
+
+.reviewHubSubscribeForm button {
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--blog-primary);
+  color: var(--blog-header-text);
+  font-weight: 600;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Footer */
+
+.reviewHubDisclosure {
+  background: rgba(0, 0, 0, 0.04);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 0.85rem 1.25rem;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--blog-body);
+}
+
+.reviewHubDisclosure p {
+  margin: 0;
+  max-width: 56rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.reviewHubFooter {
+  background: #2a2a2a;
+  color: #e8e8e8;
+  padding: 2rem 1.25rem 1.5rem;
+}
+
+.reviewHubFooter a {
+  color: #b8e0c8;
+  text-decoration: none;
+}
+
+.reviewHubFooter a:hover {
+  text-decoration: underline;
+}
+
+.reviewHubFooterInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem 2rem;
+  text-align: left;
+}
+
+.reviewHubFooterTitle {
+  margin: 0 0 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #fff;
+}
+
+.reviewHubFooterCol ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reviewHubFooterCol li {
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.reviewHubFooterCopy {
+  max-width: 1200px;
+  margin: 1.5rem auto 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.reviewHubFooterCopy p {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .reviewHubHero h1 {
+    font-size: 1.65rem;
+  }
+}

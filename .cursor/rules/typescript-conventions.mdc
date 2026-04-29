@@ -1,0 +1,21 @@
+---
+description: TypeScript and Payload-aligned style (import type, naming, logging)
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# TypeScript conventions
+
+Aligned with Payload core team guidance; match the existing codebase first.
+
+- Use **`import type`** for types; value imports separate, even from the same module.
+- Prefer **`type` over `interface`**, except when extending external/library types.
+- Prefer **functions over classes** (classes mainly for errors/adapters).
+- Prefer **single object parameters** for new public/config-style APIs when it improves extensibility.
+- Name booleans with **`is` / `has` / `can` / `should`** (e.g. `isProduction`, `hasUser`).
+- Prefer **pure functions**; if you must mutate, return the mutated object rather than relying on void side effects.
+- **Comments**: skip when obvious; use for non-obvious “why”, multi-step flows, or complex invariants. JSDoc on complex functions is fine when types alone are not enough.
+
+## Payload logger
+
+When using `payload.logger` (or project logger) with an object payload, use **`msg`** and **`err`** keys—not `message` / `error` as property names. Do not pass the Error as a second positional argument to `error()` if the API expects a single object/message shape.

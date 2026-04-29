@@ -1,0 +1,84 @@
+---
+alwaysApply: true
+---
+利用SEO skills
+创建可以批量化的高质量谷歌seo文章的流量矩阵，
+
+可以使用的工具如下：
+---
+alwaysApply: true
+---
+外部集成工具清单
+1. DataForSEO：专业的 SEO 战略数据底座
+定位： 整个系统的“上帝视角”，用于市场调研、选品及关键词规划。
+
+SERP API (全平台搜索结果)：
+
+能力： 实时抓取 Google、Bing、Baidu 等全球主流引擎的前 100 名结果。
+
+价值： 包含广告、地图、精选摘要等全量信息，用于分析搜索意图。
+
+Keyword API (关键词库)：
+
+能力： 调取搜索量 (Volume)、难度 (KD)、CPC 及近两年趋势。
+
+价值： 确定“搞钱”关键词的竞争门槛。
+
+Backlinks API (外链分析)：
+
+能力： 拥有千亿级索引，查询域名的 Rank 值及来源。
+
+价值： 寄生 SEO 的核心工具，用于判断目标平台的权重是否值得“寄生”。
+
+DataForSEO Labs (竞品反查)：
+
+能力： 类似 Ahrefs 功能，输入域名即可反查其所有排名的关键词。
+
+Merchant API (电商专用)：
+
+能力： 实时抓取 Amazon 搜索排名、价格及评价。
+
+价值： 为 Amazon Affiliate 业务提供直接的选品数据。
+
+2. Tavily：专为 AI 设计的实时搜索层
+定位： 给 Gemini 提供“新鲜干货”，解决大模型知识滞后问题。
+
+AI 优化搜索 (Search for AI)：
+
+优势： 不同于传统接口返回的混乱代码，它直接返回经过清洗、AI 易读的纯文本。
+
+深度研究模式 (Research Mode)：
+
+优势： 针对一个问题横向搜索 20+ 网页，并将最相关片段拼接，适合自动生成长文背景。
+
+内容降噪与摘要：
+
+优势： 自动过滤广告和导航栏，仅提取正文，并提供简短总结，大幅节省 Gemini 的 Token 成本。
+
+领域定制化：
+
+优势： 可限定在新闻、社交媒体或财经领域搜索，提升矩阵内容的垂直度。
+
+3. Together AI (HiDream 模型)：高效视觉生成
+定位： 自动化内容流水线的“美工”，负责生成文章配图和封面。
+
+HiDream 模型特性：
+
+优势： 在 Together AI 平台上拥有极高的推理速度，适合大规模矩阵快速出图。
+
+应用场景： 根据 Tavily 搜索到的内容梗概，自动生成符合上下文的博客插图或 Amazon 商品展示图。
+
+成本效益： * 优势： 相比直接调用 Dall-E 3，在满足矩阵化部署的同时，更符合月均 $200 的预算控制。
+
+4，内部工具(代码仓库里面的)
+payloadcms 3.0 部署在cloudflare
+https://github.com/payloadcms/payload
+
+payload seo plugin
+https://github.com/payloadcms/plugin-seo
+
+payload automation
+https://github.com/xtr-dev/payload-automation
+
+payload ai
+https://github.com/ashbuilds/payload-ai
