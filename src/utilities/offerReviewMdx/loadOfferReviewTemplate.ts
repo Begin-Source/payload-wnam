@@ -1,14 +1,8 @@
-import fsync from 'fs'
-import path from 'path'
+import bundledTemplateMdx from '@/content/reviews/offer-review-template.mdx?raw'
 
 /**
- * Default template bundled with the app; override with OFFER_REVIEW_MDX_TEMPLATE_PATH.
+ * Template is bundled at build time (`?raw`) so it works on Cloudflare Workers without `fs` / `process.cwd()`.
  */
 export function loadOfferReviewTemplate(): string {
-  const envPath = process.env.OFFER_REVIEW_MDX_TEMPLATE_PATH?.trim()
-  if (envPath && fsync.existsSync(envPath)) {
-    return fsync.readFileSync(envPath, 'utf8')
-  }
-  const rel = path.join(process.cwd(), 'src/content/reviews/offer-review-template.mdx')
-  return fsync.readFileSync(rel, 'utf8')
+  return bundledTemplateMdx
 }

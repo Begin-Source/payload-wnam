@@ -25,6 +25,12 @@ const nextConfig = {
       '.mjs': ['.mts', '.mjs'],
     }
 
+    // Import MDX (or other) files as string at build time — no runtime fs (Cloudflare Workers).
+    webpackConfig.module.rules.push({
+      resourceQuery: /raw/,
+      type: 'asset/source',
+    })
+
     return webpackConfig
   },
 }

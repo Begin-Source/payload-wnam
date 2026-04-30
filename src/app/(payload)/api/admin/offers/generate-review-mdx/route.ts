@@ -134,7 +134,16 @@ export async function POST(request: Request): Promise<Response> {
   const aiOverride = typeof body.aiModel === 'string' ? body.aiModel : undefined
 
   const model = await resolveReviewAiModel(payload, aiOverride)
-  const templateMdx = loadOfferReviewTemplate()
+  let templateMdx: string
+  try {
+    templateMdx = loadOfferReviewTemplate()
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return Response.json(
+      { error: `Failed to load review MDX template: ${msg}` },
+      { status: 500 },
+    )
+  }
   const scope = getTenantScopeForStats(user)
 
   const results: {
