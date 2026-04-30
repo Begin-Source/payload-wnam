@@ -11,6 +11,11 @@
     // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public
     "global_fetch_strictly_public",
   ],
+  // Smart Placement: run closer to back-end (e.g. D1/R2) when it reduces latency — not a CLI flag; deploy via opennext/wrangler
+  // https://developers.cloudflare.com/workers/configuration/placement/
+  "placement": {
+    "mode": "smart",
+  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS",
