@@ -2,6 +2,7 @@
 
 import { CategorySlotsQuickActionModal } from '@/components/CategorySlotsQuickActionModal'
 import { OfferMerchantSlotQuickActionModal } from '@/components/OfferMerchantSlotQuickActionModal'
+import { OfferReviewMdxQuickActionModal } from '@/components/OfferReviewMdxQuickActionModal'
 import { TrustPagesBundleQuickActionModal } from '@/components/TrustPagesBundleQuickActionModal'
 import { Button } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
@@ -1586,7 +1587,12 @@ export function KeywordListQuickAction(): React.ReactElement {
 }
 
 export function OfferListQuickAction(): React.ReactElement {
-  return <OfferMerchantSlotQuickActionModal />
+  return (
+    <>
+      <OfferMerchantSlotQuickActionModal />
+      <OfferReviewMdxQuickActionModal />
+    </>
+  )
 }
 
 export function DesignListQuickAction(): React.ReactElement {

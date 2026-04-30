@@ -73,7 +73,7 @@ export function AmzTemplateHomePage(props: AmzTemplateHomePageProps) {
               </h2>
               <p className="mt-2 text-balance text-muted-foreground">{featuredSubtitle}</p>
             </header>
-            <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-5 lg:gap-3">
               {featuredOffers.map((o) => (
                 <li key={o.id}>
                   <AmzOfferCard offer={o} />

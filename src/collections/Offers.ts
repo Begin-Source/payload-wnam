@@ -15,6 +15,7 @@ export const Offers: CollectionConfig = {
       'network',
       'status',
       'merchantSlot.workflowStatus',
+      'reviewDraft.workflowStatus',
       'updatedAt',
     ],
     components: {
@@ -209,6 +210,91 @@ export const Offers: CollectionConfig = {
             rows: 6,
             description:
               '最后一次快捷操作请求的摘要 JSON 字符串（调试用）；使用 textarea 可避免 Drizzle 对 JSON TEXT 模式的自动 decode 在映射错位时 SSR 报错。',
+          },
+        },
+      ],
+    },
+    {
+      type: 'group',
+      name: 'reviewDraft',
+      label: 'Review MDX 草稿',
+      admin: {
+        position: 'sidebar',
+        description:
+          'OpenRouter 生成联盟测评 MDX；可写入 articles（Lexical）。列表「快捷操作 · 生成 Review MDX」。',
+      },
+      fields: [
+        {
+          name: 'genActions',
+          type: 'ui',
+          admin: {
+            components: {
+              Field: './components/OfferReviewMdxGenerateField#OfferReviewMdxGenerateField',
+            },
+          },
+        },
+        {
+          name: 'workflowStatus',
+          type: 'select',
+          defaultValue: 'idle',
+          options: [
+            { label: 'Idle', value: 'idle' },
+            { label: 'Running', value: 'running' },
+            { label: 'Done', value: 'done' },
+            { label: 'Error', value: 'error' },
+          ],
+          admin: {
+            readOnly: true,
+            listView: { label: 'Review MDX' },
+            components: {
+              Cell: './components/OfferReviewDraftWorkflowCell#OfferReviewDraftWorkflowCell',
+            },
+          },
+        },
+        {
+          name: 'workflowLog',
+          type: 'textarea',
+          admin: {
+            readOnly: true,
+            rows: 5,
+          },
+        },
+        {
+          name: 'workflowUpdatedAt',
+          type: 'text',
+          label: 'Review MDX 流程最后更新',
+          admin: {
+            readOnly: true,
+            description: 'ISO 8601（UTC）文本。',
+          },
+        },
+        {
+          name: 'slug',
+          type: 'text',
+          label: 'Review slug',
+          admin: {
+            description: '用于文章 slug / 路径；生成时自动写入。',
+          },
+        },
+        {
+          name: 'status',
+          type: 'select',
+          defaultValue: 'draft',
+          options: [
+            { label: 'Draft', value: 'draft' },
+            { label: 'Ready', value: 'ready' },
+          ],
+          admin: {
+            description: 'MDX 草稿是否已规范化可发布。',
+          },
+        },
+        {
+          name: 'mdx',
+          type: 'textarea',
+          label: 'Review MDX',
+          admin: {
+            rows: 16,
+            description: '完整 MDX（含 YAML frontmatter）。',
           },
         },
       ],

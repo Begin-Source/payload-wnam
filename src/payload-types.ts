@@ -76,6 +76,8 @@ export interface Config {
     categories: Category;
     pages: Page;
     redirects: Redirect;
+    'affiliate-networks': AffiliateNetwork;
+    offers: Offer;
     'social-platforms': SocialPlatform;
     'social-accounts': SocialAccount;
     media: Media;
@@ -87,8 +89,6 @@ export interface Config {
     rankings: Ranking;
     'workflow-jobs': WorkflowJob;
     'site-quotas': SiteQuota;
-    'affiliate-networks': AffiliateNetwork;
-    offers: Offer;
     'click-events': ClickEvent;
     commissions: Commission;
     teams: Team;
@@ -121,6 +121,8 @@ export interface Config {
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
+    'affiliate-networks': AffiliateNetworksSelect<false> | AffiliateNetworksSelect<true>;
+    offers: OffersSelect<false> | OffersSelect<true>;
     'social-platforms': SocialPlatformsSelect<false> | SocialPlatformsSelect<true>;
     'social-accounts': SocialAccountsSelect<false> | SocialAccountsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -132,8 +134,6 @@ export interface Config {
     rankings: RankingsSelect<false> | RankingsSelect<true>;
     'workflow-jobs': WorkflowJobsSelect<false> | WorkflowJobsSelect<true>;
     'site-quotas': SiteQuotasSelect<false> | SiteQuotasSelect<true>;
-    'affiliate-networks': AffiliateNetworksSelect<false> | AffiliateNetworksSelect<true>;
-    offers: OffersSelect<false> | OffersSelect<true>;
     'click-events': ClickEventsSelect<false> | ClickEventsSelect<true>;
     commissions: CommissionsSelect<false> | CommissionsSelect<true>;
     teams: TeamsSelect<false> | TeamsSelect<true>;
@@ -764,6 +764,132 @@ export interface Redirect {
   createdAt: string;
 }
 /**
+ * 联盟（Affiliate networks）可被 Offer.network 必选引用 — 录入 Offer 前请至少在此处创建一条。
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "affiliate-networks".
+ */
+export interface AffiliateNetwork {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  name: string;
+  slug: string;
+  websiteUrl?: string | null;
+  status: 'active' | 'paused';
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "offers".
+ */
+export interface Offer {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  title: string;
+  slug?: string | null;
+  /**
+   * 必选。请先在本站「联盟」集合至少新建一条联盟，再在此处选择。
+   */
+  network: number | AffiliateNetwork;
+  /**
+   * Sites allowed to promote this offer (optional).
+   */
+  sites?: (number | Site)[] | null;
+  /**
+   * 用于 /products 与 /categories/[slug] 中按分类展示。
+   */
+  categories?: (number | Category)[] | null;
+  /**
+   * 勾选的站点会在首页 Featured 区展示该 offer。
+   */
+  featuredOnHomeForSites?: (number | Site)[] | null;
+  status: 'draft' | 'active' | 'paused';
+  externalId?: string | null;
+  targetUrl?: string | null;
+  commissionNotes?: string | null;
+  amazon?: {
+    asin?: string | null;
+    priceCents?: number | null;
+    currency?: string | null;
+    ratingAvg?: number | null;
+    reviewCount?: number | null;
+    imageUrl?: string | null;
+    primeEligible?: boolean | null;
+    /**
+     * 存 ISO 8601 字符串。使用 text 而非 date，避免库内非 ISO 值在列表 find 时被 Drizzle 解码为 Date 并 toISOString() 抛错。
+     */
+    merchantLastSyncedAt?: string | null;
+    merchantRaw?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    /**
+     * DataForSEO 原始条目快照（入库前缩短 URL；卖点类字段 features/functions/bullet_* 优先保留并按字节渐进裁剪 product_information）。超长仍会标记 _snapshot_truncated。
+     */
+    dfsSnapshot?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+  /**
+   * DataForSEO Merchant 类目拉品批次与槽位来源追溯。
+   */
+  merchantSlot?: {
+    workflowStatus?: ('idle' | 'running' | 'done' | 'error') | null;
+    workflowLog?: string | null;
+    /**
+     * ISO 8601 字符串。text 避免非 ISO 入库值在 Admin 列表 SSR 时触发 Invalid time value。
+     */
+    workflowUpdatedAt?: string | null;
+    /**
+     * 本条类目槽位流水线的来源分类 ID；避免与顶层 categories 关系重复 JOIN categories。可选。
+     */
+    sourceCategoryId?: number | null;
+    batchId?: string | null;
+    /**
+     * 最后一次快捷操作请求的摘要 JSON 字符串（调试用）；使用 textarea 可避免 Drizzle 对 JSON TEXT 模式的自动 decode 在映射错位时 SSR 报错。
+     */
+    lastPayload?: string | null;
+  };
+  /**
+   * OpenRouter 生成联盟测评 MDX；可写入 articles（Lexical）。列表「快捷操作 · 生成 Review MDX」。
+   */
+  reviewDraft?: {
+    workflowStatus?: ('idle' | 'running' | 'done' | 'error') | null;
+    workflowLog?: string | null;
+    /**
+     * ISO 8601（UTC）文本。
+     */
+    workflowUpdatedAt?: string | null;
+    /**
+     * 用于文章 slug / 路径；生成时自动写入。
+     */
+    slug?: string | null;
+    /**
+     * MDX 草稿是否已规范化可发布。
+     */
+    status?: ('draft' | 'ready') | null;
+    /**
+     * 完整 MDX（含 YAML frontmatter）。
+     */
+    mdx?: string | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "social-platforms".
  */
@@ -1089,109 +1215,6 @@ export interface Article {
      */
     image?: (number | null) | Media;
   };
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "offers".
- */
-export interface Offer {
-  id: number;
-  tenant?: (number | null) | Tenant;
-  title: string;
-  slug?: string | null;
-  /**
-   * 必选。请先在本站「联盟」集合至少新建一条联盟，再在此处选择。
-   */
-  network: number | AffiliateNetwork;
-  /**
-   * Sites allowed to promote this offer (optional).
-   */
-  sites?: (number | Site)[] | null;
-  /**
-   * 用于 /products 与 /categories/[slug] 中按分类展示。
-   */
-  categories?: (number | Category)[] | null;
-  /**
-   * 勾选的站点会在首页 Featured 区展示该 offer。
-   */
-  featuredOnHomeForSites?: (number | Site)[] | null;
-  status: 'draft' | 'active' | 'paused';
-  externalId?: string | null;
-  targetUrl?: string | null;
-  commissionNotes?: string | null;
-  amazon?: {
-    asin?: string | null;
-    priceCents?: number | null;
-    currency?: string | null;
-    ratingAvg?: number | null;
-    reviewCount?: number | null;
-    imageUrl?: string | null;
-    primeEligible?: boolean | null;
-    /**
-     * 存 ISO 8601 字符串。使用 text 而非 date，避免库内非 ISO 值在列表 find 时被 Drizzle 解码为 Date 并 toISOString() 抛错。
-     */
-    merchantLastSyncedAt?: string | null;
-    merchantRaw?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
-    /**
-     * DataForSEO 原始条目快照（入库前缩短 URL；卖点类字段 features/functions/bullet_* 优先保留并按字节渐进裁剪 product_information）。超长仍会标记 _snapshot_truncated。
-     */
-    dfsSnapshot?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
-  };
-  /**
-   * DataForSEO Merchant 类目拉品批次与槽位来源追溯。
-   */
-  merchantSlot?: {
-    workflowStatus?: ('idle' | 'running' | 'done' | 'error') | null;
-    workflowLog?: string | null;
-    /**
-     * ISO 8601 字符串。text 避免非 ISO 入库值在 Admin 列表 SSR 时触发 Invalid time value。
-     */
-    workflowUpdatedAt?: string | null;
-    /**
-     * 本条类目槽位流水线的来源分类 ID；避免与顶层 categories 关系重复 JOIN categories。可选。
-     */
-    sourceCategoryId?: number | null;
-    batchId?: string | null;
-    /**
-     * 最后一次快捷操作请求的摘要 JSON 字符串（调试用）；使用 textarea 可避免 Drizzle 对 JSON TEXT 模式的自动 decode 在映射错位时 SSR 报错。
-     */
-    lastPayload?: string | null;
-  };
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * 联盟（Affiliate networks）可被 Offer.network 必选引用 — 录入 Offer 前请至少在此处创建一条。
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "affiliate-networks".
- */
-export interface AffiliateNetwork {
-  id: number;
-  tenant?: (number | null) | Tenant;
-  name: string;
-  slug: string;
-  websiteUrl?: string | null;
-  status: 'active' | 'paused';
-  notes?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2646,6 +2669,14 @@ export interface PayloadLockedDocument {
         value: number | Redirect;
       } | null)
     | ({
+        relationTo: 'affiliate-networks';
+        value: number | AffiliateNetwork;
+      } | null)
+    | ({
+        relationTo: 'offers';
+        value: number | Offer;
+      } | null)
+    | ({
         relationTo: 'social-platforms';
         value: number | SocialPlatform;
       } | null)
@@ -2688,14 +2719,6 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'site-quotas';
         value: number | SiteQuota;
-      } | null)
-    | ({
-        relationTo: 'affiliate-networks';
-        value: number | AffiliateNetwork;
-      } | null)
-    | ({
-        relationTo: 'offers';
-        value: number | Offer;
       } | null)
     | ({
         relationTo: 'click-events';
@@ -3005,6 +3028,73 @@ export interface RedirectsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "affiliate-networks_select".
+ */
+export interface AffiliateNetworksSelect<T extends boolean = true> {
+  tenant?: T;
+  name?: T;
+  slug?: T;
+  websiteUrl?: T;
+  status?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "offers_select".
+ */
+export interface OffersSelect<T extends boolean = true> {
+  tenant?: T;
+  title?: T;
+  slug?: T;
+  network?: T;
+  sites?: T;
+  categories?: T;
+  featuredOnHomeForSites?: T;
+  status?: T;
+  externalId?: T;
+  targetUrl?: T;
+  commissionNotes?: T;
+  amazon?:
+    | T
+    | {
+        asin?: T;
+        priceCents?: T;
+        currency?: T;
+        ratingAvg?: T;
+        reviewCount?: T;
+        imageUrl?: T;
+        primeEligible?: T;
+        merchantLastSyncedAt?: T;
+        merchantRaw?: T;
+        dfsSnapshot?: T;
+      };
+  merchantSlot?:
+    | T
+    | {
+        workflowStatus?: T;
+        workflowLog?: T;
+        workflowUpdatedAt?: T;
+        sourceCategoryId?: T;
+        batchId?: T;
+        lastPayload?: T;
+      };
+  reviewDraft?:
+    | T
+    | {
+        workflowStatus?: T;
+        workflowLog?: T;
+        workflowUpdatedAt?: T;
+        slug?: T;
+        status?: T;
+        mdx?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "social-platforms_select".
  */
 export interface SocialPlatformsSelect<T extends boolean = true> {
@@ -3245,63 +3335,6 @@ export interface SiteQuotasSelect<T extends boolean = true> {
   monthlyDfsCreditBudget?: T;
   usageYtd?: T;
   notes?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "affiliate-networks_select".
- */
-export interface AffiliateNetworksSelect<T extends boolean = true> {
-  tenant?: T;
-  name?: T;
-  slug?: T;
-  websiteUrl?: T;
-  status?: T;
-  notes?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "offers_select".
- */
-export interface OffersSelect<T extends boolean = true> {
-  tenant?: T;
-  title?: T;
-  slug?: T;
-  network?: T;
-  sites?: T;
-  categories?: T;
-  featuredOnHomeForSites?: T;
-  status?: T;
-  externalId?: T;
-  targetUrl?: T;
-  commissionNotes?: T;
-  amazon?:
-    | T
-    | {
-        asin?: T;
-        priceCents?: T;
-        currency?: T;
-        ratingAvg?: T;
-        reviewCount?: T;
-        imageUrl?: T;
-        primeEligible?: T;
-        merchantLastSyncedAt?: T;
-        merchantRaw?: T;
-        dfsSnapshot?: T;
-      };
-  merchantSlot?:
-    | T
-    | {
-        workflowStatus?: T;
-        workflowLog?: T;
-        workflowUpdatedAt?: T;
-        sourceCategoryId?: T;
-        batchId?: T;
-        lastPayload?: T;
-      };
   updatedAt?: T;
   createdAt?: T;
 }
