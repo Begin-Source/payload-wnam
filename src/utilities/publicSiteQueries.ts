@@ -6,13 +6,15 @@ import config from '@/payload.config'
 import type { Article, Author, Category, Media, Offer, Page } from '@/payload-types'
 
 /**
- * Public article/page fetch: set `site: false` on articles, media, and categories — omitting
- * the key does not disable relationship hydration.
+ * Public article/page fetch — `select` shapes for `@payloadcms/db-d1-sqlite`.
  *
- * Use **depth: 1** (not 2): at depth 2, populated `categories` still batch-loads full `sites`
- * rows on D1 (`too many columns`), even with `site: false` on the category `select`. At
- * depth 1, `Category.site` and `Media.site` stay as IDs. Author `headshot` is then a media ID;
- * we batch-fetch headshots with `mergeAuthorHeadshots` and a narrow `media` `select`.
+ * **Do not use `fieldName: false` inside `select` for this adapter:** it strips sibling
+ * scalar fields on the same document (e.g. `title` / `body` come back empty). Omit relation
+ * keys you do not need instead of setting them to `false`.
+ *
+ * Use **depth: 1** (not 2) where possible: at depth 2, populated `categories` may batch-load
+ * heavy `sites` rows on D1 (`too many columns`). At depth 1, `Category.site` and `Media.site`
+ * typically stay as IDs. Author `headshot` may be a media id; resolve with `mergeAuthorHeadshots`.
  */
 const mediaPublicSelect = {
   alt: true,
@@ -23,8 +25,6 @@ const mediaPublicSelect = {
   filename: true,
   mimeType: true,
   filesize: true,
-  site: false,
-  tenant: false,
 } as const
 
 const categoryPublicSelect = {
@@ -33,8 +33,6 @@ const categoryPublicSelect = {
   slug: true,
   description: true,
   kind: true,
-  site: false,
-  tenant: false,
 } as const
 
 const authorPublicSelect = {
@@ -44,7 +42,6 @@ const authorPublicSelect = {
   role: true,
   bioLexical: true,
   headshot: true,
-  tenant: false,
 } as const
 
 const articlePublicSelect = {
@@ -59,8 +56,6 @@ const articlePublicSelect = {
   featuredImage: mediaPublicSelect,
   author: authorPublicSelect,
   categories: categoryPublicSelect,
-  tenant: true,
-  site: false,
 } as const
 
 const offerPublicSelect = {
@@ -71,10 +66,7 @@ const offerPublicSelect = {
   status: true,
   amazon: true,
   network: { id: true, name: true, slug: true },
-  sites: false,
   categories: categoryPublicSelect,
-  featuredOnHomeForSites: false,
-  tenant: false,
 } as const
 
 /** Detail route: includes SEO meta + affiliate layout + embedded offers for AMZ article page */
@@ -96,8 +88,6 @@ const pagePublicSelect = {
   status: true,
   featuredImage: mediaPublicSelect,
   categories: categoryPublicSelect,
-  tenant: true,
-  site: false,
 } as const
 
 /** Depth-1 list leaves `author.headshot` as a media id; resolve without touching `sites`. */
