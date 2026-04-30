@@ -4,6 +4,7 @@ import type { Article, Offer } from '@/payload-types'
 import type { ExtractedOfferReview } from '@/utilities/offerReviewMdx/extractOfferReviewMdx'
 import { ensureReviewSlugWithAsin } from '@/utilities/offerReviewMdx/offerReviewSlug'
 import { markdownToPageBodyLexical } from '@/utilities/sitePagesBundleContent/markdownToPayloadLexical'
+import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
 function firstSiteId(offer: Offer): number | null {
   const sites = offer.sites
@@ -48,6 +49,23 @@ export async function upsertArticleFromOfferReview(args: {
     throw new Error('Offer has no linked site; link at least one site before creating an article.')
   }
 
+  const siteRow = await payload.findByID({
+    collection: 'sites',
+    id: siteId,
+    depth: 0,
+  })
+  if (!siteRow) {
+    throw new Error(`Site #${siteId} not found; cannot create article.`)
+  }
+  const tenantId =
+    tenantIdFromRelation((siteRow as { tenant?: number | { id: number } | null }).tenant) ??
+    tenantIdFromRelation(offer.tenant)
+  if (tenantId == null) {
+    throw new Error(
+      'Site and offer have no assigned tenant. Set tenant on the site (or offer) before syncing articles from Review MDX.',
+    )
+  }
+
   const slug = ensureReviewSlugWithAsin({
     title: extracted.meta.title,
     asin: extracted.meta.asin,
@@ -71,6 +89,7 @@ export async function upsertArticleFromOfferReview(args: {
     title: extracted.meta.title,
     slug,
     locale,
+    tenant: tenantId,
     site: siteId,
     status: 'draft' as const,
     excerpt: extracted.meta.description || undefined,
