@@ -157,5 +157,21 @@ export const PipelineSettings: GlobalConfig = {
       type: 'number',
       defaultValue: 3,
     },
+    {
+      name: 'amzKeywordEligibility',
+      label: 'AMZ 关键词资格（DFS 同步）',
+      type: 'json',
+      defaultValue: {
+        intentWhitelist: ['commercial', 'transactional'],
+        minVolume: 200,
+        maxKd: 60,
+        minOpportunityScore: 30,
+        pullLimit: 200,
+      },
+      admin: {
+        description:
+          'Used by Keywords list “同步拉取 · DataForSEO”. intentWhitelist: informational | navigational | commercial | transactional. Drawer can override per request.',
+      },
+    },
   ],
 }

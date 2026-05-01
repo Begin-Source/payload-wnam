@@ -3,6 +3,7 @@
 import { CategorySlotsQuickActionModal } from '@/components/CategorySlotsQuickActionModal'
 import { OfferMerchantSlotQuickActionModal } from '@/components/OfferMerchantSlotQuickActionModal'
 import { OfferReviewMdxQuickActionModal } from '@/components/OfferReviewMdxQuickActionModal'
+import { KeywordSyncFetchDrawer } from '@/components/KeywordSyncFetchDrawer'
 import { TrustPagesBundleQuickActionModal } from '@/components/TrustPagesBundleQuickActionModal'
 import { Button } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
@@ -1585,6 +1586,10 @@ export function CategoryListQuickAction(): React.ReactElement {
 
 export function KeywordListQuickAction(): React.ReactElement {
   return <WorkflowQuickActionModal kind="keywords" />
+}
+
+export function KeywordSyncFetchListAction(): React.ReactElement {
+  return <KeywordSyncFetchDrawer />
 }
 
 export function OfferListQuickAction(): React.ReactElement {

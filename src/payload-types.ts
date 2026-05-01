@@ -965,6 +965,14 @@ export interface Keyword {
     | null;
   lastRefreshedAt?: string | null;
   opportunityScore?: number | null;
+  /**
+   * Set by DFS sync when term matches PipelineSettings thresholds (intent / volume / KD / score).
+   */
+  eligible?: boolean | null;
+  /**
+   * Why eligible or not (for debugging / audits).
+   */
+  eligibilityReason?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -3160,6 +3168,8 @@ export interface KeywordsSelect<T extends boolean = true> {
   serpFeatures?: T;
   lastRefreshedAt?: T;
   opportunityScore?: T;
+  eligible?: T;
+  eligibilityReason?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -4110,6 +4120,18 @@ export interface PipelineSetting {
     | boolean
     | null;
   sectionMaxRetry?: number | null;
+  /**
+   * Used by Keywords list “同步拉取 · DataForSEO”. intentWhitelist: informational | navigational | commercial | transactional. Drawer can override per request.
+   */
+  amzKeywordEligibility?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -4232,6 +4254,7 @@ export interface PipelineSettingsSelect<T extends boolean = true> {
   sectionParallelism?: T;
   sectionParallelWhitelist?: T;
   sectionMaxRetry?: T;
+  amzKeywordEligibility?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

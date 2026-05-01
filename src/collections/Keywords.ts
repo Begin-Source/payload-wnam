@@ -9,7 +9,7 @@ export const Keywords: CollectionConfig = {
   admin: {
     group: adminGroups.website,
     useAsTitle: 'term',
-    defaultColumns: ['term', 'site', 'status', 'updatedAt'],
+    defaultColumns: ['term', 'site', 'status', 'eligible', 'opportunityScore', 'volume', 'updatedAt'],
     listSearchableFields: ['term', 'slug'],
     components: {
       beforeListTable: [
@@ -22,7 +22,10 @@ export const Keywords: CollectionConfig = {
       ],
       views: {
         list: {
-          actions: ['./components/CollectionQuickActions#KeywordListQuickAction'],
+          actions: [
+            './components/CollectionQuickActions#KeywordListQuickAction',
+            './components/CollectionQuickActions#KeywordSyncFetchListAction',
+          ],
         },
       },
     },
@@ -87,5 +90,21 @@ export const Keywords: CollectionConfig = {
     { name: 'serpFeatures', type: 'json' },
     { name: 'lastRefreshedAt', type: 'date', admin: { date: { pickerAppearance: 'dayAndTime' } } },
     { name: 'opportunityScore', type: 'number' },
+    {
+      name: 'eligible',
+      type: 'checkbox',
+      defaultValue: false,
+      label: 'Eligible (AMZ money)',
+      admin: {
+        description: 'Set by DFS sync when term matches PipelineSettings thresholds (intent / volume / KD / score).',
+      },
+    },
+    {
+      name: 'eligibilityReason',
+      type: 'textarea',
+      admin: {
+        description: 'Why eligible or not (for debugging / audits).',
+      },
+    },
   ],
 }
