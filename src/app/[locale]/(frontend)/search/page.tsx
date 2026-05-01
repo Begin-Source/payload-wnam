@@ -1,9 +1,10 @@
 import { headers as getHeaders } from 'next/headers.js'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { AmzSearchPage } from '@/components/amz-template-1/AmzSearchPage'
+import { AmzSearchPage as Amz1SearchPage } from '@/site-layouts/amz-template-1/pages/AmzSearchPage'
+import { AmzSearchPage as Amz2SearchPage } from '@/site-layouts/amz-template-2/pages/AmzSearchPage'
 import { isAppLocale } from '@/i18n/config'
-import { getPublicSiteContext, isAmzTemplateLayout } from '@/utilities/publicLandingTheme'
+import { getPublicSiteContext, isAmzSiteLayout, isAmzTemplate2Layout } from '@/utilities/publicLandingTheme'
 import { getPublishedArticlesForSite } from '@/utilities/publicSiteQueries'
 
 type Props = {
@@ -37,10 +38,9 @@ export default async function SearchPage(props: Props) {
       ? articles.filter((a) => (a.title ?? '').toLowerCase().includes(ql))
       : []
 
-  if (isAmzTemplateLayout(theme.siteLayout) && theme.amzSiteConfig) {
-    return (
-      <AmzSearchPage locale={locale} config={theme.amzSiteConfig} q={q} articles={filtered} />
-    )
+  if (isAmzSiteLayout(theme.siteLayout) && theme.amzSiteConfig) {
+    const SearchCmp = isAmzTemplate2Layout(theme.siteLayout) ? Amz2SearchPage : Amz1SearchPage
+    return <SearchCmp locale={locale} config={theme.amzSiteConfig} q={q} articles={filtered} />
   }
 
   return (

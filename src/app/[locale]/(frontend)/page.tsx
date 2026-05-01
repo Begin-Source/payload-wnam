@@ -5,16 +5,18 @@ import React from 'react'
 import { AboutSidebar } from '@/components/blog/AboutSidebar'
 import { ReviewHubHome } from '@/components/blog/reviewHub/ReviewHubHome'
 import { PostList } from '@/components/blog/PostList'
-import { AmzTemplateHomePage } from '@/components/amz-template-1/AmzTemplateHomePage'
+import { AmzTemplateHomePage as Amz1TemplateHomePage } from '@/site-layouts/amz-template-1/pages/AmzTemplateHomePage'
+import { AmzTemplateHomePage as Amz2TemplateHomePage } from '@/site-layouts/amz-template-2/pages/AmzTemplateHomePage'
 import { Template1HomePage } from '@/components/template1/Template1HomePage'
 import { isAppLocale } from '@/i18n/config'
 import {
   getPublicSiteContext,
-  isAmzTemplateLayout,
+  isAmzSiteLayout,
+  isAmzTemplate2Layout,
   isTemplateShellLayout,
 } from '@/utilities/publicLandingTheme'
 import {
-  getFeaturedHomeOffersForSite,
+  getFeaturedHomeRowsForSite,
   getNavCategoriesForSite,
   getPublishedArticlesForSite,
 } from '@/utilities/publicSiteQueries'
@@ -45,23 +47,23 @@ export default async function HomePage(props: Props) {
     )
   }
 
-  const articles = await getPublishedArticlesForSite(site.id, locale, 20)
-
-  if (isAmzTemplateLayout(theme.siteLayout) && theme.amzSiteConfig) {
-    const [categories, featuredOffers] = await Promise.all([
+  if (isAmzSiteLayout(theme.siteLayout) && theme.amzSiteConfig) {
+    const [categories, featuredRows] = await Promise.all([
       getNavCategoriesForSite(site.id, 32),
-      getFeaturedHomeOffersForSite(site.id, 12),
+      getFeaturedHomeRowsForSite(site.id, locale, 12),
     ])
+    const HomePageCmp = isAmzTemplate2Layout(theme.siteLayout) ? Amz2TemplateHomePage : Amz1TemplateHomePage
     return (
-      <AmzTemplateHomePage
+      <HomePageCmp
         locale={locale}
         config={theme.amzSiteConfig}
-        articles={articles}
         categories={categories}
-        featuredOffers={featuredOffers}
+        featuredRows={featuredRows}
       />
     )
   }
+
+  const articles = await getPublishedArticlesForSite(site.id, locale, 20)
 
   if (isTemplateShellLayout(theme.siteLayout)) {
     const categories = await getNavCategoriesForSite(site.id, 32)

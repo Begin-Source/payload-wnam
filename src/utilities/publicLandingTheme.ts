@@ -6,8 +6,8 @@ import config from '@/payload.config'
 import type { PublicLanding, Site, SiteBlueprint } from '@/payload-types'
 import { getRequestHost } from '@/utilities/normalizeRequestHost'
 import { resolveSiteForLanding } from '@/utilities/resolveSiteForLanding'
-import type { AmzSiteConfig } from '@/amz-template-1/defaultSiteConfig'
-import { mergeAmzSiteConfigFromRaw } from '@/amz-template-1/mergeAmzSiteConfig'
+import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
+import { mergeAmzSiteConfigFromRaw } from '@/site-layouts/amz-template-1/mergeAmzSiteConfig'
 import { mergeTemplate1Layers, type Template1Theme } from '@/utilities/publicLandingTemplate1'
 
 export type LandingFontPreset = 'system' | 'serif' | 'noto_sans_sc'
@@ -51,6 +51,7 @@ export type SiteLayoutId =
   | 'template1'
   | 'template2'
   | 'amz-template-1'
+  | 'amz-template-2'
 
 const SITE_LAYOUT_IDS = new Set<SiteLayoutId>([
   'default',
@@ -59,6 +60,7 @@ const SITE_LAYOUT_IDS = new Set<SiteLayoutId>([
   'template1',
   'template2',
   'amz-template-1',
+  'amz-template-2',
 ])
 
 /** Template1/2 共用 `Template1*` 壳与 `theme.template1` 文案 merge（Template2 用 `t2LocaleJson`）。 */
@@ -68,10 +70,17 @@ export function isTemplateShellLayout(
   return layout === 'template1' || layout === 'template2'
 }
 
-export function isAmzTemplateLayout(
+/** True for `amz-template-1` or `amz-template-2` (shared `amzSiteConfigJson` + AMZ-style chrome). */
+export function isAmzSiteLayout(
   layout: string | null | undefined,
-): layout is 'amz-template-1' {
-  return layout === 'amz-template-1'
+): layout is 'amz-template-1' | 'amz-template-2' {
+  return layout === 'amz-template-1' || layout === 'amz-template-2'
+}
+
+export function isAmzTemplate2Layout(
+  layout: string | null | undefined,
+): layout is 'amz-template-2' {
+  return layout === 'amz-template-2'
 }
 
 function normalizeSiteLayout(value: string | null | undefined): SiteLayoutId {
@@ -116,7 +125,7 @@ export type PublicSiteTheme = LandingTheme &
     footerResourceLinks: FooterResourceLink[]
     /** T1/T2 壳层文案（`template1`→ 设计 t1LocaleJson；`template2`→ t2LocaleJson）；结构同 Template1Theme。 */
     template1: Template1Theme
-    /** 仅 `amz-template-1`：设计 amzSiteConfigJson 与默认 deep merge 后的站点壳配置。 */
+    /** `amz-template-1` / `amz-template-2`：设计 amzSiteConfigJson 与默认 deep merge 后的站点壳配置。 */
     amzSiteConfig?: AmzSiteConfig
   }
 
@@ -297,16 +306,15 @@ export function mergePublicSiteTheme(
   const landing = mergeLandingLayers(global, design, site)
   const blogChrome = mergeBlogChromeLayers(global, design)
   const sl = normalizeSiteLayout(firstNonEmpty(site?.siteLayout))
-  const template1Theme =
-    sl === 'amz-template-1'
-      ? mergeTemplate1Layers(null, null)
-      : sl === 'template2'
-        ? mergeTemplate1Layers(design?.t2LocaleJson, null)
-        : mergeTemplate1Layers(design?.t1LocaleJson, null)
-  const amzSiteConfig =
-    sl === 'amz-template-1' ? mergeAmzSiteConfigFromRaw(design?.amzSiteConfigJson) : undefined
+  const amzSl = sl === 'amz-template-1' || sl === 'amz-template-2'
+  const template1Theme = amzSl
+    ? mergeTemplate1Layers(null, null)
+    : sl === 'template2'
+      ? mergeTemplate1Layers(design?.t2LocaleJson, null)
+      : mergeTemplate1Layers(design?.t1LocaleJson, null)
+  const amzSiteConfig = amzSl ? mergeAmzSiteConfigFromRaw(design?.amzSiteConfigJson) : undefined
   const landingForTheme =
-    sl === 'amz-template-1' && amzSiteConfig
+    amzSl && amzSiteConfig
       ? {
           ...landing,
           browserTitle:

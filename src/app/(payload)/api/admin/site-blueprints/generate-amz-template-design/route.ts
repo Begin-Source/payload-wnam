@@ -38,7 +38,7 @@ function toBool(value: unknown): boolean {
 
 /**
  * POST { blueprintId: number, mainProduct?: string, aiModel?: string, prepare?: boolean, afterPrepare?: boolean }
- * Cookie session + tenant-scoped. OpenRouter rewrites linked blueprint amzSiteConfigJson for amz-template-1 sites.
+ * Cookie session + tenant-scoped. OpenRouter rewrites linked blueprint amzSiteConfigJson for AMZ template sites (amz-template-1 / amz-template-2).
  * When prepare is true, validates and sets designWorkflowStatus running then returns immediately (modal closes; run job in background).
  * When afterPrepare is true, skips re-marking running (client already called prepare).
  */

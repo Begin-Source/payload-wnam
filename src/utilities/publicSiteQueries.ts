@@ -77,6 +77,12 @@ const articleDetailSelect = {
   relatedOffers: offerPublicSelect,
 } as const
 
+/** AMZ template-2 /reviews listing: articles + related offers (dual-CTA cards) without full detail fields */
+const articleReviewsListSelect = {
+  ...articlePublicSelect,
+  relatedOffers: offerPublicSelect,
+} as const
+
 const pagePublicSelect = {
   id: true,
   title: true,
@@ -122,6 +128,13 @@ async function mergeAuthorHeadshots(payload: Payload, articles: Article[]): Prom
       }
     }
   }
+}
+
+function offerAppliesToSite(offer: Offer, siteId: number): boolean {
+  const sites = offer.sites
+  if (sites == null) return true
+  if (Array.isArray(sites) && sites.length === 0) return true
+  return sites.some((s) => (typeof s === 'number' ? s : (s as { id?: number })?.id) === siteId)
 }
 
 /** Guides page chips: Payload categories with kind=guide for this site */
@@ -174,6 +187,31 @@ export const getPublishedArticlesForSite = cache(
       limit,
       depth: 1,
       select: articlePublicSelect,
+      overrideAccess: true,
+    })
+    const docs = res.docs as Article[]
+    await mergeAuthorHeadshots(payload, docs)
+    return docs
+  },
+)
+
+/** Published articles for AMZ /reviews grid (includes `relatedOffers` for merchant CTA). */
+export const getPublishedArticlesForReviewsListing = cache(
+  async (siteId: number, locale: string, limit = 96): Promise<Article[]> => {
+    const payload = await getPayload({ config: await config })
+    const res = await payload.find({
+      collection: 'articles',
+      where: {
+        and: [
+          { status: { equals: 'published' } },
+          { site: { equals: siteId } },
+          { locale: { equals: locale } },
+        ],
+      },
+      sort: '-publishedAt',
+      limit,
+      depth: 1,
+      select: articleReviewsListSelect,
       overrideAccess: true,
     })
     const docs = res.docs as Article[]
@@ -252,14 +290,7 @@ export const getActiveOffersForSite = cache(
     })
     const docs = res.docs as Offer[]
     const cap = Math.min(limit, 200)
-    return docs
-      .filter((o) => {
-        const sites = o.sites
-        if (sites == null) return true
-        if (Array.isArray(sites) && sites.length === 0) return true
-        return sites.some((s) => (typeof s === 'number' ? s : (s as { id?: number })?.id) === siteId)
-      })
-      .slice(0, cap)
+    return docs.filter((o) => offerAppliesToSite(o, siteId)).slice(0, cap)
   },
 )
 
@@ -291,6 +322,81 @@ export const getFeaturedHomeOffersForSite = cache(
   },
 )
 
+/** Minimal article fields to map featured offers → review slug / excerpt (homepage Featured row). */
+const featuredHomeArticleSelect = {
+  slug: true,
+  excerpt: true,
+  relatedOffers: true,
+} as const
+
+export type FeaturedHomeRow = {
+  offer: Offer
+  reviewSlug: string | null
+  excerpt: string | null
+}
+
+/**
+ * Featured homepage offers plus optional linked review (`articles.relatedOffers` contains offer id).
+ * First matching article per offer wins (articles sorted by `publishedAt` desc = newest first).
+ */
+export const getFeaturedHomeRowsForSite = cache(
+  async (siteId: number, locale: string, limit = 12): Promise<FeaturedHomeRow[]> => {
+    const offers = await getFeaturedHomeOffersForSite(siteId, limit)
+    if (offers.length === 0) return []
+
+    const payload = await getPayload({ config: await config })
+    const offerIds = offers.map((o) => o.id).filter((id): id is number => typeof id === 'number')
+    if (offerIds.length === 0) {
+      return offers.map((o) => ({ offer: o, reviewSlug: null, excerpt: null }))
+    }
+
+    const orConds = offerIds.map((id) => ({ relatedOffers: { contains: id } }))
+    const res = await payload.find({
+      collection: 'articles',
+      where: {
+        and: [
+          { status: { equals: 'published' as const } },
+          { site: { equals: siteId } },
+          { locale: { equals: locale } },
+          { or: orConds },
+        ],
+      },
+      sort: '-publishedAt',
+      limit: 100,
+      depth: 0,
+      select: featuredHomeArticleSelect,
+      overrideAccess: true,
+    })
+
+    const byOfferId = new Map<number, { slug: string; excerpt: string | null }>()
+    for (const doc of res.docs as Article[]) {
+      const ro = doc.relatedOffers
+      if (!ro || !Array.isArray(ro)) continue
+      for (const ref of ro) {
+        const oid = typeof ref === 'number' ? ref : (ref as Offer).id
+        if (oid == null || !offerIds.includes(oid)) continue
+        if (byOfferId.has(oid)) continue
+        const slug = typeof doc.slug === 'string' && doc.slug.trim() ? doc.slug.trim() : ''
+        if (!slug) continue
+        const ex = doc.excerpt
+        byOfferId.set(oid, {
+          slug,
+          excerpt: typeof ex === 'string' && ex.trim() ? ex.trim() : null,
+        })
+      }
+    }
+
+    return offers.map((offer) => {
+      const row = byOfferId.get(offer.id)
+      return {
+        offer,
+        reviewSlug: row?.slug ?? null,
+        excerpt: row?.excerpt ?? null,
+      }
+    })
+  },
+)
+
 export const getOffersByIds = cache(async (ids: number[]): Promise<Offer[]> => {
   if (ids.length === 0) return []
   const payload = await getPayload({ config: await config })
@@ -304,6 +410,47 @@ export const getOffersByIds = cache(async (ids: number[]): Promise<Offer[]> => {
   })
   return res.docs as Offer[]
 })
+
+/** Active offer for this site whose `amazon.asin` matches (case-insensitive trim). */
+export const getActiveOfferByAsinForSite = cache(
+  async (siteId: number, asinRaw: string): Promise<Offer | null> => {
+    const needle = asinRaw.trim().toUpperCase()
+    if (!needle) return null
+    const payload = await getPayload({ config: await config })
+    const res = await payload.find({
+      collection: 'offers',
+      where: {
+        and: [{ status: { equals: 'active' as const } }, { 'amazon.asin': { equals: needle } }],
+      },
+      limit: 40,
+      depth: 1,
+      select: offerPublicSelect,
+      overrideAccess: true,
+    })
+    for (const o of res.docs as Offer[]) {
+      if (!offerAppliesToSite(o, siteId)) continue
+      const a = o.amazon?.asin?.trim().toUpperCase()
+      if (a === needle) return o
+    }
+
+    const resLoose = await payload.find({
+      collection: 'offers',
+      where: {
+        and: [{ status: { equals: 'active' as const } }, { 'amazon.asin': { contains: needle } }],
+      },
+      limit: 40,
+      depth: 1,
+      select: offerPublicSelect,
+      overrideAccess: true,
+    })
+    for (const o of resLoose.docs as Offer[]) {
+      if (!offerAppliesToSite(o, siteId)) continue
+      const a = o.amazon?.asin?.trim().toUpperCase()
+      if (a === needle) return o
+    }
+    return null
+  },
+)
 
 export const getRelatedArticlesForSite = cache(
   async (

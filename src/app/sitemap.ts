@@ -5,7 +5,7 @@ import { getPayload } from 'payload'
 import { locales, type AppLocale } from '@/i18n/config'
 import config from '@/payload.config'
 import type { Article, Category, Page } from '@/payload-types'
-import { getPublicSiteContext, isAmzTemplateLayout } from '@/utilities/publicLandingTheme'
+import { getPublicSiteContext, isAmzSiteLayout } from '@/utilities/publicLandingTheme'
 import { getPublicBaseUrlFromHeaders } from '@/utilities/seoDocumentMeta'
 import {
   hreflangAlternatesForLocales,
@@ -93,7 +93,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  const showAmzHub = isAmzTemplateLayout(theme.siteLayout) && Boolean(theme.amzSiteConfig)
+  const showAmzHub = isAmzSiteLayout(theme.siteLayout) && Boolean(theme.amzSiteConfig)
   if (showAmzHub) {
     const hubSegments = ['products', 'reviews', 'guides'] as const
     for (const hub of hubSegments) {

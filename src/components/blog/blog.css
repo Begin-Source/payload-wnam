@@ -275,15 +275,14 @@
 .blogBreadcrumbsCurrent {
   color: var(--blog-body);
   max-width: 100%;
+  min-width: 0;
 }
 
+/* Full title: avoid the old ~42ch single-line ellipsis cap (long review titles looked “cut off”). */
 .blogBreadcrumbsCurrent span:last-child {
-  display: inline-block;
-  max-width: min(100%, 42ch);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  vertical-align: bottom;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .blogArticle {

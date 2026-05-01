@@ -16,6 +16,13 @@ alwaysApply: true
 - **Do not** edit generated admin files under `src/app/(payload)/` that Payload marks as auto-generated unless you know the workflow.
 - **Public `/` routing**: Middleware redirects `/` → `/en` on every host except `localhost`/`127.0.0.1`/`::1` (dev passthrough for `?site=`) and hosts listed in `PUBLIC_WELCOME_ROOT_HOSTS` (comma-separated). Put system gateway hosts like `sys.beginos.org` there so they keep `(welcome)`; custom `sites.primaryDomain` hosts should omit the list.
 
+## Site layouts (`sites.siteLayout`)
+
+- **Registry**: [`src/site-layouts/registry.ts`](src/site-layouts/registry.ts) maps each `SiteLayoutId` to a `Shell` component; [`src/app/[locale]/(frontend)/layout.tsx`](src/app/[locale]/(frontend)/layout.tsx) resolves document surface styles, wraps output in [`SiteLayoutErrorBoundary`](src/site-layouts/SiteLayoutErrorBoundary.tsx).
+- **AMZ layout 1** (`amz-template-1`): implementation under [`src/site-layouts/amz-template-1/`](src/site-layouts/amz-template-1/) (chrome, theme, globals) with route components in [`pages/`](src/site-layouts/amz-template-1/pages). Single-column article layout.
+- **AMZ layout 2** (`amz-template-2`): parallel directory [`src/site-layouts/amz-template-2/`](src/site-layouts/amz-template-2/) — targets structural parity with `amz-template-old` (e.g. article **3-column + TOC**, [`/[locale]/product/[asin]`](src/app/[locale]/(frontend)/product/[asin]/page.tsx) from Offers). Shares the same **Blueprint / `amzSiteConfigJson`** shape as layout 1.
+- **Adding a new layout**: (1) Add `SiteLayoutId` in [`publicLandingTheme.ts`](src/utilities/publicLandingTheme.ts) if needed; (2) extend [`sites.siteLayout`](src/collections/Sites.ts) options / [`payload-types`](src/payload-types.ts) via migration + `pnpm run generate:types`; (3) add `src/site-layouts/<slug>/Shell.tsx` and register it in `registry.ts`; (4) if the shell needs root HTML/body classes, extend [`documentSurface.ts`](src/site-layouts/documentSurface.ts).
+
 When suggesting commands, prefer existing scripts in `package.json` (`dev`, `build`, `test`, `lint`, `payload`, `deploy`).
 
 ## Commits (when writing PR/commit messages)

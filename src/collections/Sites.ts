@@ -100,10 +100,14 @@ export const Sites: CollectionConfig = {
           label: 'amz-template-1（Amazon 联盟测评风 · 顶栏/底栏/主题变量）',
           value: 'amz-template-1',
         },
+        {
+          label: 'amz-template-2（旧版 amz-template 全站结构 · TOC / 可扩展 ASIN 路由）',
+          value: 'amz-template-2',
+        },
       ],
       admin: {
         description:
-          'Template1 / Template2：文案在「设计」t1LocaleJson / t2LocaleJson。amz-template-1：壳层与配色见「设计」amzSiteConfigJson（与 amz-template-1 仓库 site.config 同形）。说明与预览链接见「站点布局」目录。',
+          'Template1 / Template2：文案在「设计」t1LocaleJson / t2LocaleJson。amz-template-1 / amz-template-2：壳层与配色见「设计」amzSiteConfigJson（与 amz-template-1 仓库 site.config 同形）。说明与预览链接见「站点布局」目录。',
       },
     },
     {

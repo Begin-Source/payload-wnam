@@ -1,10 +1,10 @@
 import type { Payload } from 'payload'
 
-import type { AmzSiteConfig } from '@/amz-template-1/defaultSiteConfig'
+import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import {
   mergeAmzSiteConfigFromRaw,
   mergePatchOntoAmzConfig,
-} from '@/amz-template-1/mergeAmzSiteConfig'
+} from '@/site-layouts/amz-template-1/mergeAmzSiteConfig'
 import { openrouterChat } from '@/services/integrations/openrouter/chat'
 import { parseRelationshipId } from '@/utilities/parseRelationshipId'
 import {
@@ -115,7 +115,7 @@ function enforceCanonicalIdentity(
 function buildSystemPrompt(): string {
   return [
     'You are an expert web developer and SEO specialist. You output JSON only (no markdown, no prose).',
-    'The JSON will be deep-merged into an existing amz-template-1 siteConfig object (Payload CMS).',
+    'The JSON will be deep-merged into an existing AMZ siteConfig object (Payload CMS) used by amz-template-1 and amz-template-2.',
     'Rules:',
     '1) ALL user-visible copy you add or change must be in English only.',
     '2) pages.guides: you MAY change title, description, and cta (cta.title, cta.description, cta.primaryButton.text). Keep cta.primaryButton.href as /reviews unless a clearly better internal path exists. Do NOT change pages.guides.categories — the server will restore it; omit "categories" from your output.',
@@ -265,11 +265,12 @@ async function loadAmzTemplateDesignWorkContext(
     return { ok: false, code: 'SITE_NOT_FOUND', message: '站点不存在', status: 404 }
   }
 
-  if (site.siteLayout !== 'amz-template-1') {
+  if (site.siteLayout !== 'amz-template-1' && site.siteLayout !== 'amz-template-2') {
     return {
       ok: false,
       code: 'NOT_AMZ_LAYOUT',
-      message: '仅支持「站点布局」为 amz-template-1 的站点；请先在站点中切换布局并保存。',
+      message:
+        '仅支持「站点布局」为 amz-template-1 或 amz-template-2 的站点；请先在站点中切换布局并保存。',
       status: 400,
     }
   }

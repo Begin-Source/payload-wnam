@@ -73,6 +73,7 @@ export const SiteBlueprints: CollectionConfig = {
         { label: 'Template1', value: 'template1' },
         { label: 'Template2', value: 'template2' },
         { label: 'amz-template-1', value: 'amz-template-1' },
+        { label: 'amz-template-2', value: 'amz-template-2' },
       ],
       admin: {
         position: 'sidebar',
@@ -166,9 +167,11 @@ export const SiteBlueprints: CollectionConfig = {
       label: '落地页 · 设计微调',
       admin: {
         description:
-          '覆盖站点与「公开落地页」全局兜底。镜像为 amz-template-1 时请用下方「amz-template-1 · 站点配置 JSON」（含 SEO / 品牌 / 主题色）。',
+          '覆盖站点与「公开落地页」全局兜底。镜像为 amz-template-1 / amz-template-2 时请用下方「AMZ · 站点配置 JSON」（含 SEO / 品牌 / 主题色）。',
         initCollapsed: false,
-        condition: (_data, siblingData) => siblingData?.mirroredSiteLayout !== 'amz-template-1',
+        condition: (_data, siblingData) =>
+          siblingData?.mirroredSiteLayout !== 'amz-template-1' &&
+          siblingData?.mirroredSiteLayout !== 'amz-template-2',
       },
       fields: [
         {
@@ -288,12 +291,14 @@ export const SiteBlueprints: CollectionConfig = {
     },
     {
       type: 'collapsible',
-      label: 'amz-template-1 · 站点配置 JSON',
+      label: 'AMZ · 站点配置 JSON（amz-template-1 / amz-template-2）',
       admin: {
         description:
           '与 amz-template-1 仓库 lib/site.config.ts（siteConfig）同形；参见该仓库 CONFIG_GUIDE。留空或缺键时与代码内默认配置 deep merge。',
         initCollapsed: true,
-        condition: (_data, siblingData) => siblingData?.mirroredSiteLayout === 'amz-template-1',
+        condition: (_data, siblingData) =>
+          siblingData?.mirroredSiteLayout === 'amz-template-1' ||
+          siblingData?.mirroredSiteLayout === 'amz-template-2',
       },
       fields: [
         {

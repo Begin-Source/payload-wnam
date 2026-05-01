@@ -5,9 +5,10 @@ import React from 'react'
 
 import { AboutSidebar } from '@/components/blog/AboutSidebar'
 import { PostList } from '@/components/blog/PostList'
-import { AmzCategoryPage } from '@/components/amz-template-1/AmzCategoryPage'
+import { AmzCategoryPage as Amz1CategoryPage } from '@/site-layouts/amz-template-1/pages/AmzCategoryPage'
+import { AmzCategoryPage as Amz2CategoryPage } from '@/site-layouts/amz-template-2/pages/AmzCategoryPage'
 import { isAppLocale } from '@/i18n/config'
-import { getPublicSiteContext, isAmzTemplateLayout } from '@/utilities/publicLandingTheme'
+import { getPublicSiteContext, isAmzSiteLayout, isAmzTemplate2Layout } from '@/utilities/publicLandingTheme'
 import {
   getCategoryBySlugForSite,
   getOffersForCategory,
@@ -43,9 +44,10 @@ export default async function CategoryPage(props: Props) {
     getOffersForCategory(site.id, category.id, 24),
   ])
 
-  if (isAmzTemplateLayout(theme.siteLayout) && theme.amzSiteConfig) {
+  if (isAmzSiteLayout(theme.siteLayout) && theme.amzSiteConfig) {
+    const CategoryCmp = isAmzTemplate2Layout(theme.siteLayout) ? Amz2CategoryPage : Amz1CategoryPage
     return (
-      <AmzCategoryPage
+      <CategoryCmp
         locale={locale}
         config={theme.amzSiteConfig}
         category={category}

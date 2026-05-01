@@ -13,6 +13,10 @@ const layoutKeyOptions: { label: string; value: string }[] = [
     label: 'amz-template-1（Amazon 联盟测评风 · 顶栏/底栏/主题变量）',
     value: 'amz-template-1',
   },
+  {
+    label: 'amz-template-2（旧版结构 · TOC / ASIN 商品页）',
+    value: 'amz-template-2',
+  },
 ]
 
 /**

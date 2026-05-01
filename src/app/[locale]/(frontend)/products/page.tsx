@@ -2,9 +2,10 @@ import { headers as getHeaders } from 'next/headers.js'
 import { notFound } from 'next/navigation'
 import React from 'react'
 
-import { AmzProductsPage } from '@/components/amz-template-1/AmzProductsPage'
+import { AmzProductsPage as Amz1ProductsPage } from '@/site-layouts/amz-template-1/pages/AmzProductsPage'
+import { AmzProductsPage as Amz2ProductsPage } from '@/site-layouts/amz-template-2/pages/AmzProductsPage'
 import { isAppLocale } from '@/i18n/config'
-import { getPublicSiteContext, isAmzTemplateLayout } from '@/utilities/publicLandingTheme'
+import { getPublicSiteContext, isAmzSiteLayout, isAmzTemplate2Layout } from '@/utilities/publicLandingTheme'
 import { buildProductCountBySlug } from '@/utilities/amzOfferCategoryCounts'
 import {
   getActiveOffersForSite,
@@ -33,7 +34,7 @@ export default async function ProductsPage(props: Props) {
   const headers = await getHeaders()
   const { site, theme } = await getPublicSiteContext(headers)
   if (!site) notFound()
-  if (!isAmzTemplateLayout(theme.siteLayout) || !theme.amzSiteConfig) notFound()
+  if (!isAmzSiteLayout(theme.siteLayout) || !theme.amzSiteConfig) notFound()
 
   const categoryDoc = slug ? await getCategoryBySlugForSite(site.id, slug) : null
   const categoryId = categoryDoc?.id
@@ -46,8 +47,9 @@ export default async function ProductsPage(props: Props) {
 
   const productCountBySlug = buildProductCountBySlug(categories, offersForCounts)
 
+  const ProductsCmp = isAmzTemplate2Layout(theme.siteLayout) ? Amz2ProductsPage : Amz1ProductsPage
   return (
-    <AmzProductsPage
+    <ProductsCmp
       locale={locale}
       config={theme.amzSiteConfig}
       offers={offers}

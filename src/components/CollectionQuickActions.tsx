@@ -936,7 +936,8 @@ function AmzTemplateDesignQuickActionModal(): React.ReactElement {
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
               对齐 n8n「Generate Template Design」：用 OpenRouter 根据主产品与 niche 改写所选「设计」的{' '}
               <strong>amzSiteConfigJson</strong>。前置：该「设计」已选定「站点」，且对应站点的「站点布局」为{' '}
-              <strong>amz-template-1</strong>。导航主菜单、页脚固定链接与首页分类项会在服务端保持与合并前一致。需配置
+              <strong>amz-template-1</strong> 或 <strong>amz-template-2</strong>
+              。导航主菜单、页脚固定链接与首页分类项会在服务端保持与合并前一致。需配置
               OPENROUTER_API_KEY 或 OPENAI_API_KEY。
               <strong style={{ display: 'block', marginTop: '0.5rem', fontWeight: 600 }}>
                 点击「生成并写回设计」后先标为「运行中」并关闭弹窗，列表会马上刷新；生成结束后若仍在本列表页会再刷新一次以显示「已完成」或「错误」。进度请在表格「设计流程状态」列查看。

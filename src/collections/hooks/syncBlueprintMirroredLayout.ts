@@ -6,13 +6,14 @@ import type {
 
 import { parseRelationshipId } from '@/utilities/parseRelationshipId'
 
-/** Aligns with `sites.siteLayout` (template1 | template2 | amz-template-1). */
+/** Aligns with `sites.siteLayout` (template1 | template2 | amz-template-1 | amz-template-2). */
 export function normalizeMirroredSiteLayout(
   value: unknown,
-): 'template1' | 'template2' | 'amz-template-1' {
+): 'template1' | 'template2' | 'amz-template-1' | 'amz-template-2' {
   const v = String(value ?? '').toLowerCase().trim()
   if (v === 'template2') return 'template2'
   if (v === 'amz-template-1' || v === 'amz_template_1') return 'amz-template-1'
+  if (v === 'amz-template-2' || v === 'amz_template_2') return 'amz-template-2'
   return 'template1'
 }
 

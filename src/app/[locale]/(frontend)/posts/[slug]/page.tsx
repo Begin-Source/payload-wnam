@@ -9,17 +9,20 @@ import { ArticleLayoutAffiliateHub } from '@/components/blog/ArticleLayoutAffili
 import { ArticleRelated } from '@/components/blog/ArticleRelated'
 import { blogPostingJsonLdString } from '@/components/blog/blogPostingJsonLd'
 import { categoryIdsFromArticle, firstCategoryFromArticle } from '@/components/blog/articleHelpers'
-import { AmzArticlePage } from '@/components/amz-template-1/AmzArticlePage'
+import { AmzArticlePage as Amz1ArticlePage } from '@/site-layouts/amz-template-1/pages/AmzArticlePage'
+import { AmzArticlePage as Amz2ArticlePage } from '@/site-layouts/amz-template-2/pages/AmzArticlePage'
 import { Template1ArticlePage } from '@/components/template1/Template1ArticlePage'
 import type { Media } from '@/payload-types'
 import type { AppLocale } from '@/i18n/config'
 import { hreflangXDefaultUrl, isAppLocale } from '@/i18n/config'
+import { stripLeadingDuplicateH1FromArticleHtml } from '@/utilities/articleHtmlDedupe'
 import { lexicalStateToHtml } from '@/utilities/lexicalToHtml'
 import { estimateReadingTimeMinutesFromHtml } from '@/utilities/readingTime'
 import { getPublicBaseUrlFromHeaders, seoMetaForDocument } from '@/utilities/seoDocumentMeta'
 import {
   getPublicSiteContext,
-  isAmzTemplateLayout,
+  isAmzSiteLayout,
+  isAmzTemplate2Layout,
   isTemplateShellLayout,
 } from '@/utilities/publicLandingTheme'
 import { getArticleBySlugForSite, getRelatedArticlesForSite } from '@/utilities/publicSiteQueries'
@@ -86,7 +89,10 @@ export default async function PostPage(props: Props) {
   const pagePath = `/${locale}/posts/${encodeURIComponent(slug)}`
   const pageUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}${pagePath}` : pagePath
 
-  const html = lexicalStateToHtml(article.body)
+  const html = stripLeadingDuplicateH1FromArticleHtml(
+    lexicalStateToHtml(article.body),
+    article.title ?? '',
+  )
   const readMinutes = estimateReadingTimeMinutesFromHtml(html, locale)
   const img =
     article.featuredImage != null &&
@@ -108,7 +114,7 @@ export default async function PostPage(props: Props) {
   const related = await getRelatedArticlesForSite(site.id, locale, {
     excludeId: article.id,
     categoryIds: categoryIdsFromArticle(article),
-    limit: 3,
+    limit: isAmzTemplate2Layout(theme.siteLayout) ? 8 : 3,
   })
 
   const jsonLd = blogPostingJsonLdString({ article, pageUrl, featuredImageUrl: img })
@@ -120,20 +126,33 @@ export default async function PostPage(props: Props) {
   const layout = article.affiliatePageLayout ?? 'default'
 
   const isTemplateShell = isTemplateShellLayout(theme.siteLayout)
-  const isAmz = isAmzTemplateLayout(theme.siteLayout)
+  const isAmz = isAmzSiteLayout(theme.siteLayout)
 
   const amzArticle =
     isAmz && theme.amzSiteConfig ? (
-      <AmzArticlePage
-        article={article}
-        html={html}
-        locale={locale}
-        readMinutes={readMinutes}
-        readTimeLabel={readTimeLabel[locale]}
-        related={related}
-        titleAlt={titleAlt}
-        config={theme.amzSiteConfig}
-      />
+      isAmzTemplate2Layout(theme.siteLayout) ? (
+        <Amz2ArticlePage
+          article={article}
+          html={html}
+          locale={locale}
+          readMinutes={readMinutes}
+          readTimeLabel={readTimeLabel[locale]}
+          related={related}
+          titleAlt={titleAlt}
+          config={theme.amzSiteConfig}
+        />
+      ) : (
+        <Amz1ArticlePage
+          article={article}
+          html={html}
+          locale={locale}
+          readMinutes={readMinutes}
+          readTimeLabel={readTimeLabel[locale]}
+          related={related}
+          titleAlt={titleAlt}
+          config={theme.amzSiteConfig}
+        />
+      )
     ) : null
 
   const defaultArticle = (

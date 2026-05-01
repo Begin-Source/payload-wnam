@@ -371,9 +371,9 @@ export interface Site {
    */
   portfolio?: (number | null) | SitePortfolio;
   /**
-   * Template1 / Template2：文案在「设计」t1LocaleJson / t2LocaleJson。amz-template-1：壳层与配色见「设计」amzSiteConfigJson（与 amz-template-1 仓库 site.config 同形）。说明与预览链接见「站点布局」目录。
+   * Template1 / Template2：文案在「设计」t1LocaleJson / t2LocaleJson。amz-template-1 / amz-template-2：壳层与配色见「设计」amzSiteConfigJson（与 amz-template-1 仓库 site.config 同形）。说明与预览链接见「站点布局」目录。
    */
-  siteLayout?: ('template1' | 'template2' | 'amz-template-1') | null;
+  siteLayout?: ('template1' | 'template2' | 'amz-template-1' | 'amz-template-2') | null;
   /**
    * Users who operate this site (optional; tenant scoping still applies).
    */
@@ -432,7 +432,7 @@ export interface SiteBlueprint {
   /**
    * 只读，随关联「站点」的「站点布局」自动同步；用于在下方只展示当前壳层对应的文案区。
    */
-  mirroredSiteLayout?: ('template1' | 'template2' | 'amz-template-1') | null;
+  mirroredSiteLayout?: ('template1' | 'template2' | 'amz-template-1' | 'amz-template-2') | null;
   /**
    * 推荐取值（小写英文）：idle 代办 · running 运行中 · done 已完成 · error 错误。由 AMZ 设计生成等流程写入；卡死时可手工改回 idle（代办）。
    */
@@ -613,7 +613,7 @@ export interface SiteLayout {
   /**
    * 需与编辑站点时选择的布局值一致；全库仅允许一条/键。
    */
-  layoutKey: 'template1' | 'template2' | 'amz-template-1';
+  layoutKey: 'template1' | 'template2' | 'amz-template-1' | 'amz-template-2';
   /**
    * 与侧栏「网站 → 站点」里「站点布局」选项展示一致；本集合仅作说明与预览链接，不替代站点上存储的布局值。
    */

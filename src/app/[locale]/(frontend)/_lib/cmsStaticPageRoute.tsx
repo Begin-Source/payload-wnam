@@ -2,10 +2,11 @@ import { headers } from 'next/headers.js'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
-import { AmzStaticPage } from '@/components/amz-template-1/AmzStaticPage'
+import { AmzStaticPage as Amz1StaticPage } from '@/site-layouts/amz-template-1/pages/AmzStaticPage'
+import { AmzStaticPage as Amz2StaticPage } from '@/site-layouts/amz-template-2/pages/AmzStaticPage'
 import { hreflangXDefaultUrl, isAppLocale, type AppLocale } from '@/i18n/config'
 import { getPublicBaseUrlFromHeaders, seoMetaForDocument } from '@/utilities/seoDocumentMeta'
-import { getPublicSiteContext, isAmzTemplateLayout } from '@/utilities/publicLandingTheme'
+import { getPublicSiteContext, isAmzSiteLayout, isAmzTemplate2Layout } from '@/utilities/publicLandingTheme'
 import { getPageBySlugForSite } from '@/utilities/publicSiteQueries'
 import { lexicalStateToHtml } from '@/utilities/lexicalToHtml'
 
@@ -67,8 +68,9 @@ export async function CmsStaticPageArticle(input: { locale: string; cmsSlug: str
   if (!page) notFound()
   const html = lexicalStateToHtml(page.body)
 
-  if (theme.amzSiteConfig && isAmzTemplateLayout(theme.siteLayout)) {
-    return <AmzStaticPage title={page.title} html={html} />
+  if (theme.amzSiteConfig && isAmzSiteLayout(theme.siteLayout)) {
+    const StaticCmp = isAmzTemplate2Layout(theme.siteLayout) ? Amz2StaticPage : Amz1StaticPage
+    return <StaticCmp title={page.title} html={html} />
   }
 
   return (
