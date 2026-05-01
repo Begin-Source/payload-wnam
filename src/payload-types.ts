@@ -594,6 +594,17 @@ export interface Media {
    */
   site?: (number | null) | Site;
   assetClass?: ('decorative' | 'evidence') | null;
+  /**
+   * 配图提示词。留空时生成阶段会用「Alt」走标题类 fallback；若此项像 URL，也会退回用 Alt。
+   */
+  aiImagePrompt?: string | null;
+  aiImageGenStatus?: ('idle' | 'queued' | 'running' | 'succeeded' | 'failed' | 'skipped') | null;
+  aiImageGenError?: string | null;
+  aiImageGenAt?: string | null;
+  /**
+   * 上次生成实际采用的提示来源（如 image_prompt / alt_fallback）。
+   */
+  aiImagePromptSource?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -1365,6 +1376,7 @@ export interface WorkflowJob {
     | 'draft_section'
     | 'draft_finalize'
     | 'image_generate'
+    | 'media_image_generate'
     | 'amazon_sync'
     | 'backlink_scan'
     | 'rank_track'
@@ -3137,6 +3149,11 @@ export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   site?: T;
   assetClass?: T;
+  aiImagePrompt?: T;
+  aiImageGenStatus?: T;
+  aiImageGenError?: T;
+  aiImageGenAt?: T;
+  aiImagePromptSource?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;

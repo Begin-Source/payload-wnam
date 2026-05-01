@@ -15,6 +15,13 @@ export const WorkflowJobs: CollectionConfig = {
     group: adminGroups.operations,
     useAsTitle: 'label',
     defaultColumns: ['label', 'jobType', 'matrixTemplate', 'status', 'site', 'updatedAt'],
+    components: {
+      views: {
+        list: {
+          actions: ['./components/PipelineRunNextDrawer#PipelineRunNextDrawer'],
+        },
+      },
+    },
     description:
       '矩阵模板：新建任务时可选「矩阵模板」，在 Input payload 为空时自动填入 JSON 预设（见 constants/workflowJobMatrixTemplates）。',
   },
@@ -69,6 +76,7 @@ export const WorkflowJobs: CollectionConfig = {
         { label: 'Draft section', value: 'draft_section' },
         { label: 'Draft finalize', value: 'draft_finalize' },
         { label: 'Image generate', value: 'image_generate' },
+        { label: 'Media · Together 配图', value: 'media_image_generate' },
         { label: 'Amazon sync', value: 'amazon_sync' },
         { label: 'Backlink scan', value: 'backlink_scan' },
         { label: 'Rank track', value: 'rank_track' },

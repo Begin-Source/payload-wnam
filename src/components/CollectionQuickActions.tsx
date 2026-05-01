@@ -3,6 +3,9 @@
 import { CategorySlotsQuickActionModal } from '@/components/CategorySlotsQuickActionModal'
 import { OfferMerchantSlotQuickActionModal } from '@/components/OfferMerchantSlotQuickActionModal'
 import { OfferReviewMdxQuickActionModal } from '@/components/OfferReviewMdxQuickActionModal'
+import { ArticlePipelineCatchupDrawer } from '@/components/ArticlePipelineCatchupDrawer'
+import { MediaAiImageDrawer } from '@/components/MediaAiImageDrawer'
+import { KeywordQuickWinDrawer } from '@/components/KeywordQuickWinDrawer'
 import { KeywordSyncFetchDrawer } from '@/components/KeywordSyncFetchDrawer'
 import { TrustPagesBundleQuickActionModal } from '@/components/TrustPagesBundleQuickActionModal'
 import { Button } from '@payloadcms/ui'
@@ -1563,7 +1566,12 @@ function SiteDomainQuickActionModal(): React.ReactElement {
 }
 
 export function ArticleListQuickAction(): React.ReactElement {
-  return <WorkflowQuickActionModal kind="articles" />
+  return (
+    <>
+      <ArticlePipelineCatchupDrawer />
+      <WorkflowQuickActionModal kind="articles" />
+    </>
+  )
 }
 
 export function PageListQuickAction(): React.ReactElement {
@@ -1585,7 +1593,7 @@ export function CategoryListQuickAction(): React.ReactElement {
 }
 
 export function KeywordListQuickAction(): React.ReactElement {
-  return <WorkflowQuickActionModal kind="keywords" />
+  return <KeywordQuickWinDrawer />
 }
 
 export function KeywordSyncFetchListAction(): React.ReactElement {
@@ -1611,7 +1619,11 @@ export function DesignListQuickAction(): React.ReactElement {
 }
 
 export function MediaListQuickAction(): React.ReactElement {
-  return <WorkflowQuickActionModal kind="media" />
+  return (
+    <>
+      <MediaAiImageDrawer />
+    </>
+  )
 }
 
 export function SiteListQuickAction(): React.ReactElement {

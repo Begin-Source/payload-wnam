@@ -4,7 +4,7 @@
 
 ## 成因
 
-在某次站点相关迁移里，SQLite 做过「换表」类操作：真实数据在 **`sites`**，旧数据留在备份表 **`sites_mig_old_20260629`**。若 **`pages`、`articles`、`workflow_jobs`、`categories`** 等表上的 **`site_id`（或等价列）仍声明为**
+在某次站点相关迁移里，SQLite 做过「换表」类操作：真实数据在 **`sites`**，旧数据留在备份表 **`sites_mig_old_20260629`**。若 **`pages`、`articles`、`media`、`workflow_jobs`、`categories`** 等表上的 **`site_id`（或等价列）仍声明为**
 
 ```sql
 REFERENCES "sites_mig_old_20260629"("id")
@@ -27,6 +27,7 @@ REFERENCES "sites_mig_old_20260629"("id")
 ```bash
 sqlite3 "$PATH_TO_DB" "PRAGMA foreign_key_list(pages);"
 sqlite3 "$PATH_TO_DB" "PRAGMA foreign_key_list(articles);"
+sqlite3 "$PATH_TO_DB" "PRAGMA foreign_key_list(media);"
 sqlite3 "$PATH_TO_DB" "SELECT id FROM sites ORDER BY id; SELECT COUNT(*) FROM sites_mig_old_20260629;"
 ```
 
@@ -43,6 +44,12 @@ sqlite3 "$PATH_TO_DB" "SELECT id FROM sites ORDER BY id; SELECT COUNT(*) FROM si
 3. **Cloudflare D1**：用 **`db.$client.batch([…])`** 在同一批语句里执行 `PRAGMA foreign_keys=OFF`、删旧表、`ALTER … RENAME …`、补索引、`PRAGMA foreign_keys=ON`。逐条 `await db.run()` 容易导致 PRAGMA 不落在一个连接上，不可靠。
 4. **`payload_locked_documents_rels`**：`articles_id` / `pages_id` 指向父表主键；在 **`DROP TABLE articles`**（或 `pages`）前**，若仍存在引用，即使 `foreign_keys=OFF` + batch，仍可能在某些环境下受阻。迁移内采用 **读出 → 置 NULL → 重建父表 → 恢复原 id**（行未删，`id` 不变），与安全一致。
 5. 迁移注册在 [`src/migrations/index.ts`](../../src/migrations/index.ts)，部署后执行 **`pnpm payload migrate`**。
+
+### `media` 表：`insert into media` / Together 配图
+
+- **Pipeline** `payload.create({ collection: 'media' })`（例如 [`src/app/api/pipeline/media-image-generate/route.ts`](../../src/app/api/pipeline/media-image-generate/route.ts)）若报错 **`Failed query: insert into "media"`**，仍可能是 **`media.site_id` 指向 `sites_mig_old_20260629`**（与上文同一类漂移）。
+- 先用 **`PRAGMA foreign_key_list(media)`**；若 **`site_id` 对应父表名为备份表**，应用迁移：**[`src/migrations/20260721_120000_repair_media_site_id_fk_to_sites.ts`](../../src/migrations/20260721_120000_repair_media_site_id_fk_to_sites.ts)**（逻辑与 `20260712` 对 pages/articles 相同，仅处理 `media`）。
+- 若 FK 已指向 **`sites`**，再核对 **`sites.tenant_id` 在 `tenants` 表中有对应行**；否则也会出现 **FOREIGN KEY / SQLITE_CONSTRAINT**。
 
 ## 以后写迁移时的预防
 

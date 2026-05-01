@@ -52,6 +52,7 @@ import { MediaListQuickAction as MediaListQuickAction_175e6fb4b4770cdb50ab070ca3
 import { KeywordListQuickAction as KeywordListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3 } from '../../../components/CollectionQuickActions'
 import { KeywordSyncFetchListAction as KeywordSyncFetchListAction_175e6fb4b4770cdb50ab070ca3750cb3 } from '../../../components/CollectionQuickActions'
 import { ArticleListQuickAction as ArticleListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3 } from '../../../components/CollectionQuickActions'
+import { PipelineRunNextDrawer as PipelineRunNextDrawer_07859e8b503a7687d3e47116994e494e } from '../../../components/PipelineRunNextDrawer'
 import { WatchTenantCollection as WatchTenantCollection_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
 import { SelectField as SelectField_c25bd927cd468b8e16d7bdb2cc282659 } from '@ai-stack/payloadcms/fields'
 import { PromptEditorField as PromptEditorField_c25bd927cd468b8e16d7bdb2cc282659 } from '@ai-stack/payloadcms/fields'
@@ -125,6 +126,7 @@ export const importMap = {
   "./components/CollectionQuickActions#KeywordListQuickAction": KeywordListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3,
   "./components/CollectionQuickActions#KeywordSyncFetchListAction": KeywordSyncFetchListAction_175e6fb4b4770cdb50ab070ca3750cb3,
   "./components/CollectionQuickActions#ArticleListQuickAction": ArticleListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3,
+  "./components/PipelineRunNextDrawer#PipelineRunNextDrawer": PipelineRunNextDrawer_07859e8b503a7687d3e47116994e494e,
   "@payloadcms/plugin-multi-tenant/client#WatchTenantCollection": WatchTenantCollection_1d0591e3cf4f332c83a86da13a0de59a,
   "@ai-stack/payloadcms/fields#SelectField": SelectField_c25bd927cd468b8e16d7bdb2cc282659,
   "@ai-stack/payloadcms/fields#PromptEditorField": PromptEditorField_c25bd927cd468b8e16d7bdb2cc282659,

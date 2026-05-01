@@ -62,6 +62,8 @@ import * as migration_20260716_120000_offers_amazon_dfs_snapshot from './2026071
 import * as migration_20260717_120000_offers_review_draft from './20260717_120000_offers_review_draft';
 import * as migration_20260718_120000_site_layout_amz_template_2 from './20260718_120000_site_layout_amz_template_2';
 import * as migration_20260719_120000_keywords_eligible_pipeline_amz from './20260719_120000_keywords_eligible_pipeline_amz';
+import * as migration_20260720_120000_media_ai_image_fields from './20260720_120000_media_ai_image_fields';
+import * as migration_20260721_120000_repair_media_site_id_fk_to_sites from './20260721_120000_repair_media_site_id_fk_to_sites';
 
 export const migrations = [
   {
@@ -383,5 +385,15 @@ export const migrations = [
     up: migration_20260719_120000_keywords_eligible_pipeline_amz.up,
     down: migration_20260719_120000_keywords_eligible_pipeline_amz.down,
     name: '20260719_120000_keywords_eligible_pipeline_amz',
+  },
+  {
+    up: migration_20260720_120000_media_ai_image_fields.up,
+    down: migration_20260720_120000_media_ai_image_fields.down,
+    name: '20260720_120000_media_ai_image_fields',
+  },
+  {
+    up: migration_20260721_120000_repair_media_site_id_fk_to_sites.up,
+    down: migration_20260721_120000_repair_media_site_id_fk_to_sites.down,
+    name: '20260721_120000_repair_media_site_id_fk_to_sites',
   },
 ];

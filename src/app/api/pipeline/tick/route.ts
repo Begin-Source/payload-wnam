@@ -2,11 +2,20 @@ import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
+import {
+  enqueueDraftFinalizeIfSectionsDone,
+  enqueueDraftSectionsAfterSkeleton,
+  enqueueImageGenerateIfNeeded,
+  markArticlePublishReady,
+} from '@/app/api/pipeline/lib/articlePipelineChain'
 import { enqueueDraftSkeletonAfterBriefGenerate } from '@/app/api/pipeline/lib/enqueueDraftSkeletonAfterBrief'
 import { enqueueHandoffFollowUp } from '@/app/api/pipeline/lib/enqueueHandoffFollowUp'
 import {
+  articleIdFromJob,
+  briefIdFromJob,
   dispatchWorkflowJob,
   interpretJobResponse,
+  siteIdFromJob,
   type WorkflowJobDoc,
 } from '@/app/api/pipeline/lib/workflowJobRunner'
 
@@ -187,6 +196,67 @@ export async function POST(request: Request): Promise<Response> {
           // chain enqueue is best-effort
         }
       }
+    }
+
+    try {
+      if (doc.jobType === 'draft_skeleton') {
+        const oid = outputDoc.articleId ?? outputDoc.id
+        const briefKey = briefIdFromJob(doc)
+        const s = doc.site
+        const siteNum =
+          typeof s === 'number' && Number.isFinite(s)
+            ? s
+            : typeof s === 'object' && s !== null && 'id' in s
+              ? Number((s as { id: unknown }).id)
+              : null
+        const siteParsed = siteIdFromJob(doc)
+        const siteNumeric =
+          siteNum != null && Number.isFinite(siteNum)
+            ? siteNum
+            : siteParsed && /^\d+$/.test(siteParsed)
+              ? Number(siteParsed)
+              : null
+        await enqueueDraftSectionsAfterSkeleton(payload, {
+          completedSkeletonJobId: jobId,
+          articleId: oid,
+          briefId:
+            briefKey != null ? briefKey : (doc.input as { briefId?: unknown } | undefined)?.briefId ?? null,
+          siteNumeric,
+        })
+      }
+      if (doc.jobType === 'draft_section') {
+        await enqueueDraftFinalizeIfSectionsDone(payload, doc)
+      }
+      if (doc.jobType === 'draft_finalize') {
+        await enqueueImageGenerateIfNeeded(payload, doc)
+      }
+      if (doc.jobType === 'image_generate' && outputDoc.ok === true) {
+        const fromOut = outputDoc.articleId
+        const fromOutNum =
+          typeof fromOut === 'number' && Number.isFinite(fromOut)
+            ? fromOut
+            : typeof fromOut === 'string' && /^\d+$/.test(fromOut)
+              ? Number(fromOut)
+              : null
+        const fromInput =
+          typeof doc.input === 'object' && doc.input && !Array.isArray(doc.input)
+            ? ((doc.input as { articleId?: unknown }).articleId as number | string | undefined)
+            : undefined
+        const fromInputNum =
+          typeof fromInput === 'number' && Number.isFinite(fromInput)
+            ? fromInput
+            : typeof fromInput === 'string' && /^\d+$/.test(fromInput)
+              ? Number(fromInput)
+              : null
+        const rel = articleIdFromJob(doc)
+        const relNum = rel != null && /^\d+$/.test(rel) ? Number(rel) : null
+        const oid = fromOutNum ?? fromInputNum ?? relNum
+        if (typeof oid === 'number' && Number.isFinite(oid)) {
+          await markArticlePublishReady(payload, oid)
+        }
+      }
+    } catch {
+      /* chained pipeline enqueue ignored */
     }
     return Response.json({
       ok: true,

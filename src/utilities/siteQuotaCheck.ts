@@ -88,6 +88,7 @@ export function jobTypeToSpendCategories(jobType: string): {
   if (o != null) out.openrouterUsd = o
   if (d != null) out.dfs = d
   if (jobType === 'image_generate') out.imagesUsd = 0.05
+  if (jobType === 'media_image_generate') out.imagesUsd = 0.05
   return out
 }
 

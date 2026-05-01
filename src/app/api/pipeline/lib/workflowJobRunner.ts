@@ -206,6 +206,8 @@ export async function dispatchWorkflowJob(
       if (!input.sectionId) {
         return Response.json({ error: 'input.sectionId required' }, { status: 400 })
       }
+      const aidRaw = articleIdFromJob(job)
+      const bidRaw = briefIdFromJob(job)
       return forwardPipelinePost(request, '/api/pipeline/draft-section', {
         model: typeof input.model === 'string' ? input.model : undefined,
         sectionId: String(input.sectionId),
@@ -213,22 +215,112 @@ export async function dispatchWorkflowJob(
         previousSectionSummary:
           typeof input.previousSectionSummary === 'string' ? input.previousSectionSummary : undefined,
         globalContext: typeof input.globalContext === 'string' ? input.globalContext : undefined,
+        ...(aidRaw && /^\d+$/.test(aidRaw)
+          ? { articleId: numericIfDigits(aidRaw) ?? aidRaw }
+          : typeof input.articleId === 'string' || typeof input.articleId === 'number'
+            ? { articleId: Number.isFinite(Number(input.articleId)) ? Number(input.articleId) : input.articleId }
+            : {}),
+        ...(bidRaw && /^\d+$/.test(bidRaw)
+          ? { briefId: numericIfDigits(bidRaw) ?? bidRaw }
+          : typeof input.briefId === 'string' || typeof input.briefId === 'number'
+            ? { briefId: Number.isFinite(Number(input.briefId)) ? Number(input.briefId) : input.briefId }
+            : {}),
       })
     }
     case 'draft_finalize': {
-      if (typeof input.bodyText !== 'string' || !input.bodyText.trim()) {
-        return Response.json({ error: 'input.bodyText required' }, { status: 400 })
+      const aidFin = articleIdFromJob(job)
+      const bodyTxt = typeof input.bodyText === 'string' ? input.bodyText : ''
+      const idFromRel = aidFin != null && /^\d+$/.test(aidFin) ? Number(aidFin) : null
+      const idFromInput =
+        typeof input.articleId === 'number' && Number.isFinite(input.articleId)
+          ? input.articleId
+          : typeof input.articleId === 'string' && /^\d+$/.test(input.articleId)
+            ? Number(input.articleId)
+            : null
+      const targetArticleId = idFromRel ?? idFromInput
+      if (targetArticleId != null && Number.isFinite(targetArticleId)) {
+        return forwardPipelinePost(request, '/api/pipeline/draft-finalize', {
+          articleId: targetArticleId,
+        })
       }
-      return forwardPipelinePost(request, '/api/pipeline/draft-finalize', { bodyText: input.bodyText })
+      if (!bodyTxt.trim()) {
+        return Response.json(
+          { error: 'input.bodyText or resolvable articleId required' },
+          { status: 400 },
+        )
+      }
+      return forwardPipelinePost(request, '/api/pipeline/draft-finalize', { bodyText: bodyTxt })
     }
     case 'image_generate': {
       if (typeof input.prompt !== 'string' || !input.prompt.trim()) {
         return Response.json({ error: 'input.prompt required' }, { status: 400 })
       }
       const siteNum = numericIfDigits(siteId)
+      const aidImg = articleIdFromJob(job)
+      const articleFromInput =
+        typeof input.articleId === 'number'
+          ? input.articleId
+          : typeof input.articleId === 'string' && /^\d+$/.test(input.articleId)
+            ? Number(input.articleId)
+            : undefined
+      const articleNumeric =
+        aidImg && /^\d+$/.test(aidImg) ? Number(aidImg) : articleFromInput
       return forwardPipelinePost(request, '/api/pipeline/image-generate', {
         prompt: input.prompt,
         ...(typeof siteNum === 'number' ? { siteId: siteNum } : {}),
+        ...(typeof input.siteId === 'number' && Number.isFinite(input.siteId) ? { siteId: input.siteId } : {}),
+        ...(typeof articleNumeric === 'number' && Number.isFinite(articleNumeric)
+          ? { articleId: articleNumeric }
+          : {}),
+        ...(input.asFeatured === true ? { asFeatured: true } : {}),
+      })
+    }
+    case 'media_image_generate': {
+      const mid =
+        typeof input.mediaId === 'number' && Number.isFinite(input.mediaId)
+          ? input.mediaId
+          : typeof input.mediaId === 'string' && /^\d+$/.test(input.mediaId.trim())
+            ? Number(input.mediaId.trim())
+            : null
+      const aid =
+        typeof input.articleId === 'number' && Number.isFinite(input.articleId)
+          ? input.articleId
+          : typeof input.articleId === 'string' && /^\d+$/.test(String(input.articleId).trim())
+            ? Number(String(input.articleId).trim())
+            : null
+      const pid =
+        typeof input.pageId === 'number' && Number.isFinite(input.pageId)
+          ? input.pageId
+          : typeof input.pageId === 'string' && /^\d+$/.test(String(input.pageId).trim())
+            ? Number(String(input.pageId).trim())
+            : null
+      const modes = [mid != null, aid != null, pid != null].filter(Boolean).length
+      if (modes !== 1) {
+        return Response.json(
+          { error: 'input must set exactly one of mediaId, articleId, pageId' },
+          { status: 400 },
+        )
+      }
+      const siteNum = numericIfDigits(siteId)
+      const siteFromInput =
+        typeof input.siteId === 'number' && Number.isFinite(input.siteId) ? input.siteId : undefined
+      const siteMerged =
+        typeof siteNum === 'number' ? siteNum : siteFromInput != null ? siteFromInput : undefined
+      if (mid != null) {
+        return forwardPipelinePost(request, '/api/pipeline/media-image-generate', {
+          mediaId: mid,
+          ...(typeof siteMerged === 'number' ? { siteId: siteMerged } : {}),
+        })
+      }
+      if (aid != null) {
+        return forwardPipelinePost(request, '/api/pipeline/media-image-generate', {
+          articleId: aid,
+          ...(typeof siteMerged === 'number' ? { siteId: siteMerged } : {}),
+        })
+      }
+      return forwardPipelinePost(request, '/api/pipeline/media-image-generate', {
+        pageId: pid,
+        ...(typeof siteMerged === 'number' ? { siteId: siteMerged } : {}),
       })
     }
     case 'amazon_sync': {
