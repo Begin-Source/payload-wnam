@@ -13,23 +13,113 @@ export type NormalizedKeywordRow = {
   trend: unknown | null
 }
 
-type DfsKeywordResult = {
-  keyword?: string
+type KeywordInfoPayload = {
   search_volume?: number
-  keyword_difficulty?: number
-  search_intent?: string
-  cpc?: number
+  cpc?: number | null
   monthly_searches?: unknown
+} | null
+
+type LabsKeywordBlob = {
+  keyword?: string
+  keyword_info?: KeywordInfoPayload
+  keyword_properties?: { keyword_difficulty?: number | null } | null
+  search_intent_info?: { main_intent?: string | null } | null
 }
 
-type DfsTaskBlock = {
-  results?: DfsKeywordResult[]
+type LabsResultSlice = LabsKeywordBlob & {
+  seed_keyword?: string
+  seed_keyword_data?: LabsKeywordBlob | null
+  items?: LabsKeywordBlob[] | null
+}
+
+type DfsLabsEnvelope = {
+  status_code?: number
+  status_message?: string
+  tasks?: Array<{
+    status_code?: number
+    status_message?: string
+    result?: LabsResultSlice[] | null
+  } | null>
+}
+
+const LABS_PATH = '/v3/dataforseo_labs/google/keyword_suggestions/live'
+
+function throwIfBadStatus(kind: string, code: unknown, message?: string): void {
+  if (code !== 20000) {
+    const msg = typeof message === 'string' && message.trim() ? message.trim() : 'Unknown error'
+    throw new Error(`${kind}: ${code} — ${msg}`)
+  }
+}
+
+function mapLabsKeywordBlob(
+  row: LabsKeywordBlob,
+  fallbackTerm?: string,
+): NormalizedKeywordRow | null {
+  const term = String(row.keyword ?? fallbackTerm ?? '').trim()
+  if (!term) return null
+
+  const ki = row.keyword_info
+  const volume = Number(ki?.search_volume ?? 0)
+  const kdRaw = row.keyword_properties?.keyword_difficulty
+  const kd = kdRaw != null && Number.isFinite(Number(kdRaw)) ? Number(kdRaw) : 0
+  const intent = normalizeKeywordIntent(row.search_intent_info?.main_intent)
+
+  let cpc: number | null = null
+  const cRaw = ki?.cpc
+  if (cRaw != null && cRaw !== undefined) {
+    const n = typeof cRaw === 'number' ? cRaw : Number(cRaw)
+    if (Number.isFinite(n)) cpc = n
+  }
+
+  return {
+    term,
+    volume,
+    kd,
+    intent,
+    cpc,
+    trend: ki?.monthly_searches ?? null,
+  }
 }
 
 /**
- * Wraps DataForSEO `keywords_for_keywords/live` for one or more seed terms; merges and dedupes by term (case-folded).
+ * Parses DataForSEO Labs `keyword_suggestions/live`: tasks[0].result[] may attach
+ * `seed_keyword_data` + KD/intent at the slice level and/or an `items` list for suggestions.
  */
-export async function fetchKeywordsForKeywordsLive(args: {
+function collectNormalizedFromResult(
+  result: LabsResultSlice[] | null | undefined,
+): NormalizedKeywordRow[] {
+  const out: NormalizedKeywordRow[] = []
+  const slices = Array.isArray(result) ? result : []
+
+  for (const part of slices) {
+    const seedFall = typeof part.seed_keyword === 'string' ? part.seed_keyword : undefined
+
+    if (part.seed_keyword_data && typeof part.seed_keyword_data.keyword === 'string') {
+      const merged: LabsKeywordBlob = {
+        keyword: part.seed_keyword_data.keyword,
+        keyword_info: part.seed_keyword_data.keyword_info ?? undefined,
+        keyword_properties: part.keyword_properties ?? part.seed_keyword_data.keyword_properties,
+        search_intent_info: part.search_intent_info ?? part.seed_keyword_data.search_intent_info,
+      }
+      const row = mapLabsKeywordBlob(merged, seedFall)
+      if (row) out.push(row)
+    }
+
+    const items = Array.isArray(part.items) ? part.items : []
+    for (const item of items) {
+      const row = mapLabsKeywordBlob(item, seedFall)
+      if (row) out.push(row)
+    }
+  }
+
+  return out
+}
+
+/**
+ * DataForSEO Labs Keyword Suggestions (live): returns related keywords with search volume,
+ * keyword difficulty, CPC, monthly trend, and main search intent — suitable for AMZ eligibility.
+ */
+export async function fetchKeywordSuggestionsLive(args: {
   seeds: string[]
   locationCode: number
   languageCode: string
@@ -40,41 +130,44 @@ export async function fetchKeywordsForKeywordsLive(args: {
   const cleanSeeds = seeds.map((s) => s.trim()).filter(Boolean)
   if (cleanSeeds.length === 0 || limitTotal <= 0) return []
 
-  const perSeed = Math.max(16, Math.ceil(limitTotal / cleanSeeds.length))
+  const perSeedCap = Math.max(16, Math.ceil(limitTotal / cleanSeeds.length))
+  const dfsLimit = Math.min(1000, perSeedCap)
   const byTerm = new Map<string, NormalizedKeywordRow>()
 
   for (const seed of cleanSeeds) {
-    const dfs = await dataForSeoPost<DfsTaskBlock[]>(
-      '/v3/keywords_data/google_ads/keywords_for_keywords/live',
-      [{ language_code: languageCode, location_code: locationCode, keywords: [seed] }],
+    const dfs = await dataForSeoPost<DfsLabsEnvelope>(
+      LABS_PATH,
+      [
+        {
+          keyword: seed,
+          location_code: locationCode,
+          language_code: languageCode,
+          limit: dfsLimit,
+          include_seed_keyword: true,
+          include_serp_info: false,
+        },
+      ],
       { signal },
     )
-    const first = Array.isArray(dfs) ? dfs[0] : undefined
-    const list = Array.isArray(first?.results) ? first.results : []
 
-    for (const r of list.slice(0, perSeed)) {
-      const term = String(r.keyword ?? seed).trim()
-      if (!term) continue
-      const key = term.toLowerCase()
+    throwIfBadStatus('DataForSEO', dfs.status_code, dfs.status_message)
+
+    const task = dfs.tasks?.[0]
+    if (!task) {
+      throw new Error('DataForSEO: no tasks in Labs response')
+    }
+    throwIfBadStatus(
+      `DataForSEO task[0]`,
+      task.status_code,
+      task.status_message ?? undefined,
+    )
+
+    const rows = collectNormalizedFromResult(task.result ?? undefined)
+
+    for (const r of rows.slice(0, dfsLimit)) {
+      const key = r.term.toLowerCase()
       if (byTerm.has(key)) continue
-
-      const volume = Number(r.search_volume ?? 0)
-      const kd = Number(r.keyword_difficulty ?? 0)
-      const intent = normalizeKeywordIntent(r.search_intent)
-      let cpc: number | null = null
-      if (r.cpc != null) {
-        const n = typeof r.cpc === 'number' ? r.cpc : Number(r.cpc)
-        if (Number.isFinite(n)) cpc = n
-      }
-
-      byTerm.set(key, {
-        term,
-        volume,
-        kd,
-        intent,
-        cpc,
-        trend: r.monthly_searches ?? null,
-      })
+      byTerm.set(key, r)
       if (byTerm.size >= limitTotal) break
     }
     if (byTerm.size >= limitTotal) break

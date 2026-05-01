@@ -327,8 +327,9 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
               同步拉取 · DataForSEO（关键词）
             </h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
-              按站点写入 <code>keywords</code>（status=draft），并按「SEO 流水线」中的 AMZ 资格 JSON
-              打 <code>eligible</code>。数据来自 DataForSEO keywords_for_keywords/live。
+              按站点写入 <code>keywords</code>（status=draft），并按「SEO 流水线」中的 AMZ 资格 JSON 打{' '}
+              <code>eligible</code>
+              。数据来自 DataForSEO Labs Keyword Suggestions（含 KD / intent）。
             </p>
 
             {error ? (

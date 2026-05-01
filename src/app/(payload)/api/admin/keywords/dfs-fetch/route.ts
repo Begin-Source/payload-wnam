@@ -6,7 +6,7 @@ import {
   AMZ_DEFAULT_LANGUAGE_CODE,
   AMZ_DEFAULT_LOCATION_CODE,
 } from '@/services/integrations/dataforseo/amzDefaults'
-import { fetchKeywordsForKeywordsLive } from '@/services/integrations/dataforseo/keywords'
+import { fetchKeywordSuggestionsLive } from '@/services/integrations/dataforseo/keywords'
 import type { Config } from '@/payload-types'
 import { isUsersCollection } from '@/utilities/announcementAccess'
 import {
@@ -121,6 +121,12 @@ export async function POST(request: Request): Promise<Response> {
   if (!siteAccessible(scope, siteTenantId)) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
+  if (siteTenantId == null) {
+    return Response.json(
+      { error: '所选站点未关联租户，无法创建关键词' },
+      { status: 400 },
+    )
+  }
 
   const ps = await payload.findGlobal({
     slug: 'pipeline-settings',
@@ -179,9 +185,9 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
-  let normalized: Awaited<ReturnType<typeof fetchKeywordsForKeywordsLive>>
+  let normalized: Awaited<ReturnType<typeof fetchKeywordSuggestionsLive>>
   try {
-    normalized = await fetchKeywordsForKeywordsLive({
+    normalized = await fetchKeywordSuggestionsLive({
       seeds,
       locationCode,
       languageCode,
@@ -255,6 +261,7 @@ export async function POST(request: Request): Promise<Response> {
     const data = {
       term: row.term,
       slug,
+      tenant: siteTenantId,
       site: siteId,
       status: 'draft' as const,
       volume: row.volume,
