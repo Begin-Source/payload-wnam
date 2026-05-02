@@ -55,3 +55,10 @@ node_modules/
 .open-next
 .wrangler
 .dev.vars
+
+# Local-only exports (D1 dumps, exported automation workflows at repo root)
+/remote-d1.sql
+/remote-d1-import.sql
+/Guides _ Generate Featured Image (Together + R2).json
+/Products _ Executor _ Generate Review MDX.json
+/Sites _ Executor _ Generate  Template Design (1).json
