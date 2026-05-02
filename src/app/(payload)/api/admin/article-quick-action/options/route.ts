@@ -16,6 +16,7 @@ type SiteOption = {
   slug: string
   primaryDomain: string
   mainProduct?: string | null
+  siteLayout?: string | null
 }
 
 type CategoryOption = {
@@ -25,7 +26,7 @@ type CategoryOption = {
   description: string | null
   /** 1–5 槽位分类；空为手工分类 */
   slotIndex?: number | null
-  kind?: 'article' | 'guide' | null
+  kind?: 'article' | 'guide' | 'review' | null
 }
 
 function tenantIdFromRelation(
@@ -99,7 +100,10 @@ export async function GET(request: Request): Promise<Response> {
     })
 
     const categories: CategoryOption[] = result.docs.map((doc) => {
-      const row = doc as typeof doc & { slotIndex?: number | null; kind?: 'article' | 'guide' | null }
+      const row = doc as typeof doc & {
+        slotIndex?: number | null
+        kind?: 'article' | 'guide' | 'review' | null
+      }
       return {
         id: doc.id,
         name: doc.name,
@@ -135,13 +139,17 @@ export async function GET(request: Request): Promise<Response> {
   })
 
   const sites: SiteOption[] = result.docs.map((doc) => {
-    const row = doc as typeof doc & { mainProduct?: string | null }
+    const row = doc as typeof doc & {
+      mainProduct?: string | null
+      siteLayout?: string | null
+    }
     return {
       id: doc.id,
       name: doc.name,
       slug: doc.slug,
       primaryDomain: doc.primaryDomain,
       mainProduct: row.mainProduct ?? null,
+      siteLayout: row.siteLayout ?? null,
     }
   })
 

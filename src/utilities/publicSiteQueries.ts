@@ -4,6 +4,7 @@ import { getPayload, type Payload } from 'payload'
 
 import config from '@/payload.config'
 import type { Article, Author, Category, Media, Offer, Page } from '@/payload-types'
+import { getStrictListingArticlesWhereForCategoryKind } from '@/utilities/reviewsListingArticleWhere'
 
 /**
  * Public article/page fetch — `select` shapes for `@payloadcms/db-d1-sqlite`.
@@ -33,6 +34,7 @@ const categoryPublicSelect = {
   slug: true,
   description: true,
   kind: true,
+  coverImage: mediaPublicSelect,
 } as const
 
 const authorPublicSelect = {
@@ -164,7 +166,7 @@ export const getNavCategoriesForSite = cache(
       where: { site: { equals: siteId } },
       limit,
       sort: 'name',
-      depth: 0,
+      depth: 1,
       overrideAccess: true,
     })
     return res.docs as Category[]
@@ -199,6 +201,11 @@ export const getPublishedArticlesForSite = cache(
 export const getPublishedArticlesForReviewsListing = cache(
   async (siteId: number, locale: string, limit = 96): Promise<Article[]> => {
     const payload = await getPayload({ config: await config })
+    const listingClause = await getStrictListingArticlesWhereForCategoryKind(
+      payload,
+      siteId,
+      'review',
+    )
     const res = await payload.find({
       collection: 'articles',
       where: {
@@ -206,12 +213,44 @@ export const getPublishedArticlesForReviewsListing = cache(
           { status: { equals: 'published' } },
           { site: { equals: siteId } },
           { locale: { equals: locale } },
+          listingClause,
         ],
       },
       sort: '-publishedAt',
       limit,
       depth: 1,
       select: articleReviewsListSelect,
+      overrideAccess: true,
+    })
+    const docs = res.docs as Article[]
+    await mergeAuthorHeadshots(payload, docs)
+    return docs
+  },
+)
+
+/** Guides listing: articles must relate to at least one `kind === 'guide'` category for this site. */
+export const getPublishedArticlesForGuidesListing = cache(
+  async (siteId: number, locale: string, limit = 96): Promise<Article[]> => {
+    const payload = await getPayload({ config: await config })
+    const listingClause = await getStrictListingArticlesWhereForCategoryKind(
+      payload,
+      siteId,
+      'guide',
+    )
+    const res = await payload.find({
+      collection: 'articles',
+      where: {
+        and: [
+          { status: { equals: 'published' } },
+          { site: { equals: siteId } },
+          { locale: { equals: locale } },
+          listingClause,
+        ],
+      },
+      sort: '-publishedAt',
+      limit,
+      depth: 1,
+      select: articlePublicSelect,
       overrideAccess: true,
     })
     const docs = res.docs as Article[]

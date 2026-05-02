@@ -375,6 +375,14 @@ export interface Site {
    */
   siteLayout?: ('template1' | 'template2' | 'amz-template-1' | 'amz-template-2') | null;
   /**
+   * Together「站点首页横幅」或手工上传：宽屏横幅背景（amz-template-1 / 2 首页 Hero）。需在对应站点设计里配置文案。
+   */
+  homepageHeroBanner?: (number | null) | Media;
+  /**
+   * 正方形品牌标：AMZ Shell 顶栏与浏览器标签图标共用同一媒体；可用 Together「站点 Logo」生成。
+   */
+  siteLogo?: (number | null) | Media;
+  /**
    * Users who operate this site (optional; tenant scoping still applies).
    */
   operators?: (number | User)[] | null;
@@ -415,6 +423,40 @@ export interface Site {
   notes?: string | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  alt: string;
+  /**
+   * 新建必填；旧数据可暂为空后再补全。
+   */
+  site?: (number | null) | Site;
+  assetClass?: ('decorative' | 'evidence') | null;
+  /**
+   * 配图提示词。留空时生成阶段会用「Alt」走标题类 fallback；若此项像 URL，也会退回用 Alt。
+   */
+  aiImagePrompt?: string | null;
+  aiImageGenStatus?: ('idle' | 'queued' | 'running' | 'succeeded' | 'failed' | 'skipped') | null;
+  aiImageGenError?: string | null;
+  aiImageGenAt?: string | null;
+  /**
+   * 上次生成实际采用的提示来源（如 image_prompt / alt_fallback）。
+   */
+  aiImagePromptSource?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -583,40 +625,6 @@ export interface SiteBlueprint {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
- */
-export interface Media {
-  id: number;
-  tenant?: (number | null) | Tenant;
-  alt: string;
-  /**
-   * 新建必填；旧数据可暂为空后再补全。
-   */
-  site?: (number | null) | Site;
-  assetClass?: ('decorative' | 'evidence') | null;
-  /**
-   * 配图提示词。留空时生成阶段会用「Alt」走标题类 fallback；若此项像 URL，也会退回用 Alt。
-   */
-  aiImagePrompt?: string | null;
-  aiImageGenStatus?: ('idle' | 'queued' | 'running' | 'succeeded' | 'failed' | 'skipped') | null;
-  aiImageGenError?: string | null;
-  aiImageGenAt?: string | null;
-  /**
-   * 上次生成实际采用的提示来源（如 image_prompt / alt_fallback）。
-   */
-  aiImagePromptSource?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-layouts".
  */
 export interface SiteLayout {
@@ -654,9 +662,9 @@ export interface Category {
   name: string;
   slug: string;
   /**
-   * amz-template-1：Guides 顶部 chip 只用 kind=指南 的分类；Reviews/首页仍用全部分类。
+   * Guides：`kind=指南` 仅用于 Guides 顶部 chip；Reviews 列表会自动排除只属于指南分类的文章。`kind=评测` 与一般文章一样参与 Reviews，仅作语义区分。
    */
-  kind?: ('article' | 'guide') | null;
+  kind?: ('article' | 'guide' | 'review') | null;
   /**
    * 新建必填；旧数据可暂为空后再补全。
    */
@@ -681,6 +689,10 @@ export interface Category {
    */
   merchantOfferFetchLastSummary?: string | null;
   description?: string | null;
+  /**
+   * 首页 / Products 分类卡封面；也可用「Together 分类封面」快捷批量生成。
+   */
+  coverImage?: (number | null) | Media;
   updatedAt: string;
   createdAt: string;
 }
@@ -1370,6 +1382,7 @@ export interface WorkflowJob {
     | 'ai_generate'
     | 'custom'
     | 'keyword_discover'
+    | 'keyword_cluster'
     | 'serp_audit'
     | 'brief_generate'
     | 'draft_skeleton'
@@ -1377,6 +1390,9 @@ export interface WorkflowJob {
     | 'draft_finalize'
     | 'image_generate'
     | 'media_image_generate'
+    | 'category_cover_generate'
+    | 'hero_banner_generate'
+    | 'site_logo_generate'
     | 'amazon_sync'
     | 'backlink_scan'
     | 'rank_track'
@@ -2898,6 +2914,8 @@ export interface SitesSelect<T extends boolean = true> {
   status?: T;
   portfolio?: T;
   siteLayout?: T;
+  homepageHeroBanner?: T;
+  siteLogo?: T;
   operators?: T;
   mainProduct?: T;
   nicheData?: T;
@@ -2997,6 +3015,7 @@ export interface CategoriesSelect<T extends boolean = true> {
   merchantOfferFetchLastBatchId?: T;
   merchantOfferFetchLastSummary?: T;
   description?: T;
+  coverImage?: T;
   updatedAt?: T;
   createdAt?: T;
 }

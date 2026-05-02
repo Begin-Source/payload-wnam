@@ -180,6 +180,53 @@ export async function dispatchWorkflowJob(
       }
       return forwardPipelinePost(request, '/api/pipeline/serp-audit', { q })
     }
+    case 'keyword_cluster': {
+      const fromRelSite = numericIfDigits(siteId)
+      const sid =
+        typeof fromRelSite === 'number'
+          ? fromRelSite
+          : typeof input.siteId === 'number' && Number.isFinite(input.siteId)
+            ? input.siteId
+            : typeof input.siteId === 'string' && /^\d+$/.test(input.siteId.trim())
+              ? Number(input.siteId.trim())
+              : null
+      if (sid == null || !Number.isFinite(sid)) {
+        return Response.json(
+          { error: 'siteId required (job.site relation or numeric input.siteId)' },
+          { status: 400 },
+        )
+      }
+      const rawK = input.keywordIds
+      const keywordIds: number[] = []
+      if (Array.isArray(rawK)) {
+        for (const x of rawK) {
+          const n = typeof x === 'number' ? x : Number(x)
+          if (Number.isFinite(n)) keywordIds.push(Math.floor(n))
+        }
+      }
+      if (keywordIds.length === 0) {
+        return Response.json({ error: 'input.keywordIds required (non-empty number[])' }, { status: 400 })
+      }
+      const quota = await checkPipelineSpendForJob(payload, sid, 'keyword_cluster')
+      if (!quota.ok) {
+        return Response.json({ ok: false, error: 'quota_exceeded', message: quota.message })
+      }
+      const mo =
+        typeof input.minOverlap === 'number'
+          ? input.minOverlap
+          : typeof input.minOverlap === 'string'
+            ? Number(input.minOverlap)
+            : Number.NaN
+      const minOverlap = Number.isFinite(mo)
+        ? Math.min(6, Math.max(2, Math.floor(mo)))
+        : 3
+      return forwardPipelinePost(request, '/api/pipeline/keyword-cluster', {
+        siteId: sid,
+        keywordIds,
+        minOverlap,
+        ...(input.refresh === true ? { refresh: true } : {}),
+      })
+    }
     case 'brief_generate': {
       const kid = keywordIdFromJob(job)
       if (!kid) {
@@ -321,6 +368,73 @@ export async function dispatchWorkflowJob(
       return forwardPipelinePost(request, '/api/pipeline/media-image-generate', {
         pageId: pid,
         ...(typeof siteMerged === 'number' ? { siteId: siteMerged } : {}),
+      })
+    }
+    case 'category_cover_generate': {
+      const cid =
+        typeof input.categoryId === 'number' && Number.isFinite(input.categoryId)
+          ? Math.floor(input.categoryId)
+          : typeof input.categoryId === 'string' && /^\d+$/.test(input.categoryId.trim())
+            ? Number(input.categoryId.trim())
+            : null
+      if (cid == null) {
+        return Response.json({ error: 'input.categoryId required' }, { status: 400 })
+      }
+      const siteNum = numericIfDigits(siteId)
+      const siteFromInput =
+        typeof input.siteId === 'number' && Number.isFinite(input.siteId) ? input.siteId : undefined
+      const siteMerged =
+        typeof siteNum === 'number' ? siteNum : siteFromInput != null ? siteFromInput : undefined
+      return forwardPipelinePost(request, '/api/pipeline/category-cover-generate', {
+        categoryId: cid,
+        ...(typeof siteMerged === 'number' ? { siteId: siteMerged } : {}),
+        ...(typeof input.prompt === 'string' && input.prompt.trim() ? { prompt: input.prompt.trim() } : {}),
+      })
+    }
+    case 'hero_banner_generate': {
+      const sid =
+        typeof input.siteId === 'number' && Number.isFinite(input.siteId)
+          ? Math.floor(input.siteId)
+          : typeof input.siteId === 'string' && /^\d+$/.test(input.siteId.trim())
+            ? Number(input.siteId.trim())
+            : null
+      const fromJobSite = numericIfDigits(siteId)
+      const siteMerged =
+        sid != null && Number.isFinite(sid) ? sid : typeof fromJobSite === 'number' ? fromJobSite : null
+      if (siteMerged == null || !Number.isFinite(siteMerged)) {
+        return Response.json(
+          { error: 'siteId required (job.site relation or numeric input.siteId)' },
+          { status: 400 },
+        )
+      }
+      return forwardPipelinePost(request, '/api/pipeline/site-hero-banner-generate', {
+        siteId: siteMerged,
+        ...(typeof input.prompt === 'string' && input.prompt.trim()
+          ? { prompt: input.prompt.trim() }
+          : {}),
+      })
+    }
+    case 'site_logo_generate': {
+      const sid =
+        typeof input.siteId === 'number' && Number.isFinite(input.siteId)
+          ? Math.floor(input.siteId)
+          : typeof input.siteId === 'string' && /^\d+$/.test(input.siteId.trim())
+            ? Number(input.siteId.trim())
+            : null
+      const fromJobSite = numericIfDigits(siteId)
+      const siteMerged =
+        sid != null && Number.isFinite(sid) ? sid : typeof fromJobSite === 'number' ? fromJobSite : null
+      if (siteMerged == null || !Number.isFinite(siteMerged)) {
+        return Response.json(
+          { error: 'siteId required (job.site relation or numeric input.siteId)' },
+          { status: 400 },
+        )
+      }
+      return forwardPipelinePost(request, '/api/pipeline/site-logo-generate', {
+        siteId: siteMerged,
+        ...(typeof input.prompt === 'string' && input.prompt.trim()
+          ? { prompt: input.prompt.trim() }
+          : {}),
       })
     }
     case 'amazon_sync': {

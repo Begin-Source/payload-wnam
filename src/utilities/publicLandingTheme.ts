@@ -8,6 +8,8 @@ import { getRequestHost } from '@/utilities/normalizeRequestHost'
 import { resolveSiteForLanding } from '@/utilities/resolveSiteForLanding'
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import { mergeAmzSiteConfigFromRaw } from '@/site-layouts/amz-template-1/mergeAmzSiteConfig'
+import { applyHeroBannerToAmzSiteConfig, publicUrlFromSiteHeroBanner } from '@/utilities/heroBannerMedia'
+import { applySiteLogoToAmzSiteConfig, publicUrlFromSiteLogo } from '@/utilities/siteLogoMedia'
 import { mergeTemplate1Layers, type Template1Theme } from '@/utilities/publicLandingTemplate1'
 
 export type LandingFontPreset = 'system' | 'serif' | 'noto_sans_sc'
@@ -127,6 +129,8 @@ export type PublicSiteTheme = LandingTheme &
     template1: Template1Theme
     /** `amz-template-1` / `amz-template-2`：设计 amzSiteConfigJson 与默认 deep merge 后的站点壳配置。 */
     amzSiteConfig?: AmzSiteConfig
+    /** Public URL for `sites.siteLogo` — header (AMZ) + `generateMetadata` icons when set。 */
+    siteLogoUrl?: string
   }
 
 const BLOG_DEFAULTS: BlogChromeTheme = {
@@ -312,7 +316,13 @@ export function mergePublicSiteTheme(
     : sl === 'template2'
       ? mergeTemplate1Layers(design?.t2LocaleJson, null)
       : mergeTemplate1Layers(design?.t1LocaleJson, null)
-  const amzSiteConfig = amzSl ? mergeAmzSiteConfigFromRaw(design?.amzSiteConfigJson) : undefined
+  let amzSiteConfig = amzSl ? mergeAmzSiteConfigFromRaw(design?.amzSiteConfigJson) : undefined
+  const siteLogoUrl = publicUrlFromSiteLogo(site)
+  if (amzSl && amzSiteConfig != null && site != null) {
+    const bannerUrl = publicUrlFromSiteHeroBanner(site)
+    amzSiteConfig = applyHeroBannerToAmzSiteConfig(amzSiteConfig, bannerUrl)
+    amzSiteConfig = applySiteLogoToAmzSiteConfig(amzSiteConfig, siteLogoUrl)
+  }
   const landingForTheme =
     amzSl && amzSiteConfig
       ? {
@@ -334,6 +344,7 @@ export function mergePublicSiteTheme(
     footerResourceLinks: footerResourceLinksFromDesign(design),
     template1: template1Theme,
     amzSiteConfig,
+    ...(siteLogoUrl ? { siteLogoUrl } : {}),
   }
 }
 

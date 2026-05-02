@@ -31,6 +31,12 @@ export function AmzSiteHeader({ locale, config }: { locale: AppLocale; config: A
     }
   }
 
+  const { logo: brandLogoMark } = config.brand
+  const rasterLogoMark =
+    brandLogoMark.type === 'image' &&
+    typeof brandLogoMark.imagePath === 'string' &&
+    !!brandLogoMark.imagePath.trim()
+
   const renderLogo = () => {
     const { logo } = config.brand
     const logoType = logo.type as 'lucide' | 'svg' | 'image'
@@ -61,7 +67,16 @@ export function AmzSiteHeader({ locale, config }: { locale: AppLocale; config: A
     }
 
     if (logoType === 'image' && logo.imagePath) {
-      return <img src={logo.imagePath} alt={config.brand.name} className="h-6 w-6" />
+      return (
+        // CDN / tenant R2 URLs; avoid next/image remotePatterns drift for brand mark
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={logo.imagePath}
+          alt={config.brand.name}
+          className="block size-full max-h-10 max-w-10 object-contain"
+          decoding="async"
+        />
+      )
     }
 
     return (
@@ -86,7 +101,13 @@ export function AmzSiteHeader({ locale, config }: { locale: AppLocale; config: A
         <div className="flex h-16 items-center">
           <div className="flex flex-1 flex-shrink-0 lg:flex-1">
             <AmzLink href={amzNavHref(locale, '/')} className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+              <div
+                className={
+                  rasterLogoMark
+                    ? 'flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg'
+                    : 'flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary'
+                }
+              >
                 {renderLogo()}
               </div>
               <div className="hidden sm:block">

@@ -71,6 +71,7 @@ const EST_OPENROUTER_USD: Partial<Record<string, number>> = {
 
 const EST_DFS_UNITS: Partial<Record<string, number>> = {
   keyword_discover: 2,
+  keyword_cluster: 10,
   rank_track: 1,
   serp_audit: 1,
   backlink_scan: 3,
@@ -89,6 +90,9 @@ export function jobTypeToSpendCategories(jobType: string): {
   if (d != null) out.dfs = d
   if (jobType === 'image_generate') out.imagesUsd = 0.05
   if (jobType === 'media_image_generate') out.imagesUsd = 0.05
+  if (jobType === 'category_cover_generate') out.imagesUsd = 0.05
+  if (jobType === 'hero_banner_generate') out.imagesUsd = 0.05
+  if (jobType === 'site_logo_generate') out.imagesUsd = 0.05
   return out
 }
 

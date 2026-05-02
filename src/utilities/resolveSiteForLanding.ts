@@ -22,7 +22,7 @@ async function findSiteBySlug(payload: Payload, slug: string): Promise<Site | nu
       and: [{ slug: { equals: slug } }, { status: { equals: 'active' } }],
     },
     limit: 10,
-    depth: 0,
+    depth: 1,
     select: publicSiteThemeSelectWithoutT1,
     overrideAccess: true,
   })
@@ -37,7 +37,7 @@ async function findSiteBySlug(payload: Payload, slug: string): Promise<Site | nu
     collection: 'sites',
     where: { slug: { equals: slug } },
     limit: 10,
-    depth: 0,
+    depth: 1,
     select: publicSiteThemeSelectWithoutT1,
     overrideAccess: true,
   })
@@ -59,7 +59,7 @@ async function findSiteByPrimaryDomain(payload: Payload, canonicalHost: string):
       and: [{ or: orClause }, { status: { equals: 'active' } }],
     },
     limit: 10,
-    depth: 0,
+    depth: 1,
     select: publicSiteThemeSelectWithoutT1,
     overrideAccess: true,
   })
@@ -78,7 +78,7 @@ async function findSiteByPrimaryDomain(payload: Payload, canonicalHost: string):
     collection: 'sites',
     where: { or: orClause },
     limit: 10,
-    depth: 0,
+    depth: 1,
     select: publicSiteThemeSelectWithoutT1,
     overrideAccess: true,
   })

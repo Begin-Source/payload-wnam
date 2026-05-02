@@ -158,7 +158,8 @@ export const defaultAmzSiteConfig = {
   // ==================== 首页内容配置 ====================
   // 首页各个区域的文案和内容
   homepage: {
-    // Hero 区域（首屏大标题区域）
+    // Hero 区域（首屏大标题区域）。
+    // bannerImage：公开页由 mergePublicSiteTheme 从 sites.homepageHeroBanner 注入 CDN URL（勿手写进设计 JSON）。
     hero: {
       // 主标题
       title: "Hero Title",

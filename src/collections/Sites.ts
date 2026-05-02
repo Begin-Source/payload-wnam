@@ -111,6 +111,28 @@ export const Sites: CollectionConfig = {
       },
     },
     {
+      name: 'homepageHeroBanner',
+      type: 'upload',
+      relationTo: 'media',
+      label: '首页 Hero 横幅',
+      admin: {
+        position: 'sidebar',
+        description:
+          'Together「站点首页横幅」或手工上传：宽屏横幅背景（amz-template-1 / 2 首页 Hero）。需在对应站点设计里配置文案。',
+      },
+    },
+    {
+      name: 'siteLogo',
+      type: 'upload',
+      relationTo: 'media',
+      label: '站点 Logo / 浏览器图标',
+      admin: {
+        position: 'sidebar',
+        description:
+          '正方形品牌标：AMZ Shell 顶栏与浏览器标签图标共用同一媒体；可用 Together「站点 Logo」生成。',
+      },
+    },
+    {
       name: 'operators',
       type: 'relationship',
       relationTo: 'users',

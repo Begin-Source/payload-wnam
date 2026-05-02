@@ -6,6 +6,7 @@ import {
   mergePatchOntoAmzConfig,
 } from '@/site-layouts/amz-template-1/mergeAmzSiteConfig'
 import { openrouterChat } from '@/services/integrations/openrouter/chat'
+import { coerceBrandLogoLucideForNiche } from '@/utilities/amzNicheLucideIcon'
 import { parseRelationshipId } from '@/utilities/parseRelationshipId'
 import {
   checkPipelineSpendForJob,
@@ -125,7 +126,9 @@ function buildSystemPrompt(): string {
     '6) Update brand, theme, SEO, hero, homepage copy (except locked category items), pages (except guides.categories), footer.about text, copyright, affiliateNotice, etc. to match main product + niche.',
     '7) Only use keys that exist in typical siteConfig shape; prefer partial objects for deep merge.',
     '8) Canonical identity: brand.name must equal canonical_site_name when non-empty; seo.siteUrl must be https://<canonical_site_domain> when domain non-empty — server enforces after merge.',
-    '9) Return a single JSON object.',
+    '9) Brand logo (header + favicon): include brand.logo. Unless you deliberately use an uploaded raster mark, brand.logo.type must be "lucide". brand.logo.icon must be a real lucide-react PascalCase export (https://lucide.dev/icons/) semantically aligned with Main product + niche JSON — never a meaningless token.',
+    '   Forbidden generic placeholders for icon: Image, Globe, Circle, Box. When uncertain, prefer a broader vertical icon (for example Activity for fitness/wellness) instead of Image.',
+    '10) Return a single JSON object.',
   ].join('\n')
 }
 
@@ -146,6 +149,7 @@ function buildUserPrompt(args: {
     'Current merged siteConfig (JSON):\n' + args.currentConfigJson,
     '',
     'Produce the JSON patch/object to merge. Respect locked lists (omit navigation.main, footer.resources, footer.legal, homepage.categories.items, pages.guides.categories). English copy only.',
+    'For brand.logo: use type "lucide" unless providing a deliberate raster logo; set icon to one specific PascalCase Lucide name that reflects the niche and Main product stated above.',
   ].join('\n')
 }
 
@@ -429,6 +433,7 @@ export async function runAmzTemplateDesignForBlueprint(
 
   let merged = mergePatchOntoAmzConfig(ctx.current, patch)
   merged = reapplyLockedSlices(ctx.current, merged)
+  coerceBrandLogoLucideForNiche(merged, ctx.mainProduct, ctx.site.nicheData, ctx.canonicalSiteDomain)
   enforceCanonicalIdentity(ctx.canonicalSiteName, ctx.canonicalSiteDomain, merged)
 
   try {

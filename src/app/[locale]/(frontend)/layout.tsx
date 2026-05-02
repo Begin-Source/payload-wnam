@@ -16,6 +16,7 @@ import {
   isAmzSiteLayout,
   isTemplateShellLayout,
 } from '@/utilities/publicLandingTheme'
+import { lucideBrandIconAbsoluteUrl, sanitizePascalLucideIconName } from '@/utilities/lucideIconSvg'
 import { getNavCategoriesForSite } from '@/utilities/publicSiteQueries'
 
 import '@/components/blog/blog.css'
@@ -51,9 +52,39 @@ type LayoutProps = {
 export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers()
   const theme = await getPublicSiteTheme(headersList)
+  const rasterIcon =
+    typeof theme.siteLogoUrl === 'string' && theme.siteLogoUrl.trim()
+      ? theme.siteLogoUrl.trim()
+      : undefined
+
+  const brandLogo = theme.amzSiteConfig?.brand.logo
+  const sanitizedLucideIcon =
+    isAmzSiteLayout(theme.siteLayout) &&
+    rasterIcon == null &&
+    brandLogo &&
+    (brandLogo.type as string) === 'lucide'
+      ? sanitizePascalLucideIconName(typeof brandLogo.icon === 'string' ? brandLogo.icon : '')
+      : null
+
+  const siteUrlRaw =
+    typeof theme.amzSiteConfig?.seo?.siteUrl === 'string'
+      ? theme.amzSiteConfig.seo.siteUrl.trim()
+      : ''
+  const lucideIconAbs = sanitizedLucideIcon ? lucideBrandIconAbsoluteUrl(siteUrlRaw) : null
+
+  const iconForMeta = rasterIcon ?? lucideIconAbs ?? undefined
+
   return {
     title: theme.browserTitle,
     description: theme.tagline,
+    ...(iconForMeta
+      ? {
+          icons: {
+            icon: iconForMeta,
+            apple: iconForMeta,
+          },
+        }
+      : {}),
   }
 }
 

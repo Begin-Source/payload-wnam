@@ -1,5 +1,6 @@
 'use client'
 
+import { CategoryCoverQuickActionModal } from '@/components/CategoryCoverQuickActionModal'
 import { CategorySlotsQuickActionModal } from '@/components/CategorySlotsQuickActionModal'
 import { OfferMerchantSlotQuickActionModal } from '@/components/OfferMerchantSlotQuickActionModal'
 import { OfferReviewMdxQuickActionModal } from '@/components/OfferReviewMdxQuickActionModal'
@@ -7,6 +8,8 @@ import { ArticlePipelineCatchupDrawer } from '@/components/ArticlePipelineCatchu
 import { MediaAiImageDrawer } from '@/components/MediaAiImageDrawer'
 import { KeywordQuickWinDrawer } from '@/components/KeywordQuickWinDrawer'
 import { KeywordSyncFetchDrawer } from '@/components/KeywordSyncFetchDrawer'
+import { SiteHeroBannerQueueModal } from '@/components/SiteHeroBannerQueueModal'
+import { SiteLogoQueueModal } from '@/components/SiteLogoQueueModal'
 import { TrustPagesBundleQuickActionModal } from '@/components/TrustPagesBundleQuickActionModal'
 import { Button } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
@@ -21,6 +24,7 @@ type SiteOption = {
   primaryDomain: string
   /** 站点上的主产品；域名快捷操作用于预填 */
   mainProduct?: string | null
+  siteLayout?: string | null
 }
 
 type CategoryOption = {
@@ -1586,6 +1590,7 @@ export function PageListQuickAction(): React.ReactElement {
 export function CategoryListQuickAction(): React.ReactElement {
   return (
     <>
+      <CategoryCoverQuickActionModal />
       <CategorySlotsQuickActionModal />
       <WorkflowQuickActionModal kind="categories" />
     </>
@@ -1627,5 +1632,11 @@ export function MediaListQuickAction(): React.ReactElement {
 }
 
 export function SiteListQuickAction(): React.ReactElement {
-  return <SiteDomainQuickActionModal />
+  return (
+    <>
+      <SiteDomainQuickActionModal />
+      <SiteHeroBannerQueueModal />
+      <SiteLogoQueueModal />
+    </>
+  )
 }

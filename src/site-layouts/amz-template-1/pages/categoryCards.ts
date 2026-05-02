@@ -1,6 +1,8 @@
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import type { Category } from '@/payload-types'
 
+import { publicUrlFromCategoryCover } from '@/utilities/categoryCoverMedia'
+
 export type AmzCategoryCard = {
   slug: string
   title: string
@@ -29,7 +31,7 @@ export function buildAmzCategoryCards(config: AmzSiteConfig, categories: Categor
         title: c.name,
         description: o?.description != null && String(o.description).trim() !== '' ? String(o.description).trim() : cmsDesc,
         icon: (o?.icon && String(o.icon).trim()) || 'Image',
-        coverImage: o?.coverImage,
+        coverImage: publicUrlFromCategoryCover(c) ?? o?.coverImage,
       }
     })
   }

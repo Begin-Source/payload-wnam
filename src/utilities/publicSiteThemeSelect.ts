@@ -7,7 +7,19 @@
  * Kept in sync with merge sources in:
  * - `mergeLandingLayers` / `mergeBlogChromeLayers` in `publicLandingTheme.ts`
  * - `mergeTemplate1FromSite` / `siteT1FromLocaleJson` in `publicLandingTemplate1.ts`
+ * - `publicUrlFromSiteHeroBanner` in `heroBannerMedia.ts`; `siteLogo` for header/favicon (`siteLogoMedia.ts`).
  */
+export const publicSiteHeroBannerMediaSelect = {
+  url: true,
+  alt: true,
+  thumbnailURL: true,
+  width: true,
+  height: true,
+  mimeType: true,
+  filesize: true,
+  filename: true,
+} as const
+
 export const publicSiteThemeSelectWithoutT1 = {
   id: true,
   name: true,
@@ -16,4 +28,6 @@ export const publicSiteThemeSelectWithoutT1 = {
   status: true,
   siteLayout: true,
   blueprint: true,
+  homepageHeroBanner: publicSiteHeroBannerMediaSelect,
+  siteLogo: publicSiteHeroBannerMediaSelect,
 } as const

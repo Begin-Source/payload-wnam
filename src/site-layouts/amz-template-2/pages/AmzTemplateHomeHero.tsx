@@ -1,5 +1,5 @@
-import type { AmzSiteConfig } from '@/site-layouts/amz-template-2/defaultSiteConfig'
 import type { AppLocale } from '@/i18n/config'
+import type { AmzSiteConfig } from '@/site-layouts/amz-template-2/defaultSiteConfig'
 
 import { AmzHomeHeroSearch } from './AmzHomeHeroSearch'
 
@@ -27,6 +27,13 @@ function AmzHeroWaveDivider() {
   )
 }
 
+function heroBannerUrl(hero: AmzSiteConfig['homepage']['hero']): string | null {
+  if (hero == null || typeof hero !== 'object') return null
+  const raw = 'bannerImage' in hero ? (hero as { bannerImage?: unknown }).bannerImage : undefined
+  if (typeof raw !== 'string' || !raw.trim()) return null
+  return raw.trim()
+}
+
 export function AmzTemplateHomeHero({
   locale,
   config,
@@ -35,6 +42,7 @@ export function AmzTemplateHomeHero({
   config: AmzSiteConfig
 }) {
   const hero = config.homepage.hero
+  const bannerSrc = heroBannerUrl(hero)
 
   return (
     <section
@@ -46,8 +54,14 @@ export function AmzTemplateHomeHero({
         border: 'none',
       }}
     >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl text-center">
+      {bannerSrc ? (
+        <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
+          <img alt="" src={bannerSrc} className="absolute inset-0 size-full object-cover" />
+          <div className="absolute inset-0 bg-primary/80 backdrop-blur-[0.5px]" />
+        </div>
+      ) : null}
+      <div className="relative z-[1] container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl text-center drop-shadow-[0_1px_14px_rgb(0_0_0/0.42)]">
           <h1 className="mb-6 text-balance text-4xl font-bold text-primary-foreground md:text-5xl lg:text-6xl">
             {hero.title}
           </h1>

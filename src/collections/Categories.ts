@@ -55,10 +55,12 @@ export const Categories: CollectionConfig = {
       options: [
         { label: '通用 / 文章', value: 'article' },
         { label: '指南 (Guides)', value: 'guide' },
+        { label: '评测 / Reviews', value: 'review' },
       ],
       admin: {
         position: 'sidebar',
-        description: 'amz-template-1：Guides 顶部 chip 只用 kind=指南 的分类；Reviews/首页仍用全部分类。',
+        description:
+          'Guides：`kind=指南` 仅用于 Guides 顶部 chip；Reviews 列表会自动排除只属于指南分类的文章。`kind=评测` 与一般文章一样参与 Reviews，仅作语义区分。',
       },
     },
     siteScopedSiteField,
@@ -150,6 +152,17 @@ export const Categories: CollectionConfig = {
     {
       name: 'description',
       type: 'textarea',
+    },
+    {
+      name: 'coverImage',
+      type: 'upload',
+      relationTo: 'media',
+      label: '封面图',
+      admin: {
+        description:
+          '首页 / Products 分类卡封面；也可用「Together 分类封面」快捷批量生成。',
+        position: 'sidebar',
+      },
     },
   ],
 }

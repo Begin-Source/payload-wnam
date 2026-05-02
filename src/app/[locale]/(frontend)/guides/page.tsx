@@ -6,7 +6,7 @@ import { AmzGuidesPage as Amz1GuidesPage } from '@/site-layouts/amz-template-1/p
 import { AmzGuidesPage as Amz2GuidesPage } from '@/site-layouts/amz-template-2/pages/AmzGuidesPage'
 import { isAppLocale } from '@/i18n/config'
 import { getPublicSiteContext, isAmzSiteLayout, isAmzTemplate2Layout } from '@/utilities/publicLandingTheme'
-import { getGuideCategoriesForSite, getPublishedArticlesForSite } from '@/utilities/publicSiteQueries'
+import { getGuideCategoriesForSite, getPublishedArticlesForGuidesListing } from '@/utilities/publicSiteQueries'
 
 type Props = {
   params: Promise<{ locale: string }>
@@ -29,7 +29,7 @@ export default async function GuidesPage(props: Props) {
   if (!isAmzSiteLayout(theme.siteLayout) || !theme.amzSiteConfig) notFound()
 
   const [articles, cmsGuideCategories] = await Promise.all([
-    getPublishedArticlesForSite(site.id, locale, 96),
+    getPublishedArticlesForGuidesListing(site.id, locale, 96),
     getGuideCategoriesForSite(site.id, 24),
   ])
 

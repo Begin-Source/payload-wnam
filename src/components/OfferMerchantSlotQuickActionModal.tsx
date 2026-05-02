@@ -16,7 +16,7 @@ type CategoryOption = {
   name: string
   slug: string
   slotIndex?: number | null
-  kind?: 'article' | 'guide' | null
+  kind?: 'article' | 'guide' | 'review' | null
 }
 
 function formatSiteLine(s: SiteOption): string {
