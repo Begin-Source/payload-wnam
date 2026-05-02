@@ -725,6 +725,35 @@ function WorkflowQuickActionModal({ kind }: { kind: WorkflowQuickKind }): React.
 
 const amzDesignTitleId = 'quick-action-title-amz-design'
 
+function showEphemeralAdminToast(
+  kind: 'error' | 'success',
+  message: string,
+  detail?: string,
+): void {
+  if (typeof document === 'undefined') return
+  const el = document.createElement('div')
+  el.setAttribute('role', 'status')
+  Object.assign(el.style, {
+    position: 'fixed',
+    bottom: '20px',
+    right: '20px',
+    maxWidth: 'min(360px, calc(100vw - 40px))',
+    padding: '12px 14px',
+    borderRadius: '8px',
+    zIndex: '99999',
+    fontSize: '13px',
+    lineHeight: 1.45,
+    fontFamily: 'system-ui, sans-serif',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+    background: kind === 'error' ? '#b91c1c' : '#166534',
+    color: '#fafafa',
+    whiteSpace: 'pre-wrap',
+  })
+  el.textContent = detail ? `${message}\n${detail}` : message
+  document.body.appendChild(el)
+  window.setTimeout(() => el.remove(), 8500)
+}
+
 function AmzTemplateDesignQuickActionModal(): React.ReactElement {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -739,6 +768,7 @@ function AmzTemplateDesignQuickActionModal(): React.ReactElement {
 
   const [mainProduct, setMainProduct] = useState('')
   const [aiModel, setAiModel] = useState('')
+  const [fillSlots, setFillSlots] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadBlueprints = useCallback(async (q: string) => {
@@ -809,6 +839,7 @@ function AmzTemplateDesignQuickActionModal(): React.ReactElement {
     setBpMenuOpen(false)
     setMainProduct('')
     setAiModel('')
+    setFillSlots(false)
     setError(null)
   }
 
@@ -845,6 +876,7 @@ function AmzTemplateDesignQuickActionModal(): React.ReactElement {
     const baseBody = {
       blueprintId,
       mainProduct: mainTrim,
+      fillSlots,
       ...(aiModelTrim ? { aiModel: aiModelTrim } : {}),
     }
 
@@ -892,15 +924,24 @@ function AmzTemplateDesignQuickActionModal(): React.ReactElement {
         const data = (await res.json().catch(() => ({}))) as {
           ok?: boolean
           error?: string
+          code?: string
         }
         if (!res.ok || data.ok !== true) {
-          console.warn(
-            '[generate-amz-template-design]',
-            typeof data.error === 'string' ? data.error : `HTTP ${res.status}`,
+          const errText =
+            typeof data.error === 'string' ? data.error : `请求失败（HTTP ${res.status}）`
+          const code = typeof data.code === 'string' && data.code.trim() ? data.code.trim() : ''
+          showEphemeralAdminToast(
+            'error',
+            'AMZ 设计失败（后台）',
+            code ? `${code}: ${errText}` : errText,
           )
         }
       } catch (e) {
-        console.warn('[generate-amz-template-design] network error', e)
+        showEphemeralAdminToast(
+          'error',
+          'AMZ 设计失败（后台）',
+          e instanceof Error ? e.message : '网络错误',
+        )
       } finally {
         if (
           typeof window !== 'undefined' &&
@@ -1093,6 +1134,30 @@ function AmzTemplateDesignQuickActionModal(): React.ReactElement {
                   </div>
                 </div>
               ) : null}
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  gap: '0.5rem',
+                  alignItems: 'flex-start',
+                  cursor: 'pointer',
+                  fontSize: '0.8125rem',
+                  lineHeight: 1.45,
+                }}
+              >
+                <input
+                  checked={fillSlots}
+                  style={{ marginTop: 2 }}
+                  type="checkbox"
+                  onChange={(e) => setFillSlots(e.target.checked)}
+                />
+                <span>
+                  <strong>填空刷新（白名单：英文文案 + 可选主题色 / 字体）</strong>
+                  ：不把整份 siteConfig 发给模型，只覆盖白名单字段（含 oklch 主题令牌与 fonts.sans / fonts.mono 等）；导航、分类条目、法务链接等锁区仍由服务端保持不变。
+                </span>
+              </label>
             </div>
 
             <div style={{ marginBottom: '1rem' }}>

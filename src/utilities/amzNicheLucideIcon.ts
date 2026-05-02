@@ -287,6 +287,44 @@ export function buildDomainLucideHints(primaryDomainOrHost: string | null | unde
   return phrases.slice(0, MAX_DOMAIN_HINT_PHRASES)
 }
 
+/** Same token peel + phrase ordering as hostname hints, but for `sites.slug` (localhost `?site=` dev). */
+export function buildSiteSlugLucideHints(slug: string | null | undefined): string[] {
+  if (typeof slug !== 'string') return []
+  const raw = slug.trim().toLowerCase()
+  if (raw.length < 2) return []
+  let parts = raw.split(/[.\-+_]+/).filter(Boolean)
+  if (
+    parts.length >= 2 &&
+    ['com', 'org', 'net', 'io', 'co', 'app', 'dev'].includes(parts[parts.length - 1]!)
+  ) {
+    parts = parts.slice(0, -1)
+  }
+  const labelNorm = parts.join('')
+  if (labelNorm.length < 3) return []
+
+  const tokens = tokenizeDomainLabel(labelNorm)
+  if (!tokens.length) return []
+
+  const phrases: string[] = []
+
+  for (let end = tokens.length; end >= 2; end--) {
+    pushUniquePhrases(phrases, tokens.slice(0, end).join(' '))
+  }
+  if (tokens.length === 1) {
+    pushUniquePhrases(phrases, tokens[0]!)
+  } else {
+    for (const t of tokens) {
+      pushUniquePhrases(phrases, t)
+    }
+  }
+
+  for (const expand of [...expandGuideLikeTokens(tokens), ...expandWellnessTokens(tokens)]) {
+    pushUniquePhrases(phrases, expand)
+  }
+
+  return phrases.slice(0, MAX_DOMAIN_HINT_PHRASES)
+}
+
 function iconFromHay(hayLower: string): string | undefined {
   for (const rule of NICHE_RULES) {
     for (const rx of rule.patterns) {
@@ -320,9 +358,16 @@ export function suggestLucideLogoIconFromNiche(
   mainProduct: string | null | undefined,
   nicheData: unknown,
   primaryDomain?: string | null,
+  siteSlug?: string | null,
 ): string {
   const domainHints = buildDomainLucideHints(primaryDomain)
   for (const phrase of domainHints) {
+    const hit = iconFromHay(phrase)
+    if (hit) return hit
+  }
+
+  const slugHints = buildSiteSlugLucideHints(siteSlug)
+  for (const phrase of slugHints) {
     const hit = iconFromHay(phrase)
     if (hit) return hit
   }
@@ -355,10 +400,16 @@ export function coerceBrandLogoLucideForNiche(
   mainProduct: string | null | undefined,
   nicheData: unknown,
   primaryDomain?: string | null,
+  siteSlug?: string | null,
 ): void {
   if (!cfg.brand || typeof cfg.brand !== 'object') return
 
-  const suggested = suggestLucideLogoIconFromNiche(mainProduct, nicheData, primaryDomain)
+  const suggested = suggestLucideLogoIconFromNiche(
+    mainProduct,
+    nicheData,
+    primaryDomain,
+    siteSlug,
+  )
   /** Domain-derived hint phrases yielded at least one NICHE_RULES hit. */
   const domainBacked =
     !!primaryDomain &&

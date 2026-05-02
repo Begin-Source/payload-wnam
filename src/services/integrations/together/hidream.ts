@@ -56,7 +56,7 @@ function optionalStepsFromEnv(): { steps?: number } {
  */
 export async function togetherImageGenerate(
   prompt: string,
-  init?: { model?: string; signal?: AbortSignal } & TogetherImageDimsInit,
+  init?: { model?: string; signal?: AbortSignal; negativePrompt?: string } & TogetherImageDimsInit,
 ): Promise<TogetherImageResult> {
   const key = process.env.TOGETHER_API_KEY?.trim()
   if (!key) {
@@ -69,6 +69,11 @@ export async function togetherImageGenerate(
     'black-forest-labs/FLUX.1-schnell-Free'
   const useSize = process.env.TOGETHER_IMAGE_USE_SIZE !== '0'
 
+  const neg =
+    typeof init?.negativePrompt === 'string' && init.negativePrompt.trim()
+      ? init.negativePrompt.trim()
+      : undefined
+
   const res = await fetch(`${base}/images/generations`, {
     method: 'POST',
     headers: {
@@ -79,6 +84,7 @@ export async function togetherImageGenerate(
       model,
       prompt,
       n: 1,
+      ...(neg ? { negative_prompt: neg } : {}),
       ...optionalStepsFromEnv(),
       ...dimensionsForRequest(useSize, init),
     }),
@@ -119,7 +125,7 @@ function extFromMime(mime: string): string {
  */
 export async function togetherImageGenerateBytes(
   prompt: string,
-  init?: { model?: string; signal?: AbortSignal } & TogetherImageDimsInit,
+  init?: { model?: string; signal?: AbortSignal; negativePrompt?: string } & TogetherImageDimsInit,
 ): Promise<TogetherImageBytesResult> {
   const key = process.env.TOGETHER_API_KEY?.trim()
   if (!key) {
@@ -132,11 +138,16 @@ export async function togetherImageGenerateBytes(
     'black-forest-labs/FLUX.1-schnell-Free'
 
   const useSize = process.env.TOGETHER_IMAGE_USE_SIZE !== '0'
+  const neg =
+    typeof init?.negativePrompt === 'string' && init.negativePrompt.trim()
+      ? init.negativePrompt.trim()
+      : undefined
   const body: Record<string, unknown> = {
     model,
     prompt,
     n: 1,
     response_format: 'base64',
+    ...(neg ? { negative_prompt: neg } : {}),
     ...optionalStepsFromEnv(),
     ...dimensionsForRequest(useSize, init),
   }

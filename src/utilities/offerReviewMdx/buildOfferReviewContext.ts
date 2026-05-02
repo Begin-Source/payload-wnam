@@ -72,6 +72,14 @@ export function buildAmazonDpUrl(asin: string, tag: string): string {
   return `https://www.amazon.com/dp/${a}?tag=${encodeURIComponent(tag)}&linkCode=ogi&th=1&psc=1`
 }
 
+/** Amazon SERP affiliate link (`k=` = search keywords); empty trimmed keywords → `undefined`. */
+export function buildAmazonSearchUrl(keywords: string, tag?: string): string | undefined {
+  const k = String(keywords ?? '').trim()
+  if (!k) return undefined
+  const t = typeof tag === 'string' && tag.trim() ? tag.trim() : resolveAffiliateTag()
+  return `https://www.amazon.com/s?k=${encodeURIComponent(k)}&tag=${encodeURIComponent(t)}`
+}
+
 /**
  * Build LLM / extract context from a loaded Offer (depth≥1 for category names optional).
  */

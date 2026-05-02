@@ -8,8 +8,13 @@ import { getRequestHost } from '@/utilities/normalizeRequestHost'
 import { resolveSiteForLanding } from '@/utilities/resolveSiteForLanding'
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import { mergeAmzSiteConfigFromRaw } from '@/site-layouts/amz-template-1/mergeAmzSiteConfig'
+import { coerceBrandLogoLucideForNiche } from '@/utilities/amzNicheLucideIcon'
 import { applyHeroBannerToAmzSiteConfig, publicUrlFromSiteHeroBanner } from '@/utilities/heroBannerMedia'
-import { applySiteLogoToAmzSiteConfig, publicUrlFromSiteLogo } from '@/utilities/siteLogoMedia'
+import {
+  applySiteLogoToAmzSiteConfig,
+  applySiteNameFallbackToAmzBrand,
+  publicUrlFromSiteLogo,
+} from '@/utilities/siteLogoMedia'
 import { mergeTemplate1Layers, type Template1Theme } from '@/utilities/publicLandingTemplate1'
 
 export type LandingFontPreset = 'system' | 'serif' | 'noto_sans_sc'
@@ -322,6 +327,14 @@ export function mergePublicSiteTheme(
     const bannerUrl = publicUrlFromSiteHeroBanner(site)
     amzSiteConfig = applyHeroBannerToAmzSiteConfig(amzSiteConfig, bannerUrl)
     amzSiteConfig = applySiteLogoToAmzSiteConfig(amzSiteConfig, siteLogoUrl)
+    amzSiteConfig = applySiteNameFallbackToAmzBrand(amzSiteConfig, site)
+    coerceBrandLogoLucideForNiche(
+      amzSiteConfig,
+      typeof site.mainProduct === 'string' ? site.mainProduct : null,
+      site.nicheData ?? null,
+      site.primaryDomain ?? null,
+      typeof site.slug === 'string' ? site.slug : null,
+    )
   }
   const landingForTheme =
     amzSl && amzSiteConfig

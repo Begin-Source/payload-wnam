@@ -1,8 +1,31 @@
 import type { Media, Site, SiteBlueprint } from '@/payload-types'
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
+import { defaultAmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import { mergeAmzSiteConfigFromRaw } from '@/site-layouts/amz-template-1/mergeAmzSiteConfig'
 
 const DEFAULT_LOGO_PX = 1024
+
+const DEFAULT_AMZ_BRAND_NAME = defaultAmzSiteConfig.brand.name.trim()
+
+/**
+ * When Blueprint JSON leaves the stock placeholder (or omits brand.name), show `sites.name` in the shell.
+ */
+export function applySiteNameFallbackToAmzBrand(
+  cfg: AmzSiteConfig | undefined,
+  site: Pick<Site, 'name'> | null | undefined,
+): AmzSiteConfig | undefined {
+  if (!cfg || !site?.name?.trim()) return cfg
+  const incoming = site.name.trim()
+  const current = cfg.brand?.name?.trim() ?? ''
+  if (current && current !== DEFAULT_AMZ_BRAND_NAME) return cfg
+  return {
+    ...cfg,
+    brand: {
+      ...cfg.brand,
+      name: incoming,
+    },
+  }
+}
 
 /** Public CDN URL from site.siteLogo after depth-1 populate. */
 export function publicUrlFromSiteLogo(

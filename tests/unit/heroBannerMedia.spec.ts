@@ -5,6 +5,7 @@ import type { SiteBlueprint } from '@/payload-types'
 import {
   applyHeroBannerToAmzSiteConfig,
   composeHeroBannerPromptFromSiteBlueprint,
+  heroBannerImageNegativePrompt,
   makeHeroBannerImagePrompt,
 } from '@/utilities/heroBannerMedia'
 
@@ -29,7 +30,28 @@ describe('heroBannerMedia', () => {
     ).toBe('Minimal flat abstract shapes only')
   })
 
-  it('composeHeroBannerPromptFromSiteBlueprint pulls hero lines from blueprint', () => {
+  it('makeHeroBannerImagePrompt avoids website-mock wording and forbids typography in pixels', () => {
+    const p = makeHeroBannerImagePrompt({
+      siteName: 'Yoga Mat Guide',
+      slugOrKey: 'yoga-mats',
+      mainProduct: 'yoga mats',
+      nicheHint: null,
+      override: null,
+    })
+    expect(p.toLowerCase()).not.toContain('website hero')
+    expect(p.toLowerCase()).toContain('no user interface')
+    expect(p.toLowerCase()).toContain('full-bleed')
+    expect(p.toLowerCase()).toContain('no typography')
+  })
+
+  it('heroBannerImageNegativePrompt enumerates UI and typography exclusions', () => {
+    const n = heroBannerImageNegativePrompt()
+    expect(n).toContain('typography')
+    expect(n).toContain('navigation bar')
+    expect(n).toContain('website screenshot')
+  })
+
+  it('composeHeroBannerPromptFromSiteBlueprint omits blueprint hero titles (no literal headline injection)', () => {
     const bp = {
       amzSiteConfigJson: {
         homepage: {
@@ -45,9 +67,10 @@ describe('heroBannerMedia', () => {
       bp,
       null,
     )
-    expect(prompt).toContain('Ultimate Gadgets')
-    expect(prompt).toContain('Buying guides')
+    expect(prompt).not.toContain('Ultimate Gadgets')
+    expect(prompt).not.toContain('Buying guides')
     expect(prompt.toLowerCase()).toContain('kitchen tools')
     expect(prompt).toContain('test-site')
+    expect(prompt.toLowerCase()).not.toContain('website hero')
   })
 })

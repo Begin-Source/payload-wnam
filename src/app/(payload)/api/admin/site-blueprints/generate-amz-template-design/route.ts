@@ -37,7 +37,8 @@ function toBool(value: unknown): boolean {
 }
 
 /**
- * POST { blueprintId: number, mainProduct?: string, aiModel?: string, prepare?: boolean, afterPrepare?: boolean }
+ * POST { blueprintId, mainProduct?, aiModel?, prepare?, afterPrepare?, fillSlots? }
+ * fillSlots: truthy = flat copy-only whitelist regen (no full siteConfig in prompt).
  * Cookie session + tenant-scoped. OpenRouter rewrites linked blueprint amzSiteConfigJson for AMZ template sites (amz-template-1 / amz-template-2).
  * When prepare is true, validates and sets designWorkflowStatus running then returns immediately (modal closes; run job in background).
  * When afterPrepare is true, skips re-marking running (client already called prepare).
@@ -58,6 +59,7 @@ export async function POST(request: Request): Promise<Response> {
     ai_model?: unknown
     prepare?: unknown
     afterPrepare?: unknown
+    fillSlots?: unknown
   }
   try {
     body = (await request.json()) as typeof body
@@ -113,12 +115,15 @@ export async function POST(request: Request): Promise<Response> {
   const aiModel =
     typeof rawModel === 'string' && rawModel.trim() ? rawModel.trim() : undefined
 
+  const fillSlots = toBool(body.fillSlots)
+
   if (toBool(body.prepare)) {
     const prep = await prepareAmzTemplateDesignForBlueprint({
       payload,
       blueprintId,
       ...(mainProductOverride ? { mainProductOverride } : {}),
       ...(aiModel ? { aiModel } : {}),
+      fillSlots,
     })
     if (!prep.ok) {
       return Response.json({ error: prep.message, code: prep.code }, { status: prep.status })
@@ -131,6 +136,7 @@ export async function POST(request: Request): Promise<Response> {
     blueprintId,
     ...(mainProductOverride ? { mainProductOverride } : {}),
     ...(aiModel ? { aiModel } : {}),
+    fillSlots,
     ...(toBool(body.afterPrepare) ? { afterPrepare: true } : {}),
   })
 

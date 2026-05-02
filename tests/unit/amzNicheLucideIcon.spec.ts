@@ -29,6 +29,10 @@ describe('amzNicheLucideIcon', () => {
     )
   })
 
+  it('suggestLucideLogoIconFromNiche uses site slug compounds on localhost-style keys', () => {
+    expect(suggestLucideLogoIconFromNiche('', {}, undefined, 'yogamatguide-com')).toBe('Activity')
+  })
+
   it('buildDomainLucideHints orders compounds before singles', () => {
     const hints = buildDomainLucideHints('yogamatguide.org')
     expect(hints[0]).toContain('yoga')
@@ -62,6 +66,13 @@ describe('amzNicheLucideIcon', () => {
     cfg.brand!.logo!.type = 'lucide'
     cfg.brand!.logo!.icon = 'Home'
     coerceBrandLogoLucideForNiche(cfg, '', {}, 'yogamatguide.com')
+    expect(cfg.brand!.logo!.icon).toBe('Activity')
+  })
+
+  it('coerceBrandLogoLucideForNiche replaces Image using site slug when domain empty', () => {
+    const cfg = cloneConfig()
+    cfg.brand!.logo!.icon = 'Image'
+    coerceBrandLogoLucideForNiche(cfg, '', {}, undefined, 'yogamatguide-com')
     expect(cfg.brand!.logo!.icon).toBe('Activity')
   })
 

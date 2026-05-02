@@ -41,6 +41,7 @@ describe('Together hidream request bodies', () => {
         height: 1024,
       })
       expect(body.steps).toBeUndefined()
+      expect(body.negative_prompt).toBeUndefined()
 
       expect(String(input)).toContain('/images/generations')
       expect(init?.method).toBe('POST')
@@ -64,6 +65,29 @@ describe('Together hidream request bodies', () => {
     const r = await togetherImageGenerateBytes('cat')
     expect(r.mimeType).toBe('image/jpeg')
     expect(r.buffer.byteLength).toBeGreaterThan(0)
+  })
+
+  it('togetherImageGenerateBytes sends negative_prompt when negativePrompt is provided', async () => {
+    mockFetch(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+      expect(body.negative_prompt).toBe('typography, subtitles')
+      expect(body.response_format).toBe('base64')
+      const onePx = Buffer.from(
+        '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDAREAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAr/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA//Z',
+        'base64',
+      ).toString('base64')
+      return new Response(
+        JSON.stringify({
+          data: [{ type: 'b64_json', b64_json: onePx, index: 0 }],
+          model: 'x',
+          id: '1',
+          object: 'list',
+        }),
+        { status: 200 },
+      )
+    })
+
+    await togetherImageGenerateBytes('cat', { negativePrompt: 'typography, subtitles' })
   })
 
   it('togetherImageGenerateBytes omits dimensions when TOGETHER_IMAGE_USE_SIZE=0', async () => {
@@ -134,6 +158,24 @@ describe('Together hidream request bodies', () => {
 
     const r = await togetherImageGenerate('sunset')
     expect(r.url).toBe('https://example.com/i.png')
+  })
+
+  it('togetherImageGenerate sends negative_prompt when negativePrompt is provided', async () => {
+    mockFetch(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {}
+      expect(body.negative_prompt).toBe('blur, watermark')
+      return new Response(
+        JSON.stringify({
+          data: [{ type: 'url', url: 'https://example.com/i.png', index: 0 }],
+          model: 'x',
+          id: '1',
+          object: 'list',
+        }),
+        { status: 200 },
+      )
+    })
+
+    await togetherImageGenerate('sunset', { negativePrompt: 'blur, watermark' })
   })
 
   it('togetherImageGenerate omits dimensions when TOGETHER_IMAGE_USE_SIZE=0', async () => {

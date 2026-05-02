@@ -1,7 +1,9 @@
 import React from 'react'
 
 import { AmzLink } from '@/site-layouts/amz-template-2/AmzLink'
+import { Button } from '@/site-layouts/amz-template-2/components/ui/button'
 import { cn } from '@/site-layouts/amz-template-2/lib/utils'
+import { buildAmazonSearchUrl } from '@/utilities/offerReviewMdx/buildOfferReviewContext'
 
 import type { AmzCategoryCard } from './categoryCards'
 import { CategoryCardIcon } from './CategoryCardIcon'
@@ -87,26 +89,32 @@ export function AmzCategoryBrowseGrid(props: AmzCategoryBrowseGridProps) {
           : 'mt-8 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-5 lg:gap-3'
       }
     >
-        {cards.map((card) => {
-          const active = activeSlug?.trim() === card.slug.trim()
-          const countLine =
-            showCounts && productCountBySlug
-              ? formatProductCountLine(
-                  card.slug.trim(),
-                  productCountBySlug,
-                  categoryProductCountTemplate,
-                  categoryProductCountEmpty,
-                )
-              : null
-          return (
-            <li key={card.slug} className={cn('min-w-0', single && 'col-span-full flex justify-center')}>
+      {cards.map((card) => {
+        const active = activeSlug?.trim() === card.slug.trim()
+        const countLine =
+          showCounts && productCountBySlug
+            ? formatProductCountLine(
+                card.slug.trim(),
+                productCountBySlug,
+                categoryProductCountTemplate,
+                categoryProductCountEmpty,
+              )
+            : null
+        const titleTrim = card.title.trim()
+        const amazonUrl = buildAmazonSearchUrl(titleTrim)
+
+        return (
+          <li key={card.slug} className={cn('min-w-0', single && 'col-span-full flex justify-center')}>
+            <div
+              className={cn(
+                'flex h-full w-full min-w-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md',
+                active ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary',
+                single && 'max-w-xs sm:max-w-[200px] lg:max-w-[200px]',
+              )}
+            >
               <AmzLink
                 href={hrefForSlug(card.slug.trim())}
-                className={cn(
-                  'group flex h-full w-full min-w-0 flex-col overflow-hidden rounded-lg border bg-card shadow-sm transition-shadow hover:shadow-md',
-                  active ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary',
-                  single && 'max-w-xs sm:max-w-[200px] lg:max-w-[200px]',
-                )}
+                className="group flex min-h-0 flex-1 flex-col text-inherit no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <div className="relative flex aspect-[4/3] w-full items-center justify-center bg-muted sm:aspect-video">
                   {card.coverImage ? (
@@ -138,16 +146,31 @@ export function AmzCategoryBrowseGrid(props: AmzCategoryBrowseGridProps) {
                   ) : null}
                 </div>
               </AmzLink>
-            </li>
-          )
-        })}
+              {amazonUrl ? (
+                <div className="border-t border-border px-2 pb-3 pt-2 sm:px-3">
+                  <Button variant="outline" size="sm" className="w-full" asChild>
+                    <a
+                      href={amazonUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Check ${titleTrim} on Amazon`}
+                    >
+                      Check on Amazon
+                    </a>
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </li>
+        )
+      })}
     </ul>
   )
 
   if (isHome) {
     return (
       <section className="py-16 md:py-24">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="container mx-auto amz-page-x-gutter">
           {header}
           {grid}
         </div>

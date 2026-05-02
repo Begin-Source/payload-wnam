@@ -4,6 +4,7 @@ import type { Site, SiteBlueprint } from '@/payload-types'
 import { defaultAmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import {
   applySiteLogoToAmzSiteConfig,
+  applySiteNameFallbackToAmzBrand,
   composeSiteLogoPromptFromSiteBlueprint,
   makeSiteLogoImagePrompt,
   publicUrlFromSiteLogo,
@@ -36,6 +37,19 @@ describe('siteLogoMedia', () => {
     const cfg = structuredClone(defaultAmzSiteConfig)
     expect(applySiteLogoToAmzSiteConfig(cfg, undefined)).toBe(cfg)
     expect(applySiteLogoToAmzSiteConfig(cfg, '')).toBe(cfg)
+  })
+
+  it('applySiteNameFallbackToAmzBrand uses sites.name when brand is stock placeholder', () => {
+    const cfg = structuredClone(defaultAmzSiteConfig)
+    const next = applySiteNameFallbackToAmzBrand(cfg, { name: 'Yoga Mat Guide' })
+    expect(next?.brand.name).toBe('Yoga Mat Guide')
+  })
+
+  it('applySiteNameFallbackToAmzBrand keeps explicit blueprint brand names', () => {
+    const cfg = structuredClone(defaultAmzSiteConfig)
+    cfg.brand.name = 'Acme Guides'
+    const next = applySiteNameFallbackToAmzBrand(cfg, { name: 'Yoga Mat Guide' })
+    expect(next?.brand.name).toBe('Acme Guides')
   })
 
   it('makeSiteLogoImagePrompt uses override verbatim', () => {

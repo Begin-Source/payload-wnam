@@ -8,6 +8,7 @@
  * - `mergeLandingLayers` / `mergeBlogChromeLayers` in `publicLandingTheme.ts`
  * - `mergeTemplate1FromSite` / `siteT1FromLocaleJson` in `publicLandingTemplate1.ts`
  * - `publicUrlFromSiteHeroBanner` in `heroBannerMedia.ts`; `siteLogo` for header/favicon (`siteLogoMedia.ts`).
+ * - `mainProduct`, `nicheData` — AMZ Lucide fallback + niche hints (`mergePublicSiteTheme`).
  */
 export const publicSiteHeroBannerMediaSelect = {
   url: true,
@@ -30,4 +31,6 @@ export const publicSiteThemeSelectWithoutT1 = {
   blueprint: true,
   homepageHeroBanner: publicSiteHeroBannerMediaSelect,
   siteLogo: publicSiteHeroBannerMediaSelect,
+  mainProduct: true,
+  nicheData: true,
 } as const

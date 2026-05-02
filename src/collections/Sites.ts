@@ -129,7 +129,7 @@ export const Sites: CollectionConfig = {
       admin: {
         position: 'sidebar',
         description:
-          '正方形品牌标：AMZ Shell 顶栏与浏览器标签图标共用同一媒体；可用 Together「站点 Logo」生成。',
+          '正方形品牌标：AMZ Shell 顶栏与浏览器标签图标共用同一媒体；可用 Together「站点 Logo」生成。未上传且设计 JSON 仍为默认 Lucide 占位时，前台会根据 slug / 主品 / 细分数据推断更贴垂直的图标。',
       },
     },
     {

@@ -89,14 +89,51 @@ export function heroCopyFromBlueprint(blueprint: SiteBlueprint | null | undefine
   }
 }
 
+/** Together `negative_prompt`: suppress text and full-page UI composites in hero backdrops. */
+export function heroBannerImageNegativePrompt(): string {
+  return [
+    'text',
+    'typography',
+    'letters',
+    'words',
+    'subtitles',
+    'captions',
+    'alphanumeric overlays',
+    'logos',
+    'wordmarks',
+    'watermarks',
+    'navigation bar',
+    'menu bar',
+    'header chrome',
+    'browser chrome',
+    'browser window',
+    'website screenshot',
+    'webpage layout',
+    'landing page mockup',
+    'UI mockup',
+    'user interface',
+    'smartphone app interface',
+    'laptop screen with interface',
+    'domain name in image',
+    'URL string',
+    'billboard text',
+    'poster typography',
+    'book cover text',
+    'magazine masthead',
+    'packaging readable labels',
+    'QR code',
+    'infographic with labels',
+    'composite multi-panel layout',
+    'split screen design',
+  ].join(', ')
+}
+
 /** Together prompt for homepage hero backdrop (override wins). */
 export function makeHeroBannerImagePrompt(parts: {
   siteName: string
   slugOrKey: string
   mainProduct?: string | null
   nicheHint?: string | null
-  heroTitle?: string | null
-  heroSubtitle?: string | null
   override?: string | null
 }): string {
   const o = parts.override?.trim()
@@ -105,19 +142,16 @@ export function makeHeroBannerImagePrompt(parts: {
   const slug = parts.slugOrKey.trim()
   const mp = parts.mainProduct?.trim()
   const niche = parts.nicheHint?.trim()?.slice(0, 350)
-  const ht = parts.heroTitle?.trim()
-  const hs = parts.heroSubtitle?.trim()
 
   return [
-    'Wide cinematic website hero backdrop, panoramic 16:9 landscape composition, atmospheric depth, soft bokeh.',
-    `Brand/site: "${site}". ${slug ? `Slug: ${slug}.` : ''}`,
-    ht ? `Headline cue: "${ht.slice(0, 120)}".` : '',
-    hs ? `Subhead cue: "${hs.slice(0, 160)}".` : '',
+    'Wide cinematic landscape photograph or editorial illustration, panoramic wide aspect similar to 16:9, atmospheric depth, soft bokeh, natural full-bleed scene only; not a screenshot, not a webpage, not a composite layout, no user interface of any kind.',
+    `Subject context for vibe only—do not render any part of the following as visible letters or logos in the image. Brand or site identity (mood only): ${site}. ${slug ? `Key: ${slug}.` : ''}`,
     mp ? `Primary product/context: ${mp.slice(0, 200)}.` : '',
-    niche ? `Niche JSON hint: ${niche}` : '',
-    'Style: premium editorial, unobtrusive illustration or abstract product-adjacent scene, cohesive cool/warm hues suitable behind large white headings.',
-    'Leave ample negative center space so UI text overlays stay readable.',
-    'No logos, watermark, legible typography, distorted hands, cluttered UI mocks.',
+    niche ? `Niche hint (non-literal, no labels to paint): ${niche}` : '',
+    'Style: premium editorial photography or tasteful illustration; unobtrusive, cohesive cool or warm palette suitable behind a separate HTML text overlay (the overlay is not part of this render).',
+    'Calm central readability via soft gradients and atmospheric haze only—absolutely no typography inside pixels.',
+    'No logos, captions, storefront signage, device screens with readable UI, hashtags, watermarks, instructional diagrams with text.',
+    'Single continuous scene; avoid collage, storyboard, browser frames, or mock-ups.',
   ]
     .map((x) => x.trim())
     .filter((x) => x.length > 0)
@@ -126,7 +160,7 @@ export function makeHeroBannerImagePrompt(parts: {
 
 export function composeHeroBannerPromptFromSiteBlueprint(
   site: Pick<Site, 'name' | 'slug' | 'mainProduct' | 'nicheData'> | null,
-  blueprint: SiteBlueprint | null | undefined,
+  _blueprint: SiteBlueprint | null | undefined,
   override?: string | null,
 ): string {
   const slug = typeof site?.slug === 'string' && site.slug.trim() ? site.slug.trim() : 'site'
@@ -137,14 +171,11 @@ export function composeHeroBannerPromptFromSiteBlueprint(
         ? site.slug.trim()
         : 'Site'
   const mp = typeof site?.mainProduct === 'string' ? site.mainProduct : null
-  const { heroTitle, heroSubtitle } = heroCopyFromBlueprint(blueprint)
   return makeHeroBannerImagePrompt({
     siteName: name,
     slugOrKey: slug,
     mainProduct: mp,
     nicheHint: nicheSnippet(site?.nicheData ?? null),
-    heroTitle,
-    heroSubtitle,
     override: override ?? null,
   })
 }

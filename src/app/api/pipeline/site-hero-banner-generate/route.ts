@@ -10,6 +10,7 @@ import type { Site, SiteBlueprint } from '@/payload-types'
 import {
   composeHeroBannerPromptFromSiteBlueprint,
   heroBannerImageDimensions,
+  heroBannerImageNegativePrompt,
 } from '@/utilities/heroBannerMedia'
 import { truncateErrorMessage } from '@/utilities/mediaAiImagePrompt'
 import {
@@ -113,6 +114,7 @@ export async function POST(request: Request): Promise<Response> {
     const { buffer, mimeType } = await togetherImageGenerateBytes(promptText, {
       width: genW,
       height: genH,
+      negativePrompt: heroBannerImageNegativePrompt(),
     })
     const ext = imageExtensionFromMime(mimeType)
     const base = slug

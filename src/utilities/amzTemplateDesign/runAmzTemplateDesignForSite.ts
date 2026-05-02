@@ -6,6 +6,12 @@ import {
   mergePatchOntoAmzConfig,
 } from '@/site-layouts/amz-template-1/mergeAmzSiteConfig'
 import { openrouterChat } from '@/services/integrations/openrouter/chat'
+import {
+  AMZ_DESIGN_FILLABLE_DOT_PATHS,
+  applyAllowedFillPatches,
+  buildFlatFillSkeletonPlaceholderJson,
+  parseFillSlotsPatch,
+} from '@/utilities/amzTemplateDesign/amzDesignFillablePaths'
 import { coerceBrandLogoLucideForNiche } from '@/utilities/amzNicheLucideIcon'
 import { parseRelationshipId } from '@/utilities/parseRelationshipId'
 import {
@@ -113,26 +119,46 @@ function enforceCanonicalIdentity(
   }
 }
 
-function buildSystemPrompt(): string {
-  return [
+export function buildSystemPrompt(fillSlots: boolean): string {
+  const head: string[] = [
     'You are an expert web developer and SEO specialist. You output JSON only (no markdown, no prose).',
-    'The JSON will be deep-merged into an existing AMZ siteConfig object (Payload CMS) used by amz-template-1 and amz-template-2.',
-    'Rules:',
-    '1) ALL user-visible copy you add or change must be in English only.',
-    '2) pages.guides: you MAY change title, description, and cta (cta.title, cta.description, cta.primaryButton.text). Keep cta.primaryButton.href as /reviews unless a clearly better internal path exists. Do NOT change pages.guides.categories — the server will restore it; omit "categories" from your output.',
-    '3) Do NOT include navigation.main in your output — server locks it.',
-    '4) Do NOT include footer.resources or footer.legal — server locks them.',
-    '5) Do NOT include homepage.categories.items — server locks it.',
-    '6) Update brand, theme, SEO, hero, homepage copy (except locked category items), pages (except guides.categories), footer.about text, copyright, affiliateNotice, etc. to match main product + niche.',
-    '7) Only use keys that exist in typical siteConfig shape; prefer partial objects for deep merge.',
-    '8) Canonical identity: brand.name must equal canonical_site_name when non-empty; seo.siteUrl must be https://<canonical_site_domain> when domain non-empty — server enforces after merge.',
-    '9) Brand logo (header + favicon): include brand.logo. Unless you deliberately use an uploaded raster mark, brand.logo.type must be "lucide". brand.logo.icon must be a real lucide-react PascalCase export (https://lucide.dev/icons/) semantically aligned with Main product + niche JSON — never a meaningless token.',
-    '   Forbidden generic placeholders for icon: Image, Globe, Circle, Box. When uncertain, prefer a broader vertical icon (for example Activity for fitness/wellness) instead of Image.',
-    '10) Return a single JSON object.',
-  ].join('\n')
+    fillSlots
+      ? 'You are in FILL-SLOTS mode: the user lists exact dot-path keys. Output a single flat JSON object whose keys are only those paths. Values must be strings: English copy for content keys; literal oklch(L C H) for theme.colors.* keys; plain font stack names for fonts.sans / fonts.mono. Do not nest objects under top-level keys. Do not add keys not listed. Do not output arrays.'
+      : 'The JSON will be deep-merged into an existing AMZ siteConfig object (Payload CMS) used by amz-template-1 and amz-template-2.',
+  ]
+
+  const rules = fillSlots
+    ? [
+        'Rules (fill-slots):',
+        '1) English copy paths: original prose for niche + main product; vary wording when variation_seed changes. Theme paths: coherent oklch(L C H) palettes + readable contrast (see readability bullets). Fonts: legible stacks matching niche.',
+        '2) Each key must match the user-listed dot-path; values non-empty strings. theme.colors.* must match oklch(...) syntax.',
+        '3) Brand logo and locks: do not emit brand.logo*, navigation.main, footer.resources, footer.legal, homepage.categories.items, or pages.guides.categories.',
+        '4) Readability: light mode — foreground L must stay clearly darker than background L when background is near-white; mutedForeground readable on muted. Dark mode — foreground clearly lighter than background. Never near-equal L between body text and its surface.',
+        '5) Niche harmony: derive hue/chroma tendencies from niche + main product so primary/accent relate to vertical (avoid random unrelated hues).',
+        '6) Invalid JSON or wrong value types rejected — valid JSON object only.',
+      ]
+    : [
+        'Rules:',
+        '1) ALL user-visible copy you add or change must be in English only.',
+        '2) pages.guides: you MAY change title, description, and cta (cta.title, cta.description, cta.primaryButton.text). Keep cta.primaryButton.href as /reviews unless a clearly better internal path exists. Do NOT change pages.guides.categories — the server will restore it; omit "categories" from your output.',
+        '3) Do NOT include navigation.main in your output — server locks it.',
+        '4) Do NOT include footer.resources or footer.legal — server locks them.',
+        '5) Do NOT include homepage.categories.items — server locks it.',
+        '6) Update brand, SEO, hero, homepage copy (except locked category items), pages (except guides.categories), footer.about text, copyright, affiliateNotice, etc. to match main product + niche.',
+        '7) Theme (theme.colors.light / theme.colors.dark): use oklch(L C H) strings matching the schema. Align hue (H) and chroma (C) with niche + main product (examples: wellness → natural greens or soft teal; electronics → restrained cool neutrals + cool accent; gourmet → warm neutrals + food-friendly accent). Light and dark themes should feel like one brand.',
+        '8) Readability: never produce low-contrast body text — if background/card is light, foreground must use clearly darker OKLCH L than the surface; if background is dark, foreground must be clearly lighter. Avoid similar L between body text and page background or card. mutedForeground must stay readable on muted/background fills. Accent/primary fills must pair with legible on-button text in typical AMZ shell usage.',
+        '9) Fonts (fonts.sans, fonts.mono): choose common web-safe stacks or CDN-friendly names suited to niche; sans for UI/body, mono sparingly; prioritize legibility over display novelty.',
+        '10) Only use keys that exist in typical siteConfig shape; prefer partial objects for deep merge.',
+        '11) Canonical identity: brand.name must equal canonical_site_name when non-empty; seo.siteUrl must be https://<canonical_site_domain> when domain non-empty — server enforces after merge.',
+        '12) Brand logo (header + favicon): include brand.logo. Unless you deliberately use an uploaded raster mark, brand.logo.type must be "lucide". brand.logo.icon must be a real lucide-react PascalCase export (https://lucide.dev/icons/) semantically aligned with Main product + niche JSON — never a meaningless token.',
+        '    Forbidden generic placeholders for icon: Image, Globe, Circle, Box. When uncertain, prefer a broader vertical icon (for example Activity for fitness/wellness) instead of Image.',
+        '13) Return a single JSON object.',
+      ]
+
+  return [...head, '', ...rules].join('\n')
 }
 
-function buildUserPrompt(args: {
+export function buildUserPrompt(args: {
   mainProduct: string
   canonicalSiteName: string
   canonicalSiteDomain: string
@@ -153,11 +179,41 @@ function buildUserPrompt(args: {
   ].join('\n')
 }
 
+export function buildFillSlotsUserPrompt(args: {
+  mainProduct: string
+  canonicalSiteName: string
+  canonicalSiteDomain: string
+  nicheJson: string
+  variationSeed: string
+}): string {
+  const skeleton = JSON.stringify(buildFlatFillSkeletonPlaceholderJson(), null, 2)
+  return [
+    'Mode: FILL-SLOTS (English copy only on whitelisted paths).',
+    'Main product: ' + args.mainProduct,
+    'Canonical site_name: ' + (args.canonicalSiteName || '(empty)'),
+    'Canonical site_domain: ' + (args.canonicalSiteDomain || '(empty)'),
+    'variation_seed: ' + args.variationSeed,
+    '',
+    'Niche data: ' + args.nicheJson,
+    '',
+    'Fill every field below. Output one flat JSON object: keys must be exactly these dot-paths, values real English strings (no __FILL_EN__).',
+    'Do not send the full siteConfig; do not nest objects at the top level.',
+    '',
+    'Allowed dot-path keys (' + String(AMZ_DESIGN_FILLABLE_DOT_PATHS.length) + '):',
+    AMZ_DESIGN_FILLABLE_DOT_PATHS.join('\n'),
+    '',
+    'Shape reference (values are placeholders only):',
+    skeleton,
+  ].join('\n')
+}
+
 export type RunAmzTemplateDesignForBlueprintArgs = {
   payload: Payload
   blueprintId: number
   mainProductOverride?: string | null
   aiModel?: string | null
+  /** Flat copy-only regen (whitelist dot-paths); does not send full merged config */
+  fillSlots?: boolean | null
   /** Set when client already called prepare — designWorkflowStatus is already running. */
   afterPrepare?: boolean
 }
@@ -177,6 +233,8 @@ type AmzDesignWorkContext = {
   userPrompt: string
   canonicalSiteName: string
   canonicalSiteDomain: string
+  fillSlots: boolean
+  variationSeed: string
 }
 
 async function markBlueprintDesignWorkflowError(
@@ -316,13 +374,25 @@ async function loadAmzTemplateDesignWorkContext(
     niche = nd as Record<string, unknown>
   }
 
-  const userPrompt = buildUserPrompt({
-    mainProduct,
-    canonicalSiteName,
-    canonicalSiteDomain,
-    nicheJson: JSON.stringify(niche),
-    currentConfigJson: currentJson,
-  })
+  const nicheJson = JSON.stringify(niche)
+  const fillSlots = Boolean(args.fillSlots)
+  const variationSeed = `${blueprintId}-${Date.now()}`
+
+  const userPrompt = fillSlots
+    ? buildFillSlotsUserPrompt({
+        mainProduct,
+        canonicalSiteName,
+        canonicalSiteDomain,
+        nicheJson,
+        variationSeed,
+      })
+    : buildUserPrompt({
+        mainProduct,
+        canonicalSiteName,
+        canonicalSiteDomain,
+        nicheJson,
+        currentConfigJson: currentJson,
+      })
 
   return {
     ok: true,
@@ -337,6 +407,8 @@ async function loadAmzTemplateDesignWorkContext(
       userPrompt,
       canonicalSiteName,
       canonicalSiteDomain,
+      fillSlots,
+      variationSeed,
     },
   }
 }
@@ -405,10 +477,13 @@ export async function runAmzTemplateDesignForBlueprint(
     raw = await openrouterChat(
       ctx.aiModel,
       [
-        { role: 'system', content: buildSystemPrompt() },
+        { role: 'system', content: buildSystemPrompt(ctx.fillSlots) },
         { role: 'user', content: ctx.userPrompt },
       ],
-      { responseFormatJson: true, temperature: 0.35 },
+      {
+        responseFormatJson: true,
+        temperature: ctx.fillSlots ? 0.52 : 0.35,
+      },
     )
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -431,9 +506,31 @@ export async function runAmzTemplateDesignForBlueprint(
     return { ok: false, code: 'PARSE', message: msg, status: 422 }
   }
 
-  let merged = mergePatchOntoAmzConfig(ctx.current, patch)
-  merged = reapplyLockedSlices(ctx.current, merged)
-  coerceBrandLogoLucideForNiche(merged, ctx.mainProduct, ctx.site.nicheData, ctx.canonicalSiteDomain)
+  let merged: AmzSiteConfig
+  if (ctx.fillSlots) {
+    const flat = parseFillSlotsPatch(patch)
+    const draft = structuredClone(ctx.current)
+    const wrote = applyAllowedFillPatches(draft, flat)
+    if (wrote === 0) {
+      const detail = '模型未返回任何可写入的白名单字段（或全部为空白）'
+      await markBlueprintDesignWorkflowError(payload, blueprintId, {
+        code: 'FILL_EMPTY',
+        message: detail,
+      })
+      return { ok: false, code: 'FILL_EMPTY', message: detail, status: 422 }
+    }
+    merged = reapplyLockedSlices(ctx.current, draft)
+  } else {
+    merged = mergePatchOntoAmzConfig(ctx.current, patch)
+    merged = reapplyLockedSlices(ctx.current, merged)
+  }
+  coerceBrandLogoLucideForNiche(
+    merged,
+    ctx.mainProduct,
+    ctx.site.nicheData,
+    ctx.canonicalSiteDomain,
+    typeof ctx.site.slug === 'string' ? ctx.site.slug : null,
+  )
   enforceCanonicalIdentity(ctx.canonicalSiteName, ctx.canonicalSiteDomain, merged)
 
   try {
