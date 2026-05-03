@@ -157,7 +157,7 @@ export type Template1ArticlePageProps = {
 
 export function Template1ArticlePage(props: Template1ArticlePageProps) {
   const { article, html, locale, readMinutes, related, theme } = props
-  const t = template1BlockForLocale(theme.template1, locale)
+  const t = template1BlockForLocale(theme.template1, locale, theme.defaultPublicLocale)
   const category = firstCategoryFromArticle(article)
   const categoryUrl = categoryHref(locale, article)
   const image = mediaUrlForArticle(article.featuredImage)

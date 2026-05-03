@@ -1,5 +1,5 @@
 
-import type { AppLocale } from '@/i18n/config'
+import { defaultLocale, type AppLocale } from '@/i18n/config'
 
 /** Resolved Template1 copy for one locale; placeholders: {{siteName}}, {{category}}, {{n}}, {{year}} */
 export type Template1LocaleBlock = {
@@ -438,10 +438,13 @@ export function mergeTemplate1Layers(
 }
 
 export function template1BlockForLocale(
-  theme: Template1Theme,
+  template: Template1Theme,
   locale: AppLocale,
+  fallbackLocale: AppLocale = defaultLocale,
 ): Template1LocaleBlock {
-  return locale === 'zh' ? theme.zh : theme.en
+  if (locale === 'zh') return template.zh
+  if (locale === 'en') return template.en
+  return fallbackLocale === 'zh' ? template.zh : template.en
 }
 
 export function applyTemplate1Placeholders(

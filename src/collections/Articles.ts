@@ -11,6 +11,7 @@ import { pageLinkGraphSync } from '@/collections/hooks/pageLinkGraphSync'
 import { articleLifecycleOnPublish } from '@/collections/hooks/articleLifecycleOnPublish'
 import { articlePublishGate } from '@/collections/hooks/articlePublishGate'
 import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { validateDocLocaleAgainstSite } from '@/collections/hooks/validateDocLocaleAgainstSite'
 import { validateCategoriesMatchSite } from '@/collections/shared/validateCategoriesMatchSite'
 
 export const Articles: CollectionConfig = {
@@ -40,6 +41,7 @@ export const Articles: CollectionConfig = {
     beforeValidate: [articleLinkBudget],
     beforeChange: [
       validateCategoriesMatchSite,
+      validateDocLocaleAgainstSite,
       validateSlugLocaleUnique('articles'),
       articleLifecycleOnPublish,
       articlePublishGate,

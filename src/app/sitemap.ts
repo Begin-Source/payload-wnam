@@ -9,6 +9,7 @@ import { getPublicSiteContext, isAmzSiteLayout } from '@/utilities/publicLanding
 import { getPublicBaseUrlFromHeaders } from '@/utilities/seoDocumentMeta'
 import {
   hreflangAlternatesForLocales,
+  hreflangAlternatesSparse,
   isSeoNoindexFromMeta,
   payloadFindAllForSitemap,
   STATIC_SITEMAP_SEGMENTS,
@@ -27,6 +28,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { site, theme } = await getPublicSiteContext(headersList)
   const baseUrl = getPublicBaseUrlFromHeaders(headersList)
   if (!site || !baseUrl) return []
+
+  const enabled = theme.publicLocales
+  const siteDef = theme.defaultPublicLocale
 
   const siteLastModified = new Date(site.updatedAt ?? Date.now())
   const payload = await getPayload({ config: await config })
@@ -68,9 +72,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const entries: MetadataRoute.Sitemap = []
 
-  const homeAlts = hreflangAlternatesForLocales((loc) => `${baseUrl}/${loc}/`)
+  const homeAlts = hreflangAlternatesForLocales(
+    (loc) => `${baseUrl}/${loc}/`,
+    enabled,
+    siteDef,
+  )
 
-  for (const locale of locales) {
+  for (const locale of enabled) {
     entries.push({
       url: `${baseUrl}/${locale}/`,
       lastModified: homeLastModified,
@@ -81,8 +89,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   for (const segment of STATIC_SITEMAP_SEGMENTS) {
-    const alt = hreflangAlternatesForLocales((loc) => `${baseUrl}/${loc}/${segment}`)
-    for (const locale of locales) {
+    const alt = hreflangAlternatesForLocales(
+      (loc) => `${baseUrl}/${loc}/${segment}`,
+      enabled,
+      siteDef,
+    )
+    for (const locale of enabled) {
       entries.push({
         url: `${baseUrl}/${locale}/${segment}`,
         lastModified: siteLastModified,
@@ -97,8 +109,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (showAmzHub) {
     const hubSegments = ['products', 'reviews', 'guides'] as const
     for (const hub of hubSegments) {
-      const hubAlt = hreflangAlternatesForLocales((loc) => `${baseUrl}/${loc}/${hub}`)
-      for (const locale of locales) {
+      const hubAlt = hreflangAlternatesForLocales(
+        (loc) => `${baseUrl}/${loc}/${hub}`,
+        enabled,
+        siteDef,
+      )
+      for (const locale of enabled) {
         entries.push({
           url: `${baseUrl}/${locale}/${hub}`,
           lastModified: siteLastModified,
@@ -132,12 +148,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   for (const [slugKey, byLoc] of articleBySlug) {
     const slugEnc = encodeURIComponent(slugKey)
-    const articleAlts = hreflangAlternatesForLocales(
-      (loc) => `${baseUrl}/${loc}/posts/${slugEnc}`,
-    )
-    for (const locale of locales) {
+    for (const locale of enabled) {
       const a = byLoc[locale]
       if (!a?.slug?.trim()) continue
+      const articleAlts = hreflangAlternatesSparse(
+        baseUrl,
+        `posts/${slugEnc}`,
+        enabled,
+        siteDef,
+        (loc) => Boolean(byLoc[loc]?.slug?.trim()),
+      )
       entries.push({
         url: `${baseUrl}/${locale}/posts/${slugEnc}`,
         lastModified: new Date(a.updatedAt),
@@ -165,10 +185,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   for (const [pageSlugKey, byLoc] of pageBySlug) {
     const pageEnc = encodeURIComponent(pageSlugKey)
-    const pageAlts = hreflangAlternatesForLocales((loc) => `${baseUrl}/${loc}/pages/${pageEnc}`)
-    for (const locale of locales) {
+    for (const locale of enabled) {
       const p = byLoc[locale]
       if (!p?.slug?.trim()) continue
+      const pageAlts = hreflangAlternatesSparse(
+        baseUrl,
+        `pages/${pageEnc}`,
+        enabled,
+        siteDef,
+        (loc) => Boolean(byLoc[loc]?.slug?.trim()),
+      )
       entries.push({
         url: `${baseUrl}/${locale}/pages/${pageEnc}`,
         lastModified: new Date(p.updatedAt),
@@ -184,8 +210,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (!slug) continue
     const catAlt = hreflangAlternatesForLocales(
       (loc) => `${baseUrl}/${loc}/categories/${encodeURIComponent(slug)}`,
+      enabled,
+      siteDef,
     )
-    for (const locale of locales) {
+    for (const locale of enabled) {
       entries.push({
         url: `${baseUrl}/${locale}/categories/${encodeURIComponent(slug)}`,
         lastModified: new Date(c.updatedAt),

@@ -8,7 +8,7 @@
  * - `mergeLandingLayers` / `mergeBlogChromeLayers` in `publicLandingTheme.ts`
  * - `mergeTemplate1FromSite` / `siteT1FromLocaleJson` in `publicLandingTemplate1.ts`
  * - `publicUrlFromSiteHeroBanner` in `heroBannerMedia.ts`; `siteLogo` for header/favicon (`siteLogoMedia.ts`).
- * - `mainProduct`, `nicheData` — AMZ Lucide fallback + niche hints (`mergePublicSiteTheme`).
+ * - `publicLocaleCodes` / `defaultPublicLocale` — per-site enabled URL locales (`sitePublicLocales`).
  */
 export const publicSiteHeroBannerMediaSelect = {
   url: true,
@@ -28,6 +28,8 @@ export const publicSiteThemeSelectWithoutT1 = {
   primaryDomain: true,
   status: true,
   siteLayout: true,
+  publicLocaleCodes: true,
+  defaultPublicLocale: true,
   blueprint: true,
   homepageHeroBanner: publicSiteHeroBannerMediaSelect,
   siteLogo: publicSiteHeroBannerMediaSelect,

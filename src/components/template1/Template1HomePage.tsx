@@ -64,7 +64,7 @@ export type Template1HomePageProps = {
 
 export async function Template1HomePage(props: Template1HomePageProps) {
   const { locale, site, theme, articles, categories } = props
-  const t = template1BlockForLocale(theme.template1, locale)
+  const t = template1BlockForLocale(theme.template1, locale, theme.defaultPublicLocale)
   const featured = articles[0]
   const rest = articles.slice(1)
   const picks = articles.slice(0, 4)

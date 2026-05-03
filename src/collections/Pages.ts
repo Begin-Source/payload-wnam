@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { postLikeFields } from '@/collections/shared/postLikeFields'
 import { adminGroups } from '@/constants/adminGroups'
 import { isTrustBundleEnPage } from '@/utilities/sitePagesBundleContent/trustPageConstants'
+import { validateDocLocaleAgainstSite } from '@/collections/hooks/validateDocLocaleAgainstSite'
 import { validateSlugLocaleUnique } from '@/collections/shared/validateSlugLocaleUnique'
 import { validateCategoriesMatchSite } from '@/collections/shared/validateCategoriesMatchSite'
 import { pageLinkGraphSync } from '@/collections/hooks/pageLinkGraphSync'
@@ -88,7 +89,11 @@ export const Pages: CollectionConfig = {
     },
   },
   hooks: {
-    beforeChange: [validateCategoriesMatchSite, validateSlugLocaleUnique('pages')],
+    beforeChange: [
+      validateCategoriesMatchSite,
+      validateDocLocaleAgainstSite,
+      validateSlugLocaleUnique('pages'),
+    ],
     afterChange: [pageLinkGraphSync],
   },
   access: loggedInSuperAdminAccessFor('pages'),

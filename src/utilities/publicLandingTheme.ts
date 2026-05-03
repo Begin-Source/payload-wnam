@@ -15,7 +15,9 @@ import {
   applySiteNameFallbackToAmzBrand,
   publicUrlFromSiteLogo,
 } from '@/utilities/siteLogoMedia'
+import type { AppLocale } from '@/i18n/config'
 import { mergeTemplate1Layers, type Template1Theme } from '@/utilities/publicLandingTemplate1'
+import { normalizeSitePublicLocales } from '@/utilities/sitePublicLocales'
 
 export type LandingFontPreset = 'system' | 'serif' | 'noto_sans_sc'
 
@@ -136,6 +138,9 @@ export type PublicSiteTheme = LandingTheme &
     amzSiteConfig?: AmzSiteConfig
     /** Public URL for `sites.siteLogo` — header (AMZ) + `generateMetadata` icons when set。 */
     siteLogoUrl?: string
+    /** Per-site enabled locales (ordered) + default for redirects / menus. */
+    publicLocales: AppLocale[]
+    defaultPublicLocale: AppLocale
   }
 
 const BLOG_DEFAULTS: BlogChromeTheme = {
@@ -346,10 +351,13 @@ export function mergePublicSiteTheme(
             firstNonEmpty(amzSiteConfig.seo?.description, landing.tagline) ?? landing.tagline,
         }
       : landing
+  const { publicLocales, defaultPublicLocale } = normalizeSitePublicLocales(site)
   return {
     ...landingForTheme,
     ...blogChrome,
     siteLayout: sl,
+    publicLocales,
+    defaultPublicLocale,
     reviewHubTaglineResolved:
       firstNonEmpty(design?.designReviewHubTagline, landingForTheme.tagline) ?? '',
     affiliateDisclosureResolved:

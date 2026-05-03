@@ -4,7 +4,12 @@ import { notFound } from 'next/navigation'
 
 import { AmzStaticPage as Amz1StaticPage } from '@/site-layouts/amz-template-1/pages/AmzStaticPage'
 import { AmzStaticPage as Amz2StaticPage } from '@/site-layouts/amz-template-2/pages/AmzStaticPage'
-import { hreflangXDefaultUrl, isAppLocale, type AppLocale } from '@/i18n/config'
+import {
+  hreflangTagForLocale,
+  hreflangXDefaultUrl,
+  isAppLocale,
+  type AppLocale,
+} from '@/i18n/config'
 import { getPublicBaseUrlFromHeaders, seoMetaForDocument } from '@/utilities/seoDocumentMeta'
 import { getPublicSiteContext, isAmzSiteLayout, isAmzTemplate2Layout } from '@/utilities/publicLandingTheme'
 import { getPageBySlugForSite } from '@/utilities/publicSiteQueries'
@@ -28,22 +33,27 @@ export async function generateCmsStaticPageMetadata(input: {
   const baseUrl = getPublicBaseUrlFromHeaders(headersList)
   const enc = encodeURIComponent(input.cmsSlug)
 
-  const pZh = await getPageBySlugForSite(site.id, input.cmsSlug, 'zh')
-  const pEn = await getPageBySlugForSite(site.id, input.cmsSlug, 'en')
   const alternateLanguages: Record<string, string> = {}
   const base = baseUrl.replace(/\/$/, '')
+  const hasByLocale: Partial<Record<AppLocale, boolean>> = {}
 
-  const pathZh =
-    input.location === 'root' ? `${base}/zh/${enc}` : `${base}/zh/pages/${enc}`
-  const pathEn =
-    input.location === 'root' ? `${base}/en/${enc}` : `${base}/en/pages/${enc}`
-
-  if (pZh) alternateLanguages['zh-CN'] = pathZh
-  if (pEn) alternateLanguages.en = pathEn
+  for (const loc of theme.publicLocales) {
+    const p = await getPageBySlugForSite(site.id, input.cmsSlug, loc)
+    if (!p) continue
+    hasByLocale[loc] = true
+    const pathLoc =
+      input.location === 'root' ? `${base}/${loc}/${enc}` : `${base}/${loc}/pages/${enc}`
+    alternateLanguages[hreflangTagForLocale(loc)] = pathLoc
+  }
 
   const pathForXDefault =
     input.location === 'root' ? enc : `pages/${enc}`
-  const xDefault = hreflangXDefaultUrl(baseUrl, pathForXDefault, Boolean(pZh), Boolean(pEn))
+  const xDefault = hreflangXDefaultUrl(
+    baseUrl,
+    pathForXDefault,
+    hasByLocale,
+    theme.defaultPublicLocale,
+  )
   if (xDefault) alternateLanguages['x-default'] = xDefault
 
   const path =

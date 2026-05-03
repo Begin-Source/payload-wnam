@@ -1,5 +1,6 @@
 import type { Field } from 'payload'
 
+import { localeSelectOptions } from '@/i18n/localeRegistry'
 import { lexicalEditorWithAi } from '@/utilities/lexicalEditorWithAi'
 
 /** Shared body for article-like and page-like content (no postType — implied by collection). */
@@ -20,10 +21,7 @@ export const postLikeFields: Field[] = [
     required: true,
     defaultValue: 'en',
     index: true,
-    options: [
-      { label: '中文', value: 'zh' },
-      { label: 'English', value: 'en' },
-    ],
+    options: localeSelectOptions,
     admin: {
       description: 'URL prefix /zh/ or /en/; must be unique per site + slug.',
     },

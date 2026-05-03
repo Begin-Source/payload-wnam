@@ -29,7 +29,7 @@ async function buildT1CompanyLinks(
     return theme.footerResourceLinks
   }
   const base = `/${locale}`
-  const t1b = template1BlockForLocale(theme.template1, locale)
+  const t1b = template1BlockForLocale(theme.template1, locale, theme.defaultPublicLocale)
   const aboutL =
     site != null
       ? await resolveT1NavAboutLabel(
@@ -57,7 +57,7 @@ async function buildT1CompanyLinks(
 
 export const Template1Shell: SiteLayoutShellComponent = async function Template1Shell(props) {
   const { children, categories, locale, site, theme } = props
-  const t1b = template1BlockForLocale(theme.template1, locale)
+  const t1b = template1BlockForLocale(theme.template1, locale, theme.defaultPublicLocale)
   const aboutNav =
     site != null
       ? await resolveT1NavAboutLabel(

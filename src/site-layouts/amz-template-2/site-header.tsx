@@ -7,13 +7,22 @@ import { useState } from 'react'
 
 import { appendAmzSite } from '@/site-layouts/amz-template-2/appendAmzSite'
 import { AmzLink } from '@/site-layouts/amz-template-2/AmzLink'
+import { AmzLocaleMenu } from '@/site-layouts/amz-template-2/AmzLocaleMenu'
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-2/defaultSiteConfig'
 import { amzNavHref } from '@/site-layouts/amz-template-2/amzNavHref'
 import { Button } from '@/site-layouts/amz-template-2/components/ui/button'
 import { Input } from '@/site-layouts/amz-template-2/components/ui/input'
 import type { AppLocale } from '@/i18n/config'
 
-export function AmzSiteHeader({ locale, config }: { locale: AppLocale; config: AmzSiteConfig }) {
+export function AmzSiteHeader({
+  locale,
+  config,
+  enabledLocales,
+}: {
+  locale: AppLocale
+  config: AmzSiteConfig
+  enabledLocales: readonly AppLocale[]
+}) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -128,6 +137,13 @@ export function AmzSiteHeader({ locale, config }: { locale: AppLocale; config: A
             ))}
           </nav>
 
+          <nav
+            aria-label="Language"
+            className="hidden flex-shrink-0 items-center border-border lg:flex lg:border-l lg:pl-3"
+          >
+            <AmzLocaleMenu active={locale} enabledLocales={enabledLocales} />
+          </nav>
+
           <div className="flex flex-1 items-center justify-end gap-2">
             <Button
               variant="ghost"
@@ -168,7 +184,7 @@ export function AmzSiteHeader({ locale, config }: { locale: AppLocale; config: A
 
         {mobileMenuOpen ? (
           <div className="animate-in slide-in-from-top-2 border-t border-border py-4 duration-200 lg:hidden">
-            <nav className="flex flex-col gap-4">
+            <nav className="flex flex-col gap-4" aria-label="Mobile">
               {config.navigation.main.map((item) => (
                 <AmzLink
                   key={item.href}
@@ -179,6 +195,18 @@ export function AmzSiteHeader({ locale, config }: { locale: AppLocale; config: A
                   {item.label}
                 </AmzLink>
               ))}
+              <div className="border-t border-border pt-4">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Language
+                </p>
+                <AmzLocaleMenu
+                  active={locale}
+                  enabledLocales={enabledLocales}
+                  align="start"
+                  onItemSelect={() => setMobileMenuOpen(false)}
+                  triggerClassName="h-auto justify-start px-0 font-semibold hover:bg-transparent"
+                />
+              </div>
             </nav>
           </div>
         ) : null}

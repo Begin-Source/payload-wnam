@@ -34,7 +34,7 @@ export function BlogHeader(props: Props) {
                 <Link href={`${prefix}/categories/${encodeURIComponent(c.slug)}`}>{c.name}</Link>
               </li>
             ))}
-            <LocaleSwitcher active={locale} />
+            <LocaleSwitcher active={locale} enabledLocales={theme.publicLocales} />
             <li className="blogNavAdmin">
               <a href={adminHref} rel="noopener noreferrer" target="_blank">
                 {theme.ctaLabel}

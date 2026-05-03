@@ -375,6 +375,55 @@ export interface Site {
    */
   siteLayout?: ('template1' | 'template2' | 'amz-template-1' | 'amz-template-2') | null;
   /**
+   * URL 前缀（如 /en、/zh）；至少选一种。新语言需先在代码 localeRegistry 登记后再在此处可选。
+   */
+  publicLocaleCodes: (
+    | 'en'
+    | 'zh'
+    | 'es'
+    | 'pt'
+    | 'fr'
+    | 'de'
+    | 'it'
+    | 'ja'
+    | 'ko'
+    | 'nl'
+    | 'pl'
+    | 'tr'
+    | 'ar'
+    | 'hi'
+    | 'vi'
+    | 'th'
+    | 'id'
+    | 'ms'
+    | 'uk'
+    | 'ru'
+  )[];
+  /**
+   * 根路径 / 重定向时使用的默认语言；须属于上方「前台启用语言」。
+   */
+  defaultPublicLocale:
+    | 'en'
+    | 'zh'
+    | 'es'
+    | 'pt'
+    | 'fr'
+    | 'de'
+    | 'it'
+    | 'ja'
+    | 'ko'
+    | 'nl'
+    | 'pl'
+    | 'tr'
+    | 'ar'
+    | 'hi'
+    | 'vi'
+    | 'th'
+    | 'id'
+    | 'ms'
+    | 'uk'
+    | 'ru';
+  /**
    * Together「站点首页横幅」或手工上传：宽屏横幅背景（amz-template-1 / 2 首页 Hero）。需在对应站点设计里配置文案。
    */
   homepageHeroBanner?: (number | null) | Media;
@@ -708,7 +757,27 @@ export interface Page {
   /**
    * URL prefix /zh/ or /en/; must be unique per site + slug.
    */
-  locale: 'zh' | 'en';
+  locale:
+    | 'en'
+    | 'zh'
+    | 'es'
+    | 'pt'
+    | 'fr'
+    | 'de'
+    | 'it'
+    | 'ja'
+    | 'ko'
+    | 'nl'
+    | 'pl'
+    | 'tr'
+    | 'ar'
+    | 'hi'
+    | 'vi'
+    | 'th'
+    | 'id'
+    | 'ms'
+    | 'uk'
+    | 'ru';
   /**
    * Owning site (optional while migrating legacy content).
    */
@@ -1105,7 +1174,27 @@ export interface Article {
   /**
    * URL prefix /zh/ or /en/; must be unique per site + slug.
    */
-  locale: 'zh' | 'en';
+  locale:
+    | 'en'
+    | 'zh'
+    | 'es'
+    | 'pt'
+    | 'fr'
+    | 'de'
+    | 'it'
+    | 'ja'
+    | 'ko'
+    | 'nl'
+    | 'pl'
+    | 'tr'
+    | 'ar'
+    | 'hi'
+    | 'vi'
+    | 'th'
+    | 'id'
+    | 'ms'
+    | 'uk'
+    | 'ru';
   /**
    * Owning site (optional while migrating legacy content).
    */
@@ -2914,6 +3003,8 @@ export interface SitesSelect<T extends boolean = true> {
   status?: T;
   portfolio?: T;
   siteLayout?: T;
+  publicLocaleCodes?: T;
+  defaultPublicLocale?: T;
   homepageHeroBanner?: T;
   siteLogo?: T;
   operators?: T;

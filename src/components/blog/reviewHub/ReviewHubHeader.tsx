@@ -26,7 +26,7 @@ export function ReviewHubHeader(props: Props) {
           </Link>
           <nav className="reviewHubTopNav" aria-label="Language and site tools">
             <ul className="reviewHubTopNavList">
-              <LocaleSwitcher active={locale} />
+              <LocaleSwitcher active={locale} enabledLocales={theme.publicLocales} />
               <li>
                 <a
                   className="reviewHubAdminCta"

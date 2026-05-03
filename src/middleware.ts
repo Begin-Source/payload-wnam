@@ -49,6 +49,59 @@ function redirectLookupSecret(): string {
   return process.env.INTERNAL_REDIRECT_SECRET?.trim() || 'development-redirect-secret'
 }
 
+type SiteLocaleMeta = {
+  publicLocales: string[]
+  defaultPublicLocale: string
+}
+
+async function fetchSiteLocaleMeta(
+  request: NextRequest,
+  forward: Headers,
+): Promise<SiteLocaleMeta | null> {
+  try {
+    const url = new URL('/api/site-locale-meta', request.url)
+    const res = await fetch(url.toString(), {
+      headers: {
+        'x-redirect-secret': redirectLookupSecret(),
+        host: forward.get('host') ?? '',
+        'x-forwarded-host': forward.get('x-forwarded-host') ?? '',
+        'x-site-slug': forward.get('x-site-slug') ?? '',
+      },
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as {
+      ok?: boolean
+      publicLocales?: string[]
+      defaultPublicLocale?: string
+    }
+    if (
+      !data.ok ||
+      !Array.isArray(data.publicLocales) ||
+      typeof data.defaultPublicLocale !== 'string'
+    ) {
+      return null
+    }
+    return {
+      publicLocales: data.publicLocales,
+      defaultPublicLocale: data.defaultPublicLocale,
+    }
+  } catch {
+    return null
+  }
+}
+
+function defaultLocaleFromMeta(meta: SiteLocaleMeta | null): string {
+  if (
+    meta &&
+    typeof meta.defaultPublicLocale === 'string' &&
+    isAppLocale(meta.defaultPublicLocale)
+  ) {
+    return meta.defaultPublicLocale
+  }
+  return defaultLocale
+}
+
 async function cmsRedirect(
   pathname: string,
   requestUrl: string,
@@ -90,14 +143,24 @@ export async function middleware(request: NextRequest) {
     })
   }
 
+  let siteLocaleMetaPromise: Promise<SiteLocaleMeta | null> | null = null
+  const getSiteLocaleMeta = () => {
+    if (!siteLocaleMetaPromise) {
+      siteLocaleMetaPromise = fetchSiteLocaleMeta(request, requestHeaders)
+    }
+    return siteLocaleMetaPromise
+  }
+
   if (pathname === '/') {
     if (keepWelcomePageAtRoot(request.headers.get('host'))) {
       return NextResponse.next({
         request: { headers: requestHeaders },
       })
     }
+    const meta = await getSiteLocaleMeta()
+    const def = defaultLocaleFromMeta(meta)
     const url = request.nextUrl.clone()
-    url.pathname = `/${defaultLocale}`
+    url.pathname = `/${def}`
     url.search = request.nextUrl.search
     return NextResponse.redirect(url, 308)
   }
@@ -105,9 +168,25 @@ export async function middleware(request: NextRequest) {
   const segments = pathname.split('/').filter(Boolean)
   const first = segments[0]
   if (!first || !isAppLocale(first)) {
+    const meta = await getSiteLocaleMeta()
+    const def = defaultLocaleFromMeta(meta)
     const url = request.nextUrl.clone()
     const suffix = pathname === '/' ? '' : pathname
-    url.pathname = `/${defaultLocale}${suffix}`
+    url.pathname = `/${def}${suffix}`
+    url.search = request.nextUrl.search
+    return NextResponse.redirect(url, 308)
+  }
+
+  const meta = await getSiteLocaleMeta()
+  if (
+    meta &&
+    meta.publicLocales.length > 0 &&
+    !meta.publicLocales.includes(first)
+  ) {
+    const rest = segments.slice(1).join('/')
+    const url = request.nextUrl.clone()
+    const def = defaultLocaleFromMeta(meta)
+    url.pathname = rest ? `/${def}/${rest}` : `/${def}`
     url.search = request.nextUrl.search
     return NextResponse.redirect(url, 308)
   }

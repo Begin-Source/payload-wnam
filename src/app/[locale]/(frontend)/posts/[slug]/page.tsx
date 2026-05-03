@@ -14,7 +14,7 @@ import { AmzArticlePage as Amz2ArticlePage } from '@/site-layouts/amz-template-2
 import { Template1ArticlePage } from '@/components/template1/Template1ArticlePage'
 import type { Media } from '@/payload-types'
 import type { AppLocale } from '@/i18n/config'
-import { hreflangXDefaultUrl, isAppLocale } from '@/i18n/config'
+import { hreflangTagForLocale, hreflangXDefaultUrl, isAppLocale } from '@/i18n/config'
 import { stripLeadingDuplicateH1FromArticleHtml } from '@/utilities/articleHtmlDedupe'
 import { lexicalStateToHtml } from '@/utilities/lexicalToHtml'
 import { estimateReadingTimeMinutesFromHtml } from '@/utilities/readingTime'
@@ -42,12 +42,21 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const baseUrl = getPublicBaseUrlFromHeaders(headersList)
   const enc = encodeURIComponent(slug)
 
-  const altZh = await getArticleBySlugForSite(site.id, slug, 'zh')
-  const altEn = await getArticleBySlugForSite(site.id, slug, 'en')
   const alternateLanguages: Record<string, string> = {}
-  if (altZh) alternateLanguages['zh-CN'] = `${baseUrl}/zh/posts/${enc}`
-  if (altEn) alternateLanguages.en = `${baseUrl}/en/posts/${enc}`
-  const xDefault = hreflangXDefaultUrl(baseUrl, `posts/${enc}`, Boolean(altZh), Boolean(altEn))
+  const hasByLocale: Partial<Record<AppLocale, boolean>> = {}
+  for (const loc of theme.publicLocales) {
+    const alt = await getArticleBySlugForSite(site.id, slug, loc)
+    if (alt) {
+      hasByLocale[loc] = true
+      alternateLanguages[hreflangTagForLocale(loc)] = `${baseUrl}/${loc}/posts/${enc}`
+    }
+  }
+  const xDefault = hreflangXDefaultUrl(
+    baseUrl,
+    `posts/${enc}`,
+    hasByLocale,
+    theme.defaultPublicLocale,
+  )
   if (xDefault) alternateLanguages['x-default'] = xDefault
 
   return seoMetaForDocument(article, {

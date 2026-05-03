@@ -5,8 +5,10 @@ import { fillSitesOptionalDbFields } from '@/collections/hooks/fillSitesOptional
 import { auditSitesMatrixChange } from '@/collections/hooks/sitesMatrixAudit'
 import { siteTrustPagesInstantiate } from '@/collections/hooks/siteTrustPagesInstantiate'
 import { enforceSitesMatrixQuota } from '@/collections/hooks/sitesMatrixQuota'
+import { validateSitesPublicLocales } from '@/collections/hooks/validateSitesPublicLocales'
 import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
 import { adminGroups } from '@/constants/adminGroups'
+import { localeSelectOptions } from '@/i18n/localeRegistry'
 
 export const Sites: CollectionConfig = {
   slug: 'sites',
@@ -33,7 +35,7 @@ export const Sites: CollectionConfig = {
   },
   access: loggedInSuperAdminAccessFor('sites'),
   hooks: {
-    beforeChange: [fillSitesOptionalDbFields, enforceSitesMatrixQuota],
+    beforeChange: [fillSitesOptionalDbFields, validateSitesPublicLocales, enforceSitesMatrixQuota],
     afterChange: [
       syncBlueprintsMirroredLayoutAfterSiteChange,
       siteTrustPagesInstantiate,
@@ -108,6 +110,30 @@ export const Sites: CollectionConfig = {
       admin: {
         description:
           'Template1 / Template2：文案在「设计」t1LocaleJson / t2LocaleJson。amz-template-1 / amz-template-2：壳层与配色见「设计」amzSiteConfigJson（与 amz-template-1 仓库 site.config 同形）。说明与预览链接见「站点布局」目录。',
+      },
+    },
+    {
+      name: 'publicLocaleCodes',
+      type: 'select',
+      label: '前台启用语言',
+      hasMany: true,
+      required: true,
+      defaultValue: ['zh', 'en'],
+      options: localeSelectOptions,
+      admin: {
+        description:
+          'URL 前缀（如 /en、/zh）；至少选一种。新语言需先在代码 localeRegistry 登记后再在此处可选。',
+      },
+    },
+    {
+      name: 'defaultPublicLocale',
+      type: 'select',
+      label: '默认语言',
+      required: true,
+      defaultValue: 'en',
+      options: localeSelectOptions,
+      admin: {
+        description: '根路径 / 重定向时使用的默认语言；须属于上方「前台启用语言」。',
       },
     },
     {
