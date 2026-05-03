@@ -5,22 +5,9 @@ import React from 'react'
 
 import { AmzLink } from '@/site-layouts/amz-template-2/AmzLink'
 import { Button } from '@/site-layouts/amz-template-2/components/ui/button'
+import { merchantCtaLabel as resolveMerchantCtaLabel } from '@/site-layouts/amz-template-2/lib/merchantCtaLabel'
 import type { AppLocale } from '@/i18n/config'
 import type { Article, Media, Offer } from '@/payload-types'
-
-function networkLabel(network: Offer['network']): string {
-  if (network && typeof network === 'object' && 'name' in network && network.name) {
-    return String(network.name)
-  }
-  return 'Amazon'
-}
-
-function merchantButtonLabel(network: Offer['network'], override?: string): string {
-  if (override?.trim()) return override.trim()
-  const n = networkLabel(network).toLowerCase()
-  if (n.includes('amazon')) return 'View on Amazon'
-  return `View on ${networkLabel(network)}`
-}
 
 function featuredMediaUrl(featured: Article['featuredImage']): string | null {
   if (featured == null) return null
@@ -58,7 +45,7 @@ export function AmzReviewListingCard({
     null
   const excerpt = article.excerpt?.trim() || ''
   const targetUrl = offer?.targetUrl?.trim() || ''
-  const merchantLabel = offer ? merchantButtonLabel(offer.network, merchantCtaLabel) : ''
+  const merchantLabel = offer ? resolveMerchantCtaLabel(offer.network, merchantCtaLabel) : ''
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-lg">
@@ -94,7 +81,7 @@ export function AmzReviewListingCard({
         {targetUrl ? (
           <Button
             asChild
-            className="w-full bg-[#FF9900] font-semibold text-white shadow-md transition-all hover:bg-[#FF9900]/90 hover:shadow-lg"
+            className="w-full bg-accent font-semibold text-accent-foreground shadow-md transition-all hover:bg-accent/90 hover:shadow-lg"
             size="lg"
           >
             <a href={targetUrl} target="_blank" rel="noopener sponsored noreferrer">

@@ -1,22 +1,14 @@
 import Link from 'next/link'
+import { ExternalLink } from 'lucide-react'
 import React from 'react'
 
 import { AmzLink } from '@/site-layouts/amz-template-2/AmzLink'
 import { amzNavHref } from '@/site-layouts/amz-template-2/amzNavHref'
+import { Button } from '@/site-layouts/amz-template-2/components/ui/button'
+import { merchantCtaLabel } from '@/site-layouts/amz-template-2/lib/merchantCtaLabel'
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-2/defaultSiteConfig'
 import type { AppLocale } from '@/i18n/config'
 import type { Offer } from '@/payload-types'
-
-function formatPrice(cents: number | null | undefined, currency: string | null | undefined): string {
-  if (cents == null || !Number.isFinite(Number(cents))) return '—'
-  const v = Number(cents) / 100
-  const cur = currency?.trim() || 'USD'
-  try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: cur }).format(v)
-  } catch {
-    return `$${v.toFixed(2)}`
-  }
-}
 
 function networkLabel(network: Offer['network']): string {
   if (network && typeof network === 'object' && 'name' in network && network.name) {
@@ -80,24 +72,17 @@ export function AmzProductDetailPage({
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">ASIN · {asin}</p>
             ) : null}
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground md:text-4xl">{offer.title}</h1>
-            <p className="mt-4 text-2xl font-semibold text-foreground">
-              {formatPrice(amz?.priceCents ?? null, amz?.currency ?? null)}
-            </p>
-            {typeof amz?.ratingAvg === 'number' && amz.ratingAvg > 0 ? (
-              <p className="mt-2 text-sm text-muted-foreground">
-                ★ {amz.ratingAvg.toFixed(1)}
-                {typeof amz?.reviewCount === 'number' && amz.reviewCount > 0 ? ` (${amz.reviewCount} reviews)` : ''}
-              </p>
-            ) : null}
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                href={href}
-                target="_blank"
-                rel="noopener sponsored"
-                className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-center text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              <Button
+                asChild
+                className="bg-accent font-semibold text-accent-foreground shadow-md transition-all hover:bg-accent/90 hover:shadow-lg"
+                size="lg"
               >
-                View on {networkLabel(offer.network)}
-              </Link>
+                <Link href={href} target="_blank" rel="noopener sponsored noreferrer">
+                  {merchantCtaLabel(offer.network)}
+                  <ExternalLink className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
               <AmzLink
                 href={amzNavHref(locale, '/products')}
                 className="inline-flex items-center justify-center rounded-md border border-border px-6 py-3 text-sm font-medium hover:bg-muted"

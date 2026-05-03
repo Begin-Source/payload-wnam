@@ -9,92 +9,46 @@ import { appendAmzSite } from '@/site-layouts/amz-template-2/appendAmzSite'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/site-layouts/amz-template-2/components/ui/collapsible'
 import { Input } from '@/site-layouts/amz-template-2/components/ui/input'
 import { useIsMobile } from '@/site-layouts/amz-template-2/hooks/use-mobile'
+import type { AmzSiteConfig } from '@/site-layouts/amz-template-2/defaultSiteConfig'
 import type { AppLocale } from '@/i18n/config'
-import type { Article, Author } from '@/payload-types'
+import type { Category, Offer } from '@/payload-types'
 
-import { AmzGuideListingCard } from './AmzGuideListingCard'
+import { AmzOfferCard } from './AmzOfferCard'
+import { buildAmzCategoryCards } from './categoryCards'
 
-export type GuideNavItem = {
-  slug: string
-  name: string
-  cmsId?: number
-}
-
-function articleMatchesGuide(article: Article, guideSlug: string, guideName: string): boolean {
-  const cats = article.categories ?? []
-  for (const c of cats) {
-    if (typeof c !== 'object' || c === null) continue
-    const slug = 'slug' in c ? String((c as { slug?: string }).slug ?? '') : ''
-    const name = 'name' in c ? String((c as { name?: string }).name ?? '') : ''
-    if (slug && slug === guideSlug) return true
-    if (name && name === guideName) return true
-  }
-  return false
-}
-
-function articleHasCategoryId(article: Article, categoryId: number): boolean {
-  const cats = article.categories ?? []
-  for (const c of cats) {
-    if (typeof c === 'number' && c === categoryId) return true
-    if (typeof c === 'object' && c !== null && 'id' in c && (c as { id?: number }).id === categoryId) {
-      return true
+function categorySlugsFromOffer(o: Offer): Set<string> {
+  const out = new Set<string>()
+  for (const c of o.categories ?? []) {
+    if (c && typeof c === 'object' && 'slug' in c) {
+      const s = (c as Category).slug?.trim()
+      if (s) out.add(s)
     }
   }
-  return false
+  return out
 }
 
-function authorSearchText(author: Article['author']): string {
-  if (author && typeof author === 'object' && 'displayName' in author) {
-    return String((author as Author).displayName ?? '')
-  }
-  return ''
-}
-
-function matchesSearch(article: Article, q: string): boolean {
+function matchesSearch(offer: Offer, q: string): boolean {
   const n = q.trim().toLowerCase()
   if (!n) return true
-  const title = (article.title ?? '').toLowerCase()
-  const excerpt = (article.excerpt ?? '').toLowerCase()
-  const by = authorSearchText(article).toLowerCase()
-  return title.includes(n) || excerpt.includes(n) || by.includes(n)
+  const title = (offer.title ?? '').toLowerCase()
+  const asin = (offer.amazon?.asin ?? '').toLowerCase()
+  return title.includes(n) || asin.includes(n)
 }
 
-function countArticlesForGuideItem(
-  articles: Article[],
-  item: GuideNavItem,
-  guideCategoryMode: 'cms' | 'json',
-): number {
-  if (guideCategoryMode === 'cms' && item.cmsId != null) {
-    return articles.filter((a) => articleHasCategoryId(a, item.cmsId!)).length
-  }
-  return articles.filter((a) => articleMatchesGuide(a, item.slug, item.name)).length
-}
-
-function articleMatchesGuideFilter(
-  article: Article,
-  item: GuideNavItem,
-  guideCategoryMode: 'cms' | 'json',
-): boolean {
-  if (guideCategoryMode === 'cms' && item.cmsId != null) {
-    return articleHasCategoryId(article, item.cmsId)
-  }
-  return articleMatchesGuide(article, item.slug, item.name)
-}
-
-export function AmzGuidesBrowseClient({
+export function AmzProductsBrowseClient({
   locale,
-  articles,
-  guideNavItems,
-  guideCategoryMode,
-  readMinutesByArticleId,
+  config,
+  offers,
+  categories,
+  productCountBySlug,
   initialCategorySlug,
   initialSearch,
 }: {
   locale: AppLocale
-  articles: Article[]
-  guideNavItems: GuideNavItem[]
-  guideCategoryMode: 'cms' | 'json'
-  readMinutesByArticleId: Record<number, number>
+  config: AmzSiteConfig
+  offers: Offer[]
+  categories: Category[]
+  productCountBySlug: Record<string, number>
   initialCategorySlug: string | null
   initialSearch: string
 }) {
@@ -105,6 +59,8 @@ export function AmzGuidesBrowseClient({
   const isMobile = useIsMobile()
   const [mobileCatOpen, setMobileCatOpen] = useState(false)
   const [localSearch, setLocalSearch] = useState(initialSearch)
+
+  const chips = useMemo(() => buildAmzCategoryCards(config, categories), [config, categories])
 
   useEffect(() => {
     setLocalSearch(initialSearch)
@@ -119,16 +75,15 @@ export function AmzGuidesBrowseClient({
       if (st) p.set('search', st)
       else p.delete('search')
       const qs = p.toString()
-      const path = pathname ?? amzNavHref(locale, '/guides')
+      const path = pathname ?? amzNavHref(locale, '/products')
       const target = qs ? `${path}?${qs}` : path
       router.replace(appendAmzSite(target, site), { scroll: false })
     },
     [locale, pathname, router, site, urlSearch],
   )
 
-  const validSlugs = useMemo(() => new Set(guideNavItems.map((i) => i.slug)), [guideNavItems])
   const activeSlug =
-    initialCategorySlug && validSlugs.has(initialCategorySlug) ? initialCategorySlug : null
+    initialCategorySlug && chips.some((c) => c.slug === initialCategorySlug) ? initialCategorySlug : null
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -142,33 +97,26 @@ export function AmzGuidesBrowseClient({
   const searchForFilter = localSearch.trim()
 
   const filtered = useMemo(() => {
-    const list = [...articles].sort((a, b) => {
-      const ta = a.publishedAt ? new Date(a.publishedAt).getTime() : 0
-      const tb = b.publishedAt ? new Date(b.publishedAt).getTime() : 0
-      return tb - ta
-    })
+    const list = [...offers].sort((a, b) => (a.title ?? '').localeCompare(b.title ?? '', undefined, { sensitivity: 'base' }))
     let out = list
     if (activeSlug) {
-      const item = guideNavItems.find((i) => i.slug === activeSlug)
-      if (item) {
-        out = out.filter((a) => articleMatchesGuideFilter(a, item, guideCategoryMode))
-      }
+      out = out.filter((o) => categorySlugsFromOffer(o).has(activeSlug))
     }
     if (searchForFilter) {
-      out = out.filter((a) => matchesSearch(a, searchForFilter))
+      out = out.filter((o) => matchesSearch(o, searchForFilter))
     }
     return out
-  }, [articles, activeSlug, guideNavItems, guideCategoryMode, searchForFilter])
+  }, [offers, activeSlug, searchForFilter])
 
-  const allGuidesLabel = locale === 'zh' ? '全部指南' : 'All Guides'
+  const allProductsLabel = locale === 'zh' ? '全部商品' : 'All products'
   const showingLabel =
     locale === 'zh'
       ? filtered.length === 1
-        ? '共 1 篇'
-        : `共 ${filtered.length} 篇`
+        ? '共 1 件商品'
+        : `共 ${filtered.length} 件商品`
       : filtered.length === 1
-        ? 'Showing 1 article'
-        : `Showing ${filtered.length} articles`
+        ? 'Showing 1 product'
+        : `Showing ${filtered.length} products`
 
   const sidebarInner = (
     <nav className="space-y-1">
@@ -180,21 +128,21 @@ export function AmzGuidesBrowseClient({
         }`}
       >
         <span>
-          {allGuidesLabel} ({articles.length})
+          {allProductsLabel} ({offers.length})
         </span>
       </button>
-      {guideNavItems.map((item) => {
-        const cnt = countArticlesForGuideItem(articles, item, guideCategoryMode)
+      {chips.map((c) => {
+        const cnt = productCountBySlug[c.slug] ?? 0
         return (
           <button
-            key={item.slug}
+            key={c.slug}
             type="button"
-            onClick={() => replaceQuery(item.slug, localSearch)}
+            onClick={() => replaceQuery(c.slug, localSearch)}
             className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
-              activeSlug === item.slug ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'
+              activeSlug === c.slug ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'
             }`}
           >
-            <span className="line-clamp-2">{item.name}</span>
+            <span className="line-clamp-2">{c.title}</span>
             <span className="ml-2 shrink-0 tabular-nums text-muted-foreground">({cnt})</span>
           </button>
         )
@@ -202,8 +150,14 @@ export function AmzGuidesBrowseClient({
     </nav>
   )
 
+  const emptyNoData =
+    offers.length === 0 &&
+    !activeSlug &&
+    !searchForFilter &&
+    (locale === 'zh' ? '本站暂无在售商品。' : 'No active offers yet for this site.')
+
   return (
-    <div className="flex w-full flex-col gap-8 lg:flex-row lg:items-start lg:gap-10 xl:gap-12">
+    <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10 xl:gap-12">
       <aside className="w-full shrink-0 lg:w-80">
         <div className="rounded-xl border-2 border-border bg-card p-4 sm:p-5">
           {isMobile ? (
@@ -231,7 +185,7 @@ export function AmzGuidesBrowseClient({
           <div className="w-full sm:max-w-xs">
             <Input
               type="search"
-              placeholder={locale === 'zh' ? '搜索指南…' : 'Search guides…'}
+              placeholder={locale === 'zh' ? '搜索商品…' : 'Search products…'}
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               autoComplete="off"
@@ -241,27 +195,27 @@ export function AmzGuidesBrowseClient({
 
         {filtered.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
-            <p className="text-muted-foreground">{locale === 'zh' ? '未找到指南' : 'No guides found'}</p>
-            <button
-              type="button"
-              className="mt-4 text-sm font-medium text-primary underline-offset-4 hover:underline"
-              onClick={() => {
-                setLocalSearch('')
-                replaceQuery(null, '')
-              }}
-            >
-              {locale === 'zh' ? '清除筛选' : 'Clear filters'}
-            </button>
+            <p className="text-muted-foreground">
+              {emptyNoData || (locale === 'zh' ? '未找到商品' : 'No products found')}
+            </p>
+            {!emptyNoData ? (
+              <button
+                type="button"
+                className="mt-4 text-sm font-medium text-primary underline-offset-4 hover:underline"
+                onClick={() => {
+                  setLocalSearch('')
+                  replaceQuery(null, '')
+                }}
+              >
+                {locale === 'zh' ? '清除筛选' : 'Clear filters'}
+              </button>
+            ) : null}
           </div>
         ) : (
-          <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3 lg:gap-8">
-            {filtered.map((article) => (
-              <li key={article.id} className="min-w-0">
-                <AmzGuideListingCard
-                  article={article}
-                  locale={locale}
-                  readMinutes={readMinutesByArticleId[article.id] ?? 1}
-                />
+          <ul className="grid gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+            {filtered.map((o) => (
+              <li key={o.id}>
+                <AmzOfferCard offer={o} />
               </li>
             ))}
           </ul>

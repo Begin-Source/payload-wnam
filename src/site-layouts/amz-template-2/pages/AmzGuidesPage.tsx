@@ -59,9 +59,13 @@ export function AmzGuidesPage({
     <main className="min-w-0 flex-1 overflow-x-clip">
       <div className="container mx-auto amz-page-x-gutter py-12 md:py-14 lg:py-16">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-12 text-center">
-            <h1 className="mb-4 text-balance text-4xl font-bold text-foreground md:text-5xl">{g.title}</h1>
-            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground">{g.description}</p>
+          <div className="mb-12 flex w-full flex-col items-center">
+            <h1 className="mb-4 w-full text-balance text-center text-4xl font-bold text-foreground md:text-5xl">
+              {g.title}
+            </h1>
+            <div className="w-full max-w-2xl">
+              <p className="!text-center text-lg leading-relaxed text-muted-foreground">{g.description}</p>
+            </div>
           </div>
 
           <AmzGuidesBrowseClient
@@ -83,7 +87,7 @@ export function AmzGuidesPage({
               <div className="mx-auto max-w-4xl rounded-lg bg-primary/5 p-12 text-center">
                 <h2 className="mb-4 text-3xl font-bold text-foreground">{cta.title}</h2>
                 {cta.description ? (
-                  <p className="mb-8 text-lg text-muted-foreground">{cta.description}</p>
+                  <p className="mb-8 !text-center text-lg text-muted-foreground">{cta.description}</p>
                 ) : null}
                 {cta.primaryButton?.text ? (
                   <div className="flex justify-center">

@@ -28,10 +28,10 @@ export function AmzSiteMobileBottomBar({ locale }: { locale: AppLocale }) {
   if (!amzShouldShowGlobalMobileBar(pathname)) return null
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-[#FF9900] pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.12)] lg:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-accent pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_24px_rgba(0,0,0,0.12)] lg:hidden">
       <AmzLink
         href={amzNavHref(locale, '/reviews')}
-        className="flex min-h-14 w-full items-center justify-center gap-2 px-4 py-3 text-base font-semibold text-white transition-colors hover:bg-[#FF9900]/90"
+        className="flex min-h-14 w-full items-center justify-center gap-2 px-4 py-3 text-base font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
       >
         Product Reviews
         <ExternalLink className="h-4 w-4 shrink-0" />

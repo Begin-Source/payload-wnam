@@ -4,40 +4,40 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Outdoorsy color palette: Forest Green primary, Slate Gray, White background, Orange CTA */
-  --background: oklch(0.99 0 0); /* Off-white */
-  --foreground: oklch(0.25 0.02 240); /* Dark slate gray */
-  --card: oklch(1 0 0); /* Pure white */
+  /* Static fallback: matches defaultSiteConfig.theme.colors + theme-generator (pre-injection / tooling) */
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.25 0.02 240);
+  --card: oklch(1 0 0);
   --card-foreground: oklch(0.25 0.02 240);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.25 0.02 240);
-  --primary: oklch(0.35 0.08 155); /* Forest Green */
+  --primary: oklch(0.30 0.02 240);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.5 0.02 240); /* Slate Gray */
+  --secondary: oklch(0.45 0.02 240);
   --secondary-foreground: oklch(0.99 0 0);
-  --muted: oklch(0.95 0.01 240); /* Light gray */
+  --muted: oklch(0.95 0.01 240);
   --muted-foreground: oklch(0.5 0.02 240);
-  --accent: oklch(0.65 0.18 45); /* Orange for CTAs */
+  --accent: oklch(0.60 0.20 25);
   --accent-foreground: oklch(0.99 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.9 0.01 240);
   --input: oklch(0.9 0.01 240);
-  --ring: oklch(0.35 0.08 155);
-  --chart-1: oklch(0.35 0.08 155);
-  --chart-2: oklch(0.5 0.02 240);
-  --chart-3: oklch(0.65 0.18 45);
-  --chart-4: oklch(0.45 0.06 140);
-  --chart-5: oklch(0.6 0.03 240);
+  --ring: oklch(0.30 0.02 240);
+  --chart-1: oklch(0.30 0.02 240);
+  --chart-2: oklch(0.45 0.02 240);
+  --chart-3: oklch(0.60 0.20 25);
+  --chart-4: oklch(0.40 0.04 240);
+  --chart-5: oklch(0.55 0.02 240);
   --radius: 0.5rem;
   --sidebar: oklch(0.99 0 0);
   --sidebar-foreground: oklch(0.25 0.02 240);
-  --sidebar-primary: oklch(0.35 0.08 155);
+  --sidebar-primary: oklch(0.30 0.02 240);
   --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-accent: oklch(0.95 0.01 240);
   --sidebar-accent-foreground: oklch(0.25 0.02 240);
   --sidebar-border: oklch(0.9 0.01 240);
-  --sidebar-ring: oklch(0.35 0.08 155);
+  --sidebar-ring: oklch(0.30 0.02 240);
 }
 
 .dark {
@@ -53,13 +53,18 @@
   --secondary-foreground: oklch(0.95 0.01 240);
   --muted: oklch(0.3 0.02 240);
   --muted-foreground: oklch(0.65 0.02 240);
-  --accent: oklch(0.7 0.18 45);
+  --accent: oklch(0.60 0.20 25);
   --accent-foreground: oklch(0.2 0.02 240);
   --destructive: oklch(0.396 0.141 25.723);
   --destructive-foreground: oklch(0.95 0.01 240);
   --border: oklch(0.3 0.02 240);
   --input: oklch(0.3 0.02 240);
   --ring: oklch(0.45 0.1 155);
+  --chart-1: oklch(0.45 0.1 155);
+  --chart-2: oklch(0.35 0.02 240);
+  --chart-3: oklch(0.60 0.20 25);
+  --chart-4: oklch(0.5 0.06 155);
+  --chart-5: oklch(0.65 0.02 240);
   --sidebar: oklch(0.25 0.02 240);
   --sidebar-foreground: oklch(0.95 0.01 240);
   --sidebar-primary: oklch(0.45 0.1 155);
@@ -121,7 +126,8 @@
 }
 
 /* Match page surface to theme; avoid global ./styles.css fallback `html { background: #000 }` when overscrolling */
-html.amz-template-1-root {
+html.amz-template-1-root,
+html.amz-template-2-root {
   background-color: var(--background);
 }
 
