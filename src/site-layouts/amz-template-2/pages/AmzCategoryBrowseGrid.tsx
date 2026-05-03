@@ -55,12 +55,18 @@ export function AmzCategoryBrowseGrid(props: AmzCategoryBrowseGridProps) {
 
   const header =
     sectionTitle?.trim() || sectionSubtitle?.trim() ? (
-      <header className={isHome ? 'mb-12 text-center' : 'mx-auto max-w-3xl text-center'}>
+      <header
+        className={
+          isHome
+            ? 'mb-12 flex w-full flex-col items-center text-center'
+            : 'mx-auto max-w-3xl text-center'
+        }
+      >
         {sectionTitle?.trim() ? (
           <h2
             className={
               isHome
-                ? 'mb-4 text-balance text-3xl font-bold text-foreground md:text-4xl'
+                ? 'mb-4 w-full text-balance text-center text-3xl font-bold text-foreground md:text-4xl'
                 : 'text-balance text-2xl font-semibold text-foreground md:text-3xl'
             }
           >
@@ -68,15 +74,15 @@ export function AmzCategoryBrowseGrid(props: AmzCategoryBrowseGridProps) {
           </h2>
         ) : null}
         {sectionSubtitle?.trim() ? (
-          <p
-            className={
-              isHome
-                ? 'mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground'
-                : 'mt-2 text-balance text-muted-foreground'
-            }
-          >
-            {sectionSubtitle.trim()}
-          </p>
+          isHome ? (
+            <div className="w-full max-w-2xl">
+              <p className="!text-center text-lg leading-relaxed text-muted-foreground">
+                {sectionSubtitle.trim()}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-2 text-balance text-muted-foreground">{sectionSubtitle.trim()}</p>
+          )
         ) : null}
       </header>
     ) : null
