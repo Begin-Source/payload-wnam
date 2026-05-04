@@ -1,5 +1,17 @@
 import type { Field } from 'payload'
 
+/** Resolve numeric site id from article form `data.site` for relationship filterOptions. */
+export function articleFormSiteId(data: { site?: unknown } | undefined): number | undefined {
+  const raw = data?.site as { id?: number } | number | null | undefined
+  const siteId =
+    raw != null && typeof raw === 'object' && 'id' in raw
+      ? Number((raw as { id: number }).id)
+      : typeof raw === 'number'
+        ? raw
+        : undefined
+  return siteId != null && Number.isFinite(siteId) ? siteId : undefined
+}
+
 /** Appended to post-like base fields for `articles` only (SEO pipeline + lifecycle). */
 export const articleSeoFields: Field[] = [
   {
@@ -41,9 +53,29 @@ export const articleSeoFields: Field[] = [
     name: 'author',
     type: 'relationship',
     relationTo: 'authors',
-    admin: { description: 'Required when status is Published (enforced in hook)' },
+    admin: {
+      description:
+        'Required when status is Published (enforced in hook). Only authors assigned to this article site are listed; pick Site first.',
+    },
+    filterOptions: ({ data }) => {
+      const siteId = articleFormSiteId(data)
+      if (siteId == null) return true
+      return { sites: { contains: siteId } }
+    },
   },
-  { name: 'reviewedBy', type: 'relationship', relationTo: 'authors' },
+  {
+    name: 'reviewedBy',
+    type: 'relationship',
+    relationTo: 'authors',
+    admin: {
+      description: 'Optional reviewer; same site filter as Author.',
+    },
+    filterOptions: ({ data }) => {
+      const siteId = articleFormSiteId(data)
+      if (siteId == null) return true
+      return { sites: { contains: siteId } }
+    },
+  },
   {
     name: 'originalEvidence',
     type: 'relationship',

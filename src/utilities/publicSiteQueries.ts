@@ -75,6 +75,7 @@ const offerPublicSelect = {
 /** Detail route: includes SEO meta + affiliate layout + embedded offers for AMZ article page */
 const articleDetailSelect = {
   ...articlePublicSelect,
+  reviewedBy: authorPublicSelect,
   meta: true,
   affiliatePageLayout: true,
   relatedOffers: offerPublicSelect,
@@ -97,16 +98,18 @@ const pagePublicSelect = {
   status: true,
   featuredImage: mediaPublicSelect,
   categories: categoryPublicSelect,
+  meta: true,
 } as const
 
 /** Depth-1 list leaves `author.headshot` as a media id; resolve without touching `sites`. */
 async function mergeAuthorHeadshots(payload: Payload, articles: Article[]): Promise<void> {
   const ids = new Set<number>()
   for (const a of articles) {
-    const auth = a.author
-    if (auth && typeof auth === 'object' && 'headshot' in auth) {
-      const h = (auth as Author).headshot
-      if (typeof h === 'number') ids.add(h)
+    for (const rel of [a.author, a.reviewedBy]) {
+      if (rel && typeof rel === 'object' && 'headshot' in rel) {
+        const h = (rel as Author).headshot
+        if (typeof h === 'number') ids.add(h)
+      }
     }
   }
   if (ids.size === 0) return
@@ -122,12 +125,13 @@ async function mergeAuthorHeadshots(payload: Payload, articles: Article[]): Prom
   })
   const byId = new Map((res.docs as Media[]).map((m) => [m.id, m]))
   for (const a of articles) {
-    const auth = a.author
-    if (auth && typeof auth === 'object' && 'headshot' in auth) {
-      const h = (auth as Author).headshot
-      if (typeof h === 'number') {
-        const m = byId.get(h)
-        if (m) (auth as Author).headshot = m
+    for (const rel of [a.author, a.reviewedBy]) {
+      if (rel && typeof rel === 'object' && 'headshot' in rel) {
+        const h = (rel as Author).headshot
+        if (typeof h === 'number') {
+          const m = byId.get(h)
+          if (m) (rel as Author).headshot = m
+        }
       }
     }
   }

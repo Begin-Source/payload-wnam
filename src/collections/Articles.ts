@@ -9,6 +9,7 @@ import { articleBeforeReadAffiliate } from '@/collections/hooks/articleBeforeRea
 import { articleLinkBudget } from '@/collections/hooks/articleLinkBudget'
 import { pageLinkGraphSync } from '@/collections/hooks/pageLinkGraphSync'
 import { articleLifecycleOnPublish } from '@/collections/hooks/articleLifecycleOnPublish'
+import { articleAuthorsBelongToSite } from '@/collections/hooks/articleAuthorsBelongToSite'
 import { articlePublishGate } from '@/collections/hooks/articlePublishGate'
 import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
 import { validateDocLocaleAgainstSite } from '@/collections/hooks/validateDocLocaleAgainstSite'
@@ -43,6 +44,7 @@ export const Articles: CollectionConfig = {
       validateCategoriesMatchSite,
       validateDocLocaleAgainstSite,
       validateSlugLocaleUnique('articles'),
+      articleAuthorsBelongToSite,
       articleLifecycleOnPublish,
       articlePublishGate,
     ],

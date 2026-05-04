@@ -61,6 +61,7 @@ export function isSeoNoindexFromMeta(meta: unknown): boolean {
   if (!meta || typeof meta !== 'object') return false
   const m = meta as Record<string, unknown>
   if (m.noIndex === true || m.noindex === true) return true
+  if (m.noIndex === 1 || m.noindex === 1) return true
   const robots = m.robots
   if (typeof robots === 'string' && /noindex/i.test(robots)) return true
   return false

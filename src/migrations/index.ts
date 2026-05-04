@@ -70,6 +70,8 @@ import * as migration_20260802_120000_sites_site_logo_id from './20260802_120000
 import * as migration_20260803_120000_sites_public_locales from './20260803_120000_sites_public_locales';
 import * as migration_20260804_120000_sites_public_locale_codes_child_table from './20260804_120000_sites_public_locale_codes_child_table';
 import * as migration_20260805_120000_categories_locale from './20260805_120000_categories_locale';
+import * as migration_20260806_120000_seo_meta_no_index from './20260806_120000_seo_meta_no_index';
+import * as migration_20260807_120000_authors_rels_sites_id from './20260807_120000_authors_rels_sites_id';
 
 export const migrations = [
   {
@@ -431,5 +433,15 @@ export const migrations = [
     up: migration_20260805_120000_categories_locale.up,
     down: migration_20260805_120000_categories_locale.down,
     name: '20260805_120000_categories_locale',
+  },
+  {
+    up: migration_20260806_120000_seo_meta_no_index.up,
+    down: migration_20260806_120000_seo_meta_no_index.down,
+    name: '20260806_120000_seo_meta_no_index',
+  },
+  {
+    up: migration_20260807_120000_authors_rels_sites_id.up,
+    down: migration_20260807_120000_authors_rels_sites_id.down,
+    name: '20260807_120000_authors_rels_sites_id',
   },
 ];

@@ -65,6 +65,11 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     path: `/${locale}/posts/${enc}`,
     baseUrl,
     alternateLanguages,
+    openGraphKind: 'article',
+    articleTimes: {
+      publishedTime: article.publishedAt ?? article.createdAt,
+      modifiedTime: article.updatedAt,
+    },
   })
 }
 
@@ -126,7 +131,26 @@ export default async function PostPage(props: Props) {
     limit: isAmzTemplate2Layout(theme.siteLayout) ? 8 : 3,
   })
 
-  const jsonLd = blogPostingJsonLdString({ article, pageUrl, featuredImageUrl: img })
+  const baseNorm = baseUrl.replace(/\/$/, '')
+  const publisherUrl = baseNorm ? `${baseNorm}/${locale}/` : pageUrl
+  const breadcrumbTrail: { name: string; url: string }[] = [
+    { name: breadcrumbHome[locale], url: `${baseNorm}/${locale}/` },
+  ]
+  if (firstCat?.slug) {
+    breadcrumbTrail.push({
+      name: (firstCat.name ?? firstCat.slug).trim() || firstCat.slug,
+      url: `${baseNorm}/${locale}/categories/${encodeURIComponent(firstCat.slug)}`,
+    })
+  }
+  breadcrumbTrail.push({ name: titleAlt, url: pageUrl })
+
+  const jsonLd = blogPostingJsonLdString({
+    article,
+    pageUrl,
+    featuredImageUrl: img,
+    publisher: { name: theme.siteName, url: publisherUrl },
+    breadcrumbItems: breadcrumbTrail,
+  })
 
   const relatedEl = (
     <ArticleRelated articles={related} locale={locale} title={relatedTitle[locale]} />

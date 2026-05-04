@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { lexicalEditorWithAi } from '@/utilities/lexicalEditorWithAi'
 
 import { authorsGdprValidate } from '@/collections/hooks/authorsGdprValidate'
+import { authorsSitesSlugValidate } from '@/collections/hooks/authorsSitesSlugValidate'
 import { adminGroups } from '@/constants/adminGroups'
 import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
 
@@ -12,15 +13,34 @@ export const Authors: CollectionConfig = {
   admin: {
     group: adminGroups.website,
     useAsTitle: 'displayName',
-    defaultColumns: ['displayName', 'role', 'updatedAt'],
+    defaultColumns: ['displayName', 'sites', 'role', 'updatedAt'],
   },
   access: loggedInSuperAdminAccessFor('authors'),
   hooks: {
-    beforeValidate: [authorsGdprValidate],
+    beforeValidate: [authorsGdprValidate, authorsSitesSlugValidate],
   },
   fields: [
     { name: 'displayName', type: 'text', required: true, index: true },
-    { name: 'slug', type: 'text', unique: true, index: true },
+    {
+      name: 'slug',
+      type: 'text',
+      index: true,
+      admin: {
+        description:
+          'Unique among authors that share a site with this record; two authors on disjoint sites may reuse the same slug.',
+      },
+    },
+    {
+      name: 'sites',
+      type: 'relationship',
+      relationTo: 'sites',
+      hasMany: true,
+      required: true,
+      admin: {
+        description:
+          'Sites where this byline may appear. Articles only list authors whose sites include the article site.',
+      },
+    },
     {
       name: 'role',
       type: 'select',

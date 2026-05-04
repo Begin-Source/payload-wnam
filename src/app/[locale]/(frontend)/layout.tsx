@@ -74,7 +74,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const iconForMeta = rasterIcon ?? lucideIconAbs ?? undefined
 
+  const envSite = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+  let metadataBase: URL | undefined
+  if (envSite) {
+    try {
+      metadataBase = new URL(envSite.endsWith('/') ? envSite.slice(0, -1) : envSite)
+    } catch {
+      metadataBase = undefined
+    }
+  }
+
   return {
+    ...(metadataBase ? { metadataBase } : {}),
     title: theme.browserTitle,
     description: theme.tagline,
     ...(iconForMeta

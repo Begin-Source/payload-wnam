@@ -238,7 +238,6 @@ export default buildConfig({
     SitePortfolios,
     Sites,
     SiteBlueprints,
-    SiteLayouts,
     Categories,
     Pages,
     Redirects,
@@ -264,6 +263,7 @@ export default buildConfig({
     Tenants,
     Users,
     OriginalEvidence,
+    SiteLayouts,
     PageLinkGraph,
   ],
   globals: [
@@ -410,8 +410,8 @@ export default buildConfig({
         return ''
       },
       /** Avoid locale-specific meta columns until app `localization` is enabled. */
-      fields: ({ defaultFields }) =>
-        defaultFields.map((field) => {
+      fields: ({ defaultFields }) => [
+        ...defaultFields.map((field) => {
           if (
             typeof field === 'object' &&
             field !== null &&
@@ -423,6 +423,17 @@ export default buildConfig({
           }
           return field
         }),
+        {
+          name: 'noIndex',
+          type: 'checkbox',
+          label: 'No index',
+          defaultValue: false,
+          admin: {
+            description:
+              'Exclude URL from the sitemap and send noindex in HTML — use for unlisted or staging content.',
+          },
+        },
+      ],
     }),
     workflowsPlugin({
       enabled: true,

@@ -72,7 +72,6 @@ export interface Config {
     'site-portfolios': SitePortfolio;
     sites: Site;
     'site-blueprints': SiteBlueprint;
-    'site-layouts': SiteLayout;
     categories: Category;
     pages: Page;
     redirects: Redirect;
@@ -98,6 +97,7 @@ export interface Config {
     tenants: Tenant;
     users: User;
     'original-evidence': OriginalEvidence;
+    'site-layouts': SiteLayout;
     'page-link-graph': PageLinkGraph;
     'plugin-ai-instructions': PluginAiInstruction;
     'automation-triggers': AutomationTrigger;
@@ -117,7 +117,6 @@ export interface Config {
     'site-portfolios': SitePortfoliosSelect<false> | SitePortfoliosSelect<true>;
     sites: SitesSelect<false> | SitesSelect<true>;
     'site-blueprints': SiteBlueprintsSelect<false> | SiteBlueprintsSelect<true>;
-    'site-layouts': SiteLayoutsSelect<false> | SiteLayoutsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
@@ -143,6 +142,7 @@ export interface Config {
     tenants: TenantsSelect<false> | TenantsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'original-evidence': OriginalEvidenceSelect<false> | OriginalEvidenceSelect<true>;
+    'site-layouts': SiteLayoutsSelect<false> | SiteLayoutsSelect<true>;
     'page-link-graph': PageLinkGraphSelect<false> | PageLinkGraphSelect<true>;
     'plugin-ai-instructions': PluginAiInstructionsSelect<false> | PluginAiInstructionsSelect<true>;
     'automation-triggers': AutomationTriggersSelect<false> | AutomationTriggersSelect<true>;
@@ -674,35 +674,6 @@ export interface SiteBlueprint {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "site-layouts".
- */
-export interface SiteLayout {
-  id: number;
-  /**
-   * 需与编辑站点时选择的布局值一致；全库仅允许一条/键。
-   */
-  layoutKey: 'template1' | 'template2' | 'amz-template-1' | 'amz-template-2';
-  /**
-   * 与侧栏「网站 → 站点」里「站点布局」选项展示一致；本集合仅作说明与预览链接，不替代站点上存储的布局值。
-   */
-  name: string;
-  /**
-   * 给编辑/运营看的整站壳说明（不直接驱动前台，前台仍读 `sites.siteLayout`）。
-   */
-  description?: string | null;
-  /**
-   * 可填本环境或 staging 的完整 URL；保存后在详情页复制或新窗口打开。部署域名不同时请按需修改。
-   */
-  previewUrl?: string | null;
-  /**
-   * 列表中从小到大排列。
-   */
-  sortOrder?: number | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "categories".
  */
 export interface Category {
@@ -847,6 +818,10 @@ export interface Page {
      * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
      */
     image?: (number | null) | Media;
+    /**
+     * Exclude URL from the sitemap and send noindex in HTML — use for unlisted or staging content.
+     */
+    noIndex?: boolean | null;
   };
   updatedAt: string;
   createdAt: string;
@@ -1284,9 +1259,12 @@ export interface Article {
     | null;
   featuredOffers?: (number | Offer)[] | null;
   /**
-   * Required when status is Published (enforced in hook)
+   * Required when status is Published (enforced in hook). Only authors assigned to this article site are listed; pick Site first.
    */
   author?: (number | null) | Author;
+  /**
+   * Optional reviewer; same site filter as Author.
+   */
   reviewedBy?: (number | null) | Author;
   originalEvidence?: (number | OriginalEvidence)[] | null;
   sourceBrief?: (number | null) | ContentBrief;
@@ -1358,6 +1336,10 @@ export interface Article {
      * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
      */
     image?: (number | null) | Media;
+    /**
+     * Exclude URL from the sitemap and send noindex in HTML — use for unlisted or staging content.
+     */
+    noIndex?: boolean | null;
   };
   updatedAt: string;
   createdAt: string;
@@ -1370,7 +1352,14 @@ export interface Author {
   id: number;
   tenant?: (number | null) | Tenant;
   displayName: string;
+  /**
+   * Unique among authors that share a site with this record; two authors on disjoint sites may reuse the same slug.
+   */
   slug?: string | null;
+  /**
+   * Sites where this byline may appear. Articles only list authors whose sites include the article site.
+   */
+  sites: (number | Site)[];
   role?: ('editor' | 'reviewer' | 'expert' | 'contributor') | null;
   headshot?: (number | null) | Media;
   bioLexical?: {
@@ -1806,6 +1795,35 @@ export interface AuditLog {
     | number
     | boolean
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-layouts".
+ */
+export interface SiteLayout {
+  id: number;
+  /**
+   * 需与编辑站点时选择的布局值一致；全库仅允许一条/键。
+   */
+  layoutKey: 'template1' | 'template2' | 'amz-template-1' | 'amz-template-2';
+  /**
+   * 与侧栏「网站 → 站点」里「站点布局」选项展示一致；本集合仅作说明与预览链接，不替代站点上存储的布局值。
+   */
+  name: string;
+  /**
+   * 给编辑/运营看的整站壳说明（不直接驱动前台，前台仍读 `sites.siteLayout`）。
+   */
+  description?: string | null;
+  /**
+   * 可填本环境或 staging 的完整 URL；保存后在详情页复制或新窗口打开。部署域名不同时请按需修改。
+   */
+  previewUrl?: string | null;
+  /**
+   * 列表中从小到大排列。
+   */
+  sortOrder?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2802,10 +2820,6 @@ export interface PayloadLockedDocument {
         value: number | SiteBlueprint;
       } | null)
     | ({
-        relationTo: 'site-layouts';
-        value: number | SiteLayout;
-      } | null)
-    | ({
         relationTo: 'categories';
         value: number | Category;
       } | null)
@@ -2904,6 +2918,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'original-evidence';
         value: number | OriginalEvidence;
+      } | null)
+    | ({
+        relationTo: 'site-layouts';
+        value: number | SiteLayout;
       } | null)
     | ({
         relationTo: 'page-link-graph';
@@ -3101,19 +3119,6 @@ export interface SiteBlueprintsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "site-layouts_select".
- */
-export interface SiteLayoutsSelect<T extends boolean = true> {
-  layoutKey?: T;
-  name?: T;
-  description?: T;
-  previewUrl?: T;
-  sortOrder?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "categories_select".
  */
 export interface CategoriesSelect<T extends boolean = true> {
@@ -3162,6 +3167,7 @@ export interface PagesSelect<T extends boolean = true> {
         title?: T;
         description?: T;
         image?: T;
+        noIndex?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -3412,6 +3418,7 @@ export interface ArticlesSelect<T extends boolean = true> {
         title?: T;
         description?: T;
         image?: T;
+        noIndex?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -3424,6 +3431,7 @@ export interface AuthorsSelect<T extends boolean = true> {
   tenant?: T;
   displayName?: T;
   slug?: T;
+  sites?: T;
   role?: T;
   headshot?: T;
   bioLexical?: T;
@@ -3662,6 +3670,19 @@ export interface OriginalEvidenceSelect<T extends boolean = true> {
   exifPreserved?: T;
   notes?: T;
   verifiedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-layouts_select".
+ */
+export interface SiteLayoutsSelect<T extends boolean = true> {
+  layoutKey?: T;
+  name?: T;
+  description?: T;
+  previewUrl?: T;
+  sortOrder?: T;
   updatedAt?: T;
   createdAt?: T;
 }
