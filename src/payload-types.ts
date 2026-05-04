@@ -4189,6 +4189,9 @@ export interface AdminBranding {
    * Shown in the admin browser tab as “… | {name}” instead of “… - Payload”. If empty, use env `NEXT_PUBLIC_ADMIN_BRAND_NAME` as fallback; if that is also unset, only the Payload suffix is removed (page name only).
    */
   brandName?: string | null;
+  /**
+   * 建议：PNG（透明底）或 SVG；横向 Logo 宽度约 120–240px、高度约 24–48px 即可在侧栏清晰显示；若只用栅格图，可提供 2x 分辨率（例如高 48–64px）以适配高清屏。亦可上传正方形主图，系统会按比例缩放。单文件请小于媒体库上限（推荐 <500KB）。
+   */
   logo?: (number | null) | Media;
   /**
    * e.g. #0f172a
