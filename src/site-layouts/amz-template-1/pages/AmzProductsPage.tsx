@@ -5,6 +5,7 @@ import { amzNavHref } from '@/site-layouts/amz-template-1/amzNavHref'
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import type { AppLocale } from '@/i18n/config'
 import type { Category, Offer } from '@/payload-types'
+import { resolveAmzProductsHero } from '@/utilities/resolveAmzLocaleUi'
 
 import { AmzCategoryBrowseGrid } from './AmzCategoryBrowseGrid'
 import { buildAmzCategoryCards } from './categoryCards'
@@ -12,6 +13,7 @@ import { AmzOfferCard } from './AmzOfferCard'
 
 export function AmzProductsPage({
   locale,
+  defaultPublicLocale,
   config,
   offers,
   categories,
@@ -19,6 +21,7 @@ export function AmzProductsPage({
   productCountBySlug,
 }: {
   locale: AppLocale
+  defaultPublicLocale: AppLocale
   config: AmzSiteConfig
   offers: Offer[]
   categories: Category[]
@@ -27,10 +30,11 @@ export function AmzProductsPage({
   /** Per-category active offer counts for browse cards */
   productCountBySlug: Record<string, number>
 }) {
-  const p = config.pages.products
   const hp = config.homepage.categories
   const catCards = buildAmzCategoryCards(config, categories)
   const productsBase = amzNavHref(locale, '/products')
+  const { title, description, indexNote } = resolveAmzProductsHero(config, locale, defaultPublicLocale)
+  const productsCfg = config.pages.products
 
   return (
     <main className="min-w-0 flex-1 overflow-x-clip">
@@ -38,10 +42,10 @@ export function AmzProductsPage({
         <div className="mx-auto max-w-7xl">
           <section className="mb-10 rounded-2xl border border-border bg-muted/40 px-6 py-10 md:px-10 md:py-12">
             <header className="mx-auto max-w-3xl text-center">
-              <h1 className="text-balance text-4xl font-bold text-foreground md:text-5xl">{p.title}</h1>
-              <p className="mt-4 text-balance text-lg text-muted-foreground">{p.description}</p>
-              {p.indexNote?.trim() ? (
-                <p className="mt-2 text-balance text-sm text-muted-foreground">{p.indexNote.trim()}</p>
+              <h1 className="text-balance text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
+              <p className="mt-4 text-balance text-lg text-muted-foreground">{description}</p>
+              {indexNote ? (
+                <p className="mt-2 text-balance text-sm text-muted-foreground">{indexNote}</p>
               ) : null}
             </header>
           </section>
@@ -54,8 +58,8 @@ export function AmzProductsPage({
                 sectionTitle={hp.title}
                 sectionSubtitle={hp.subtitle}
                 productCountBySlug={productCountBySlug}
-                categoryProductCountTemplate={p.categoryProductCountTemplate}
-                categoryProductCountEmpty={p.categoryProductCountEmpty}
+                categoryProductCountTemplate={productsCfg.categoryProductCountTemplate}
+                categoryProductCountEmpty={productsCfg.categoryProductCountEmpty}
                 activeSlug={activeCategorySlug}
               />
               <div className="mt-8 flex flex-wrap justify-center gap-2">

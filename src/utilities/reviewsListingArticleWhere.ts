@@ -24,11 +24,16 @@ export async function getStrictListingArticlesWhereForCategoryKind(
   payload: Payload,
   siteId: number,
   kind: ListingCategoryKindStrict,
+  locale: string,
 ): Promise<Where> {
   const res = await payload.find({
     collection: 'categories',
     where: {
-      and: [{ site: { equals: siteId } }, { kind: { equals: kind } }],
+      and: [
+        { site: { equals: siteId } },
+        { kind: { equals: kind } },
+        { locale: { equals: locale } },
+      ],
     },
     limit: 512,
     depth: 0,

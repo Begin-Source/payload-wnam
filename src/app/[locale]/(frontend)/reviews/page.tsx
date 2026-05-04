@@ -31,11 +31,12 @@ export default async function ReviewsPage(props: Props) {
   const t2 = isAmzTemplate2Layout(theme.siteLayout)
   const [articles, categories] = await Promise.all([
     getPublishedArticlesForReviewsListing(site.id, locale, 96),
-    getNavCategoriesForSite(site.id, 48),
+    getNavCategoriesForSite(site.id, locale, 48),
   ])
 
   const shared = {
     locale,
+    defaultPublicLocale: theme.defaultPublicLocale,
     config: theme.amzSiteConfig,
     articles,
     categories,

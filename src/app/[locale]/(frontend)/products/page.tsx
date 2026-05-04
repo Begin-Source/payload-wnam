@@ -45,7 +45,7 @@ export default async function ProductsPage(props: Props) {
 
   if (t2) {
     const [categories, offersForCounts, offers] = await Promise.all([
-      getNavCategoriesForSite(site.id, 48),
+      getNavCategoriesForSite(site.id, locale, 48),
       getActiveOffersForSite(site.id, PRODUCT_INDEX_COUNT_OFFER_LIMIT),
       getActiveOffersForSite(site.id, PRODUCT_BROWSE_OFFER_LIMIT, null),
     ])
@@ -53,6 +53,7 @@ export default async function ProductsPage(props: Props) {
     return (
       <Amz2ProductsPage
         locale={locale}
+        defaultPublicLocale={theme.defaultPublicLocale}
         config={theme.amzSiteConfig}
         offers={offers}
         categories={categories}
@@ -63,11 +64,11 @@ export default async function ProductsPage(props: Props) {
     )
   }
 
-  const categoryDoc = slug ? await getCategoryBySlugForSite(site.id, slug) : null
+  const categoryDoc = slug ? await getCategoryBySlugForSite(site.id, slug, locale) : null
   const categoryId = categoryDoc?.id
 
   const [categories, offersForCounts, offers] = await Promise.all([
-    getNavCategoriesForSite(site.id, 48),
+    getNavCategoriesForSite(site.id, locale, 48),
     getActiveOffersForSite(site.id, PRODUCT_INDEX_COUNT_OFFER_LIMIT),
     getActiveOffersForSite(site.id, 120, categoryId),
   ])
@@ -76,6 +77,7 @@ export default async function ProductsPage(props: Props) {
   return (
     <Amz1ProductsPage
       locale={locale}
+      defaultPublicLocale={theme.defaultPublicLocale}
       config={theme.amzSiteConfig}
       offers={offers}
       categories={categories}

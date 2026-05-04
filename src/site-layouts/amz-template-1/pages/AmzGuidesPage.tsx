@@ -7,6 +7,9 @@ import { amzNavHref } from '@/site-layouts/amz-template-1/amzNavHref'
 import { normalizeGuideCategories } from '@/site-layouts/amz-template-1/lib/guide-categories'
 import type { AppLocale } from '@/i18n/config'
 import type { Article, Category } from '@/payload-types'
+import { AMZ_GUIDES_ALL } from '@/utilities/amzBrowseUiStrings'
+import { pickUiString } from '@/utilities/getLocalizedString'
+import { resolveAmzGuidesHero } from '@/utilities/resolveAmzLocaleUi'
 
 import { AmzArticleCards } from './AmzArticleCards'
 
@@ -35,12 +38,14 @@ function articleHasCategoryId(article: Article, categoryId: number): boolean {
 
 export function AmzGuidesPage({
   locale,
+  defaultPublicLocale,
   config,
   articles,
   activeSlug,
   cmsGuideCategories = [],
 }: {
   locale: AppLocale
+  defaultPublicLocale: AppLocale
   config: AmzSiteConfig
   articles: Article[]
   activeSlug?: string | null
@@ -74,15 +79,22 @@ export function AmzGuidesPage({
   }
 
   const cta = g.cta
-  const allGuidesLabel = locale === 'zh' ? '全部指南' : 'All Guides'
+  const { title: heroTitle, description: heroDescription } = resolveAmzGuidesHero(
+    config,
+    locale,
+    defaultPublicLocale,
+  )
+  const p = (m: Partial<Record<AppLocale, string>>) =>
+    pickUiString(locale, defaultPublicLocale, m)
+  const allGuidesLabel = p(AMZ_GUIDES_ALL)
 
   return (
     <main className="min-w-0 flex-1 overflow-x-clip">
       <div className="container mx-auto px-4 py-12">
         <div className="mx-auto max-w-7xl">
           <div className="mb-12 text-center">
-            <h1 className="mb-4 text-balance text-4xl font-bold text-foreground md:text-5xl">{g.title}</h1>
-            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground">{g.description}</p>
+            <h1 className="mb-4 text-balance text-4xl font-bold text-foreground md:text-5xl">{heroTitle}</h1>
+            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground">{heroDescription}</p>
           </div>
 
           {guideCats.length > 0 ? (

@@ -7,6 +7,8 @@ import { firstCategoryFromArticle } from '@/components/blog/articleHelpers'
 import { AmzLink } from '@/site-layouts/amz-template-2/AmzLink'
 import type { AppLocale } from '@/i18n/config'
 import type { Article, Media } from '@/payload-types'
+import { AMZ_GUIDE_READ_MIN } from '@/utilities/amzBrowseUiStrings'
+import { applyUiTemplate, pickUiString } from '@/utilities/getLocalizedString'
 
 import { articleHref } from './AmzArticleCards'
 
@@ -19,17 +21,20 @@ function mediaUrl(featured: Article['featuredImage']): string | null {
   return null
 }
 
-function readTimeCopy(locale: AppLocale, n: number): string {
-  return locale === 'zh' ? `约 ${n} 分钟阅读` : `${n} min read`
+function readTimeCopy(locale: AppLocale, defaultPublicLocale: AppLocale, n: number): string {
+  const tpl = pickUiString(locale, defaultPublicLocale, AMZ_GUIDE_READ_MIN)
+  return applyUiTemplate(tpl, { count: n })
 }
 
 export function AmzGuideListingCard({
   article,
   locale,
+  defaultPublicLocale,
   readMinutes,
 }: {
   article: Article
   locale: AppLocale
+  defaultPublicLocale: AppLocale
   readMinutes: number
 }) {
   const href = articleHref(locale, article)
@@ -57,7 +62,7 @@ export function AmzGuideListingCard({
           ) : null}
           <span className="inline-flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" aria-hidden />
-            {readTimeCopy(locale, minutes)}
+            {readTimeCopy(locale, defaultPublicLocale, minutes)}
           </span>
         </div>
         <AmzLink href={href} className="block">

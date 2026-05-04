@@ -49,7 +49,7 @@ export default async function HomePage(props: Props) {
 
   if (isAmzSiteLayout(theme.siteLayout) && theme.amzSiteConfig) {
     const [categories, featuredRows] = await Promise.all([
-      getNavCategoriesForSite(site.id, 32),
+      getNavCategoriesForSite(site.id, locale, 32),
       getFeaturedHomeRowsForSite(site.id, locale, 12),
     ])
     const HomePageCmp = isAmzTemplate2Layout(theme.siteLayout) ? Amz2TemplateHomePage : Amz1TemplateHomePage
@@ -66,12 +66,12 @@ export default async function HomePage(props: Props) {
   const articles = await getPublishedArticlesForSite(site.id, locale, 20)
 
   if (isTemplateShellLayout(theme.siteLayout)) {
-    const categories = await getNavCategoriesForSite(site.id, 32)
+    const categories = await getNavCategoriesForSite(site.id, locale, 32)
     return <Template1HomePage locale={locale} site={site} theme={theme} articles={articles} categories={categories} />
   }
 
   if (theme.siteLayout === 'affiliate_reviews') {
-    const categories = await getNavCategoriesForSite(site.id, 48)
+    const categories = await getNavCategoriesForSite(site.id, locale, 48)
     return (
       <ReviewHubHome articles={articles} categories={categories} locale={locale} theme={theme} />
     )

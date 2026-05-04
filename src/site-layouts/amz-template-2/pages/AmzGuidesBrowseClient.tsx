@@ -11,6 +11,16 @@ import { Input } from '@/site-layouts/amz-template-2/components/ui/input'
 import { useIsMobile } from '@/site-layouts/amz-template-2/hooks/use-mobile'
 import type { AppLocale } from '@/i18n/config'
 import type { Article, Author } from '@/payload-types'
+import {
+  AMZ_BROWSE_CATEGORIES,
+  AMZ_BROWSE_CLEAR_FILTERS,
+  AMZ_GUIDES_ALL,
+  AMZ_GUIDES_EMPTY,
+  AMZ_GUIDES_SEARCH_PLACEHOLDER,
+  AMZ_GUIDES_SHOWING_MANY,
+  AMZ_GUIDES_SHOWING_ONE,
+} from '@/utilities/amzBrowseUiStrings'
+import { applyUiTemplate, pickUiString } from '@/utilities/getLocalizedString'
 
 import { AmzGuideListingCard } from './AmzGuideListingCard'
 
@@ -83,6 +93,7 @@ function articleMatchesGuideFilter(
 
 export function AmzGuidesBrowseClient({
   locale,
+  defaultPublicLocale,
   articles,
   guideNavItems,
   guideCategoryMode,
@@ -91,6 +102,7 @@ export function AmzGuidesBrowseClient({
   initialSearch,
 }: {
   locale: AppLocale
+  defaultPublicLocale: AppLocale
   articles: Article[]
   guideNavItems: GuideNavItem[]
   guideCategoryMode: 'cms' | 'json'
@@ -160,15 +172,14 @@ export function AmzGuidesBrowseClient({
     return out
   }, [articles, activeSlug, guideNavItems, guideCategoryMode, searchForFilter])
 
-  const allGuidesLabel = locale === 'zh' ? '全部指南' : 'All Guides'
+  const p = (m: Partial<Record<AppLocale, string>>) =>
+    pickUiString(locale, defaultPublicLocale, m)
+  const allGuidesLabel = p(AMZ_GUIDES_ALL)
+  const categoriesLabel = p(AMZ_BROWSE_CATEGORIES)
   const showingLabel =
-    locale === 'zh'
-      ? filtered.length === 1
-        ? '共 1 篇'
-        : `共 ${filtered.length} 篇`
-      : filtered.length === 1
-        ? 'Showing 1 article'
-        : `Showing ${filtered.length} articles`
+    filtered.length === 1
+      ? p(AMZ_GUIDES_SHOWING_ONE)
+      : applyUiTemplate(p(AMZ_GUIDES_SHOWING_MANY), { count: filtered.length })
 
   const sidebarInner = (
     <nav className="space-y-1">
@@ -209,7 +220,7 @@ export function AmzGuidesBrowseClient({
           {isMobile ? (
             <Collapsible open={mobileCatOpen} onOpenChange={setMobileCatOpen}>
               <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg py-2 text-left font-semibold text-foreground">
-                {locale === 'zh' ? '分类' : 'Categories'}
+                {categoriesLabel}
                 <ChevronDown className={`h-4 w-4 transition-transform ${mobileCatOpen ? 'rotate-180' : ''}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-2">{sidebarInner}</CollapsibleContent>
@@ -217,7 +228,7 @@ export function AmzGuidesBrowseClient({
           ) : (
             <>
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                {locale === 'zh' ? '分类' : 'Categories'}
+                {categoriesLabel}
               </h2>
               {sidebarInner}
             </>
@@ -231,7 +242,7 @@ export function AmzGuidesBrowseClient({
           <div className="w-full sm:max-w-xs">
             <Input
               type="search"
-              placeholder={locale === 'zh' ? '搜索指南…' : 'Search guides…'}
+              placeholder={p(AMZ_GUIDES_SEARCH_PLACEHOLDER)}
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               autoComplete="off"
@@ -241,7 +252,7 @@ export function AmzGuidesBrowseClient({
 
         {filtered.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
-            <p className="text-muted-foreground">{locale === 'zh' ? '未找到指南' : 'No guides found'}</p>
+            <p className="text-muted-foreground">{p(AMZ_GUIDES_EMPTY)}</p>
             <button
               type="button"
               className="mt-4 text-sm font-medium text-primary underline-offset-4 hover:underline"
@@ -250,7 +261,7 @@ export function AmzGuidesBrowseClient({
                 replaceQuery(null, '')
               }}
             >
-              {locale === 'zh' ? '清除筛选' : 'Clear filters'}
+              {p(AMZ_BROWSE_CLEAR_FILTERS)}
             </button>
           </div>
         ) : (
@@ -260,6 +271,7 @@ export function AmzGuidesBrowseClient({
                 <AmzGuideListingCard
                   article={article}
                   locale={locale}
+                  defaultPublicLocale={defaultPublicLocale}
                   readMinutes={readMinutesByArticleId[article.id] ?? 1}
                 />
               </li>

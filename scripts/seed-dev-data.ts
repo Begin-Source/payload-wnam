@@ -718,15 +718,25 @@ async function d1EnsureCategoryRaw(
     throw new Error('[seed:dev] d1EnsureCategoryRaw: categories table missing slug/tenant_id')
   }
   const hasSite = catCols.has('site_id')
+  const hasLocale = catCols.has('locale')
+  const seedLocale = 'en'
   const iso = new Date().toISOString()
   const desc = `Seed category · ${input.pslug}`
 
-  const selectWhere = hasSite
-    ? 'SELECT `id` FROM `categories` WHERE `slug` = ? AND `tenant_id` = ? AND `site_id` = ? LIMIT 1'
-    : 'SELECT `id` FROM `categories` WHERE `slug` = ? AND `tenant_id` = ? LIMIT 1'
-  const selectBind = hasSite
-    ? [input.slug, input.tenantId, input.siteId]
-    : [input.slug, input.tenantId]
+  let selectWhere: string
+  let selectBind: (string | number)[]
+  if (hasSite && hasLocale) {
+    selectWhere =
+      'SELECT `id` FROM `categories` WHERE `slug` = ? AND `tenant_id` = ? AND `site_id` = ? AND `locale` = ? LIMIT 1'
+    selectBind = [input.slug, input.tenantId, input.siteId, seedLocale]
+  } else if (hasSite) {
+    selectWhere =
+      'SELECT `id` FROM `categories` WHERE `slug` = ? AND `tenant_id` = ? AND `site_id` = ? LIMIT 1'
+    selectBind = [input.slug, input.tenantId, input.siteId]
+  } else {
+    selectWhere = 'SELECT `id` FROM `categories` WHERE `slug` = ? AND `tenant_id` = ? LIMIT 1'
+    selectBind = [input.slug, input.tenantId]
+  }
 
   const ex = await p
     .prepare(selectWhere)
@@ -736,7 +746,14 @@ async function d1EnsureCategoryRaw(
     return { id: ex.results[0].id as number }
   }
 
-  if (hasSite) {
+  if (hasSite && hasLocale) {
+    await p
+      .prepare(
+        'INSERT INTO `categories` (`name`, `slug`, `site_id`, `tenant_id`, `locale`, `description`, `updated_at`, `created_at`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .bind(input.name, input.slug, input.siteId, input.tenantId, seedLocale, desc, iso, iso)
+      .run()
+  } else if (hasSite) {
     await p
       .prepare(
         'INSERT INTO `categories` (`name`, `slug`, `site_id`, `tenant_id`, `description`, `updated_at`, `created_at`) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -1322,6 +1339,7 @@ async function main(): Promise<void> {
             { slug: { equals: slug } },
             { tenant: { equals: tenantId } },
             { site: { equals: siteId } },
+            { locale: { equals: 'en' } },
           ],
         },
         limit: 1,
@@ -1335,6 +1353,7 @@ async function main(): Promise<void> {
         data: {
           name,
           slug,
+          locale: 'en',
           site: siteId,
           tenant: tenantId,
           description: `Seed category · ${p.slug}`,

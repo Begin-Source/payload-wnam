@@ -40,7 +40,7 @@ export default async function SearchPage(props: Props) {
 
   if (isAmzSiteLayout(theme.siteLayout) && theme.amzSiteConfig) {
     const SearchCmp = isAmzTemplate2Layout(theme.siteLayout) ? Amz2SearchPage : Amz1SearchPage
-    return <SearchCmp locale={locale} config={theme.amzSiteConfig} q={q} articles={filtered} />
+    return <SearchCmp locale={locale} defaultPublicLocale={theme.defaultPublicLocale} config={theme.amzSiteConfig} q={q} articles={filtered} />
   }
 
   return (

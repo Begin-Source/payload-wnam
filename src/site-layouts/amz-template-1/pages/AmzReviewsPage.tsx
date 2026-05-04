@@ -6,23 +6,27 @@ import { amzNavHref } from '@/site-layouts/amz-template-1/amzNavHref'
 import { buildAmzCategoryCards } from './categoryCards'
 import type { AppLocale } from '@/i18n/config'
 import type { Article, Category } from '@/payload-types'
+import { AMZ_REVIEWS_ALL } from '@/utilities/amzBrowseUiStrings'
+import { pickUiString } from '@/utilities/getLocalizedString'
+import { resolveAmzReviewsHero } from '@/utilities/resolveAmzLocaleUi'
 
 import { AmzArticleCards } from './AmzArticleCards'
 
 export function AmzReviewsPage({
   locale,
+  defaultPublicLocale,
   config,
   articles,
   categories,
   activeCategorySlug,
 }: {
   locale: AppLocale
+  defaultPublicLocale: AppLocale
   config: AmzSiteConfig
   articles: Article[]
   categories: Category[]
   activeCategorySlug?: string | null
 }) {
-  const r = config.pages.reviews
   const chips = buildAmzCategoryCards(config, categories)
 
   const filtered =
@@ -37,15 +41,22 @@ export function AmzReviewsPage({
         })
       : articles
 
-  const description = r.description.replace(/\{count\}/g, String(filtered.length))
-  const allReviewsLabel = locale === 'zh' ? '全部评测' : 'All Reviews'
+  const { title, description } = resolveAmzReviewsHero(
+    config,
+    locale,
+    defaultPublicLocale,
+    filtered.length,
+  )
+  const p = (m: Partial<Record<AppLocale, string>>) =>
+    pickUiString(locale, defaultPublicLocale, m)
+  const allReviewsLabel = p(AMZ_REVIEWS_ALL)
 
   return (
     <main className="min-w-0 flex-1 overflow-x-clip">
       <div className="container mx-auto px-4 py-12">
         <div className="mx-auto max-w-7xl">
           <div className="mb-12 text-center">
-            <h1 className="mb-4 text-balance text-4xl font-bold text-foreground md:text-5xl">{r.title}</h1>
+            <h1 className="mb-4 text-balance text-4xl font-bold text-foreground md:text-5xl">{title}</h1>
             <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground">{description}</p>
           </div>
 

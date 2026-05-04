@@ -9,11 +9,13 @@ import type { AppLocale } from '@/i18n/config'
 import type { Article, Category } from '@/payload-types'
 import { lexicalStateToHtml } from '@/utilities/lexicalToHtml'
 import { estimateReadingTimeMinutesFromHtml } from '@/utilities/readingTime'
+import { resolveAmzGuidesHero } from '@/utilities/resolveAmzLocaleUi'
 
 import { AmzGuidesBrowseClient, type GuideNavItem } from './AmzGuidesBrowseClient'
 
 export function AmzGuidesPage({
   locale,
+  defaultPublicLocale,
   config,
   articles,
   activeSlug,
@@ -21,6 +23,7 @@ export function AmzGuidesPage({
   initialSearch = '',
 }: {
   locale: AppLocale
+  defaultPublicLocale: AppLocale
   config: AmzSiteConfig
   articles: Article[]
   activeSlug?: string | null
@@ -54,6 +57,11 @@ export function AmzGuidesPage({
   }
 
   const cta = g.cta
+  const { title: heroTitle, description: heroDescription } = resolveAmzGuidesHero(
+    config,
+    locale,
+    defaultPublicLocale,
+  )
 
   return (
     <main className="min-w-0 flex-1 overflow-x-clip">
@@ -61,15 +69,16 @@ export function AmzGuidesPage({
         <div className="mx-auto max-w-7xl">
           <div className="mb-12 flex w-full flex-col items-center">
             <h1 className="mb-4 w-full text-balance text-center text-4xl font-bold text-foreground md:text-5xl">
-              {g.title}
+              {heroTitle}
             </h1>
             <div className="w-full max-w-2xl">
-              <p className="!text-center text-lg leading-relaxed text-muted-foreground">{g.description}</p>
+              <p className="!text-center text-lg leading-relaxed text-muted-foreground">{heroDescription}</p>
             </div>
           </div>
 
           <AmzGuidesBrowseClient
             locale={locale}
+            defaultPublicLocale={defaultPublicLocale}
             articles={articles}
             guideNavItems={guideNavItems}
             guideCategoryMode={guideCategoryMode}

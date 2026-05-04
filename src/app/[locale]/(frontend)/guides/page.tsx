@@ -30,11 +30,12 @@ export default async function GuidesPage(props: Props) {
 
   const [articles, cmsGuideCategories] = await Promise.all([
     getPublishedArticlesForGuidesListing(site.id, locale, 96),
-    getGuideCategoriesForSite(site.id, 24),
+    getGuideCategoriesForSite(site.id, locale, 24),
   ])
 
   const shared = {
     locale,
+    defaultPublicLocale: theme.defaultPublicLocale,
     config: theme.amzSiteConfig,
     articles,
     activeSlug: cat || null,

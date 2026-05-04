@@ -9,5 +9,9 @@ export const AmzTemplateShell: SiteLayoutShellComponent = function AmzTemplateSh
   if (!theme.amzSiteConfig) {
     return DefaultBlogShell(props)
   }
-  return <AmzChrome locale={locale} config={theme.amzSiteConfig}>{children}</AmzChrome>
+  return (
+    <AmzChrome locale={locale} defaultPublicLocale={theme.defaultPublicLocale} config={theme.amzSiteConfig}>
+      {children}
+    </AmzChrome>
+  )
 }

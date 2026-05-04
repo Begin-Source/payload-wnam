@@ -144,6 +144,7 @@ export default async function PostPage(props: Props) {
           article={article}
           html={html}
           locale={locale}
+          defaultPublicLocale={theme.defaultPublicLocale}
           readMinutes={readMinutes}
           readTimeLabel={readTimeLabel[locale]}
           related={related}
@@ -155,6 +156,7 @@ export default async function PostPage(props: Props) {
           article={article}
           html={html}
           locale={locale}
+          defaultPublicLocale={theme.defaultPublicLocale}
           readMinutes={readMinutes}
           readTimeLabel={readTimeLabel[locale]}
           related={related}

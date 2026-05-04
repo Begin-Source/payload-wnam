@@ -5,6 +5,8 @@
 // 2. 配置会自动应用到整个网站
 // 3. 支持的配置包括：品牌、颜色、字体、SEO、导航、首页内容、页脚等
 
+import type { AppLocale } from '@/i18n/config'
+
 /** 首页 /products 分类卡片；`coverImage` 可选。默认：该分类下商品库中 `featured_home` 的主图（与首页 Featured 商品同源），否则无封面图 */
 export type HomepageCategoryItem = {
   name: string
@@ -152,7 +154,12 @@ export const defaultAmzSiteConfig = {
       { label: "Reviews", href: "/reviews" },
       { label: "Guides", href: "/guides" },
       { label: "About", href: "/about" },
-    ]
+    ],
+    /**
+     * 可选：按前台 `locale` 整组替换 `main`（同一 `href` 通常不变，仅翻译 `label`）。
+     * 未配置时，壳层会用内置多语言默认标签；也可在 blueprint JSON 里按需覆盖。
+     */
+    mainByLocale: {} as Partial<Record<AppLocale, { label: string; href: string }[]>>,
   },
 
   // ==================== 首页内容配置 ====================
@@ -207,6 +214,10 @@ export const defaultAmzSiteConfig = {
     products: {
       title: "Products",
       description: "Browse gear by category. Expert-picked items with affiliate transparency.",
+      /** 可选：按 URL 语言覆盖 title / description / indexNote */
+      byLocale: {} as Partial<
+        Record<AppLocale, { title?: string; description?: string; indexNote?: string }>
+      >,
       /** 可选：显示在 /products 主描述下方 */
       indexNote: "",
       /** 分类详情页 H1：`{lead} {分类名} {suffix}`（suffix 可空） */
@@ -225,12 +236,14 @@ export const defaultAmzSiteConfig = {
     reviews: {
       title: "Reviews Title",
       description: "Reviews description placeholder. {count} reviews.",
+      byLocale: {} as Partial<Record<AppLocale, { title?: string; description?: string }>>,
     },
 
     // Guides 页面
     guides: {
       title: "Guides Title",
       description: "Guides description placeholder.",
+      byLocale: {} as Partial<Record<AppLocale, { title?: string; description?: string }>>,
       categories: ["General"],
       // CTA 区域配置
       cta: {

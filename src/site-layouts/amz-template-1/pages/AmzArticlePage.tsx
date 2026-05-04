@@ -30,6 +30,7 @@ export function AmzArticlePage({
   article,
   html,
   locale,
+  defaultPublicLocale,
   readMinutes,
   readTimeLabel,
   related,
@@ -39,6 +40,7 @@ export function AmzArticlePage({
   article: Article
   html: string
   locale: AppLocale
+  defaultPublicLocale: AppLocale
   readMinutes: number
   readTimeLabel: (n: number) => string
   related: Article[]
@@ -46,6 +48,7 @@ export function AmzArticlePage({
   config: AmzSiteConfig
 }) {
   void _config
+  void defaultPublicLocale
 
   const img =
     article.featuredImage != null &&

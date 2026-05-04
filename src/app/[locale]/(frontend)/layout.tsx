@@ -106,7 +106,7 @@ export default async function LocaleFrontendLayout(props: LayoutProps) {
         : isAmz
           ? 24
           : 8
-  const categories = site ? await getNavCategoriesForSite(site.id, catLimit) : []
+  const categories = site ? await getNavCategoriesForSite(site.id, locale, catLimit) : []
 
   const surface = resolveFrontendDocumentSurface(theme, locale, {
     interClassName: inter.className,

@@ -14,17 +14,19 @@ import type { AppLocale } from '@/i18n/config'
 
 export function AmzChrome({
   locale,
+  defaultPublicLocale,
   config,
   children,
 }: {
   locale: AppLocale
+  defaultPublicLocale: AppLocale
   config: AmzSiteConfig
   children: ReactNode
 }) {
   return (
     <AmzConfigThemeProvider config={config}>
       <div className="flex min-h-screen flex-col">
-        <AmzSiteHeader locale={locale} config={config} />
+        <AmzSiteHeader locale={locale} defaultPublicLocale={defaultPublicLocale} config={config} />
         <AmzSiteMobileLayoutPad>
           {children}
           <AmzSiteFooter locale={locale} config={config} />

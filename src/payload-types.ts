@@ -711,6 +711,30 @@ export interface Category {
   name: string;
   slug: string;
   /**
+   * 该分类所属前台语言；须与站点「前台启用语言」一致。同站同 slug 不同 locale 可各建一行。
+   */
+  locale:
+    | 'en'
+    | 'zh'
+    | 'es'
+    | 'pt'
+    | 'fr'
+    | 'de'
+    | 'it'
+    | 'ja'
+    | 'ko'
+    | 'nl'
+    | 'pl'
+    | 'tr'
+    | 'ar'
+    | 'hi'
+    | 'vi'
+    | 'th'
+    | 'id'
+    | 'ms'
+    | 'uk'
+    | 'ru';
+  /**
    * Guides：`kind=指南` 仅用于 Guides 顶部 chip；Reviews 列表会自动排除只属于指南分类的文章。`kind=评测` 与一般文章一样参与 Reviews，仅作语义区分。
    */
   kind?: ('article' | 'guide' | 'review') | null;
@@ -3096,6 +3120,7 @@ export interface CategoriesSelect<T extends boolean = true> {
   tenant?: T;
   name?: T;
   slug?: T;
+  locale?: T;
   kind?: T;
   site?: T;
   slotIndex?: T;

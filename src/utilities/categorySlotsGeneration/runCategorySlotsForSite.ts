@@ -4,6 +4,7 @@ import { openrouterChat } from '@/services/integrations/openrouter/chat'
 import type { Site } from '@/payload-types'
 import { checkPipelineSpendForJob, incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { parseRelationshipId } from '@/utilities/parseRelationshipId'
+import { normalizeSitePublicLocales } from '@/utilities/sitePublicLocales'
 
 import { buildShortnamePrompts } from './aiPrompt'
 import { mergeBuildCategories, normalizeReadyRows } from './buildCategories'
@@ -13,6 +14,12 @@ import {
   siteTenantIdForCategorySync,
   syncCategorySlotsWorkflowToCategories,
 } from './syncCategorySlotsWorkflow'
+
+function resolveSlotLocale(site: Site, explicit?: string | null): string {
+  const { defaultPublicLocale } = normalizeSitePublicLocales(site)
+  const t = typeof explicit === 'string' ? explicit.trim() : ''
+  return t || defaultPublicLocale
+}
 
 const JOB_TYPE = 'category_slots'
 const OPENROUTER_EST_USD = 0.03
@@ -26,25 +33,32 @@ function slugify(term: string): string {
     .slice(0, 120)
 }
 
-async function markCategorySlotsWorkflowErrorForSite(payload: Payload, siteId: number): Promise<void> {
+async function markCategorySlotsWorkflowErrorForSite(
+  payload: Payload,
+  siteId: number,
+  locale?: string | null,
+): Promise<void> {
   try {
     const tenantId = await siteTenantIdForCategorySync(payload, siteId)
     if (tenantId == null) return
-    await syncCategorySlotsWorkflowToCategories(payload, siteId, 'error', tenantId)
+    await syncCategorySlotsWorkflowToCategories(payload, siteId, 'error', tenantId, locale)
   } catch {
     /* best-effort */
   }
 }
 
-async function uniqueSlugForSite(
+async function uniqueSlugForSiteLocale(
   payload: Payload,
   siteId: number,
+  locale: string,
   baseSlug: string,
   excludeCategoryId?: number,
 ): Promise<string> {
   const r = await payload.find({
     collection: 'categories',
-    where: { site: { equals: siteId } },
+    where: {
+      and: [{ site: { equals: siteId } }, { locale: { equals: locale } }],
+    },
     limit: 200,
     depth: 0,
     overrideAccess: true,
@@ -70,6 +84,7 @@ async function upsertSlotCategories(
   siteId: number,
   categoryNames: string[],
   siteTenantId: number,
+  locale: string,
 ): Promise<void> {
   for (let i = 1; i <= 5; i += 1) {
     const name =
@@ -79,7 +94,11 @@ async function upsertSlotCategories(
     const found = await payload.find({
       collection: 'categories',
       where: {
-        and: [{ site: { equals: siteId } }, { slotIndex: { equals: i } }],
+        and: [
+          { site: { equals: siteId } },
+          { slotIndex: { equals: i } },
+          { locale: { equals: locale } },
+        ],
       },
       limit: 1,
       depth: 0,
@@ -88,13 +107,13 @@ async function upsertSlotCategories(
 
     const existing = found.docs[0] as { id: number } | undefined
     const baseSlug = slugify(name)
-    const slug = await uniqueSlugForSite(payload, siteId, baseSlug, existing?.id)
+    const slug = await uniqueSlugForSiteLocale(payload, siteId, locale, baseSlug, existing?.id)
 
     if (existing) {
       await payload.update({
         collection: 'categories',
         id: existing.id,
-        data: { name, slug, slotIndex: i, tenant: siteTenantId },
+        data: { name, slug, slotIndex: i, tenant: siteTenantId, locale },
         overrideAccess: true,
       })
     } else {
@@ -106,6 +125,7 @@ async function upsertSlotCategories(
           site: siteId,
           slotIndex: i,
           tenant: siteTenantId,
+          locale,
         },
         overrideAccess: true,
       })
@@ -127,6 +147,8 @@ function nicheTargetAudience(site: Site): string {
 export type RunCategorySlotsArgs = {
   payload: Payload
   siteId: number
+  /** Defaults to site `defaultPublicLocale`. */
+  locale?: string | null
   mainProductOverride?: string | null
   force?: boolean
   aiModel?: string | null
@@ -190,6 +212,8 @@ async function loadContext(args: RunCategorySlotsArgs): Promise<
     }
   }
 
+  const slotLocaleGate = resolveSlotLocale(site, args.locale)
+
   const gateInput: GateInputRow[] = [
     {
       id: String(siteId),
@@ -201,7 +225,11 @@ async function loadContext(args: RunCategorySlotsArgs): Promise<
     },
   ]
 
-  const { ready_rows, to_generate_rows } = await gateByForceAndExisting(payload, gateInput)
+  const { ready_rows, to_generate_rows } = await gateByForceAndExisting(
+    payload,
+    gateInput,
+    slotLocaleGate,
+  )
   const needAi = to_generate_rows.length > 0
 
   return {
@@ -229,12 +257,15 @@ export async function prepareCategorySlotsForSite(
     }
   }
 
+  const slotLocale = resolveSlotLocale(ctx.site, args.locale)
+
   try {
     await syncCategorySlotsWorkflowToCategories(
       args.payload,
       args.siteId,
       'running',
       ctx.siteTenantId,
+      slotLocale,
     )
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -255,13 +286,21 @@ export async function runCategorySlotsForSite(
   const { payload, siteId, afterPrepare } = args
   const ctx = await loadContext(args)
   if (!ctx.ok) {
-    if (afterPrepare) await markCategorySlotsWorkflowErrorForSite(payload, siteId)
+    if (afterPrepare) await markCategorySlotsWorkflowErrorForSite(payload, siteId, args.locale)
     return ctx
   }
 
+  const slotLocale = resolveSlotLocale(ctx.site, args.locale)
+
   if (!ctx.needAi) {
     try {
-      await syncCategorySlotsWorkflowToCategories(payload, siteId, 'done', ctx.siteTenantId)
+      await syncCategorySlotsWorkflowToCategories(
+        payload,
+        siteId,
+        'done',
+        ctx.siteTenantId,
+        slotLocale,
+      )
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       return { ok: false, code: 'UPDATE', message: msg, status: 500 }
@@ -270,7 +309,13 @@ export async function runCategorySlotsForSite(
   }
 
   if (!afterPrepare) {
-    await syncCategorySlotsWorkflowToCategories(payload, siteId, 'running', ctx.siteTenantId)
+    await syncCategorySlotsWorkflowToCategories(
+      payload,
+      siteId,
+      'running',
+      ctx.siteTenantId,
+      slotLocale,
+    )
   }
 
   const aiModel =
@@ -291,7 +336,7 @@ export async function runCategorySlotsForSite(
     )
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    await markCategorySlotsWorkflowErrorForSite(payload, siteId)
+    await markCategorySlotsWorkflowErrorForSite(payload, siteId, slotLocale)
     return { ok: false, code: 'OPENROUTER', message: msg, status: 502 }
   }
 
@@ -300,7 +345,7 @@ export async function runCategorySlotsForSite(
     parsedJson = JSON.parse(raw) as unknown
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    await markCategorySlotsWorkflowErrorForSite(payload, siteId)
+    await markCategorySlotsWorkflowErrorForSite(payload, siteId, slotLocale)
     return { ok: false, code: 'PARSE', message: msg, status: 422 }
   }
 
@@ -309,7 +354,7 @@ export async function runCategorySlotsForSite(
   const merged = mergeBuildCategories(readyNorm, enriched)
   const row = merged[0]
   if (!row || !Array.isArray(row.categories)) {
-    await markCategorySlotsWorkflowErrorForSite(payload, siteId)
+    await markCategorySlotsWorkflowErrorForSite(payload, siteId, slotLocale)
     return {
       ok: false,
       code: 'BUILD',
@@ -319,15 +364,21 @@ export async function runCategorySlotsForSite(
   }
 
   try {
-    await upsertSlotCategories(payload, siteId, row.categories, ctx.siteTenantId)
+    await upsertSlotCategories(payload, siteId, row.categories, ctx.siteTenantId, slotLocale)
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    await markCategorySlotsWorkflowErrorForSite(payload, siteId)
+    await markCategorySlotsWorkflowErrorForSite(payload, siteId, slotLocale)
     return { ok: false, code: 'UPSERT', message: msg, status: 500 }
   }
 
   try {
-    await syncCategorySlotsWorkflowToCategories(payload, siteId, 'done', ctx.siteTenantId)
+    await syncCategorySlotsWorkflowToCategories(
+      payload,
+      siteId,
+      'done',
+      ctx.siteTenantId,
+      slotLocale,
+    )
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     return { ok: false, code: 'UPDATE', message: msg, status: 500 }

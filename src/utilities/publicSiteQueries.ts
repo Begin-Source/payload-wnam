@@ -32,6 +32,7 @@ const categoryPublicSelect = {
   id: true,
   name: true,
   slug: true,
+  locale: true,
   description: true,
   kind: true,
   coverImage: mediaPublicSelect,
@@ -141,12 +142,16 @@ function offerAppliesToSite(offer: Offer, siteId: number): boolean {
 
 /** Guides page chips: Payload categories with kind=guide for this site */
 export const getGuideCategoriesForSite = cache(
-  async (siteId: number, limit = 24): Promise<Category[]> => {
+  async (siteId: number, locale: string, limit = 24): Promise<Category[]> => {
     const payload = await getPayload({ config: await config })
     const res = await payload.find({
       collection: 'categories',
       where: {
-        and: [{ site: { equals: siteId } }, { kind: { equals: 'guide' } }],
+        and: [
+          { site: { equals: siteId } },
+          { locale: { equals: locale } },
+          { kind: { equals: 'guide' } },
+        ],
       },
       limit,
       sort: 'name',
@@ -159,11 +164,13 @@ export const getGuideCategoriesForSite = cache(
 )
 
 export const getNavCategoriesForSite = cache(
-  async (siteId: number, limit = 8): Promise<Category[]> => {
+  async (siteId: number, locale: string, limit = 8): Promise<Category[]> => {
     const payload = await getPayload({ config: await config })
     const res = await payload.find({
       collection: 'categories',
-      where: { site: { equals: siteId } },
+      where: {
+        and: [{ site: { equals: siteId } }, { locale: { equals: locale } }],
+      },
       limit,
       sort: 'name',
       depth: 1,
@@ -205,6 +212,7 @@ export const getPublishedArticlesForReviewsListing = cache(
       payload,
       siteId,
       'review',
+      locale,
     )
     const res = await payload.find({
       collection: 'articles',
@@ -236,6 +244,7 @@ export const getPublishedArticlesForGuidesListing = cache(
       payload,
       siteId,
       'guide',
+      locale,
     )
     const res = await payload.find({
       collection: 'articles',
@@ -285,12 +294,16 @@ export const getPublishedArticlesForSiteAndCategory = cache(
 )
 
 export const getCategoryBySlugForSite = cache(
-  async (siteId: number, slug: string): Promise<Category | null> => {
+  async (siteId: number, slug: string, locale: string): Promise<Category | null> => {
     const payload = await getPayload({ config: await config })
     const res = await payload.find({
       collection: 'categories',
       where: {
-        and: [{ site: { equals: siteId } }, { slug: { equals: slug } }],
+        and: [
+          { site: { equals: siteId } },
+          { slug: { equals: slug } },
+          { locale: { equals: locale } },
+        ],
       },
       limit: 1,
       depth: 0,

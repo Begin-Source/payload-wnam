@@ -8,7 +8,7 @@ import { combineTenantWhere, getTenantScopeForStats } from '@/utilities/tenantSc
 
 export const dynamic = 'force-dynamic'
 
-const CSV_HEADER = 'id,name,slug,description,tenant_id,site_id'
+const CSV_HEADER = 'id,name,slug,locale,description,tenant_id,site_id'
 
 function tenantIdFromRelation(
   tenant: number | { id: number } | null | undefined,
@@ -101,6 +101,7 @@ export async function GET(request: Request): Promise<Response> {
         String(doc.id),
         escapeCsvCell(doc.name ?? ''),
         escapeCsvCell(doc.slug ?? ''),
+        escapeCsvCell(typeof (doc as { locale?: string }).locale === 'string' ? (doc as { locale: string }).locale : ''),
         escapeCsvCell(doc.description == null ? '' : String(doc.description)),
         escapeCsvCell(docTenantId(doc)),
         escapeCsvCell(docSiteId(doc)),

@@ -9,6 +9,8 @@ import { firstCategoryFromArticle } from '@/components/blog/articleHelpers'
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-2/defaultSiteConfig'
 import type { AppLocale } from '@/i18n/config'
 import type { Article, Media } from '@/payload-types'
+import { AMZ_ARTICLE_EXPERT_REVIEW, AMZ_ARTICLE_RELATED_REVIEWS } from '@/utilities/amzBrowseUiStrings'
+import { pickUiString } from '@/utilities/getLocalizedString'
 
 import { AmzArticleCards } from './AmzArticleCards'
 
@@ -21,6 +23,7 @@ export function AmzArticlePage({
   article,
   html,
   locale,
+  defaultPublicLocale,
   readMinutes,
   readTimeLabel,
   related,
@@ -30,6 +33,7 @@ export function AmzArticlePage({
   article: Article
   html: string
   locale: AppLocale
+  defaultPublicLocale: AppLocale
   readMinutes: number
   readTimeLabel: (n: number) => string
   related: Article[]
@@ -63,8 +67,10 @@ export function AmzArticlePage({
   const relatedOthers = related.filter((a) => a.id !== article.id)
   /** Full-width grid below article — same first N as sidebar, matching amz-template-old (RELATED_REVIEWS_LIMIT = 4). */
   const relatedReviewsGrid = relatedOthers.slice(0, 4)
-  const relatedReviewsTitle = locale === 'zh' ? '相关评测' : 'Related reviews'
-  const expertReviewLabel = locale === 'zh' ? '专家评测' : 'Expert review'
+  const p = (m: Partial<Record<AppLocale, string>>) =>
+    pickUiString(locale, defaultPublicLocale, m)
+  const relatedReviewsTitle = p(AMZ_ARTICLE_RELATED_REVIEWS)
+  const expertReviewLabel = p(AMZ_ARTICLE_EXPERT_REVIEW)
 
   return (
     <main className="min-w-0 flex-1 overflow-x-clip">

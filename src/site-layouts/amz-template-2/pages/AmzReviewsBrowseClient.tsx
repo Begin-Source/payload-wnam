@@ -12,6 +12,16 @@ import { useIsMobile } from '@/site-layouts/amz-template-2/hooks/use-mobile'
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-2/defaultSiteConfig'
 import type { AppLocale } from '@/i18n/config'
 import type { Article, Author, Category } from '@/payload-types'
+import {
+  AMZ_BROWSE_CATEGORIES,
+  AMZ_BROWSE_CLEAR_FILTERS,
+  AMZ_REVIEWS_ALL,
+  AMZ_REVIEWS_EMPTY,
+  AMZ_REVIEWS_SEARCH_PLACEHOLDER,
+  AMZ_REVIEWS_SHOWING_MANY,
+  AMZ_REVIEWS_SHOWING_ONE,
+} from '@/utilities/amzBrowseUiStrings'
+import { applyUiTemplate, pickUiString } from '@/utilities/getLocalizedString'
 
 import { AmzReviewListingCard } from './AmzReviewListingCard'
 import { buildAmzCategoryCards } from './categoryCards'
@@ -49,6 +59,7 @@ function countForChipSlug(articles: Article[], chipSlug: string): number {
 
 export function AmzReviewsBrowseClient({
   locale,
+  defaultPublicLocale,
   config,
   articles,
   categories,
@@ -56,6 +67,7 @@ export function AmzReviewsBrowseClient({
   initialSearch,
 }: {
   locale: AppLocale
+  defaultPublicLocale: AppLocale
   config: AmzSiteConfig
   articles: Article[]
   categories: Category[]
@@ -121,15 +133,14 @@ export function AmzReviewsBrowseClient({
     return out
   }, [articles, activeSlug, searchForFilter])
 
-  const allReviewsLabel = locale === 'zh' ? '全部评测' : 'All Reviews'
+  const p = (m: Partial<Record<AppLocale, string>>) =>
+    pickUiString(locale, defaultPublicLocale, m)
+  const allReviewsLabel = p(AMZ_REVIEWS_ALL)
+  const categoriesLabel = p(AMZ_BROWSE_CATEGORIES)
   const showingLabel =
-    locale === 'zh'
-      ? filtered.length === 1
-        ? '共 1 篇评测'
-        : `共 ${filtered.length} 篇评测`
-      : filtered.length === 1
-        ? 'Showing 1 review'
-        : `Showing ${filtered.length} reviews`
+    filtered.length === 1
+      ? p(AMZ_REVIEWS_SHOWING_ONE)
+      : applyUiTemplate(p(AMZ_REVIEWS_SHOWING_MANY), { count: filtered.length })
 
   const sidebarInner = (
     <nav className="space-y-1">
@@ -170,7 +181,7 @@ export function AmzReviewsBrowseClient({
           {isMobile ? (
             <Collapsible open={mobileCatOpen} onOpenChange={setMobileCatOpen}>
               <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg py-2 text-left font-semibold text-foreground">
-                {locale === 'zh' ? '分类' : 'Categories'}
+                {categoriesLabel}
                 <ChevronDown className={`h-4 w-4 transition-transform ${mobileCatOpen ? 'rotate-180' : ''}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-2">{sidebarInner}</CollapsibleContent>
@@ -178,7 +189,7 @@ export function AmzReviewsBrowseClient({
           ) : (
             <>
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                {locale === 'zh' ? '分类' : 'Categories'}
+                {categoriesLabel}
               </h2>
               {sidebarInner}
             </>
@@ -192,7 +203,7 @@ export function AmzReviewsBrowseClient({
           <div className="w-full sm:max-w-xs">
             <Input
               type="search"
-              placeholder={locale === 'zh' ? '搜索评测…' : 'Search reviews…'}
+              placeholder={p(AMZ_REVIEWS_SEARCH_PLACEHOLDER)}
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               autoComplete="off"
@@ -202,7 +213,7 @@ export function AmzReviewsBrowseClient({
 
         {filtered.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-muted/30 px-6 py-16 text-center">
-            <p className="text-muted-foreground">{locale === 'zh' ? '未找到评测' : 'No reviews found'}</p>
+            <p className="text-muted-foreground">{p(AMZ_REVIEWS_EMPTY)}</p>
             <button
               type="button"
               className="mt-4 text-sm font-medium text-primary underline-offset-4 hover:underline"
@@ -211,7 +222,7 @@ export function AmzReviewsBrowseClient({
                 replaceQuery(null, '')
               }}
             >
-              {locale === 'zh' ? '清除筛选' : 'Clear filters'}
+              {p(AMZ_BROWSE_CLEAR_FILTERS)}
             </button>
           </div>
         ) : (

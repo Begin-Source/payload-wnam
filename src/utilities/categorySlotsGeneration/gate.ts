@@ -24,10 +24,15 @@ export type ReadyGateRow = {
 async function loadExistingCategoryNames(
   payload: Payload,
   siteId: number,
+  /** When set, only names in this storefront locale count toward “site already has categories”. */
+  locale?: string | null,
 ): Promise<string[]> {
+  const loc = typeof locale === 'string' ? locale.trim() : ''
   const r = await payload.find({
     collection: 'categories',
-    where: { site: { equals: siteId } },
+    where: {
+      and: [{ site: { equals: siteId } }, ...(loc ? [{ locale: { equals: loc } }] : [])],
+    },
     sort: 'createdAt',
     limit: 50,
     depth: 0,
@@ -44,6 +49,7 @@ async function loadExistingCategoryNames(
 export async function gateByForceAndExisting(
   payload: Payload,
   sourceRows: GateInputRow[],
+  locale?: string | null,
 ): Promise<{
   ready_rows: ReadyGateRow[]
   to_generate_rows: GateInputRow[]
@@ -53,7 +59,7 @@ export async function gateByForceAndExisting(
 
   for (const row of sourceRows) {
     const siteId = row.site_id
-    const existingNames = await loadExistingCategoryNames(payload, siteId)
+    const existingNames = await loadExistingCategoryNames(payload, siteId, locale)
     const hasExisting = existingNames.length > 0
     const force = !!row.force
 

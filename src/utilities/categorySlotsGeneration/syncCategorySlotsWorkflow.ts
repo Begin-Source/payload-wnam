@@ -12,13 +12,21 @@ export async function syncCategorySlotsWorkflowToCategories(
   siteId: number,
   status: string,
   siteTenantId: number,
+  /** When set, only categories for this site + locale are updated (per-locale slot runs). */
+  locale?: string | null,
 ): Promise<void> {
   let page = 1
   const limit = 100
+  const loc = typeof locale === 'string' ? locale.trim() : ''
   while (true) {
     const batch = await payload.find({
       collection: 'categories',
-      where: { site: { equals: siteId } },
+      where: {
+        and: [
+          { site: { equals: siteId } },
+          ...(loc ? [{ locale: { equals: loc } }] : []),
+        ],
+      },
       limit,
       page,
       depth: 0,

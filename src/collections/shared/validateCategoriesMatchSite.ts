@@ -1,5 +1,7 @@
 import type { CollectionBeforeChangeHook } from 'payload'
 
+import { isAppLocale } from '@/i18n/config'
+
 /**
  * 分类若绑定站点，则须与文章/页面的 site 一致；未绑定站点的分类可任意搭配。
  */
@@ -41,6 +43,10 @@ export const validateCategoriesMatchSite: CollectionBeforeChangeHook = async ({
     }
   }
 
+  const docLocaleRaw =
+    data.locale !== undefined ? data.locale : (originalDoc as { locale?: unknown } | undefined)?.locale
+  const docLocale = typeof docLocaleRaw === 'string' ? docLocaleRaw.trim() : ''
+
   for (const cid of ids) {
     const cat = await payload.findByID({
       collection: 'categories',
@@ -48,6 +54,14 @@ export const validateCategoriesMatchSite: CollectionBeforeChangeHook = async ({
       depth: 0,
     })
     if (!cat) continue
+    const catLocaleRaw = (cat as { locale?: unknown }).locale
+    const catLocale = typeof catLocaleRaw === 'string' ? catLocaleRaw.trim() : ''
+    if (catLocale && docLocale && isAppLocale(docLocale) && catLocale !== docLocale) {
+      const catName = typeof (cat as { name?: unknown }).name === 'string' ? (cat as { name: string }).name : String(cid)
+      throw new Error(
+        `分类「${catName}」的语言为「${catLocale}」，与当前文档语言「${docLocale}」不一致，请换用同语言的分类或更改文档语言。`,
+      )
+    }
     const catSiteRaw = cat.site
     const catSiteId =
       catSiteRaw == null

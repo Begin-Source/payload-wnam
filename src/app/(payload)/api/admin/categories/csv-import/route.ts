@@ -4,7 +4,9 @@ import { getPayload } from 'payload'
 import type { Config } from '@/payload-types'
 import { isUsersCollection } from '@/utilities/announcementAccess'
 import { parseCsvRows } from '@/utilities/csv'
+import { normalizeSitePublicLocales } from '@/utilities/sitePublicLocales'
 import { getTenantScopeForStats } from '@/utilities/tenantScope'
+import { isAppLocale, type AppLocale } from '@/i18n/config'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,6 +71,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const tenantFromSite = tenantIdFromRelation(siteDoc.tenant)
+  const { publicLocales, defaultPublicLocale } = normalizeSitePublicLocales(siteDoc)
 
   const rows = parseCsvRows(await file.text())
   if (rows.length < 2) {
@@ -107,6 +110,23 @@ export async function POST(request: Request): Promise<Response> {
       continue
     }
 
+    const localeRaw = col('locale', row).trim()
+    let rowLocale: AppLocale = defaultPublicLocale
+    if (localeRaw) {
+      if (!isAppLocale(localeRaw)) {
+        errors.push({ row: lineNum, message: `invalid locale: ${localeRaw}` })
+        continue
+      }
+      if (!publicLocales.includes(localeRaw)) {
+        errors.push({
+          row: lineNum,
+          message: `locale ${localeRaw} is not enabled for this site (publicLocaleCodes)`,
+        })
+        continue
+      }
+      rowLocale = localeRaw
+    }
+
     const description = col('description', row)
     const idStr = col('id', row).trim()
 
@@ -136,7 +156,7 @@ export async function POST(request: Request): Promise<Response> {
           continue
         }
 
-        const data: Record<string, unknown> = { name, slug, description }
+        const data: Record<string, unknown> = { name, slug, locale: rowLocale, description }
         if (prevSite == null) {
           data.site = siteId
           if (tenantFromSite != null) data.tenant = tenantFromSite
@@ -154,6 +174,7 @@ export async function POST(request: Request): Promise<Response> {
         const data: Record<string, unknown> = {
           name,
           slug,
+          locale: rowLocale,
           description,
           site: siteId,
         }

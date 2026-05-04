@@ -205,21 +205,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
+  const categoryBySlug = new Map<string, Partial<Record<AppLocale, Category>>>()
   for (const c of categoryDocs) {
     const slug = c.slug?.trim()
     if (!slug) continue
-    const catAlt = hreflangAlternatesForLocales(
-      (loc) => `${baseUrl}/${loc}/categories/${encodeURIComponent(slug)}`,
-      enabled,
-      siteDef,
-    )
+    const loc = c.locale as AppLocale
+    if (!locales.includes(loc)) continue
+    let g = categoryBySlug.get(slug)
+    if (!g) {
+      g = {}
+      categoryBySlug.set(slug, g)
+    }
+    g[loc] = c
+  }
+
+  for (const [catSlugKey, byLoc] of categoryBySlug) {
+    const catEnc = encodeURIComponent(catSlugKey)
     for (const locale of enabled) {
+      const c = byLoc[locale]
+      if (!c?.slug?.trim()) continue
+      const catAlts = hreflangAlternatesSparse(
+        baseUrl,
+        `categories/${catEnc}`,
+        enabled,
+        siteDef,
+        (loc) => Boolean(byLoc[loc]?.slug?.trim()),
+      )
       entries.push({
-        url: `${baseUrl}/${locale}/categories/${encodeURIComponent(slug)}`,
+        url: `${baseUrl}/${locale}/categories/${catEnc}`,
         lastModified: new Date(c.updatedAt),
         changeFrequency: 'weekly',
         priority: 0.55,
-        alternates: catAlt,
+        alternates: catAlts,
       })
     }
   }

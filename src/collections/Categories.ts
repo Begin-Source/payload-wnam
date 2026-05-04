@@ -1,11 +1,13 @@
 import type { CollectionConfig } from 'payload'
 
 import { adminGroups } from '@/constants/adminGroups'
+import { validateCategoryLocaleAgainstSite } from '@/collections/hooks/validateCategoryLocaleAgainstSite'
 import {
   requireSiteOnCreate,
   siteScopedSiteField,
 } from '@/collections/shared/siteScopedSiteField'
 import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { localeSelectOptions } from '@/i18n/localeRegistry'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
@@ -16,6 +18,7 @@ export const Categories: CollectionConfig = {
     defaultColumns: [
       'name',
       'slug',
+      'locale',
       'site',
       'categorySlotsWorkflowStatus',
       'merchantOfferFetchWorkflowStatus',
@@ -32,7 +35,7 @@ export const Categories: CollectionConfig = {
     },
   },
   hooks: {
-    beforeChange: [requireSiteOnCreate],
+    beforeChange: [requireSiteOnCreate, validateCategoryLocaleAgainstSite],
   },
   access: loggedInSuperAdminAccessFor('categories'),
   fields: [
@@ -46,6 +49,19 @@ export const Categories: CollectionConfig = {
       type: 'text',
       required: true,
       index: true,
+    },
+    {
+      name: 'locale',
+      type: 'select',
+      required: true,
+      defaultValue: 'en',
+      index: true,
+      options: localeSelectOptions,
+      admin: {
+        description:
+          '该分类所属前台语言；须与站点「前台启用语言」一致。同站同 slug 不同 locale 可各建一行。',
+        position: 'sidebar',
+      },
     },
     {
       name: 'kind',

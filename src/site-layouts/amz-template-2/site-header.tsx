@@ -3,7 +3,7 @@
 import { Search, Menu, X } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { appendAmzSite } from '@/site-layouts/amz-template-2/appendAmzSite'
 import { AmzLink } from '@/site-layouts/amz-template-2/AmzLink'
@@ -13,13 +13,16 @@ import { amzNavHref } from '@/site-layouts/amz-template-2/amzNavHref'
 import { Button } from '@/site-layouts/amz-template-2/components/ui/button'
 import { Input } from '@/site-layouts/amz-template-2/components/ui/input'
 import type { AppLocale } from '@/i18n/config'
+import { resolveAmzNavigationMain } from '@/utilities/resolveAmzLocaleUi'
 
 export function AmzSiteHeader({
   locale,
+  defaultPublicLocale,
   config,
   enabledLocales,
 }: {
   locale: AppLocale
+  defaultPublicLocale: AppLocale
   config: AmzSiteConfig
   enabledLocales: readonly AppLocale[]
 }) {
@@ -28,6 +31,11 @@ export function AmzSiteHeader({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+
+  const mainNav = useMemo(
+    () => resolveAmzNavigationMain(config, locale, defaultPublicLocale),
+    [config, locale, defaultPublicLocale],
+  )
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,7 +134,7 @@ export function AmzSiteHeader({
           </div>
 
           <nav className="hidden flex-shrink-0 items-center gap-1 lg:flex">
-            {config.navigation.main.map((item) => (
+            {mainNav.map((item) => (
               <AmzLink
                 key={item.href}
                 href={amzNavHref(locale, item.href)}
@@ -185,7 +193,7 @@ export function AmzSiteHeader({
         {mobileMenuOpen ? (
           <div className="animate-in slide-in-from-top-2 border-t border-border py-4 duration-200 lg:hidden">
             <nav className="flex flex-col gap-4" aria-label="Mobile">
-              {config.navigation.main.map((item) => (
+              {mainNav.map((item) => (
                 <AmzLink
                   key={item.href}
                   href={amzNavHref(locale, item.href)}

@@ -8,54 +8,26 @@ import type { AppLocale } from '@/i18n/config'
 import type { Article } from '@/payload-types'
 import { BookOpen, Search } from 'lucide-react'
 
+import { resolveAmzSearchPageCopy } from '@/utilities/amzBrowseUiStrings'
+
 import { AmzArticleCards } from './AmzArticleCards'
 import { AmzHomeHeroSearch } from './AmzHomeHeroSearch'
 
-const copy = {
-  en: {
-    title: 'Search Results',
-    emptyPrompt:
-      'Enter a search term to find reviews and guides, or browse collections below.',
-    resultsFor: (n: number, q: string) =>
-      n > 0
-        ? `Found ${n} result${n !== 1 ? 's' : ''} for "${q}".`
-        : `No results found for "${q}".`,
-    noResultsTitle: 'No Results Found',
-    noResultsBody: 'Try different keywords or browse reviews and guides.',
-    startTitle: 'Start Your Search',
-    startBody: 'Search gear, brands, or topics to jump into our latest posts.',
-    browseReviews: 'Browse All Reviews',
-    browseGuides: 'View Buying Guides',
-    articlesHeading: (n: number) => `Articles (${n})`,
-  },
-  zh: {
-    title: '搜索结果',
-    emptyPrompt: '输入关键词搜索评测与指南，或浏览下方入口。',
-    resultsFor: (n: number, q: string) =>
-      n > 0 ? `找到 ${n} 条与「${q}」相关的结果。` : `未找到与「${q}」相关的结果。`,
-    noResultsTitle: '未找到结果',
-    noResultsBody: '试试其他关键词，或浏览评测与指南。',
-    startTitle: '开始搜索',
-    startBody: '搜索装备、品牌或话题，查看站内的文章与推荐。',
-    browseReviews: '全部评测',
-    browseGuides: '购买指南',
-    articlesHeading: (n: number) => `文章（${n}）`,
-  },
-} as const
-
 export function AmzSearchPage({
   locale,
+  defaultPublicLocale,
   config,
   q,
   articles,
 }: {
   locale: AppLocale
+  defaultPublicLocale: AppLocale
   config: AmzSiteConfig
   q: string
   articles: Article[]
 }) {
   const placeholder = config.homepage.hero.searchPlaceholder
-  const t = locale === 'zh' ? copy.zh : copy.en
+  const t = resolveAmzSearchPageCopy(locale, defaultPublicLocale)
   const trimmed = q.trim()
   const reviewsHref = amzNavHref(locale, '/reviews')
   const guidesHref = amzNavHref(locale, '/guides')
