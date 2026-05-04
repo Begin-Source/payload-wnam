@@ -39,10 +39,18 @@ export async function getAdminBrandingPublic(
   const primaryColor = normalizePrimaryColor(doc.primaryColor ?? undefined)
 
   let logoUrl: string | null = null
+  let logoUpdatedAt: string | null = null
   const logo = doc.logo
   if (logo && typeof logo === 'object' && 'url' in logo) {
-    logoUrl = toAbsoluteMediaUrl((logo as Media).url, options.requestOrigin)
+    const m = logo as Media
+    logoUrl = toAbsoluteMediaUrl(m.url, options.requestOrigin)
+    const upd = m.updatedAt
+    if (typeof upd === 'string' && upd.trim()) {
+      logoUpdatedAt = upd.trim()
+    } else if (m.id != null) {
+      logoUpdatedAt = String(m.id)
+    }
   }
 
-  return { brandName, primaryColor, logoUrl }
+  return { brandName, primaryColor, logoUrl, logoUpdatedAt }
 }

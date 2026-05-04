@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { fetchAdminBranding } from '@/components/fetchAdminBranding'
 import type { AdminBrandingPublic } from '@/types/adminBrandingPublic'
 import { formatBrandDocumentTitle, stripPayloadProductSuffix } from '@/utilities/adminBrandingTitle'
+import { applyAdminBrandingFaviconLinks } from '@/utilities/adminBrandingFavicon'
 
 /** Payload often sets `document.title` after paint; stagger re-applies to win the race. */
 const TITLE_RETRY_MS = [0, 50, 150, 300, 600, 1000] as const
@@ -14,6 +15,26 @@ const emptyBranding: AdminBrandingPublic = {
   brandName: null,
   primaryColor: null,
   logoUrl: null,
+  logoUpdatedAt: null,
+}
+
+function applyBrandingToDocument(b: AdminBrandingPublic): void {
+  const root = document.documentElement
+  if (b.primaryColor) {
+    root.setAttribute('data-admin-branding', 'true')
+    root.style.setProperty('--admin-brand-primary', b.primaryColor)
+    root.style.setProperty(
+      '--admin-brand-primary-hover',
+      `color-mix(in srgb, ${b.primaryColor} 82%, black)`,
+    )
+  } else {
+    root.removeAttribute('data-admin-branding')
+    root.style.removeProperty('--admin-brand-primary')
+    root.style.removeProperty('--admin-brand-primary-hover')
+  }
+  if (b.logoUrl) {
+    applyAdminBrandingFaviconLinks(b.logoUrl, b.logoUpdatedAt)
+  }
 }
 
 /**
@@ -29,38 +50,31 @@ export function AdminBrandingEffects(): null {
 
   useEffect(() => {
     let cancelled = false
-    fetchAdminBranding()
-      .then((b) => {
-        if (cancelled) return
-        const root = document.documentElement
-        if (b.primaryColor) {
-          root.setAttribute('data-admin-branding', 'true')
-          root.style.setProperty('--admin-brand-primary', b.primaryColor)
-          root.style.setProperty(
-            '--admin-brand-primary-hover',
-            `color-mix(in srgb, ${b.primaryColor} 82%, black)`,
-          )
-        } else {
-          root.removeAttribute('data-admin-branding')
-          root.style.removeProperty('--admin-brand-primary')
-          root.style.removeProperty('--admin-brand-primary-hover')
-        }
-        if (b.logoUrl) {
-          let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
-          if (!link) {
-            link = document.createElement('link')
-            link.rel = 'icon'
-            document.head.appendChild(link)
-          }
-          link.href = b.logoUrl
-        }
-        setBranding(b)
-      })
-      .catch(() => {
-        if (!cancelled) setBranding(emptyBranding)
-      })
+
+    const load = (force?: boolean) => {
+      fetchAdminBranding(force ? { force: true } : undefined)
+        .then((b) => {
+          if (cancelled) return
+          applyBrandingToDocument(b)
+          setBranding(b)
+        })
+        .catch(() => {
+          if (!cancelled) setBranding(emptyBranding)
+        })
+    }
+
+    load()
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        load(true)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+
     return () => {
       cancelled = true
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
 

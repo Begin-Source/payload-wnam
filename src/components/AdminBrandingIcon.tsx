@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react'
 
 import { fetchAdminBranding } from '@/components/fetchAdminBranding'
 import type { AdminBrandingPublic } from '@/types/adminBrandingPublic'
+import { withFaviconCacheBuster } from '@/utilities/adminBrandingFavicon'
 
 export function AdminBrandingIcon(): React.ReactElement {
   const [branding, setBranding] = useState<AdminBrandingPublic | null | undefined>(undefined)
@@ -25,7 +26,7 @@ export function AdminBrandingIcon(): React.ReactElement {
         alt=""
         className="graphic-icon admin-branding__icon"
         height="100%"
-        src={branding.logoUrl}
+        src={withFaviconCacheBuster(branding.logoUrl, branding.logoUpdatedAt)}
         style={{ objectFit: 'contain' }}
         width="100%"
       />

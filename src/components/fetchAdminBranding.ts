@@ -2,19 +2,34 @@
 
 import type { AdminBrandingPublic } from '@/types/adminBrandingPublic'
 
-let brandingPromise: Promise<AdminBrandingPublic> | null = null
+/** Dedupe concurrent fetches only; each settled request allows a fresh fetch next time. */
+let inFlight: Promise<AdminBrandingPublic> | null = null
 
-export function fetchAdminBranding(): Promise<AdminBrandingPublic> {
-  if (!brandingPromise) {
-    brandingPromise = fetch('/api/admin/branding', { credentials: 'same-origin' })
-      .then((r) => {
-        if (!r.ok) throw new Error('branding')
-        return r.json() as Promise<AdminBrandingPublic>
-      })
-      .catch((err) => {
-        brandingPromise = null
-        throw err
-      })
+export type FetchAdminBrandingOptions = {
+  /** Skip in-flight dedupe and force a new network request (e.g. after tab becomes visible). */
+  force?: boolean
+}
+
+export function fetchAdminBranding(
+  options?: FetchAdminBrandingOptions,
+): Promise<AdminBrandingPublic> {
+  if (options?.force) {
+    inFlight = null
   }
-  return brandingPromise
+  if (inFlight) return inFlight
+
+  const p = fetch('/api/admin/branding', {
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
+    .then((r) => {
+      if (!r.ok) throw new Error('branding')
+      return r.json() as Promise<AdminBrandingPublic>
+    })
+    .finally(() => {
+      if (inFlight === p) inFlight = null
+    })
+
+  inFlight = p
+  return p
 }

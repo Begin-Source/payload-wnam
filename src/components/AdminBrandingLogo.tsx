@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react'
 
 import { fetchAdminBranding } from '@/components/fetchAdminBranding'
 import type { AdminBrandingPublic } from '@/types/adminBrandingPublic'
+import { withFaviconCacheBuster } from '@/utilities/adminBrandingFavicon'
 
 export function AdminBrandingLogo(): React.ReactElement {
   const [branding, setBranding] = useState<AdminBrandingPublic | null | undefined>(undefined)
@@ -24,7 +25,7 @@ export function AdminBrandingLogo(): React.ReactElement {
       // eslint-disable-next-line @next/next/no-img-element -- admin branding upload
       <img
         className="graphic-logo admin-branding__logo"
-        src={branding.logoUrl}
+        src={withFaviconCacheBuster(branding.logoUrl, branding.logoUpdatedAt)}
         alt={branding.brandName || ''}
       />
     )
