@@ -82,6 +82,7 @@ import * as migration_20260814_120000_pipeline_profiles from './20260814_120000_
 import * as migration_20260815_120000_seed_seo_theory_pipeline_profiles from './20260815_120000_seed_seo_theory_pipeline_profiles';
 import * as migration_20260816_120000_pipeline_t2_variants_and_article_snapshots from './20260816_120000_pipeline_t2_variants_and_article_snapshots';
 import * as migration_20260817_120000_seed_finalize_pipeline_tenant_prompts from './20260817_120000_seed_finalize_pipeline_tenant_prompts';
+import * as migration_20260818_120000_seed_seo_theory_pipeline_profiles from './20260818_120000_seed_seo_theory_pipeline_profiles';
 
 export const migrations = [
   {
@@ -503,5 +504,10 @@ export const migrations = [
     up: migration_20260817_120000_seed_finalize_pipeline_tenant_prompts.up,
     down: migration_20260817_120000_seed_finalize_pipeline_tenant_prompts.down,
     name: '20260817_120000_seed_finalize_pipeline_tenant_prompts',
+  },
+  {
+    up: migration_20260818_120000_seed_seo_theory_pipeline_profiles.up,
+    down: migration_20260818_120000_seed_seo_theory_pipeline_profiles.down,
+    name: '20260818_120000_seed_seo_theory_pipeline_profiles',
   },
 ];
