@@ -6,7 +6,7 @@ import { checkPipelineSpendForJob, incrementSiteQuotaUsage } from '@/utilities/s
 import { parseRelationshipId } from '@/utilities/parseRelationshipId'
 import { normalizeSitePublicLocales } from '@/utilities/sitePublicLocales'
 
-import { buildShortnamePrompts } from './aiPrompt'
+import { resolveCategorySlotsShortnamePrompts } from './resolveCategorySlotsPrompts'
 import { mergeBuildCategories, normalizeReadyRows } from './buildCategories'
 import { gateByForceAndExisting, type GateInputRow } from './gate'
 import { parseAiShortnameResponse } from './parseAiShortname'
@@ -323,7 +323,11 @@ export async function runCategorySlotsForSite(
       ? args.aiModel.trim()
       : 'google/gemini-2.5-flash'
 
-  const { systemPrompt, userPrompt } = buildShortnamePrompts(ctx.toGenerate)
+  const { systemPrompt, userPrompt } = await resolveCategorySlotsShortnamePrompts(
+    payload,
+    ctx.siteTenantId,
+    ctx.toGenerate,
+  )
   let raw: string
   try {
     raw = await openrouterChat(

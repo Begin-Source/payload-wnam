@@ -2,21 +2,19 @@ import configPromise from '@payload-config'
 import type { Payload, Where } from 'payload'
 import { getPayload } from 'payload'
 
-import {
-  AMZ_DEFAULT_LANGUAGE_CODE,
-  AMZ_DEFAULT_LOCATION_CODE,
-} from '@/services/integrations/dataforseo/amzDefaults'
 import { fetchKeywordSuggestionsLive } from '@/services/integrations/dataforseo/keywords'
 import type { Config } from '@/payload-types'
 import { isUsersCollection } from '@/utilities/announcementAccess'
 import {
   evaluateKeywordEligibility,
-  loadAmzEligibilityThresholds,
+  loadAmzEligibilityThresholdsFromMerged,
   opportunityForKeywordRow,
   type AmzKeywordEligibilityThresholds,
   type KeywordIntent,
 } from '@/utilities/keywordEligibility'
 import { findSiteQuotaForSite, incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
+import { resolveDfsLocationLanguageFromMerged } from '@/utilities/pipelineDfsLocale'
+import { resolvePipelineConfigForSite } from '@/utilities/resolvePipelineConfig'
 import { getTenantScopeForStats, type TenantScope } from '@/utilities/tenantScope'
 
 export const dynamic = 'force-dynamic'
@@ -128,13 +126,23 @@ export async function POST(request: Request): Promise<Response> {
     )
   }
 
-  const ps = await payload.findGlobal({
-    slug: 'pipeline-settings',
-    depth: 0,
-  })
-  const settings = ps as { dataForSeoEnabled?: boolean | null }
-  if (settings?.dataForSeoEnabled === false) {
-    return Response.json({ error: 'DataForSEO disabled in PipelineSettings' }, { status: 400 })
+  const rawPid = body.pipelineProfileId
+  let explicitPipelineProfileId: number | null = null
+  if (typeof rawPid === 'number' && Number.isFinite(rawPid)) {
+    explicitPipelineProfileId = Math.floor(rawPid)
+  } else if (typeof rawPid === 'string' && /^\d+$/.test(rawPid.trim())) {
+    explicitPipelineProfileId = Number(rawPid.trim())
+  }
+
+  const resolved = await resolvePipelineConfigForSite(payload, siteId, explicitPipelineProfileId)
+  if ('ok' in resolved) {
+    return Response.json({ error: resolved.error }, { status: 400 })
+  }
+  if (!resolved.merged.dataForSeoEnabled) {
+    return Response.json(
+      { error: 'DataForSEO disabled for this site / pipeline profile' },
+      { status: 400 },
+    )
   }
 
   const overrides: Partial<AmzKeywordEligibilityThresholds> = {}
@@ -159,16 +167,17 @@ export async function POST(request: Request): Promise<Response> {
     overrides.pullLimit = Number(body.pullLimit)
   }
 
-  const thresholds = await loadAmzEligibilityThresholds(payload, overrides)
+  const thresholds = loadAmzEligibilityThresholdsFromMerged(resolved.merged, overrides)
 
+  const fromMerged = resolveDfsLocationLanguageFromMerged(resolved.merged)
   const locationCode =
     body.locationCode != null && Number.isFinite(Number(body.locationCode))
       ? Math.floor(Number(body.locationCode))
-      : AMZ_DEFAULT_LOCATION_CODE
+      : fromMerged.location_code
   const languageCode =
     typeof body.languageCode === 'string' && body.languageCode.trim().length > 0
       ? body.languageCode.trim().toLowerCase()
-      : AMZ_DEFAULT_LANGUAGE_CODE
+      : fromMerged.language_code
 
   /** ~2 DFS credits per seed (same order of magnitude as `keyword_discover`). */
   const dfsUnits = 2 * seeds.length

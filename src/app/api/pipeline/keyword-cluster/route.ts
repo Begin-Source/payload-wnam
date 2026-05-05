@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
 import { runKeywordClusterForSite } from '@/utilities/keywordClusterPipeline'
+import { resolveMergedForPipelineRoute } from '@/utilities/resolvePipelineConfig'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,12 +44,20 @@ export async function POST(request: Request): Promise<Response> {
   const minOverlap = Number.isFinite(mo) ? Math.min(6, Math.max(2, Math.floor(mo))) : 3
 
   const payload = await getPayload({ config: configPromise })
+  const merged = await resolveMergedForPipelineRoute({ payload, siteId })
+  if (!merged.dataForSeoEnabled) {
+    return Response.json(
+      { ok: false, error: 'DataForSEO disabled in pipeline-settings / profile' },
+      { status: 400 },
+    )
+  }
   const out = await runKeywordClusterForSite({
     payload,
     siteId,
     keywordIds,
     minOverlap,
     refresh: body.refresh === true,
+    merged,
   })
 
   if (!out.ok) {

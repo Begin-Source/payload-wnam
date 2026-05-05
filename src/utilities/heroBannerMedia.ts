@@ -1,6 +1,11 @@
 import type { Media, Site, SiteBlueprint } from '@/payload-types'
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import { mergeAmzSiteConfigFromRaw } from '@/site-layouts/amz-template-1/mergeAmzSiteConfig'
+import { substitutePromptPlaceholders } from '@/utilities/domainGeneration/substitutePromptPlaceholders'
+import {
+  TOGETHER_HERO_BANNER_PROMPT_TEMPLATE,
+  buildHeroBannerTogetherVarsFromPromptParts,
+} from '@/utilities/togetherTenantPrompts/togetherImagePromptTemplates'
 
 export const DEFAULT_HERO_BANNER_WIDTH = 1536
 export const DEFAULT_HERO_BANNER_HEIGHT = 640
@@ -138,24 +143,15 @@ export function makeHeroBannerImagePrompt(parts: {
 }): string {
   const o = parts.override?.trim()
   if (o) return o
-  const site = parts.siteName.trim() || 'Store'
-  const slug = parts.slugOrKey.trim()
-  const mp = parts.mainProduct?.trim()
-  const niche = parts.nicheHint?.trim()?.slice(0, 350)
-
-  return [
-    'Wide cinematic landscape photograph or editorial illustration, panoramic wide aspect similar to 16:9, atmospheric depth, soft bokeh, natural full-bleed scene only; not a screenshot, not a webpage, not a composite layout, no user interface of any kind.',
-    `Subject context for vibe only—do not render any part of the following as visible letters or logos in the image. Brand or site identity (mood only): ${site}. ${slug ? `Key: ${slug}.` : ''}`,
-    mp ? `Primary product/context: ${mp.slice(0, 200)}.` : '',
-    niche ? `Niche hint (non-literal, no labels to paint): ${niche}` : '',
-    'Style: premium editorial photography or tasteful illustration; unobtrusive, cohesive cool or warm palette suitable behind a separate HTML text overlay (the overlay is not part of this render).',
-    'Calm central readability via soft gradients and atmospheric haze only—absolutely no typography inside pixels.',
-    'No logos, captions, storefront signage, device screens with readable UI, hashtags, watermarks, instructional diagrams with text.',
-    'Single continuous scene; avoid collage, storyboard, browser frames, or mock-ups.',
-  ]
-    .map((x) => x.trim())
-    .filter((x) => x.length > 0)
-    .join(' ')
+  return substitutePromptPlaceholders(
+    TOGETHER_HERO_BANNER_PROMPT_TEMPLATE,
+    buildHeroBannerTogetherVarsFromPromptParts({
+      siteName: parts.siteName,
+      slugOrKey: parts.slugOrKey,
+      mainProduct: parts.mainProduct,
+      nicheHint: parts.nicheHint,
+    }),
+  )
 }
 
 export function composeHeroBannerPromptFromSiteBlueprint(

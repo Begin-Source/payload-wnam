@@ -83,6 +83,52 @@ export const articleSeoFields: Field[] = [
     hasMany: true,
   },
   { name: 'sourceBrief', type: 'relationship', relationTo: 'content-briefs' },
+  {
+    name: 'pipelineProfile',
+    type: 'relationship',
+    relationTo: 'pipeline-profiles',
+    admin: {
+      description:
+        '可选。指定后本篇文章的 AI 流水线使用该配置（优先于站点默认）。用于 A/B 对照；留空则继承站点或租户默认。',
+      position: 'sidebar',
+    },
+        filterOptions: ({ data }) => {
+      const raw = (data as { tenant?: number | { id: number } | null })?.tenant
+      const tid =
+        raw != null && typeof raw === 'object' && 'id' in raw
+          ? Number((raw as { id: number }).id)
+          : typeof raw === 'number'
+            ? raw
+            : null
+      if (tid == null || !Number.isFinite(tid)) return false
+      return { tenant: { equals: tid } }
+    },
+  },
+  {
+    name: 'pipelineProfileSnapshot',
+    type: 'json',
+    admin: {
+      readOnly: true,
+      description:
+        '首次入队 draft_section 时冻结的流水线合并快照（SEO A/B）。勿手改。',
+    },
+  },
+  {
+    name: 'pipelineProfileSlug',
+    type: 'text',
+    admin: {
+      readOnly: true,
+      description: '与快照对应的 pipeline profile slug（租户默认/global 时为空）。',
+    },
+  },
+  {
+    name: 'pipelineProfileSource',
+    type: 'text',
+    admin: {
+      readOnly: true,
+      description: 'Profile 解析来源：explicit | article | site | tenant_default | global_only',
+    },
+  },
   { name: 'mergedInto', type: 'relationship', relationTo: 'articles' },
   { name: 'sectionSummaries', type: 'json' },
   { name: 'metaVariants', type: 'json' },

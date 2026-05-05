@@ -1,6 +1,8 @@
 import type { Payload } from 'payload'
 
 import { dataForSeoPost, keywordDataLocationAndLanguage } from '@/services/integrations/dataforseo/client'
+import type { PipelineSettingShape } from '@/utilities/pipelineSettingShape'
+import { resolveDfsLocationLanguageFromMerged } from '@/utilities/pipelineDfsLocale'
 import { AMZ_DEFAULT_DEVICE } from '@/services/integrations/dataforseo/amzDefaults'
 import {
   clusterByOverlap,
@@ -42,6 +44,7 @@ export async function runKeywordClusterForSite(args: {
   keywordIds: number[]
   minOverlap: number
   refresh?: boolean
+  merged?: PipelineSettingShape | null
   /** Per-keyword DFS timeout ms */
   dfsTimeoutMs?: number
 }): Promise<KeywordClusterResult | { ok: false; error: string }> {
@@ -82,7 +85,10 @@ export async function runKeywordClusterForSite(args: {
     return { ok: false, error: '所选站点未关联租户，无法进行 SERP 聚类' }
   }
 
-  const loc = await keywordDataLocationAndLanguage()
+  const loc =
+    args.merged != null
+      ? resolveDfsLocationLanguageFromMerged(args.merged)
+      : await keywordDataLocationAndLanguage()
   const locationLabel = String(loc.location_code)
   const deviceLabel = AMZ_DEFAULT_DEVICE
 

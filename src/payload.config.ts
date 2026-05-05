@@ -60,6 +60,8 @@ import { PublicLanding } from './globals/PublicLanding'
 import { PipelineSettings } from './globals/PipelineSettings'
 import { Announcements } from './collections/Announcements'
 import { Teams } from './collections/Teams'
+import { PipelineProfiles } from './collections/PipelineProfiles'
+import { TenantPromptTemplates } from './collections/TenantPromptTemplates'
 import { OpenAIConfig } from './utilities/aiOpenAIConfigImport'
 import type { Config } from './payload-types'
 import { expandMcpAccessForSuperAdmin } from './utilities/mcpSuperAdminAccess'
@@ -84,6 +86,7 @@ const mcpCollectionSlugs = [
   'articles',
   'pages',
   'keywords',
+  'pipeline-profiles',
   'workflow-jobs',
   'knowledge-base',
   'rankings',
@@ -219,7 +222,10 @@ export default buildConfig({
     },
     components: {
       providers: ['./components/AdminBrandingProvider#AdminBrandingProvider'],
-      beforeNavLinks: ['./components/KnowledgeReadNavLink#KnowledgeReadNavLink'],
+      beforeNavLinks: [
+        './components/PipelineProfilesCompareNavLink#PipelineProfilesCompareNavLink',
+        './components/KnowledgeReadNavLink#KnowledgeReadNavLink',
+      ],
       beforeDashboard: ['./components/BeforeDashboardMilestone#BeforeDashboardMilestone'],
       graphics: {
         Icon: './components/AdminBrandingIcon#AdminBrandingIcon',
@@ -229,6 +235,10 @@ export default buildConfig({
       views: {
         dashboard: {
           Component: './components/MinimalDashboard#MinimalDashboard',
+        },
+        PipelineProfilesCompare: {
+          Component: './components/PipelineProfilesCompareView#PipelineProfilesCompareView',
+          path: '/pipeline-profiles/compare',
         },
       },
     },
@@ -257,6 +267,8 @@ export default buildConfig({
     ClickEvents,
     Commissions,
     Teams,
+    TenantPromptTemplates,
+    PipelineProfiles,
     KnowledgeBase,
     OperationManuals,
     AuditLogs,
@@ -331,6 +343,8 @@ export default buildConfig({
         rankings: {},
         'audit-logs': {},
         teams: {},
+        'tenant-prompt-templates': {},
+        'pipeline-profiles': {},
         'social-platforms': {},
         'social-accounts': {},
         /**
@@ -498,6 +512,11 @@ export default buildConfig({
         keywords: {
           enabled: true,
           description: 'SEO / research keywords optionally scoped to a site.',
+        },
+        'pipeline-profiles': {
+          enabled: true,
+          description:
+            'Per-tenant SEO / AI pipeline overrides (models, DataForSEO/Tavily/Together flags, AMZ keyword eligibility JSON). Merges with global pipeline-settings; link from sites.pipelineProfile or articles.pipelineProfile. Use after keyword-research or audits to codify thresholds and tool toggles.',
         },
         'workflow-jobs': {
           enabled: true,

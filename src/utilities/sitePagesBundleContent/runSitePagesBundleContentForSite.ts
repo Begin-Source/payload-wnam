@@ -12,11 +12,8 @@ import {
   formatSitePagesBundleFields,
 } from '@/utilities/sitePagesBundleContent/extractAndFormatSitePagesBundle'
 import { markdownToPageBodyLexical } from '@/utilities/sitePagesBundleContent/markdownToPayloadLexical'
-import {
-  buildUserPromptForTrustPagesBundle,
-  DEFAULT_TRUST_BUNDLE_MODEL,
-  SYSTEM_PROMPT_TRUST_PAGES_BUNDLE,
-} from '@/utilities/sitePagesBundleContent/sitePagesBundleOpenRouterPrompts'
+import { resolveTrustPagesBundlePrompts } from '@/utilities/sitePagesBundleContent/resolveTrustPagesBundlePrompts'
+import { DEFAULT_TRUST_BUNDLE_MODEL } from '@/utilities/sitePagesBundleContent/sitePagesBundleOpenRouterPrompts'
 import {
   CONTENT_KEY_BY_SLUG,
   TRUST_BUNDLE_LOCALE,
@@ -24,6 +21,7 @@ import {
   TRUST_PAGE_TITLE,
   type TrustBundleSlug,
 } from '@/utilities/sitePagesBundleContent/trustPageConstants'
+import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
 const MAX_LOG = 32_000
 const MAX_ERR_DETAIL = 8_000
@@ -267,11 +265,13 @@ export async function runSitePagesBundleContentForSite(
   let raw: string
   let finishReason: string
   try {
+    const tenantId = tenantIdFromRelation(site.tenant)
+    const { system, user } = await resolveTrustPagesBundlePrompts(payload, tenantId, site)
     const r = await openrouterChatWithMeta(
       model,
       [
-        { role: 'system', content: SYSTEM_PROMPT_TRUST_PAGES_BUNDLE },
-        { role: 'user', content: buildUserPromptForTrustPagesBundle(site) },
+        { role: 'system', content: system },
+        { role: 'user', content: user },
       ],
       { responseFormatJson: true, temperature: 0.3, maxTokens: 6144 },
     )

@@ -8,6 +8,7 @@ import {
   imageExtensionFromMime,
   togetherImageGenerateBytes,
 } from '@/services/integrations/together/hidream'
+import { TOGETHER_ARTICLE_FEATURED_IMAGE_PROMPT } from '@/utilities/domainGeneration/promptKeys'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
 import {
@@ -18,6 +19,9 @@ import {
   extractPipelineErrorChainMessage,
   formatD1MediaInsertFailureMessage,
 } from '@/utilities/pipelineDbErrorMessage'
+import { resolvePipelineConfigForArticle, resolvePipelineConfigForSite } from '@/utilities/resolvePipelineConfig'
+import { resolveTogetherTenantPrompt } from '@/utilities/togetherTenantPrompts/resolveTogetherTenantPrompt'
+import { buildArticleFeaturedTogetherVars } from '@/utilities/togetherTenantPrompts/togetherImagePromptTemplates'
 
 export const dynamic = 'force-dynamic'
 
@@ -131,8 +135,33 @@ async function runReplaceOnMedia(
     })
   }
 
+  const pipeReplace = await resolvePipelineConfigForSite(payload, mediaSiteId)
+  if ('ok' in pipeReplace) {
+    return Response.json(
+      {
+        ok: false,
+        error: 'pipeline_resolve_failed',
+        message: pipeReplace.error,
+      },
+      { status: 422 },
+    )
+  }
+  if (!pipeReplace.merged.togetherImageEnabled) {
+    return Response.json(
+      {
+        ok: false,
+        error: 'together_image_disabled',
+        message: '当前流水线配置已关闭 Together 生图。',
+      },
+      { status: 400 },
+    )
+  }
+  const replaceModel = pipeReplace.merged.defaultImageModel?.trim() || undefined
+
   try {
-    const { buffer, mimeType } = await togetherImageGenerateBytes(resolved.promptText)
+    const { buffer, mimeType } = await togetherImageGenerateBytes(resolved.promptText, {
+      model: replaceModel,
+    })
     const ext = imageExtensionFromMime(mimeType)
     const base =
       typeof row.alt === 'string' && row.alt.trim()
@@ -253,18 +282,94 @@ async function runArticleOrPageFeatured(
   const keywordTerm =
     args.collection === 'articles' ? keywordTermFromPost(doc as Article) : null
 
-  const promptText = makeFeaturedImagePrompt({
+  const defaultFeaturedPrompt = makeFeaturedImagePrompt({
     title,
     excerpt,
     keywordTerm,
   })
 
+  const siteRow = await payload.findByID({
+    collection: 'sites',
+    id: String(sid),
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (!siteRow) {
+    return Response.json({ ok: false, error: 'site_not_found' }, { status: 404 })
+  }
+
+  const tenantNumeric = tenantIdFromRelation(
+    (siteRow as { tenant?: number | { id: number } | null } | null)?.tenant,
+  )
+  if (tenantNumeric == null) {
+    return Response.json(
+      {
+        ok: false,
+        error: 'site_missing_tenant',
+        message:
+          '该站点未设置 Assigned Tenant（租户），无法在媒体库创建记录。请到「站点」为站点绑定租户后再试。',
+      },
+      { status: 422 },
+    )
+  }
+
+  const tenantRow = await payload.findByID({
+    collection: 'tenants',
+    id: String(tenantNumeric),
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (!tenantRow) {
+    return Response.json(
+      {
+        ok: false,
+        error: 'tenant_record_missing',
+        message: `站点绑定的租户 id ${tenantNumeric} 在 tenants 表中不存在，请修正站点租户或补全 tenants 数据后再试。`,
+      },
+      { status: 422 },
+    )
+  }
+
+  const promptText = await resolveTogetherTenantPrompt(
+    payload,
+    tenantNumeric,
+    TOGETHER_ARTICLE_FEATURED_IMAGE_PROMPT,
+    defaultFeaturedPrompt,
+    buildArticleFeaturedTogetherVars({ title, excerpt, keywordTerm }),
+  )
+
   if (!promptText.trim()) {
     return Response.json({ ok: false, error: 'empty prompt' }, { status: 400 })
   }
 
+  const pipeFeatured =
+    args.collection === 'articles'
+      ? await resolvePipelineConfigForArticle(payload, args.docId)
+      : await resolvePipelineConfigForSite(payload, sid)
+  if ('ok' in pipeFeatured) {
+    return Response.json(
+      {
+        ok: false,
+        error: 'pipeline_resolve_failed',
+        message: pipeFeatured.error,
+      },
+      { status: 422 },
+    )
+  }
+  if (!pipeFeatured.merged.togetherImageEnabled) {
+    return Response.json(
+      {
+        ok: false,
+        error: 'together_image_disabled',
+        message: '当前流水线配置已关闭 Together 生图。',
+      },
+      { status: 400 },
+    )
+  }
+  const featuredModel = pipeFeatured.merged.defaultImageModel?.trim() || undefined
+
   try {
-    const { buffer, mimeType } = await togetherImageGenerateBytes(promptText)
+    const { buffer, mimeType } = await togetherImageGenerateBytes(promptText, { model: featuredModel })
     const ext = imageExtensionFromMime(mimeType)
     const slugBase = title
       .toLowerCase()
@@ -274,44 +379,6 @@ async function runArticleOrPageFeatured(
       .replace(/^-|-$/g, '')
       .slice(0, 60) || `${args.collection}-${args.docId}`
     const name = `${slugBase}-hero-${Date.now()}.${ext}`
-
-    const siteRow = await payload.findByID({
-      collection: 'sites',
-      id: String(sid),
-      depth: 0,
-      overrideAccess: true,
-    })
-    const tenantNumeric = tenantIdFromRelation(
-      (siteRow as { tenant?: number | { id: number } | null } | null)?.tenant,
-    )
-    if (tenantNumeric == null) {
-      return Response.json(
-        {
-          ok: false,
-          error: 'site_missing_tenant',
-          message:
-            '该站点未设置 Assigned Tenant（租户），无法在媒体库创建记录。请到「站点」为站点绑定租户后再试。',
-        },
-        { status: 422 },
-      )
-    }
-
-    const tenantRow = await payload.findByID({
-      collection: 'tenants',
-      id: String(tenantNumeric),
-      depth: 0,
-      overrideAccess: true,
-    })
-    if (!tenantRow) {
-      return Response.json(
-        {
-          ok: false,
-          error: 'tenant_record_missing',
-          message: `站点绑定的租户 id ${tenantNumeric} 在 tenants 表中不存在，请修正站点租户或补全 tenants 数据后再试。`,
-        },
-        { status: 422 },
-      )
-    }
 
     const nowIso = new Date().toISOString()
     const created = await payload.create({

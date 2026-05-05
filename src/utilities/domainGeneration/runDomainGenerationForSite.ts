@@ -2,11 +2,15 @@ import type { Payload } from 'payload'
 
 import { openrouterChat } from '@/services/integrations/openrouter/chat'
 import { buildSiteUpdatePatch } from '@/utilities/domainGeneration/buildSitePatch'
-import { buildAudiencePrompts, buildDomainNamingPrompts } from '@/utilities/domainGeneration/prompts'
+import {
+  resolveAudienceStepPrompts,
+  resolveDomainStepPrompts,
+} from '@/utilities/domainGeneration/resolveDomainGenPrompts'
 import { parseAndPickAudiences } from '@/utilities/domainGeneration/parseAudiences'
 import { parseDomainCandidatesFromAi } from '@/utilities/domainGeneration/parseDomainCandidates'
 import { checkSpaceshipDomains } from '@/utilities/domainGeneration/spaceship'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
+import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
 export type SiteDocForDomainGen = {
   id: string | number
@@ -15,6 +19,7 @@ export type SiteDocForDomainGen = {
   primaryDomain: string
   nicheData?: Record<string, unknown> | null
   domainGenerationLog?: string | null
+  tenant?: number | { id: number } | null
 }
 
 function asNicheRecord(raw: unknown): Record<string, unknown> {
@@ -104,10 +109,12 @@ export async function runDomainGenerationForSite(
       throw new Error('main_product/site_name/niche are all empty')
     }
 
+    const tenantId = tenantIdFromRelation(site.tenant)
+
     let audienceText = ''
     let audienceError = false
     try {
-      const ap = buildAudiencePrompts({
+      const ap = await resolveAudienceStepPrompts(payload, tenantId, {
         mainProduct,
         siteName,
         niche,
@@ -127,7 +134,7 @@ export async function runDomainGenerationForSite(
 
     const aud = parseAndPickAudiences(audienceText, { mainProduct, siteName }, audienceError)
 
-    const dp = buildDomainNamingPrompts({
+    const dp = await resolveDomainStepPrompts(payload, tenantId, {
       mainProduct,
       siteName,
       niche,

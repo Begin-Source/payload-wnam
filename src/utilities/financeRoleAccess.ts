@@ -5,8 +5,11 @@ import { isUsersCollection } from '@/utilities/announcementAccess'
 import { userHasUnscopedAdminAccess } from '@/utilities/superAdmin'
 import { getUserRoles, userHasRole, userHasTenantGeneralManagerRole } from '@/utilities/userRoles'
 
-/** Collections a finance-only admin may access (sidebar group 财务 + tenant plugin). */
-export const FINANCE_COLLECTION_SLUGS = ['commissions'] as const
+/**
+ * Collections a finance-only admin may access (sidebar 财务；多租户同上)。
+ * 含 `operation-manuals`：财务经理可读已发布流程说明（只读）；写仍为超管 / 运维 / system-admin。
+ */
+export const FINANCE_COLLECTION_SLUGS = ['commissions', 'operation-manuals'] as const
 
 /** Globals finance-only users may read (writes follow per-global rules). */
 export const FINANCE_GLOBAL_SLUGS = ['commission-rules'] as const

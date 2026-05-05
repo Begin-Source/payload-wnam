@@ -1,6 +1,7 @@
 import type { Payload } from 'payload'
 
 import { computeOpportunityScore } from '@/utilities/keywordOpportunity'
+import type { PipelineSettingShape } from '@/utilities/pipelineSettingShape'
 
 export type KeywordIntent = 'informational' | 'navigational' | 'commercial' | 'transactional'
 
@@ -99,6 +100,15 @@ export async function loadAmzEligibilityThresholds(
   const g = await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })
   const doc = g as { amzKeywordEligibility?: unknown } | null
   const parsed = parseAmzKeywordEligibilityJson(doc?.amzKeywordEligibility)
+  return mergeThresholdOverrides(parsed, overrides)
+}
+
+/** Use merged pipeline shape (global + profile overrides) instead of reading Global again. */
+export function loadAmzEligibilityThresholdsFromMerged(
+  merged: PipelineSettingShape,
+  overrides?: Partial<AmzKeywordEligibilityThresholds>,
+): AmzKeywordEligibilityThresholds {
+  const parsed = parseAmzKeywordEligibilityJson(merged.amzKeywordEligibility)
   return mergeThresholdOverrides(parsed, overrides)
 }
 

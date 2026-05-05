@@ -8,7 +8,9 @@
   "scripts": {
     "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build",
     "deploy": "pnpm run deploy:database && pnpm run deploy:app",
+    "deploy:ci": "pnpm run deploy:database && pnpm run deploy:app:ci",
     "deploy:app": "opennextjs-cloudflare build --env=$CLOUDFLARE_ENV && opennextjs-cloudflare deploy --env=$CLOUDFLARE_ENV",
+    "deploy:app:ci": "cross-env SKIP_NEXT_APP_BUILD=yes opennextjs-cloudflare build --env=$CLOUDFLARE_ENV && opennextjs-cloudflare deploy --env=$CLOUDFLARE_ENV",
     "deploy:database": "cross-env NODE_ENV=production PAYLOAD_SECRET=ignore payload migrate && wrangler d1 execute D1 --command 'PRAGMA optimize' --remote",
     "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
     "devsafe": "rm -rf .next && rm -rf .open-next && cross-env NODE_OPTIONS=--no-deprecation next dev",
@@ -27,6 +29,7 @@
     "seed:dev": "cross-env NODE_OPTIONS=--no-deprecation --import=tsx/esm tsx scripts/seed-dev-data.ts",
     "seed:employee-manual": "cross-env NODE_OPTIONS=--no-deprecation --import=tsx/esm tsx scripts/seed-employee-manual.ts",
     "seed:website-social-manual": "cross-env NODE_OPTIONS=--no-deprecation --import=tsx/esm tsx scripts/seed-website-social-manual.ts",
+    "seed:role-operation-playbooks": "cross-env NODE_OPTIONS=--no-deprecation --import=tsx/esm tsx scripts/seed-role-operation-playbooks.ts",
     "seed:linkgraph": "cross-env NODE_OPTIONS=--no-deprecation --import=tsx/esm tsx scripts/seed-linkgraph.ts"
   },
   "dependencies": {
@@ -76,7 +79,7 @@
     "typescript": "5.7.3",
     "vite-tsconfig-paths": "6.0.5",
     "vitest": "4.0.18",
-    "wrangler": "~4.61.1"
+    "wrangler": "~4.87.0"
   },
   "engines": {
     "node": "^18.20.2 || >=20.9.0",

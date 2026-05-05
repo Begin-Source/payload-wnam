@@ -6,6 +6,7 @@ import {
   enqueueDraftFinalizeIfSectionsDone,
   enqueueDraftSectionsAfterSkeleton,
   enqueueImageGenerateIfNeeded,
+  enqueueMoreDraftSectionsAfterCompletion,
   markArticlePublishReady,
 } from '@/app/api/pipeline/lib/articlePipelineChain'
 import { enqueueDraftSkeletonAfterBriefGenerate } from '@/app/api/pipeline/lib/enqueueDraftSkeletonAfterBrief'
@@ -225,6 +226,7 @@ export async function POST(request: Request): Promise<Response> {
         })
       }
       if (doc.jobType === 'draft_section') {
+        await enqueueMoreDraftSectionsAfterCompletion(payload, doc)
         await enqueueDraftFinalizeIfSectionsDone(payload, doc)
       }
       if (doc.jobType === 'draft_finalize') {

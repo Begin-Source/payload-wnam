@@ -12,6 +12,11 @@ type ChatInit = {
 export type OpenRouterChatResult = {
   text: string
   finishReason: string
+  usage?: {
+    prompt_tokens?: number
+    completion_tokens?: number
+    total_tokens?: number
+  }
 }
 
 export async function openrouterChat(
@@ -64,11 +69,12 @@ export async function openrouterChatWithMeta(
   }
   const data = (await res.json()) as {
     choices?: { message?: { content?: string }; finish_reason?: string }[]
+    usage?: OpenRouterChatResult['usage']
   }
   const ch = data.choices?.[0]
   const text = ch?.message?.content
   if (!text) {
     throw new Error('OpenRouter: empty response')
   }
-  return { text, finishReason: ch?.finish_reason ?? '' }
+  return { text, finishReason: ch?.finish_reason ?? '', usage: data.usage }
 }

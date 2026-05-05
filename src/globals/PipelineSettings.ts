@@ -5,8 +5,21 @@ import { financeOnlyBlocksGlobal } from '@/utilities/financeRoleAccess'
 import { announcementsPortalBlocksGlobal } from '@/utilities/userAccessTiers'
 import { isSystemConfigNavVisible } from '@/utilities/isSuperAdminLikeUser'
 import { superAdminPasses } from '@/utilities/superAdminPasses'
+import {
+  DEFAULT_BRIEF_DEPTH,
+  DEFAULT_BRIEF_VARIANT,
+  DEFAULT_FINALIZE_VARIANT,
+  DEFAULT_SECTION_VARIANT,
+  DEFAULT_SKELETON_VARIANT,
+  briefDepthFieldOptions,
+  briefVariantFieldOptions,
+  finalizeVariantFieldOptions,
+  sectionVariantFieldOptions,
+  skeletonVariantFieldOptions,
+} from '@/utilities/pipelineVariants'
 
-const defaultEeatWeights = [
+/** Defaults mirrored by Admin global `pipeline-settings` JSON fields (used by SEO theory pipeline profile seeds). */
+export const pipelineSettingsDefaultEeatWeights = [
   {
     contentType: 'review',
     weights: { C: 10, O: 10, R: 15, E: 15, Exp: 20, Ept: 15, A: 5, T: 10 },
@@ -37,7 +50,7 @@ const defaultEeatWeights = [
   },
 ]
 
-const defaultLlmBySection = [
+export const pipelineSettingsDefaultLlmBySection = [
   { sectionType: 'intro', model: 'openai/gpt-4o-mini', fallbackModel: 'openai/gpt-4o', maxOutputTokens: 800 },
   { sectionType: 'conclusion', model: 'openai/gpt-4o-mini', fallbackModel: 'openai/gpt-4o', maxOutputTokens: 500 },
   { sectionType: 'faq', model: 'openai/gpt-4o-mini', fallbackModel: 'openai/gpt-4o', maxOutputTokens: 1200 },
@@ -134,13 +147,13 @@ export const PipelineSettings: GlobalConfig = {
     {
       name: 'eeatWeights',
       type: 'json',
-      defaultValue: defaultEeatWeights,
+      defaultValue: pipelineSettingsDefaultEeatWeights,
       admin: { description: 'Per contentType 8-dimension weights (C,O,R,E,Exp,Ept,A,T) sum=100' },
     },
     {
       name: 'llmModelsBySection',
       type: 'json',
-      defaultValue: defaultLlmBySection,
+      defaultValue: pipelineSettingsDefaultLlmBySection,
     },
     {
       name: 'sectionParallelism',
@@ -171,6 +184,101 @@ export const PipelineSettings: GlobalConfig = {
       admin: {
         description:
           'Used by Keywords list “同步拉取 · DataForSEO”. intentWhitelist: informational | navigational | commercial | transactional. Drawer can override per request.',
+      },
+    },
+    {
+      type: 'collapsible',
+      label: '阶段策略 · Brief / Skeleton / Section / Finalize（T2）',
+      admin: { initCollapsed: true },
+      fields: [
+        {
+          name: 'briefVariant',
+          type: 'select',
+          label: 'Brief 打法',
+          defaultValue: DEFAULT_BRIEF_VARIANT,
+          options: briefVariantFieldOptions,
+        },
+        {
+          name: 'briefVariantConfig',
+          type: 'json',
+          label: 'Brief 打法子参数',
+          admin: {
+            condition: (_, s) =>
+              !!(s?.briefVariant && String(s.briefVariant) === 'competitor_mimic'),
+            description: 'competitor_mimic：`{ "competitorCount": 3 }` · dfs：`{ "serpDepth": 10 }`',
+          },
+        },
+        {
+          name: 'skeletonVariant',
+          type: 'select',
+          label: '大纲骨架打法',
+          defaultValue: DEFAULT_SKELETON_VARIANT,
+          options: skeletonVariantFieldOptions,
+        },
+        {
+          name: 'skeletonVariantConfig',
+          type: 'json',
+          label: 'Skeleton 子参数',
+          admin: {
+            description: 'top10_blend / cluster_driven 按需扩展(JSON)，默认可留空。',
+          },
+        },
+        {
+          name: 'sectionVariant',
+          type: 'select',
+          label: '章节写作打法',
+          defaultValue: DEFAULT_SECTION_VARIANT,
+          options: sectionVariantFieldOptions,
+        },
+        {
+          name: 'sectionVariantConfig',
+          type: 'json',
+          label: 'Section 子参数',
+        },
+        {
+          name: 'finalizeVariant',
+          type: 'select',
+          label: 'Finalize 打法',
+          defaultValue: DEFAULT_FINALIZE_VARIANT,
+          options: finalizeVariantFieldOptions,
+        },
+        {
+          name: 'finalizeVariantConfig',
+          type: 'json',
+          label: 'Finalize 子参数',
+        },
+      ],
+    },
+    {
+      name: 'briefDepth',
+      type: 'select',
+      label: 'Brief / 检索深度',
+      defaultValue: DEFAULT_BRIEF_DEPTH,
+      options: briefDepthFieldOptions,
+      admin: {
+        description: '与「抠门模式」可同时使用；勾选抠门仍会强制最便宜模型。',
+      },
+    },
+    {
+      name: 'articleStrategy',
+      type: 'json',
+      label: '文章级策略（TOC / CTA / 字数）',
+      defaultValue: {
+        tocEnabled: true,
+        maxWordsPerSection: null,
+      },
+      admin: {
+        description:
+          '例如：`{ "tocEnabled": true, "maxWordsPerSection": 900, "wordCountTarget": { "intro": { "min": 120, "max": 220 } } }`',
+      },
+    },
+    {
+      name: 'sectionRetryStrategy',
+      type: 'json',
+      label: '章节重试策略',
+      defaultValue: { fallbackModel: 'openai/gpt-4o-mini' },
+      admin: {
+        description: '`{ "fallbackModel": "openai/gpt-4o-mini" }`，末次失败后切换模型。',
       },
     },
   ],

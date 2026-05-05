@@ -9,6 +9,14 @@ type SiteOption = {
   slug: string
   primaryDomain: string
   mainProduct?: string | null
+  tenantId?: number | null
+}
+
+type PipelineProfileOption = {
+  id: number
+  name: string
+  slug: string
+  isDefault: boolean
 }
 
 type DfsRow = {
@@ -105,6 +113,11 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
   const [sortKey, setSortKey] = useState<SortKey>('volume')
   const [sortDesc, setSortDesc] = useState(true)
 
+  const [pipelineProfiles, setPipelineProfiles] = useState<PipelineProfileOption[]>([])
+  const [pipelineProfilesLoading, setPipelineProfilesLoading] = useState(false)
+  /** When null, server resolves from site / tenant default. */
+  const [pipelineProfileId, setPipelineProfileId] = useState<number | null>(null)
+
   const loadSites = useCallback(async (q: string) => {
     setSitesLoading(true)
     setError(null)
@@ -174,6 +187,8 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
     setError(null)
     setStats(null)
     setRows([])
+    setPipelineProfiles([])
+    setPipelineProfileId(null)
   }
 
   const pickSite = (s: SiteOption): void => {
@@ -181,7 +196,51 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
     setSelectedSiteLabel(formatSiteLine(s))
     setSiteQuery('')
     setSiteMenuOpen(false)
+    setPipelineProfiles([])
+    setPipelineProfileId(null)
   }
+
+  useEffect(() => {
+    if (selectedSiteId == null) {
+      setPipelineProfiles([])
+      setPipelineProfileId(null)
+      return
+    }
+    let cancelled = false
+    setPipelineProfilesLoading(true)
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/pipeline-profiles/options?siteId=${encodeURIComponent(String(selectedSiteId))}`,
+          { credentials: 'include' },
+        )
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string
+          profiles?: PipelineProfileOption[]
+        }
+        if (!res.ok) {
+          if (!cancelled) {
+            setPipelineProfiles([])
+            setError(typeof data.error === 'string' ? data.error : '加载流水线配置失败')
+          }
+          return
+        }
+        if (!cancelled) {
+          setPipelineProfiles(Array.isArray(data.profiles) ? data.profiles : [])
+        }
+      } catch {
+        if (!cancelled) {
+          setPipelineProfiles([])
+          setError('加载流水线配置失败')
+        }
+      } finally {
+        if (!cancelled) setPipelineProfilesLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedSiteId])
 
   const parseIntentOverride = (): string[] | undefined => {
     const t = intentOverride.trim()
@@ -229,6 +288,9 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
     }
     if (pullLimit.trim() !== '' && Number.isFinite(Number(pullLimit))) {
       body.pullLimit = Number(pullLimit)
+    }
+    if (pipelineProfileId != null && Number.isFinite(pipelineProfileId)) {
+      body.pipelineProfileId = pipelineProfileId
     }
 
     setSubmitting(true)
@@ -466,6 +528,40 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
                     )}
                   </div>
                 </div>
+              ) : null}
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="kw-dfs-pipeline-profile" style={fieldLabel}>
+                流水线配置（可选）
+              </label>
+              <select
+                id="kw-dfs-pipeline-profile"
+                disabled={selectedSiteId == null || pipelineProfilesLoading}
+                style={{ ...inputStyle, cursor: selectedSiteId == null ? 'not-allowed' : 'pointer' }}
+                value={pipelineProfileId == null ? '' : String(pipelineProfileId)}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setPipelineProfileId(v === '' ? null : Number(v))
+                }}
+              >
+                <option value="">
+                  {pipelineProfilesLoading && selectedSiteId != null
+                    ? '加载中…'
+                    : '使用站点 / 租户默认（resolve）'}
+                </option>
+                {pipelineProfiles.map((p) => (
+                  <option key={p.id} value={String(p.id)}>
+                    {p.name}
+                    {p.slug ? ` (${p.slug})` : ''}
+                    {p.isDefault ? ' · 租户默认' : ''}
+                  </option>
+                ))}
+              </select>
+              {selectedSiteId != null && !pipelineProfilesLoading && pipelineProfiles.length === 0 ? (
+                <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', opacity: 0.7 }}>
+                  该租户暂无 pipeline profile，将仅使用全局 pipeline-settings。
+                </p>
               ) : null}
             </div>
 

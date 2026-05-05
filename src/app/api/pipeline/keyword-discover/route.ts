@@ -2,8 +2,10 @@ import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
-import { dataForSeoPost, keywordDataLocationAndLanguage } from '@/services/integrations/dataforseo/client'
+import { dataForSeoPost } from '@/services/integrations/dataforseo/client'
 import { computeOpportunityScore } from '@/utilities/keywordOpportunity'
+import { resolveDfsLocationLanguageFromMerged } from '@/utilities/pipelineDfsLocale'
+import { resolveMergedForPipelineRoute } from '@/utilities/resolvePipelineConfig'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 
 export const dynamic = 'force-dynamic'
@@ -56,8 +58,20 @@ export async function POST(request: Request): Promise<Response> {
   const persist = Boolean(body.persist)
   const payload = await getPayload({ config: configPromise })
 
+  const merged =
+    siteRelation != null && Number.isFinite(siteRelation)
+      ? await resolveMergedForPipelineRoute({ payload, siteId: siteRelation })
+      : await resolveMergedForPipelineRoute({ payload })
+
+  if (!merged.dataForSeoEnabled) {
+    return Response.json(
+      { ok: false, error: 'DataForSEO disabled in pipeline-settings / profile' },
+      { status: 400 },
+    )
+  }
+
   let rows: SeedRow[] = [...FALLBACK_SEEDS]
-  const loc = await keywordDataLocationAndLanguage('US')
+  const loc = resolveDfsLocationLanguageFromMerged(merged)
   let usedDfs = false
 
   try {

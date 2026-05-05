@@ -4,28 +4,28 @@ import { getPayload } from 'payload'
 
 import type { Offer } from '@/payload-types'
 import { openrouterChatWithMeta } from '@/services/integrations/openrouter/chat'
+import {
+  OFFER_REVIEW_MDX_SYSTEM,
+  OFFER_REVIEW_MDX_USER,
+} from '@/utilities/domainGeneration/promptKeys'
 import { buildOfferReviewGenContext } from '@/utilities/offerReviewMdx/buildOfferReviewContext'
-import { buildOfferReviewPrompt } from '@/utilities/offerReviewMdx/buildOfferReviewPrompt'
+import {
+  buildOfferReviewMdxPromptVarsFromContext,
+  buildOfferReviewMdxResolvedDefaults,
+} from '@/utilities/offerReviewMdx/buildOfferReviewPrompt'
 import { extractOfferReviewFromLlm } from '@/utilities/offerReviewMdx/extractOfferReviewMdx'
 import { loadOfferReviewTemplate } from '@/utilities/offerReviewMdx/loadOfferReviewTemplate'
 import { ensureReviewSlugWithAsin } from '@/utilities/offerReviewMdx/offerReviewSlug'
 import { upsertArticleFromOfferReview } from '@/utilities/offerReviewMdx/upsertArticleFromOfferReview'
+import { resolveTenantPromptPair } from '@/utilities/openRouterTenantPrompts/loadTenantPromptTemplateBody'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
-import { getTenantScopeForStats, type TenantScope } from '@/utilities/tenantScope'
+import { resolvePipelineConfigForSite } from '@/utilities/resolvePipelineConfig'
+import { getTenantScopeForStats, tenantIdFromRelation, type TenantScope } from '@/utilities/tenantScope'
 import { assertUsersCollection } from '@/utilities/workflowQuickCreate'
 
 export const dynamic = 'force-dynamic'
 
 const OPENROUTER_EST_USD = 0.04
-
-function tenantIdFromRelation(
-  tenant: number | { id: number } | null | undefined,
-): number | null {
-  if (tenant == null || tenant === undefined) return null
-  if (typeof tenant === 'number') return tenant
-  if (typeof tenant === 'object' && typeof tenant.id === 'number') return tenant.id
-  return null
-}
 
 function siteAccessible(scope: TenantScope, siteTenantId: number | null): boolean {
   if (scope.mode === 'all') return true
@@ -34,10 +34,21 @@ function siteAccessible(scope: TenantScope, siteTenantId: number | null): boolea
   return scope.tenantIds.includes(siteTenantId)
 }
 
-async function resolveReviewAiModel(payload: Payload, override?: string): Promise<string> {
+async function resolveReviewAiModel(
+  payload: Payload,
+  siteId: number | null | undefined,
+  override?: string,
+): Promise<string> {
   if (override?.trim()) return override.trim()
   const env = process.env.OPENROUTER_OFFER_REVIEW_MODEL?.trim()
   if (env) return env
+  if (siteId != null && Number.isFinite(siteId)) {
+    const r = await resolvePipelineConfigForSite(payload, siteId)
+    if (!('ok' in r)) {
+      const m = r.merged.defaultLlmModel
+      if (m?.trim()) return m.trim()
+    }
+  }
   try {
     const g = (await payload.findGlobal({
       slug: 'pipeline-settings',
@@ -55,7 +66,9 @@ async function assertOfferAccess(
   payload: Payload,
   scope: TenantScope,
   offer: Offer,
-): Promise<{ ok: true; siteId: number } | { ok: false; message: string }> {
+): Promise<
+  { ok: true; siteId: number; tenantId: number | null } | { ok: false; message: string }
+> {
   const sites = offer.sites
   if (!Array.isArray(sites) || sites.length === 0) {
     return { ok: false, message: 'Offer has no linked site' }
@@ -84,7 +97,7 @@ async function assertOfferAccess(
   if (!siteAccessible(scope, siteTenantId)) {
     return { ok: false, message: 'Forbidden for this tenant' }
   }
-  return { ok: true, siteId }
+  return { ok: true, siteId, tenantId: siteTenantId }
 }
 
 /**
@@ -133,7 +146,6 @@ export async function POST(request: Request): Promise<Response> {
     typeof body.locale === 'string' && body.locale.trim() ? body.locale.trim() : 'en'
   const aiOverride = typeof body.aiModel === 'string' ? body.aiModel : undefined
 
-  const model = await resolveReviewAiModel(payload, aiOverride)
   let templateMdx: string
   try {
     templateMdx = loadOfferReviewTemplate()
@@ -174,6 +186,8 @@ export async function POST(request: Request): Promise<Response> {
         continue
       }
 
+      const model = await resolveReviewAiModel(payload, access.siteId, aiOverride)
+
       await payload.update({
         collection: 'offers',
         id: offerId,
@@ -188,17 +202,25 @@ export async function POST(request: Request): Promise<Response> {
       })
 
       const ctx = buildOfferReviewGenContext(offer)
-      const prompt = buildOfferReviewPrompt({ templateMdx, ctx })
+      const offerVars = buildOfferReviewMdxPromptVarsFromContext(templateMdx, ctx)
+      const offerDefaults = buildOfferReviewMdxResolvedDefaults(templateMdx, ctx)
+      const { system: offerSystem, user: offerUser } = await resolveTenantPromptPair(
+        payload,
+        access.tenantId,
+        OFFER_REVIEW_MDX_SYSTEM,
+        OFFER_REVIEW_MDX_USER,
+        offerDefaults,
+        offerVars,
+      )
 
       const { text: llmText, finishReason } = await openrouterChatWithMeta(
         model,
         [
           {
             role: 'system',
-            content:
-              'You are an expert Amazon affiliate review writer and SEO editor. Output only valid MDX with YAML frontmatter. Generate concise, high-CTR, feature-driven titles. Never output LLM control tokens such as <bos>, <eos>, or arbitrary bracket-only markers.',
+            content: offerSystem,
           },
-          { role: 'user', content: prompt },
+          { role: 'user', content: offerUser },
         ],
         { maxTokens: 4096, temperature: 0.35 },
       )

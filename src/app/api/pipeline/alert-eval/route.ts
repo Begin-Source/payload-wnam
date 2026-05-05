@@ -1,6 +1,19 @@
+import configPromise from '@payload-config'
+import { getPayload } from 'payload'
+
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
-import { getSkillPrompt } from '@/services/prompts/skillPrompts'
 import { openrouterChat } from '@/services/integrations/openrouter/chat'
+import { getSkillPrompt } from '@/services/prompts/skillPrompts'
+import {
+  ALERT_EVAL_SYSTEM,
+  ALERT_EVAL_USER,
+} from '@/utilities/domainGeneration/promptKeys'
+import { substitutePromptPlaceholders } from '@/utilities/domainGeneration/substitutePromptPlaceholders'
+import { DEFAULT_ALERT_EVAL_USER_TEMPLATE } from '@/utilities/openRouterTenantPrompts/defaultOpenRouterTenantPromptBodies'
+import { resolveTenantPromptPair } from '@/utilities/openRouterTenantPrompts/loadTenantPromptTemplateBody'
+import { resolveOptionalPipelineTenant } from '@/utilities/openRouterTenantPrompts/resolveOptionalPipelineTenant'
+import { pickPipelineOpenRouterModel } from '@/utilities/pipelineSettingShape'
+import { resolveMergedForPipelineRoute } from '@/utilities/resolvePipelineConfig'
 
 export const dynamic = 'force-dynamic'
 const PATH = '/api/pipeline/alert-eval'
@@ -10,10 +23,37 @@ export async function POST(request: Request): Promise<Response> {
   if (isPipelineUnauthorized(g)) {
     return g.response
   }
-  const body = (await request.json().catch(() => ({}))) as { metricsJson?: string }
-  const t = await openrouterChat('openai/gpt-4o-mini', [
-    { role: 'system', content: getSkillPrompt('alert-manager') },
-    { role: 'user', content: body.metricsJson || '{}' },
+  const body = (await request.json().catch(() => ({}))) as {
+    metricsJson?: string
+    tenantId?: number
+    siteId?: number
+  }
+  const payload = await getPayload({ config: configPromise })
+  const tenantId = await resolveOptionalPipelineTenant(payload, {
+    tenantId: body.tenantId ?? null,
+    siteId: body.siteId ?? null,
+  })
+  const metrics_json = body.metricsJson || '{}'
+  const vars = { metrics_json }
+  const defaultSystem = getSkillPrompt('alert-manager')
+  const defaultUser = substitutePromptPlaceholders(DEFAULT_ALERT_EVAL_USER_TEMPLATE, vars)
+  const { system, user } = await resolveTenantPromptPair(
+    payload,
+    tenantId,
+    ALERT_EVAL_SYSTEM,
+    ALERT_EVAL_USER,
+    { system: defaultSystem, user: defaultUser },
+    vars,
+  )
+  const merged = await resolveMergedForPipelineRoute({
+    payload,
+    tenantId,
+    siteId: body.siteId ?? null,
+  })
+  const model = pickPipelineOpenRouterModel(merged, 'custom')
+  const t = await openrouterChat(model, [
+    { role: 'system', content: system },
+    { role: 'user', content: user },
   ])
   return Response.json({ ok: true, t })
 }

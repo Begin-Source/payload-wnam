@@ -7,12 +7,16 @@ import {
   togetherImageGenerateBytes,
 } from '@/services/integrations/together/hidream'
 import type { Category, Site } from '@/payload-types'
+import { TOGETHER_CATEGORY_COVER_PROMPT } from '@/utilities/domainGeneration/promptKeys'
 import { makeCategoryCoverImagePrompt } from '@/utilities/categoryCoverMedia'
+import { resolveTogetherTenantPrompt } from '@/utilities/togetherTenantPrompts/resolveTogetherTenantPrompt'
+import { buildCategoryCoverTogetherVars } from '@/utilities/togetherTenantPrompts/togetherImagePromptTemplates'
 import { truncateErrorMessage } from '@/utilities/mediaAiImagePrompt'
 import {
   extractPipelineErrorChainMessage,
   formatD1MediaInsertFailureMessage,
 } from '@/utilities/pipelineDbErrorMessage'
+import { resolvePipelineConfigForSite } from '@/utilities/resolvePipelineConfig'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
@@ -103,23 +107,71 @@ export async function POST(request: Request): Promise<Response> {
     if (typeof nm === 'string' && nm.trim()) siteBrand = nm.trim()
   }
 
-  const promptText = makeCategoryCoverImagePrompt({
+  const siteForTenant = await payload.findByID({
+    collection: 'sites',
+    id: String(catSiteNum),
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (!siteForTenant) {
+    return Response.json({ ok: false, error: 'site_not_found' }, { status: 404 })
+  }
+
+  const overridePrompt = typeof body.prompt === 'string' ? body.prompt : null
+  const hasPromptOverride = Boolean(overridePrompt?.trim())
+  const categoryPromptParts = {
     categoryName: catName,
     slug,
     description: desc,
     siteName: siteBrand,
-    override: typeof body.prompt === 'string' ? body.prompt : null,
+  } as const
+  const defaultCategoryPrompt = makeCategoryCoverImagePrompt({
+    ...categoryPromptParts,
+    override: null,
   })
+  const promptText = hasPromptOverride
+    ? makeCategoryCoverImagePrompt({
+        ...categoryPromptParts,
+        override: overridePrompt,
+      })
+    : await resolveTogetherTenantPrompt(
+        payload,
+        tenantIdFromRelation((siteForTenant as Site).tenant),
+        TOGETHER_CATEGORY_COVER_PROMPT,
+        defaultCategoryPrompt,
+        buildCategoryCoverTogetherVars(categoryPromptParts),
+      )
 
   if (!promptText.trim()) {
     return Response.json({ ok: false, error: 'empty prompt' }, { status: 400 })
   }
 
+  const pipe = await resolvePipelineConfigForSite(payload, catSiteNum)
+  if ('ok' in pipe) {
+    return Response.json(
+      { ok: false, error: 'pipeline_resolve_failed', message: pipe.error },
+      { status: 422 },
+    )
+  }
+  if (!pipe.merged.togetherImageEnabled) {
+    return Response.json(
+      {
+        ok: false,
+        error: 'together_image_disabled',
+        message: '当前流水线配置已关闭 Together 生图。',
+      },
+      { status: 400 },
+    )
+  }
+  const imageModel = pipe.merged.defaultImageModel?.trim() || undefined
+
   const existingMediaId = featuredRelId(cid.coverImage)
   const nowIso = new Date().toISOString()
 
   try {
-    const { buffer, mimeType } = await togetherImageGenerateBytes(promptText)
+    const { buffer, mimeType } = await togetherImageGenerateBytes(promptText, {
+      model: imageModel,
+    })
     const ext = imageExtensionFromMime(mimeType)
     const base = slug
       .toLowerCase()

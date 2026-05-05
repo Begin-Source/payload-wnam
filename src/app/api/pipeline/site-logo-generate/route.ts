@@ -7,15 +7,19 @@ import {
   togetherImageGenerateBytes,
 } from '@/services/integrations/together/hidream'
 import type { Site, SiteBlueprint } from '@/payload-types'
+import { TOGETHER_SITE_LOGO_PROMPT } from '@/utilities/domainGeneration/promptKeys'
 import {
   composeSiteLogoPromptFromSiteBlueprint,
   siteLogoImageDimensions,
 } from '@/utilities/siteLogoMedia'
+import { resolveTogetherTenantPrompt } from '@/utilities/togetherTenantPrompts/resolveTogetherTenantPrompt'
+import { buildSiteLogoTogetherVars } from '@/utilities/togetherTenantPrompts/togetherImagePromptTemplates'
 import { truncateErrorMessage } from '@/utilities/mediaAiImagePrompt'
 import {
   extractPipelineErrorChainMessage,
   formatD1MediaInsertFailureMessage,
 } from '@/utilities/pipelineDbErrorMessage'
+import { resolvePipelineConfigForSite } from '@/utilities/resolvePipelineConfig'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
@@ -90,14 +94,40 @@ export async function POST(request: Request): Promise<Response> {
   })
   const blueprint = (bpFind.docs[0] as SiteBlueprint | undefined) ?? null
 
-  const promptText = composeSiteLogoPromptFromSiteBlueprint(
-    siteRow,
-    blueprint,
-    typeof body.prompt === 'string' ? body.prompt : null,
-  )
+  const overridePrompt = typeof body.prompt === 'string' ? body.prompt : null
+  const hasPromptOverride = Boolean(overridePrompt?.trim())
+  const defaultLogoPrompt = composeSiteLogoPromptFromSiteBlueprint(siteRow, blueprint, null)
+  const promptText = hasPromptOverride
+    ? composeSiteLogoPromptFromSiteBlueprint(siteRow, blueprint, overridePrompt)
+    : await resolveTogetherTenantPrompt(
+        payload,
+        tenantIdFromRelation(siteRow.tenant),
+        TOGETHER_SITE_LOGO_PROMPT,
+        defaultLogoPrompt,
+        buildSiteLogoTogetherVars(siteRow, blueprint),
+      )
   if (!promptText.trim()) {
     return Response.json({ ok: false, error: 'empty prompt' }, { status: 400 })
   }
+
+  const pipe = await resolvePipelineConfigForSite(payload, siteId)
+  if ('ok' in pipe) {
+    return Response.json(
+      { ok: false, error: 'pipeline_resolve_failed', message: pipe.error },
+      { status: 422 },
+    )
+  }
+  if (!pipe.merged.togetherImageEnabled) {
+    return Response.json(
+      {
+        ok: false,
+        error: 'together_image_disabled',
+        message: '当前流水线配置已关闭 Together 生图。',
+      },
+      { status: 400 },
+    )
+  }
+  const imageModel = pipe.merged.defaultImageModel?.trim() || undefined
 
   const { width: genW, height: genH } = siteLogoImageDimensions()
   const existingMediaId = featuredRelId(siteRow.siteLogo)
@@ -113,6 +143,7 @@ export async function POST(request: Request): Promise<Response> {
     const { buffer, mimeType } = await togetherImageGenerateBytes(promptText, {
       width: genW,
       height: genH,
+      model: imageModel,
     })
     const ext = imageExtensionFromMime(mimeType)
     const base = slug

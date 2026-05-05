@@ -19,6 +19,8 @@ type SiteOption = {
   primaryDomain: string
   mainProduct?: string | null
   siteLayout?: string | null
+  /** For admin UIs that need tenant-scoped follow-up fetches (e.g. pipeline profiles). */
+  tenantId?: number | null
   /** Preferred storefront locale for category pickers (from site public locale settings). */
   defaultPublicLocale?: string | null
 }
@@ -175,6 +177,7 @@ export async function GET(request: Request): Promise<Response> {
       primaryDomain: doc.primaryDomain,
       mainProduct: row.mainProduct ?? null,
       siteLayout: row.siteLayout ?? null,
+      tenantId: tenantIdFromRelation(doc.tenant),
       defaultPublicLocale,
     }
   })

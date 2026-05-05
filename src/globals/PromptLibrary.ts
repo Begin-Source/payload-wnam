@@ -12,6 +12,8 @@ export const PromptLibrary: GlobalConfig = {
   admin: {
     group: adminGroups.operations,
     hidden: ({ user }) => !isSystemConfigNavVisible(user),
+    description:
+      '通用技能/运营长文本模板。域名生成（受众+域名建议）请在「租户提示词模板」按租户配置。',
   },
   access: {
     read: (args) => {

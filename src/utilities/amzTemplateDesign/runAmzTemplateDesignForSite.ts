@@ -15,9 +15,23 @@ import {
 import { coerceBrandLogoLucideForNiche } from '@/utilities/amzNicheLucideIcon'
 import { parseRelationshipId } from '@/utilities/parseRelationshipId'
 import {
+  AMZ_TEMPLATE_DESIGN_FILL_SYSTEM,
+  AMZ_TEMPLATE_DESIGN_FILL_USER,
+  AMZ_TEMPLATE_DESIGN_MERGE_SYSTEM,
+  AMZ_TEMPLATE_DESIGN_MERGE_USER,
+} from '@/utilities/domainGeneration/promptKeys'
+import {
+  buildAmzTemplateDesignFillPromptDefaults,
+  buildAmzTemplateDesignFillPromptVars,
+  buildAmzTemplateDesignMergePromptDefaults,
+  buildAmzTemplateDesignMergePromptVars,
+} from '@/utilities/openRouterTenantPrompts/defaultOpenRouterTenantPromptBodies'
+import { resolveTenantPromptPair } from '@/utilities/openRouterTenantPrompts/loadTenantPromptTemplateBody'
+import {
   checkPipelineSpendForJob,
   incrementSiteQuotaUsage,
 } from '@/utilities/siteQuotaCheck'
+import { tenantIdFromRelation } from '@/utilities/tenantScope'
 import type { Site, SiteBlueprint } from '@/payload-types'
 
 const MAX_CURRENT_JSON_CHARS = 120_000
@@ -230,11 +244,12 @@ type AmzDesignWorkContext = {
   mainProduct: string
   aiModel: string
   current: AmzSiteConfig
-  userPrompt: string
   canonicalSiteName: string
   canonicalSiteDomain: string
   fillSlots: boolean
   variationSeed: string
+  nicheJson: string
+  currentConfigJson: string
 }
 
 async function markBlueprintDesignWorkflowError(
@@ -378,22 +393,6 @@ async function loadAmzTemplateDesignWorkContext(
   const fillSlots = Boolean(args.fillSlots)
   const variationSeed = `${blueprintId}-${Date.now()}`
 
-  const userPrompt = fillSlots
-    ? buildFillSlotsUserPrompt({
-        mainProduct,
-        canonicalSiteName,
-        canonicalSiteDomain,
-        nicheJson,
-        variationSeed,
-      })
-    : buildUserPrompt({
-        mainProduct,
-        canonicalSiteName,
-        canonicalSiteDomain,
-        nicheJson,
-        currentConfigJson: currentJson,
-      })
-
   return {
     ok: true,
     ctx: {
@@ -404,11 +403,12 @@ async function loadAmzTemplateDesignWorkContext(
       mainProduct,
       aiModel,
       current,
-      userPrompt,
       canonicalSiteName,
       canonicalSiteDomain,
       fillSlots,
       variationSeed,
+      nicheJson,
+      currentConfigJson: currentJson,
     },
   }
 }
@@ -474,11 +474,66 @@ export async function runAmzTemplateDesignForBlueprint(
 
   let raw: string
   try {
+    const tenantId = tenantIdFromRelation(ctx.site.tenant)
+    let system: string
+    let user: string
+    if (ctx.fillSlots) {
+      const fillVars = buildAmzTemplateDesignFillPromptVars({
+        mainProduct: ctx.mainProduct,
+        canonicalSiteName: ctx.canonicalSiteName,
+        canonicalSiteDomain: ctx.canonicalSiteDomain,
+        nicheJson: ctx.nicheJson,
+        variationSeed: ctx.variationSeed,
+      })
+      const defaults = buildAmzTemplateDesignFillPromptDefaults({
+        mainProduct: ctx.mainProduct,
+        canonicalSiteName: ctx.canonicalSiteName,
+        canonicalSiteDomain: ctx.canonicalSiteDomain,
+        nicheJson: ctx.nicheJson,
+        variationSeed: ctx.variationSeed,
+      })
+      const r = await resolveTenantPromptPair(
+        payload,
+        tenantId,
+        AMZ_TEMPLATE_DESIGN_FILL_SYSTEM,
+        AMZ_TEMPLATE_DESIGN_FILL_USER,
+        defaults,
+        fillVars,
+      )
+      system = r.system
+      user = r.user
+    } else {
+      const mergeVars = buildAmzTemplateDesignMergePromptVars({
+        mainProduct: ctx.mainProduct,
+        canonicalSiteName: ctx.canonicalSiteName,
+        canonicalSiteDomain: ctx.canonicalSiteDomain,
+        nicheJson: ctx.nicheJson,
+        currentConfigJson: ctx.currentConfigJson,
+      })
+      const defaults = buildAmzTemplateDesignMergePromptDefaults({
+        mainProduct: ctx.mainProduct,
+        canonicalSiteName: ctx.canonicalSiteName,
+        canonicalSiteDomain: ctx.canonicalSiteDomain,
+        nicheJson: ctx.nicheJson,
+        currentConfigJson: ctx.currentConfigJson,
+      })
+      const r = await resolveTenantPromptPair(
+        payload,
+        tenantId,
+        AMZ_TEMPLATE_DESIGN_MERGE_SYSTEM,
+        AMZ_TEMPLATE_DESIGN_MERGE_USER,
+        defaults,
+        mergeVars,
+      )
+      system = r.system
+      user = r.user
+    }
+
     raw = await openrouterChat(
       ctx.aiModel,
       [
-        { role: 'system', content: buildSystemPrompt(ctx.fillSlots) },
-        { role: 'user', content: ctx.userPrompt },
+        { role: 'system', content: system },
+        { role: 'user', content: user },
       ],
       {
         responseFormatJson: true,

@@ -88,6 +88,27 @@ export const Sites: CollectionConfig = {
       },
     },
     {
+      name: 'pipelineProfile',
+      type: 'relationship',
+      relationTo: 'pipeline-profiles',
+      label: '流水线配置',
+      admin: {
+        description:
+          '可选。指定后本站关键词同步与文章流水线默认使用该配置（覆盖全局 SEO 流水线）。留空则用租户默认或全局。',
+      },
+      filterOptions: ({ data }) => {
+        const raw = (data as { tenant?: number | { id: number } | null })?.tenant
+        const tid =
+          raw != null && typeof raw === 'object' && 'id' in raw
+            ? Number((raw as { id: number }).id)
+            : typeof raw === 'number'
+              ? raw
+              : null
+        if (tid == null || !Number.isFinite(tid)) return false
+        return { tenant: { equals: tid } }
+      },
+    },
+    {
       name: 'siteLayout',
       type: 'select',
       label: '站点布局',

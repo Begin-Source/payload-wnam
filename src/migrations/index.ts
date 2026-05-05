@@ -72,6 +72,16 @@ import * as migration_20260804_120000_sites_public_locale_codes_child_table from
 import * as migration_20260805_120000_categories_locale from './20260805_120000_categories_locale';
 import * as migration_20260806_120000_seo_meta_no_index from './20260806_120000_seo_meta_no_index';
 import * as migration_20260807_120000_authors_rels_sites_id from './20260807_120000_authors_rels_sites_id';
+import * as migration_20260808_120000_tenant_prompt_templates from './20260808_120000_tenant_prompt_templates';
+import * as migration_20260809_120000_seed_tenant_prompt_templates_defaults from './20260809_120000_seed_tenant_prompt_templates_defaults';
+import * as migration_20260810_120000_seed_category_slots_tenant_prompts from './20260810_120000_seed_category_slots_tenant_prompts';
+import * as migration_20260811_120000_seed_trust_pages_bundle_tenant_prompts from './20260811_120000_seed_trust_pages_bundle_tenant_prompts';
+import * as migration_20260812_120000_seed_openrouter_tenant_prompts from './20260812_120000_seed_openrouter_tenant_prompts';
+import * as migration_20260813_120000_seed_together_image_tenant_prompts from './20260813_120000_seed_together_image_tenant_prompts';
+import * as migration_20260814_120000_pipeline_profiles from './20260814_120000_pipeline_profiles';
+import * as migration_20260815_120000_seed_seo_theory_pipeline_profiles from './20260815_120000_seed_seo_theory_pipeline_profiles';
+import * as migration_20260816_120000_pipeline_t2_variants_and_article_snapshots from './20260816_120000_pipeline_t2_variants_and_article_snapshots';
+import * as migration_20260817_120000_seed_finalize_pipeline_tenant_prompts from './20260817_120000_seed_finalize_pipeline_tenant_prompts';
 
 export const migrations = [
   {
@@ -443,5 +453,55 @@ export const migrations = [
     up: migration_20260807_120000_authors_rels_sites_id.up,
     down: migration_20260807_120000_authors_rels_sites_id.down,
     name: '20260807_120000_authors_rels_sites_id',
+  },
+  {
+    up: migration_20260808_120000_tenant_prompt_templates.up,
+    down: migration_20260808_120000_tenant_prompt_templates.down,
+    name: '20260808_120000_tenant_prompt_templates',
+  },
+  {
+    up: migration_20260809_120000_seed_tenant_prompt_templates_defaults.up,
+    down: migration_20260809_120000_seed_tenant_prompt_templates_defaults.down,
+    name: '20260809_120000_seed_tenant_prompt_templates_defaults',
+  },
+  {
+    up: migration_20260810_120000_seed_category_slots_tenant_prompts.up,
+    down: migration_20260810_120000_seed_category_slots_tenant_prompts.down,
+    name: '20260810_120000_seed_category_slots_tenant_prompts',
+  },
+  {
+    up: migration_20260811_120000_seed_trust_pages_bundle_tenant_prompts.up,
+    down: migration_20260811_120000_seed_trust_pages_bundle_tenant_prompts.down,
+    name: '20260811_120000_seed_trust_pages_bundle_tenant_prompts',
+  },
+  {
+    up: migration_20260812_120000_seed_openrouter_tenant_prompts.up,
+    down: migration_20260812_120000_seed_openrouter_tenant_prompts.down,
+    name: '20260812_120000_seed_openrouter_tenant_prompts',
+  },
+  {
+    up: migration_20260813_120000_seed_together_image_tenant_prompts.up,
+    down: migration_20260813_120000_seed_together_image_tenant_prompts.down,
+    name: '20260813_120000_seed_together_image_tenant_prompts',
+  },
+  {
+    up: migration_20260814_120000_pipeline_profiles.up,
+    down: migration_20260814_120000_pipeline_profiles.down,
+    name: '20260814_120000_pipeline_profiles',
+  },
+  {
+    up: migration_20260815_120000_seed_seo_theory_pipeline_profiles.up,
+    down: migration_20260815_120000_seed_seo_theory_pipeline_profiles.down,
+    name: '20260815_120000_seed_seo_theory_pipeline_profiles',
+  },
+  {
+    up: migration_20260816_120000_pipeline_t2_variants_and_article_snapshots.up,
+    down: migration_20260816_120000_pipeline_t2_variants_and_article_snapshots.down,
+    name: '20260816_120000_pipeline_t2_variants_and_article_snapshots',
+  },
+  {
+    up: migration_20260817_120000_seed_finalize_pipeline_tenant_prompts.up,
+    down: migration_20260817_120000_seed_finalize_pipeline_tenant_prompts.down,
+    name: '20260817_120000_seed_finalize_pipeline_tenant_prompts',
   },
 ];

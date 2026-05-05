@@ -257,6 +257,12 @@ export async function dispatchWorkflowJob(
       const bidRaw = briefIdFromJob(job)
       return forwardPipelinePost(request, '/api/pipeline/draft-section', {
         model: typeof input.model === 'string' ? input.model : undefined,
+        pipelineProfileId:
+          typeof input.pipelineProfileId === 'number' && Number.isFinite(input.pipelineProfileId)
+            ? input.pipelineProfileId
+            : typeof input.pipelineProfileId === 'string' && /^\d+$/.test(input.pipelineProfileId.trim())
+              ? Number(input.pipelineProfileId.trim())
+              : undefined,
         sectionId: String(input.sectionId),
         sectionType: typeof input.sectionType === 'string' ? input.sectionType : undefined,
         previousSectionSummary:

@@ -91,6 +91,8 @@ export interface Config {
     'click-events': ClickEvent;
     commissions: Commission;
     teams: Team;
+    'tenant-prompt-templates': TenantPromptTemplate;
+    'pipeline-profiles': PipelineProfile;
     'knowledge-base': KnowledgeBase;
     'operation-manuals': OperationManual;
     'audit-logs': AuditLog;
@@ -136,6 +138,8 @@ export interface Config {
     'click-events': ClickEventsSelect<false> | ClickEventsSelect<true>;
     commissions: CommissionsSelect<false> | CommissionsSelect<true>;
     teams: TeamsSelect<false> | TeamsSelect<true>;
+    'tenant-prompt-templates': TenantPromptTemplatesSelect<false> | TenantPromptTemplatesSelect<true>;
+    'pipeline-profiles': PipelineProfilesSelect<false> | PipelineProfilesSelect<true>;
     'knowledge-base': KnowledgeBaseSelect<false> | KnowledgeBaseSelect<true>;
     'operation-manuals': OperationManualsSelect<false> | OperationManualsSelect<true>;
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
@@ -371,6 +375,10 @@ export interface Site {
    */
   portfolio?: (number | null) | SitePortfolio;
   /**
+   * 可选。指定后本站关键词同步与文章流水线默认使用该配置（覆盖全局 SEO 流水线）。留空则用租户默认或全局。
+   */
+  pipelineProfile?: (number | null) | PipelineProfile;
+  /**
    * Template1 / Template2：文案在「设计」t1LocaleJson / t2LocaleJson。amz-template-1 / amz-template-2：壳层与配色见「设计」amzSiteConfigJson（与 amz-template-1 仓库 site.config 同形）。说明与预览链接见「站点布局」目录。
    */
   siteLayout?: ('template1' | 'template2' | 'amz-template-1' | 'amz-template-2') | null;
@@ -470,6 +478,137 @@ export interface Site {
    */
   domainGenerationLog?: string | null;
   notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * 按租户多套 SEO / AI 流水线参数（覆盖全局「SEO 流水线」）。站点或文章可指定其一以做对照试验。
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pipeline-profiles".
+ */
+export interface PipelineProfile {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  name: string;
+  /**
+   * 租户内唯一；小写字母、数字、连字符。
+   */
+  slug: string;
+  /**
+   * 可选，记录实验假设或用途。
+   */
+  description?: string | null;
+  /**
+   * 同一租户仅建议一条为默认；保存时会自动取消其他记录的默认勾选项。
+   */
+  isDefault?: boolean | null;
+  tavilyEnabled?: boolean | null;
+  dataForSeoEnabled?: boolean | null;
+  togetherImageEnabled?: boolean | null;
+  defaultLlmModel?: string | null;
+  defaultImageModel?: string | null;
+  amazonMarketplace?: string | null;
+  frugalMode?: boolean | null;
+  defaultLocale?: string | null;
+  defaultRegion?: string | null;
+  eeatWeights?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  llmModelsBySection?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  sectionParallelism?: number | null;
+  sectionMaxRetry?: number | null;
+  sectionParallelWhitelist?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  amzKeywordEligibility?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  briefVariant?: ('' | 'tavily_only' | 'dfs_serp_first' | 'competitor_mimic') | null;
+  skeletonVariant?: ('' | 'single_shot' | 'top10_blend' | 'cluster_driven') | null;
+  briefVariantConfig?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  sectionVariant?: ('' | 'sequential_context' | 'parallel_with_summary' | 'research_per_section') | null;
+  finalizeVariant?: ('' | 'simple_merge' | 'eeat_rewrite_pass' | 'fact_check_pass') | null;
+  skeletonVariantConfig?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  sectionVariantConfig?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  finalizeVariantConfig?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  briefDepth?: ('' | 'quick' | 'standard' | 'deep') | null;
+  articleStrategy?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  sectionRetryStrategy?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1268,6 +1407,30 @@ export interface Article {
   reviewedBy?: (number | null) | Author;
   originalEvidence?: (number | OriginalEvidence)[] | null;
   sourceBrief?: (number | null) | ContentBrief;
+  /**
+   * 可选。指定后本篇文章的 AI 流水线使用该配置（优先于站点默认）。用于 A/B 对照；留空则继承站点或租户默认。
+   */
+  pipelineProfile?: (number | null) | PipelineProfile;
+  /**
+   * 首次入队 draft_section 时冻结的流水线合并快照（SEO A/B）。勿手改。
+   */
+  pipelineProfileSnapshot?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * 与快照对应的 pipeline profile slug（租户默认/global 时为空）。
+   */
+  pipelineProfileSlug?: string | null;
+  /**
+   * Profile 解析来源：explicit | article | site | tenant_default | global_only
+   */
+  pipelineProfileSource?: string | null;
   mergedInto?: (number | null) | Article;
   sectionSummaries?:
     | {
@@ -1672,6 +1835,77 @@ export interface Team {
    * 须为「站长」角色，且已分配到本团队所属租户。兼为组长时也可出现在此列表并可选。
    */
   members?: (number | User)[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * 按租户覆盖 OpenRouter 与 Together 生图提示词：域名生成、分类槽位短名、信任页包、SERP 简报、草稿章节、审计/告警/竞品 pipeline、Offer 评测 MDX、AMZ 模板设计、站点 Logo/Hero/分类封面/Featured 配图；未建记录时使用代码默认。
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tenant-prompt-templates".
+ */
+export interface TenantPromptTemplate {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  /**
+   * 域名四段、分类槽位两段、信任页包两段，OpenRouter：serp_brief_*、draft_section_*、domain_audit_*、alert_eval_*、competitor_gap_*、offer_review_mdx_*、amz_template_design_*（merge/fill 各 system+user），及 Together：together_* 生图键。详见下方 body 说明。
+   */
+  key:
+    | 'domain_gen_audience_system'
+    | 'domain_gen_audience_user'
+    | 'domain_gen_domain_system'
+    | 'domain_gen_domain_user'
+    | 'category_slots_shortname_system'
+    | 'category_slots_shortname_user'
+    | 'trust_pages_bundle_system'
+    | 'trust_pages_bundle_user'
+    | 'serp_brief_system'
+    | 'serp_brief_user'
+    | 'draft_section_system'
+    | 'draft_section_user'
+    | 'finalize_cohesion_system'
+    | 'finalize_cohesion_user'
+    | 'finalize_eeat_system'
+    | 'finalize_eeat_user'
+    | 'finalize_fact_check_system'
+    | 'finalize_fact_check_user'
+    | 'domain_audit_system'
+    | 'domain_audit_user'
+    | 'alert_eval_system'
+    | 'alert_eval_user'
+    | 'competitor_gap_system'
+    | 'competitor_gap_user'
+    | 'offer_review_mdx_system'
+    | 'offer_review_mdx_user'
+    | 'amz_template_design_merge_system'
+    | 'amz_template_design_merge_user'
+    | 'amz_template_design_fill_system'
+    | 'amz_template_design_fill_user'
+    | 'together_site_logo_prompt'
+    | 'together_hero_banner_prompt'
+    | 'together_hero_banner_negative'
+    | 'together_category_cover_prompt'
+    | 'together_article_featured_image_prompt';
+  /**
+   * 支持占位符（字面替换，未列出则保留原文）：
+   * 域名流程 受众 User：`{{main_product}}` `{{site_name}}` `{{niche}}` `{{existing_target_audience}}`
+   * 域名流程 域名 User：另含 `{{selected_target_audience}}` `{{audience_candidates}}` `{{current_site_domain}}`
+   * 分类槽位 User：`{{rows_json}}`（由系统注入站点行 JSON，勿删占位符）。
+   * 信任页包 User：`{{site_name}}` `{{site_domain}}` `{{main_product}}` `{{niche_json}}`（`niche_json` 与站点 nicheData 序列化一致，可为 `{}`）。
+   * SERP 简报 System：`{{memory_block}}` `{{serp_brief_addon}}`；User：`{{term}}` `{{serp_user_block}}` `{{tavily_slice}}`。
+   * 草稿章节 User：`{{section_id}}` `{{section_type}}` `{{previous_section_block}}` `{{global_context}}`。
+   * 域名审计 User：`{{page_url}}` `{{html_excerpt}}`；告警评估 User：`{{metrics_json}}`；竞品缺口 User：`{{topic}}` `{{competitor_urls}}`（后三者为 pipeline 调用时可传 `tenantId`/`siteId`）。
+   * Offer 评测 MDX User：`{{template_mdx}}` `{{date}}` `{{raw_product_title}}` `{{asin}}` `{{brand}}` `{{category}}` `{{rating}}` `{{image}}` `{{amazon_url}}` `{{key_features}}`。
+   * AMZ 设计 merge User：`{{main_product}}` `{{canonical_site_name}}` `{{canonical_site_domain}}` `{{niche_json}}` `{{current_config_json}}`；fill User 另含 `{{variation_seed}}` `{{dot_paths_block}}` `{{skeleton_json}}`。
+   * Together 生图 `together_site_logo_prompt`：`{{site_quoted}}` `{{key_part}}` `{{brand_line}}` `{{mp_line}}`。
+   * Together `together_hero_banner_prompt`：`{{site_quoted}}` `{{hero_key_part}}` `{{mp_suffix}}` `{{niche_suffix}}`；`together_hero_banner_negative` 多为静态词表（可无占位符）。
+   * Together `together_category_cover_prompt`：`{{category_name}}` `{{slug_suffix}}` `{{desc_chunk}}` `{{site_chunk}}`。
+   * Together `together_article_featured_image_prompt`：`{{title}}` `{{tail}}`。
+   * 修改生图模板若破坏构图/禁字约束，由运营自担；未配置租户模板时与代码默认一致。
+   * domain_audit / alert_eval / competitor_gap / draft_section 的 System 未配置租户正文时使用内置 skill 默认；一旦配置模板则以模板为准（可与 skill 源码漂移）。
+   * 受众须输出严格 JSON：`{"audiences":["..."]}`；域名 `{"items":[...]}`；分类槽位 `{"rows":[...]}`；信任页包须产出 about/contact/privacy/terms/disclosure 五段 Markdown（见 System）— 详见各流程与解析器约定。
+   */
+  body: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -2575,6 +2809,24 @@ export interface PayloadMcpApiKey {
      */
     delete?: boolean | null;
   };
+  pipelineProfiles?: {
+    /**
+     * Allow clients to find pipeline-profiles.
+     */
+    find?: boolean | null;
+    /**
+     * Allow clients to create pipeline-profiles.
+     */
+    create?: boolean | null;
+    /**
+     * Allow clients to update pipeline-profiles.
+     */
+    update?: boolean | null;
+    /**
+     * Allow clients to delete pipeline-profiles.
+     */
+    delete?: boolean | null;
+  };
   workflowJobs?: {
     /**
      * Allow clients to find workflow-jobs.
@@ -2896,6 +3148,14 @@ export interface PayloadLockedDocument {
         value: number | Team;
       } | null)
     | ({
+        relationTo: 'tenant-prompt-templates';
+        value: number | TenantPromptTemplate;
+      } | null)
+    | ({
+        relationTo: 'pipeline-profiles';
+        value: number | PipelineProfile;
+      } | null)
+    | ({
         relationTo: 'knowledge-base';
         value: number | KnowledgeBase;
       } | null)
@@ -3044,6 +3304,7 @@ export interface SitesSelect<T extends boolean = true> {
   primaryDomain?: T;
   status?: T;
   portfolio?: T;
+  pipelineProfile?: T;
   siteLayout?: T;
   publicLocaleCodes?: T;
   defaultPublicLocale?: T;
@@ -3399,6 +3660,10 @@ export interface ArticlesSelect<T extends boolean = true> {
   reviewedBy?: T;
   originalEvidence?: T;
   sourceBrief?: T;
+  pipelineProfile?: T;
+  pipelineProfileSnapshot?: T;
+  pipelineProfileSlug?: T;
+  pipelineProfileSource?: T;
   mergedInto?: T;
   sectionSummaries?: T;
   metaVariants?: T;
@@ -3554,6 +3819,56 @@ export interface TeamsSelect<T extends boolean = true> {
   notes?: T;
   lead?: T;
   members?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tenant-prompt-templates_select".
+ */
+export interface TenantPromptTemplatesSelect<T extends boolean = true> {
+  tenant?: T;
+  key?: T;
+  body?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pipeline-profiles_select".
+ */
+export interface PipelineProfilesSelect<T extends boolean = true> {
+  tenant?: T;
+  name?: T;
+  slug?: T;
+  description?: T;
+  isDefault?: T;
+  tavilyEnabled?: T;
+  dataForSeoEnabled?: T;
+  togetherImageEnabled?: T;
+  defaultLlmModel?: T;
+  defaultImageModel?: T;
+  amazonMarketplace?: T;
+  frugalMode?: T;
+  defaultLocale?: T;
+  defaultRegion?: T;
+  eeatWeights?: T;
+  llmModelsBySection?: T;
+  sectionParallelism?: T;
+  sectionMaxRetry?: T;
+  sectionParallelWhitelist?: T;
+  amzKeywordEligibility?: T;
+  briefVariant?: T;
+  skeletonVariant?: T;
+  briefVariantConfig?: T;
+  sectionVariant?: T;
+  finalizeVariant?: T;
+  skeletonVariantConfig?: T;
+  sectionVariantConfig?: T;
+  finalizeVariantConfig?: T;
+  briefDepth?: T;
+  articleStrategy?: T;
+  sectionRetryStrategy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -3983,6 +4298,14 @@ export interface PayloadMcpApiKeysSelect<T extends boolean = true> {
         update?: T;
         delete?: T;
       };
+  pipelineProfiles?:
+    | T
+    | {
+        find?: T;
+        create?: T;
+        update?: T;
+        delete?: T;
+      };
   workflowJobs?:
     | T
     | {
@@ -4219,6 +4542,8 @@ export interface LlmPrompt {
   createdAt?: string | null;
 }
 /**
+ * 通用技能/运营长文本模板。域名生成（受众+域名建议）请在「租户提示词模板」按租户配置。
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "prompt-library".
  */
@@ -4300,6 +4625,80 @@ export interface PipelineSetting {
    * Used by Keywords list “同步拉取 · DataForSEO”. intentWhitelist: informational | navigational | commercial | transactional. Drawer can override per request.
    */
   amzKeywordEligibility?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  briefVariant?: ('tavily_only' | 'dfs_serp_first' | 'competitor_mimic') | null;
+  /**
+   * competitor_mimic：`{ "competitorCount": 3 }` · dfs：`{ "serpDepth": 10 }`
+   */
+  briefVariantConfig?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  skeletonVariant?: ('single_shot' | 'top10_blend' | 'cluster_driven') | null;
+  /**
+   * top10_blend / cluster_driven 按需扩展(JSON)，默认可留空。
+   */
+  skeletonVariantConfig?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  sectionVariant?: ('sequential_context' | 'parallel_with_summary' | 'research_per_section') | null;
+  sectionVariantConfig?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  finalizeVariant?: ('simple_merge' | 'eeat_rewrite_pass' | 'fact_check_pass') | null;
+  finalizeVariantConfig?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * 与「抠门模式」可同时使用；勾选抠门仍会强制最便宜模型。
+   */
+  briefDepth?: ('quick' | 'standard' | 'deep') | null;
+  /**
+   * 例如：`{ "tocEnabled": true, "maxWordsPerSection": 900, "wordCountTarget": { "intro": { "min": 120, "max": 220 } } }`
+   */
+  articleStrategy?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * `{ "fallbackModel": "openai/gpt-4o-mini" }`，末次失败后切换模型。
+   */
+  sectionRetryStrategy?:
     | {
         [k: string]: unknown;
       }
@@ -4431,6 +4830,17 @@ export interface PipelineSettingsSelect<T extends boolean = true> {
   sectionParallelWhitelist?: T;
   sectionMaxRetry?: T;
   amzKeywordEligibility?: T;
+  briefVariant?: T;
+  briefVariantConfig?: T;
+  skeletonVariant?: T;
+  skeletonVariantConfig?: T;
+  sectionVariant?: T;
+  sectionVariantConfig?: T;
+  finalizeVariant?: T;
+  finalizeVariantConfig?: T;
+  briefDepth?: T;
+  articleStrategy?: T;
+  sectionRetryStrategy?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
 import { togetherImageGenerate } from '@/services/integrations/together/hidream'
 import { formatD1MediaInsertFailureMessage } from '@/utilities/pipelineDbErrorMessage'
+import { resolveMergedForPipelineRoute } from '@/utilities/resolvePipelineConfig'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
 export const dynamic = 'force-dynamic'
@@ -34,17 +35,6 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ ok: false, error: 'prompt required' }, { status: 400 })
   }
 
-  let urlRemote: string
-  try {
-    const r = await togetherImageGenerate(body.prompt)
-    urlRemote = r.url
-  } catch (e) {
-    return Response.json(
-      { ok: false, error: e instanceof Error ? e.message : String(e) },
-      { status: 502 },
-    )
-  }
-
   let siteNumeric =
     typeof body.siteId === 'number' && Number.isFinite(body.siteId) ? body.siteId : null
   let articleNumeric: number | null = null
@@ -66,6 +56,34 @@ export async function POST(request: Request): Promise<Response> {
         /* ignore */
       }
     }
+  }
+
+  const merged = await resolveMergedForPipelineRoute({
+    payload,
+    siteId: siteNumeric,
+    articleId: articleNumeric,
+  })
+  if (!merged.togetherImageEnabled) {
+    return Response.json(
+      {
+        ok: false,
+        error: 'together_image_disabled',
+        message: '当前流水线配置已关闭 Together 生图。',
+      },
+      { status: 403 },
+    )
+  }
+  const imageModel = merged.defaultImageModel?.trim() || undefined
+
+  let urlRemote: string
+  try {
+    const r = await togetherImageGenerate(body.prompt, imageModel ? { model: imageModel } : undefined)
+    urlRemote = r.url
+  } catch (e) {
+    return Response.json(
+      { ok: false, error: e instanceof Error ? e.message : String(e) },
+      { status: 502 },
+    )
   }
 
   const mediaSite = siteNumeric

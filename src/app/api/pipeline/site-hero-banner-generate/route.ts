@@ -8,15 +8,22 @@ import {
 } from '@/services/integrations/together/hidream'
 import type { Site, SiteBlueprint } from '@/payload-types'
 import {
+  TOGETHER_HERO_BANNER_NEGATIVE,
+  TOGETHER_HERO_BANNER_PROMPT,
+} from '@/utilities/domainGeneration/promptKeys'
+import {
   composeHeroBannerPromptFromSiteBlueprint,
   heroBannerImageDimensions,
   heroBannerImageNegativePrompt,
 } from '@/utilities/heroBannerMedia'
+import { resolveTogetherTenantPrompt } from '@/utilities/togetherTenantPrompts/resolveTogetherTenantPrompt'
+import { buildHeroBannerTogetherVars } from '@/utilities/togetherTenantPrompts/togetherImagePromptTemplates'
 import { truncateErrorMessage } from '@/utilities/mediaAiImagePrompt'
 import {
   extractPipelineErrorChainMessage,
   formatD1MediaInsertFailureMessage,
 } from '@/utilities/pipelineDbErrorMessage'
+import { resolvePipelineConfigForSite } from '@/utilities/resolvePipelineConfig'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
@@ -91,14 +98,51 @@ export async function POST(request: Request): Promise<Response> {
   })
   const blueprint = (bpFind.docs[0] as SiteBlueprint | undefined) ?? null
 
-  const promptText = composeHeroBannerPromptFromSiteBlueprint(
-    siteRow,
-    blueprint,
-    typeof body.prompt === 'string' ? body.prompt : null,
-  )
+  const overridePrompt = typeof body.prompt === 'string' ? body.prompt : null
+  const hasPromptOverride = Boolean(overridePrompt?.trim())
+  const defaultHeroPrompt = composeHeroBannerPromptFromSiteBlueprint(siteRow, blueprint, null)
+  const promptText = hasPromptOverride
+    ? composeHeroBannerPromptFromSiteBlueprint(siteRow, blueprint, overridePrompt)
+    : await resolveTogetherTenantPrompt(
+        payload,
+        tenantIdFromRelation(siteRow.tenant),
+        TOGETHER_HERO_BANNER_PROMPT,
+        defaultHeroPrompt,
+        buildHeroBannerTogetherVars(siteRow),
+      )
   if (!promptText.trim()) {
     return Response.json({ ok: false, error: 'empty prompt' }, { status: 400 })
   }
+
+  const defaultHeroNegative = heroBannerImageNegativePrompt()
+  const negativePrompt = hasPromptOverride
+    ? defaultHeroNegative
+    : await resolveTogetherTenantPrompt(
+        payload,
+        tenantIdFromRelation(siteRow.tenant),
+        TOGETHER_HERO_BANNER_NEGATIVE,
+        defaultHeroNegative,
+        {},
+      )
+
+  const pipe = await resolvePipelineConfigForSite(payload, siteId)
+  if ('ok' in pipe) {
+    return Response.json(
+      { ok: false, error: 'pipeline_resolve_failed', message: pipe.error },
+      { status: 422 },
+    )
+  }
+  if (!pipe.merged.togetherImageEnabled) {
+    return Response.json(
+      {
+        ok: false,
+        error: 'together_image_disabled',
+        message: '当前流水线配置已关闭 Together 生图。',
+      },
+      { status: 400 },
+    )
+  }
+  const imageModel = pipe.merged.defaultImageModel?.trim() || undefined
 
   const { width: genW, height: genH } = heroBannerImageDimensions()
   const existingMediaId = featuredRelId(siteRow.homepageHeroBanner)
@@ -114,7 +158,8 @@ export async function POST(request: Request): Promise<Response> {
     const { buffer, mimeType } = await togetherImageGenerateBytes(promptText, {
       width: genW,
       height: genH,
-      negativePrompt: heroBannerImageNegativePrompt(),
+      negativePrompt,
+      model: imageModel,
     })
     const ext = imageExtensionFromMime(mimeType)
     const base = slug

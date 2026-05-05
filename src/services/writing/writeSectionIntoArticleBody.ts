@@ -95,6 +95,7 @@ export async function writeSectionIntoArticleBody(
     summaries[sectionId] = {
       writtenAt: new Date().toISOString(),
       hash: sectionContentHash(md),
+      excerpt: md.replace(/\s+/g, ' ').trim().slice(0, 420),
     }
 
     try {

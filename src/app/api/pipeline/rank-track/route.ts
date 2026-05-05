@@ -2,8 +2,10 @@ import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
-import { dataForSeoPost, keywordDataLocationAndLanguage } from '@/services/integrations/dataforseo/client'
+import { dataForSeoPost } from '@/services/integrations/dataforseo/client'
 import { parseOrganicPositionAndAiOverview } from '@/utilities/dataForSeoOrganicParse'
+import { resolveDfsLocationLanguageFromMerged } from '@/utilities/pipelineDfsLocale'
+import { resolveMergedForPipelineRoute } from '@/utilities/resolvePipelineConfig'
 import { DataForSeoMatrixEndpoints, SeoMatrixJsonFields } from '@/utilities/seoMatrixPipeline'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 
@@ -30,7 +32,6 @@ export async function POST(request: Request): Promise<Response> {
     keywordId?: string | number
     siteId?: string | number
   }
-  const loc = await keywordDataLocationAndLanguage()
   const payload = await getPayload({ config: configPromise })
 
   let searchQuery = typeof body.keyword === 'string' ? body.keyword.trim() : ''
@@ -81,6 +82,19 @@ export async function POST(request: Request): Promise<Response> {
   if (!searchQuery) {
     return Response.json({ error: 'keyword or keywordId required' }, { status: 400 })
   }
+
+  const merged = await resolveMergedForPipelineRoute({
+    payload,
+    siteId: siteRel ?? null,
+    tenantId: tenantRel ?? null,
+  })
+  if (!merged.dataForSeoEnabled) {
+    return Response.json(
+      { ok: false, error: 'DataForSEO disabled in pipeline-settings / profile' },
+      { status: 400 },
+    )
+  }
+  const loc = resolveDfsLocationLanguageFromMerged(merged)
 
   try {
     const r = await dataForSeoPost(DataForSeoMatrixEndpoints.serpGoogleOrganicLive, [

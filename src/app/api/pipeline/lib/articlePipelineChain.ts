@@ -6,6 +6,16 @@ import {
   siteIdFromJob,
   type WorkflowJobDoc,
 } from '@/app/api/pipeline/lib/workflowJobRunner'
+import {
+  canEnqueueDraftSection,
+  normalizeGlobalPipelineDoc,
+  snapshotPipelineMerged,
+  type PipelineSettingShape,
+} from '@/utilities/pipelineSettingShape'
+import { compactPipelineWorkflowTags, pipelineWorkflowVariantTags } from '@/utilities/pipelineJobTags'
+import type { ResolvedPipelineConfig } from '@/utilities/resolvePipelineConfig'
+import { resolvePipelineConfigForArticle } from '@/utilities/resolvePipelineConfig'
+import { buildArticleFeaturedTogetherPromptText } from '@/utilities/togetherTenantPrompts/togetherImagePromptTemplates'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
 export function makeFeaturedImagePrompt(args: {
@@ -13,10 +23,7 @@ export function makeFeaturedImagePrompt(args: {
   excerpt?: string | null
   keywordTerm?: string | null
 }): string {
-  const tail = [args.excerpt ?? '', args.keywordTerm ?? ''].join(' ').trim()
-  return (
-    `Editorial blog hero image, no readable text overlays, cinematic lighting. Topic: "${args.title.trim()}". ${tail}`.trim()
-  ).slice(0, 2000)
+  return buildArticleFeaturedTogetherPromptText(args)
 }
 
 export async function loadBriefSectionSpecs(
@@ -62,6 +69,13 @@ async function tenantIdFromSite(payload: Payload, siteId: number | null): Promis
 function parseJsonInput(job: WorkflowJobDoc): Record<string, unknown> {
   const raw = job.input
   return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+}
+
+function explicitProfileIdFromInput(input: Record<string, unknown>): number | null {
+  const raw = input.pipelineProfileId
+  if (typeof raw === 'number' && Number.isFinite(raw)) return Math.floor(raw)
+  if (typeof raw === 'string' && /^\d+$/.test(raw.trim())) return Number(raw.trim())
+  return null
 }
 
 async function pendingOrRunningDraftSectionFor(
@@ -173,8 +187,206 @@ function parseSiteNumeric(jobOrSite: WorkflowJobDoc['site']): number | null {
   return Number(s)
 }
 
+async function countActiveDraftSectionForArticle(
+  payload: Payload,
+  articleIdNum: number,
+): Promise<number> {
+  const r = await payload.count({
+    collection: 'workflow-jobs',
+    where: {
+      and: [
+        { jobType: { equals: 'draft_section' } },
+        { article: { equals: articleIdNum } },
+        { status: { in: ['pending', 'running'] } },
+      ],
+    },
+  })
+  return r.totalDocs
+}
+
+async function ensureArticlePipelineProfileSnapshot(
+  payload: Payload,
+  articleNum: number,
+  resolved: ResolvedPipelineConfig,
+): Promise<void> {
+  const doc = await payload.findByID({
+    collection: 'articles',
+    id: String(articleNum),
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (!doc) return
+  const cur = doc as { pipelineProfileSnapshot?: unknown }
+  if (cur.pipelineProfileSnapshot != null) return
+
+  await payload.update({
+    collection: 'articles',
+    id: String(articleNum),
+    data: {
+      pipelineProfileSnapshot: snapshotPipelineMerged(resolved.merged),
+      ...(resolved.profileSlug != null && resolved.profileSlug.trim() ?
+        { pipelineProfileSlug: resolved.profileSlug.trim() }
+      : {}),
+      pipelineProfileSource: resolved.source,
+    },
+    overrideAccess: true,
+  })
+}
+
+export type DraftSectionEnqueueCtx = {
+  articleNum: number
+  briefNum: number
+  siteId: number | null
+  tenantNum: number | null
+  parentJobId?: number
+  globalContext: string
+  pipelineProfileId?: number
+}
+
 /**
- * After draft_skeleton succeeds: enqueue one draft_section job per outline section (dedup).
+ * Enqueues draft_section jobs up to `merged.sectionParallelism` / whitelist rules.
+ */
+export async function enqueueAvailableDraftSectionJobs(
+  payload: Payload,
+  ctx: DraftSectionEnqueueCtx,
+): Promise<void> {
+  let pipelineProfileId = ctx.pipelineProfileId
+  if (pipelineProfileId == null) {
+    try {
+      const article = await payload.findByID({
+        collection: 'articles',
+        id: String(ctx.articleNum),
+        depth: 0,
+        overrideAccess: true,
+      })
+      const pp = (article as { pipelineProfile?: number | { id: number } | null })?.pipelineProfile
+      if (typeof pp === 'number' && Number.isFinite(pp)) pipelineProfileId = pp
+      else if (pp && typeof pp === 'object' && 'id' in pp) {
+        const id = (pp as { id: number }).id
+        if (typeof id === 'number' && Number.isFinite(id)) pipelineProfileId = id
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const cfgResult = await resolvePipelineConfigForArticle(
+    payload,
+    ctx.articleNum,
+    pipelineProfileId ?? null,
+  )
+  let merged: PipelineSettingShape
+  let wfTags: Record<string, string> = {}
+  if ('ok' in cfgResult && cfgResult.ok === false) {
+    const g = await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })
+    merged = normalizeGlobalPipelineDoc(g as Record<string, unknown>)
+  } else {
+    const cfg = cfgResult as ResolvedPipelineConfig
+    merged = cfg.merged
+    await ensureArticlePipelineProfileSnapshot(payload, ctx.articleNum, cfg)
+    wfTags = compactPipelineWorkflowTags(
+      pipelineWorkflowVariantTags({
+        merged: cfg.merged,
+        profileSlug: cfg.profileSlug,
+        source: cfg.source,
+      }),
+    )
+  }
+  const specs = await loadBriefSectionSpecs(payload, ctx.briefNum)
+  const done = await successfulDraftSectionIds(payload, ctx.articleNum)
+  let active = await countActiveDraftSectionForArticle(payload, ctx.articleNum)
+
+  const parentId = ctx.parentJobId != null ? Number(ctx.parentJobId) : NaN
+
+  for (const row of specs) {
+    const { id: sid, sectionType } = row
+    if (done.has(sid)) continue
+    if (await pendingOrRunningDraftSectionFor(payload, ctx.articleNum, sid)) continue
+    if (!canEnqueueDraftSection(merged, active, sectionType)) break
+
+    await payload.create({
+      collection: 'workflow-jobs',
+      data: {
+        label: `Draft section "${sid}" → article #${ctx.articleNum}`.slice(0, 120),
+        jobType: 'draft_section',
+        status: 'pending',
+        article: ctx.articleNum,
+        contentBrief: ctx.briefNum,
+        ...(ctx.siteId != null ? { site: ctx.siteId } : {}),
+        ...(ctx.tenantNum != null ? { tenant: ctx.tenantNum } : {}),
+        ...(Number.isFinite(parentId) ? { parentJob: parentId } : {}),
+        input: {
+          briefId: ctx.briefNum,
+          articleId: ctx.articleNum,
+          sectionId: sid,
+          sectionType,
+          globalContext: ctx.globalContext,
+          quickWinChain: true,
+          ...(pipelineProfileId != null ? { pipelineProfileId } : {}),
+          ...wfTags,
+        },
+      },
+      overrideAccess: true,
+    })
+    active += 1
+  }
+}
+
+/**
+ * After each draft_section completes: fill parallel slots with remaining outline sections.
+ */
+export async function enqueueMoreDraftSectionsAfterCompletion(
+  payload: Payload,
+  doc: WorkflowJobDoc,
+): Promise<void> {
+  const aid = articleIdFromJob(doc)
+  const bid = briefIdFromJob(doc)
+  const articleNum = aid != null && /^\d+$/.test(aid) ? Number(aid) : NaN
+  const briefNum = bid != null && /^\d+$/.test(bid) ? Number(bid) : NaN
+  if (!Number.isFinite(articleNum) || !Number.isFinite(briefNum)) return
+
+  const siteNum = parseSiteNumeric(doc.site)
+  const tenantNum = await tenantIdFromSite(payload, siteNum)
+  const input = parseJsonInput(doc)
+  let globalContext =
+    typeof input.globalContext === 'string' && input.globalContext.trim()
+      ? input.globalContext.trim().slice(0, 12000)
+      : ''
+  if (!globalContext) {
+    try {
+      const article = await payload.findByID({
+        collection: 'articles',
+        id: String(articleNum),
+        depth: 0,
+        overrideAccess: true,
+      })
+      const sm = (article as { sectionSummaries?: Record<string, unknown> }).sectionSummaries
+      const raw = sm && typeof sm === 'object' && typeof sm.globalContext === 'string' ? sm.globalContext : ''
+      if (raw.trim()) globalContext = raw.trim().slice(0, 12000)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  let pipelineProfileId: number | undefined
+  if (typeof input.pipelineProfileId === 'number' && Number.isFinite(input.pipelineProfileId)) {
+    pipelineProfileId = Math.floor(input.pipelineProfileId)
+  } else if (typeof input.pipelineProfileId === 'string' && /^\d+$/.test(input.pipelineProfileId.trim())) {
+    pipelineProfileId = Number(input.pipelineProfileId.trim())
+  }
+
+  await enqueueAvailableDraftSectionJobs(payload, {
+    articleNum,
+    briefNum,
+    siteId: siteNum,
+    tenantNum,
+    globalContext,
+    pipelineProfileId,
+  })
+}
+
+/**
+ * After draft_skeleton succeeds: enqueue draft_section jobs (respects parallelism / whitelist).
  */
 export async function enqueueDraftSectionsAfterSkeleton(
   payload: Payload,
@@ -207,7 +419,24 @@ export async function enqueueDraftSectionsAfterSkeleton(
     tenantNum = await tenantIdFromSite(payload, siteId)
   }
 
-  const specs = await loadBriefSectionSpecs(payload, briefNum)
+  let pipelineProfileId: number | undefined
+  try {
+    const article = await payload.findByID({
+      collection: 'articles',
+      id: String(articleNum),
+      depth: 0,
+      overrideAccess: true,
+    })
+    const pp = (article as { pipelineProfile?: number | { id: number } | null })?.pipelineProfile
+    if (typeof pp === 'number' && Number.isFinite(pp)) pipelineProfileId = pp
+    else if (pp && typeof pp === 'object' && 'id' in pp) {
+      const id = (pp as { id: number }).id
+      if (typeof id === 'number' && Number.isFinite(id)) pipelineProfileId = id
+    }
+  } catch {
+    /* ignore */
+  }
+
   let globalContext =
     typeof args.globalContextFallback === 'string' && args.globalContextFallback.trim()
       ? args.globalContextFallback.trim().slice(0, 12000)
@@ -230,33 +459,15 @@ export async function enqueueDraftSectionsAfterSkeleton(
 
   const parentId = Number(args.completedSkeletonJobId)
 
-  for (const row of specs) {
-    const { id: sid, sectionType } = row
-    if (await pendingOrRunningDraftSectionFor(payload, articleNum, sid)) continue
-
-    await payload.create({
-      collection: 'workflow-jobs',
-      data: {
-        label: `Draft section "${sid}" → article #${articleNum}`.slice(0, 120),
-        jobType: 'draft_section',
-        status: 'pending',
-        article: articleNum,
-        contentBrief: briefNum,
-        ...(siteId != null ? { site: siteId } : {}),
-        ...(tenantNum != null ? { tenant: tenantNum } : {}),
-        ...(Number.isFinite(parentId) ? { parentJob: parentId } : {}),
-        input: {
-          briefId: briefNum,
-          articleId: articleNum,
-          sectionId: sid,
-          sectionType,
-          globalContext,
-          quickWinChain: true,
-        },
-      },
-      overrideAccess: true,
-    })
-  }
+  await enqueueAvailableDraftSectionJobs(payload, {
+    articleNum,
+    briefNum,
+    siteId,
+    tenantNum,
+    ...(Number.isFinite(parentId) ? { parentJobId: parentId } : {}),
+    globalContext,
+    pipelineProfileId,
+  })
 }
 
 /**
@@ -283,6 +494,20 @@ export async function enqueueDraftFinalizeIfSectionsDone(
   const siteNum = parseSiteNumeric(doc.site)
   const tenantNum = await tenantIdFromSite(payload, siteNum)
 
+  const input = parseJsonInput(doc)
+  const ppExplicit = explicitProfileIdFromInput(input)
+  const cfgFin = await resolvePipelineConfigForArticle(payload, articleNum, ppExplicit)
+  const wfFinalize =
+    'ok' in cfgFin && cfgFin.ok === false ?
+      {}
+    : compactPipelineWorkflowTags(
+        pipelineWorkflowVariantTags({
+          merged: (cfgFin as ResolvedPipelineConfig).merged,
+          profileSlug: (cfgFin as ResolvedPipelineConfig).profileSlug,
+          source: (cfgFin as ResolvedPipelineConfig).source,
+        }),
+      )
+
   await payload.create({
     collection: 'workflow-jobs',
     data: {
@@ -293,7 +518,7 @@ export async function enqueueDraftFinalizeIfSectionsDone(
       contentBrief: briefNum,
       ...(siteNum != null ? { site: siteNum } : {}),
       ...(tenantNum != null ? { tenant: tenantNum } : {}),
-      input: { articleId: articleNum, briefId: briefNum, quickWinChain: true },
+      input: { articleId: articleNum, briefId: briefNum, quickWinChain: true, ...wfFinalize },
     },
     overrideAccess: true,
   })
@@ -424,43 +649,44 @@ export async function enqueueArticlePipelineCatchup(
     tenantNum = await tenantIdFromSite(payload, siteNum)
   }
 
-  const specs = await loadBriefSectionSpecs(payload, briefNum)
-  const secDone = await successfulDraftSectionIds(payload, articleIdNum)
-  let createdSections = 0
   const sm = (article as { sectionSummaries?: Record<string, unknown> }).sectionSummaries
   const globalContext =
     sm && typeof sm === 'object' && typeof sm.globalContext === 'string' ? sm.globalContext.slice(0, 12000) : ''
 
-  for (const row of specs) {
-    if (secDone.has(row.id)) continue
-    if (await pendingOrRunningDraftSectionFor(payload, articleIdNum, row.id)) continue
+  const pendingBefore = await payload.count({
+    collection: 'workflow-jobs',
+    where: {
+      and: [
+        { jobType: { equals: 'draft_section' } },
+        { article: { equals: articleIdNum } },
+        { status: { equals: 'pending' } },
+      ],
+    },
+  })
 
-    await payload.create({
-      collection: 'workflow-jobs',
-      data: {
-        label: `[catchup] section "${row.id}" → article #${articleIdNum}`,
-        jobType: 'draft_section',
-        status: 'pending',
-        article: articleIdNum,
-        contentBrief: briefNum,
-        ...(siteNum != null ? { site: siteNum } : {}),
-        ...(tenantNum != null ? { tenant: tenantNum } : {}),
-        input: {
-          briefId: briefNum,
-          articleId: articleIdNum,
-          sectionId: row.id,
-          sectionType: row.sectionType,
-          globalContext,
-          quickWinCatchup: true,
-        },
-      },
-      overrideAccess: true,
-    })
-    createdSections += 1
-  }
+  await enqueueAvailableDraftSectionJobs(payload, {
+    articleNum: articleIdNum,
+    briefNum,
+    siteId: siteNum,
+    tenantNum,
+    globalContext,
+  })
+
+  const pendingAfter = await payload.count({
+    collection: 'workflow-jobs',
+    where: {
+      and: [
+        { jobType: { equals: 'draft_section' } },
+        { article: { equals: articleIdNum } },
+        { status: { equals: 'pending' } },
+      ],
+    },
+  })
+  const createdSections = Math.max(0, pendingAfter.totalDocs - pendingBefore.totalDocs)
   if (createdSections > 0) messages.push(`入队 draft_section × ${createdSections}`)
 
   const doneAfter = await successfulDraftSectionIds(payload, articleIdNum)
+  const specs = await loadBriefSectionSpecs(payload, briefNum)
   const allSectionsDone = specs.every((e) => doneAfter.has(e.id))
 
   if (
@@ -468,6 +694,18 @@ export async function enqueueArticlePipelineCatchup(
     !(await hasSuccessfulFinalize(payload, articleIdNum)) &&
     !(await hasPendingOrRunningFinalize(payload, articleIdNum))
   ) {
+    const cfgCu = await resolvePipelineConfigForArticle(payload, articleIdNum, null)
+    const wfCu =
+      'ok' in cfgCu && cfgCu.ok === false ?
+        {}
+      : compactPipelineWorkflowTags(
+          pipelineWorkflowVariantTags({
+            merged: (cfgCu as ResolvedPipelineConfig).merged,
+            profileSlug: (cfgCu as ResolvedPipelineConfig).profileSlug,
+            source: (cfgCu as ResolvedPipelineConfig).source,
+          }),
+        )
+
     await payload.create({
       collection: 'workflow-jobs',
       data: {
@@ -478,7 +716,12 @@ export async function enqueueArticlePipelineCatchup(
         contentBrief: briefNum,
         ...(siteNum != null ? { site: siteNum } : {}),
         ...(tenantNum != null ? { tenant: tenantNum } : {}),
-        input: { articleId: articleIdNum, briefId: briefNum, quickWinCatchup: true },
+        input: {
+          articleId: articleIdNum,
+          briefId: briefNum,
+          quickWinCatchup: true,
+          ...wfCu,
+        },
       },
       overrideAccess: true,
     })

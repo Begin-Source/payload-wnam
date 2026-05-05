@@ -1,10 +1,9 @@
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
+import { runDraftFinalizeForArticle } from '@/app/api/pipeline/draft-finalize/runDraftFinalize'
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
 import { finalizeArticleBodyText } from '@/services/writing/finalizePass'
-import { finalizeLexicalArticleBody, lexicalArticleBodyToPlainText } from '@/services/writing/lexicalBodyPlain'
-import type { Article } from '@/payload-types'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,29 +29,19 @@ export async function POST(request: Request): Promise<Response> {
 
   if (hasArticle) {
     const aid = typeof articleIdRaw === 'number' ? articleIdRaw : Number(articleIdRaw)
-    const doc = await payload.findByID({
-      collection: 'articles',
-      id: String(aid),
-      depth: 0,
-      overrideAccess: true,
-    })
-    if (!doc) {
-      return Response.json({ ok: false, error: 'article not found' }, { status: 404 })
+    const r = await runDraftFinalizeForArticle(payload, aid)
+    if (!r.ok) {
+      return Response.json(r, { status: r.status ?? 500 })
     }
-    const nextBody = finalizeLexicalArticleBody((doc as { body?: unknown }).body) as Article['body']
-    const plain = lexicalArticleBodyToPlainText(nextBody).split(/\n\n/)[0] ?? ''
-    const excerptSlice = plain.replace(/\s+/g, ' ').trim().slice(0, 200)
-
-    await payload.update({
-      collection: 'articles',
-      id: String(aid),
-      data: {
-        body: nextBody,
-        ...(excerptSlice ? { excerpt: excerptSlice } : {}),
-      },
-      overrideAccess: true,
+    return Response.json({
+      ok: true,
+      updated: true,
+      articleId: r.articleId,
+      excerptChars: r.excerptChars,
+      finalizeVariant: r.finalizeVariant,
+      elapsedMs: r.elapsedMs,
+      ...(r.usage ? { usage: r.usage } : {}),
     })
-    return Response.json({ ok: true, updated: true, articleId: aid, excerptChars: excerptSlice.length })
   }
 
   if (!body.bodyText?.trim()) {

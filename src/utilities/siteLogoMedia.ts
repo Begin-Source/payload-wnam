@@ -2,6 +2,11 @@ import type { Media, Site, SiteBlueprint } from '@/payload-types'
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import { defaultAmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import { mergeAmzSiteConfigFromRaw } from '@/site-layouts/amz-template-1/mergeAmzSiteConfig'
+import { substitutePromptPlaceholders } from '@/utilities/domainGeneration/substitutePromptPlaceholders'
+import {
+  TOGETHER_SITE_LOGO_PROMPT_TEMPLATE,
+  buildSiteLogoTogetherVarsFromPromptParts,
+} from '@/utilities/togetherTenantPrompts/togetherImagePromptTemplates'
 
 const DEFAULT_LOGO_PX = 1024
 
@@ -87,25 +92,15 @@ export function makeSiteLogoImagePrompt(parts: {
 }): string {
   const o = parts.override?.trim()
   if (o) return o
-  const site = parts.siteName.trim() || 'Store'
-  const slug = parts.slugOrKey.trim()
-  const mp = parts.mainProduct?.trim()
-  const brand = parts.brandNameFromDesign?.trim()
-
-  return [
-    'Single isolated brand mark only: ultra-simple flat vector or geometric glyph, symmetric or centered logo — not a poster, screenshot, collage, framed picture, banner, scenery, lifestyle photo, mockup device, gradient “photo backdrop”, vignette border, polaroid, or postcard layout.',
-    'Plain flat background: pure white #FFFFFF strongly preferred OR one solid light neutral (#F5F5F5–#EEEEEE); no busy textures, sunset/sky/office scenes, wood floors, blurred bokeh.',
-    `The mark occupies ~55–72% of the square canvas height with generous even padding (breathing room); centered; looks sharp when scaled down to 16×16 px favicon.`,
-    `Site: "${site}". ${slug ? `Key: ${slug}.` : ''}`,
-    brand ? `Brand cue from design: "${brand.slice(0, 80)}".` : '',
-    mp ? `Subject hint only (abstract shape / symbol), not a literal photograph: ${mp.slice(0, 120)}.` : '',
-    'At most 3 flat colors excluding background; crisp edges; thick readable strokes; absolutely no gradients that mimic lighting/photorealism.',
-    'No human faces/hands/full products; no glossy 3D render; no fine hairlines; no watermark; no slogan lines; no tiny illegible typography.',
-    'PNG-style clarity; think app icon sheet / identity mark suitable for Shopify header favicon bundle.',
-  ]
-    .map((x) => x.trim())
-    .filter((x) => x.length > 0)
-    .join(' ')
+  return substitutePromptPlaceholders(
+    TOGETHER_SITE_LOGO_PROMPT_TEMPLATE,
+    buildSiteLogoTogetherVarsFromPromptParts({
+      siteName: parts.siteName,
+      slugOrKey: parts.slugOrKey,
+      mainProduct: parts.mainProduct,
+      brandNameFromDesign: parts.brandNameFromDesign,
+    }),
+  )
 }
 
 export function composeSiteLogoPromptFromSiteBlueprint(

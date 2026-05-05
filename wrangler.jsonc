@@ -11,6 +11,10 @@
     // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public
     "global_fetch_strictly_public",
   ],
+  // Deploy: Cloudflare Pages often runs `pnpm run build` then `pnpm run deploy`. Use `pnpm run deploy:ci` so OpenNext
+  // skips a second `next build` (SKIP_NEXT_APP_BUILD / opennext `--skipNextBuild`). Local full builds keep `pnpm run deploy`.
+  // Wrangler API error 100312 ("Completion token has already been consumed") is usually transient—retry deployment,
+  // avoid two concurrent deploys to the same worker name, and keep `wrangler` current in package.json.
   // Smart Placement: run closer to back-end (e.g. D1/R2) when it reduces latency — not a CLI flag; deploy via opennext/wrangler
   // https://developers.cloudflare.com/workers/configuration/placement/
   "placement": {
