@@ -8,8 +8,7 @@ import { ArticlePipelineCatchupDrawer } from '@/components/ArticlePipelineCatchu
 import { MediaAiImageDrawer } from '@/components/MediaAiImageDrawer'
 import { KeywordQuickWinDrawer } from '@/components/KeywordQuickWinDrawer'
 import { KeywordSyncFetchDrawer } from '@/components/KeywordSyncFetchDrawer'
-import { SiteHeroBannerQueueModal } from '@/components/SiteHeroBannerQueueModal'
-import { SiteLogoQueueModal } from '@/components/SiteLogoQueueModal'
+import { SiteQuickActionsDrawer } from '@/components/SiteQuickActionsDrawer'
 import { TrustPagesBundleQuickActionModal } from '@/components/TrustPagesBundleQuickActionModal'
 import { Button } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
@@ -92,6 +91,17 @@ const inputStyle: React.CSSProperties = {
   background: 'var(--theme-elevation-50)',
   color: 'inherit',
   fontSize: '0.875rem',
+}
+
+/** Amber callout for workflow-quick-action jobs using `ai_generate` (tick executor not wired). */
+const workflowQuickWarnBoxStyle: React.CSSProperties = {
+  marginBottom: '1rem',
+  padding: '0.65rem 0.75rem',
+  borderRadius: 6,
+  border: '1px solid var(--theme-warning-500, #b45309)',
+  background: 'var(--theme-warning-50, rgba(250, 204, 21, 0.12))',
+  fontSize: '0.8125rem',
+  lineHeight: 1.5,
 }
 
 const UI: Record<
@@ -462,19 +472,27 @@ function WorkflowQuickActionModal({ kind }: { kind: WorkflowQuickKind }): React.
             ) : null}
 
             {isArticles && articleMode === 'single' ? (
-              <div
-                style={{
-                  marginBottom: '1rem',
-                  padding: '0.65rem 0.75rem',
-                  borderRadius: 6,
-                  border: '1px solid var(--theme-warning-500, #b45309)',
-                  background: 'var(--theme-warning-50, rgba(250, 204, 21, 0.12))',
-                  fontSize: '0.8125rem',
-                  lineHeight: 1.5,
-                }}
-              >
+              <div style={workflowQuickWarnBoxStyle}>
                 <p style={{ margin: '0 0 0.35rem' }}>单次入队为 ai_generate，执行器未接线，不会产文。</p>
                 <p style={{ margin: 0 }}>请改用「批量排产」或到「关键词」用快捷操作。</p>
+              </div>
+            ) : null}
+
+            {!isArticles ? (
+              <div style={workflowQuickWarnBoxStyle}>
+                <p style={{ margin: '0 0 0.35rem' }}>
+                  此入口会创建 <code style={{ fontSize: '0.78em' }}>jobType: ai_generate</code>{' '}
+                  的工作流任务；当前{' '}
+                  <code style={{ fontSize: '0.78em' }}>/api/pipeline/tick</code> 对该类型<strong>未接线</strong>
+                  ，不会在后台自动执行具体生成步骤。
+                </p>
+                {kind === 'categories' ? (
+                  <p style={{ margin: 0 }}>
+                    分类封面与槽位请优先使用本列表上的「Together · 分类封面」「快捷操作 · 生成分类槽位」。
+                  </p>
+                ) : (
+                  <p style={{ margin: 0 }}>如需自动化流水线，请使用该列表或其它菜单上已接线的专用入口。</p>
+                )}
               </div>
             ) : null}
 
@@ -1203,437 +1221,6 @@ function AmzTemplateDesignQuickActionModal(): React.ReactElement {
   )
 }
 
-const siteDomainTitleId = 'quick-action-title-site-domain'
-
-function SiteDomainQuickActionModal(): React.ReactElement {
-  const router = useRouter()
-  const [open, setOpen] = useState(false)
-  const [siteQuery, setSiteQuery] = useState('')
-  const [sites, setSites] = useState<SiteOption[]>([])
-  const [sitesLoading, setSitesLoading] = useState(false)
-  const [selectedSiteId, setSelectedSiteId] = useState<number | null>(null)
-  const [selectedSiteLabel, setSelectedSiteLabel] = useState('')
-  const [siteMenuOpen, setSiteMenuOpen] = useState(false)
-  const siteComboboxRef = useRef<HTMLDivElement>(null)
-  const skipSiteQueryDebounceRef = useRef(false)
-
-  const [force, setForce] = useState(false)
-  const [mainProduct, setMainProduct] = useState('')
-  const [aiModel, setAiModel] = useState('')
-  const [error, setError] = useState<string | null>(null)
-
-  const loadSites = useCallback(async (q: string) => {
-    setSitesLoading(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams()
-      if (q.trim()) params.set('q', q.trim())
-      const res = await fetch(`/api/admin/article-quick-action/options?${params}`, {
-        credentials: 'include',
-      })
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { error?: unknown }
-        throw new Error(typeof err.error === 'string' ? err.error : '加载站点失败')
-      }
-      const data = (await res.json()) as { sites: SiteOption[] }
-      setSites(data.sites ?? [])
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '加载站点失败')
-      setSites([])
-    } finally {
-      setSitesLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!open || !siteMenuOpen) return
-    if (skipSiteQueryDebounceRef.current) {
-      skipSiteQueryDebounceRef.current = false
-      return
-    }
-    const t = window.setTimeout(() => {
-      void loadSites(siteQuery)
-    }, 300)
-    return () => window.clearTimeout(t)
-  }, [open, siteMenuOpen, siteQuery, loadSites])
-
-  useEffect(() => {
-    if (!siteMenuOpen) return
-    const onDocMouseDown = (e: MouseEvent): void => {
-      const root = siteComboboxRef.current
-      if (root && !root.contains(e.target as Node)) {
-        setSiteMenuOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', onDocMouseDown)
-    return () => document.removeEventListener('mousedown', onDocMouseDown)
-  }, [siteMenuOpen])
-
-  useEffect(() => {
-    if (!siteMenuOpen) return
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        setSiteMenuOpen(false)
-      }
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [siteMenuOpen])
-
-  const close = (): void => {
-    setOpen(false)
-    setSiteQuery('')
-    setSites([])
-    setSelectedSiteId(null)
-    setSelectedSiteLabel('')
-    setSiteMenuOpen(false)
-    setForce(false)
-    setMainProduct('')
-    setAiModel('')
-    setError(null)
-  }
-
-  const pickSite = (s: SiteOption): void => {
-    setSelectedSiteId(s.id)
-    setSelectedSiteLabel(formatSiteLine(s))
-    setMainProduct(String(s.mainProduct ?? '').trim())
-    setSiteQuery('')
-    setSiteMenuOpen(false)
-  }
-
-  const clearSiteSelection = (): void => {
-    setSelectedSiteId(null)
-    setSelectedSiteLabel('')
-    setMainProduct('')
-    setSiteQuery('')
-    void loadSites('')
-  }
-
-  const submit = async (): Promise<void> => {
-    if (selectedSiteId == null) {
-      setError('请选择站点')
-      return
-    }
-    setError(null)
-
-    const siteId = selectedSiteId
-    const forceBool = force
-    const mainProductTrim = mainProduct.trim()
-    const aiModelTrim = aiModel.trim()
-
-    const baseBody = {
-      siteId,
-      force: forceBool,
-      ...(mainProductTrim ? { mainProduct: mainProductTrim } : {}),
-      ...(aiModelTrim ? { ai_model: aiModelTrim } : {}),
-    }
-
-    try {
-      const prepRes = await fetch('/api/admin/sites/generate-domain', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...baseBody, prepare: true }),
-      })
-      const prepData = (await prepRes.json().catch(() => ({}))) as {
-        ok?: boolean
-        error?: string
-      }
-      if (!prepRes.ok || prepData.ok !== true) {
-        setError(
-          typeof prepData.error === 'string'
-            ? prepData.error
-            : `请求失败（HTTP ${prepRes.status}）`,
-        )
-        return
-      }
-    } catch {
-      setError('网络错误，请稍后重试')
-      return
-    }
-
-    close()
-
-    if (
-      typeof window !== 'undefined' &&
-      window.location.pathname.includes('/collections/sites')
-    ) {
-      router.refresh()
-    }
-
-    void (async () => {
-      try {
-        const res = await fetch('/api/admin/sites/generate-domain', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(baseBody),
-        })
-        const data = (await res.json().catch(() => ({}))) as {
-          ok?: boolean
-          error?: string
-        }
-        if (!res.ok || data.ok !== true) {
-          console.warn(
-            '[generate-domain]',
-            typeof data.error === 'string' ? data.error : `HTTP ${res.status}`,
-          )
-        }
-      } catch (e) {
-        console.warn('[generate-domain] network error', e)
-      } finally {
-        if (
-          typeof window !== 'undefined' &&
-          window.location.pathname.includes('/collections/sites')
-        ) {
-          router.refresh()
-        }
-      }
-    })()
-  }
-
-  return (
-    <>
-      <Button buttonStyle="secondary" onClick={() => setOpen(true)} size="small" type="button">
-        快捷操作 · 生成域名
-      </Button>
-
-      {open ? (
-        <div
-          aria-labelledby={siteDomainTitleId}
-          aria-modal
-          role="dialog"
-          style={backdropStyle}
-        >
-          <button
-            aria-label="关闭"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              border: 'none',
-              padding: 0,
-              margin: 0,
-              cursor: 'default',
-              background: 'transparent',
-            }}
-            type="button"
-            onClick={close}
-          />
-          <div style={{ ...panelStyle, position: 'relative', zIndex: 1 }}>
-            <h2
-              id={siteDomainTitleId}
-              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600 }}
-            >
-              快捷操作 · 生成域名
-            </h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
-              受众与域名由 OpenRouter 生成，可查由 Spaceship 校验；写回主域名时会把 slug 同步为「域名中的点换成连字符」。主产品会参与提示词；若填写则一并保存到站点字段。需配置服务端
-              OPENROUTER / SPACESHIP 密钥。
-              <strong style={{ display: 'block', marginTop: '0.5rem', fontWeight: 600 }}>
-                点击「生成域名并写回站点」后先标为「运行中」并关闭弹窗，列表会马上刷新；全流程结束后若仍在本列表页会再刷新一次以显示「已完成」或「错误」。若已离开本页或状态未变，可手动刷新。
-              </strong>
-            </p>
-
-            {error ? (
-              <p style={{ color: 'var(--theme-error-500)', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>
-                {error}
-              </p>
-            ) : null}
-
-            <div ref={siteComboboxRef} style={{ marginBottom: '1rem', position: 'relative' }}>
-              <span style={fieldLabel} id="site-domain-gen-label">
-                站点
-              </span>
-              <button
-                aria-expanded={siteMenuOpen}
-                aria-haspopup="listbox"
-                aria-labelledby="site-domain-gen-label"
-                style={{
-                  ...inputStyle,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '0.5rem',
-                  width: '100%',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-                type="button"
-                onClick={() => {
-                  setSiteMenuOpen((prev) => {
-                    const next = !prev
-                    if (next) {
-                      skipSiteQueryDebounceRef.current = true
-                      void loadSites(siteQuery)
-                    }
-                    return next
-                  })
-                }}
-              >
-                <span
-                  style={{
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    flex: 1,
-                    opacity: selectedSiteId == null ? 0.55 : 1,
-                  }}
-                >
-                  {selectedSiteId == null ? '请选择站点' : selectedSiteLabel}
-                </span>
-                <span aria-hidden style={{ flexShrink: 0, opacity: 0.65, fontSize: '0.65rem' }}>
-                  {siteMenuOpen ? '▲' : '▼'}
-                </span>
-              </button>
-
-              {siteMenuOpen ? (
-                <div
-                  role="listbox"
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    top: '100%',
-                    marginTop: 4,
-                    zIndex: 5,
-                    borderRadius: 6,
-                    border: '1px solid var(--theme-elevation-150)',
-                    background: 'var(--theme-elevation-50)',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-                    padding: '0.5rem',
-                    maxHeight: 280,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.5rem',
-                  }}
-                >
-                  <input
-                    aria-label="筛选站点"
-                    autoComplete="off"
-                    placeholder="输入名称、slug 或域名筛选…"
-                    style={inputStyle}
-                    type="search"
-                    value={siteQuery}
-                    onChange={(e) => setSiteQuery(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <div style={{ maxHeight: 200, overflow: 'auto', margin: '0 -0.25rem' }}>
-                    <button
-                      aria-selected={false}
-                      role="option"
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        textAlign: 'left',
-                        padding: '0.45rem 0.5rem',
-                        border: 'none',
-                        borderRadius: 4,
-                        background: 'transparent',
-                        color: 'inherit',
-                        cursor: 'pointer',
-                        fontSize: '0.8125rem',
-                        opacity: 0.9,
-                      }}
-                      type="button"
-                      onClick={() => clearSiteSelection()}
-                    >
-                      清空选择
-                    </button>
-                    {sitesLoading ? (
-                      <span style={{ fontSize: '0.75rem', opacity: 0.7, padding: '0.25rem 0.5rem' }}>
-                        加载中…
-                      </span>
-                    ) : (
-                      sites.map((s) => (
-                        <button
-                          key={s.id}
-                          aria-selected={selectedSiteId === s.id}
-                          role="option"
-                          style={{
-                            display: 'block',
-                            width: '100%',
-                            textAlign: 'left',
-                            padding: '0.45rem 0.5rem',
-                            border: 'none',
-                            borderRadius: 4,
-                            background:
-                              selectedSiteId === s.id
-                                ? 'var(--theme-elevation-100)'
-                                : 'transparent',
-                            color: 'inherit',
-                            cursor: 'pointer',
-                            fontSize: '0.8125rem',
-                          }}
-                          type="button"
-                          onClick={() => pickSite(s)}
-                        >
-                          {formatSiteLine(s)}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <span style={fieldLabel}>主产品</span>
-              <textarea
-                placeholder="用于受众/域名提示词；选站点后会预填站点已保存的值。若填写则本次会写入站点的「主品 / Main product」字段。"
-                rows={2}
-                style={{ ...inputStyle, resize: 'vertical', minHeight: 56 }}
-                value={mainProduct}
-                onChange={(e) => setMainProduct(e.target.value)}
-              />
-            </div>
-
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '1rem',
-                fontSize: '0.8125rem',
-                cursor: 'pointer',
-              }}
-            >
-              <input checked={force} type="checkbox" onChange={(e) => setForce(e.target.checked)} />
-              强制换域（在可用标准价域名中尽量替换当前主域名）
-            </label>
-
-            <div style={{ marginBottom: '1.25rem' }}>
-              <span style={fieldLabel}>OpenRouter 模型（可选）</span>
-              <input
-                placeholder="留空则 google/gemini-2.5-flash"
-                style={inputStyle}
-                type="text"
-                value={aiModel}
-                onChange={(e) => setAiModel(e.target.value)}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <Button buttonStyle="secondary" onClick={close} type="button">
-                关闭
-              </Button>
-              <Button
-                type="button"
-                disabled={selectedSiteId == null}
-                onClick={() => {
-                  void submit()
-                }}
-              >
-                生成域名并写回站点
-              </Button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </>
-  )
-}
-
 export function ArticleListQuickAction(): React.ReactElement {
   return (
     <>
@@ -1697,11 +1284,5 @@ export function MediaListQuickAction(): React.ReactElement {
 }
 
 export function SiteListQuickAction(): React.ReactElement {
-  return (
-    <>
-      <SiteDomainQuickActionModal />
-      <SiteHeroBannerQueueModal />
-      <SiteLogoQueueModal />
-    </>
-  )
+  return <SiteQuickActionsDrawer />
 }
