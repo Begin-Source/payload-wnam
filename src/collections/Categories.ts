@@ -79,7 +79,18 @@ export const Categories: CollectionConfig = {
           'Guides：`kind=指南` 仅用于 Guides 顶部 chip；Reviews 列表会自动排除只属于指南分类的文章。`kind=评测` 与一般文章一样参与 Reviews，仅作语义区分。',
       },
     },
-    siteScopedSiteField,
+    {
+      ...siteScopedSiteField,
+      admin: {
+        ...(siteScopedSiteField.admin ?? {}),
+        listView: {
+          ...(typeof siteScopedSiteField.admin === 'object' && siteScopedSiteField.admin?.listView
+            ? siteScopedSiteField.admin.listView
+            : {}),
+          label: '站点名称',
+        },
+      },
+    },
     {
       name: 'slotIndex',
       type: 'number',

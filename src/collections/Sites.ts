@@ -13,6 +13,11 @@ import { localeSelectOptions } from '@/i18n/localeRegistry'
 export const Sites: CollectionConfig = {
   slug: 'sites',
   labels: { singular: '站点', plural: '站点' },
+  /** When `sites` is populated from relationships (e.g. categories list), include labels without loading full rows. */
+  defaultPopulate: {
+    name: true,
+    slug: true,
+  },
   admin: {
     group: adminGroups.website,
     useAsTitle: 'name',
