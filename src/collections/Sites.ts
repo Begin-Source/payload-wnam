@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { sitesCollectionAccess } from '@/collections/access/sitesAccess'
 import { syncBlueprintsMirroredLayoutAfterSiteChange } from '@/collections/hooks/syncBlueprintMirroredLayout'
 import { fillSitesOptionalDbFields } from '@/collections/hooks/fillSitesOptionalDbFields'
+import { deleteSiteCascadeBeforeDelete } from '@/collections/hooks/deleteSiteCascade'
 import { setSitesCreatedByOnCreate } from '@/collections/hooks/setSitesCreatedByOnCreate'
 import { auditSitesMatrixChange } from '@/collections/hooks/sitesMatrixAudit'
 import { enforceSitesMatrixQuota } from '@/collections/hooks/sitesMatrixQuota'
@@ -48,6 +49,7 @@ export const Sites: CollectionConfig = {
     delete: denyPortalAndFinanceCollection('sites', sitesCollectionAccess.delete),
   },
   hooks: {
+    beforeDelete: [deleteSiteCascadeBeforeDelete],
     beforeChange: [
       setSitesCreatedByOnCreate,
       fillSitesOptionalDbFields,
