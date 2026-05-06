@@ -464,9 +464,9 @@ export interface Site {
     | boolean
     | null;
   /**
-   * 推荐取值（小写英文）：idle 代办 · running 运行中 · done 已完成 · error 错误。API 与列表徽章按此约定；任意其他值在列表中按代办样式显示。
+   * 由域名生成等 API 写入；也可在此手工调整（idle / running / done / error）。列表徽章与此一致。
    */
-  domainWorkflowStatus?: string | null;
+  domainWorkflowStatus?: ('idle' | 'running' | 'done' | 'error') | null;
   /**
    * available | unavailable | error（多由 API 写入）。
    */
@@ -668,9 +668,9 @@ export interface SiteBlueprint {
    */
   mirroredSiteLayout?: ('template1' | 'template2' | 'amz-template-1' | 'amz-template-2') | null;
   /**
-   * 推荐取值（小写英文）：idle 代办 · running 运行中 · done 已完成 · error 错误。由 AMZ 设计生成等流程写入；卡死时可手工改回 idle（代办）。
+   * 由 AMZ 设计生成等快捷操作写入；也可在此手工调整（idle / running / done / error）。卡死时可改回 idle。
    */
-  designWorkflowStatus?: string | null;
+  designWorkflowStatus?: ('idle' | 'running' | 'done' | 'error') | null;
   /**
    * 由「快捷操作 · 生成 AMZ 设计」等在失败时追加记录（含时间与错误码、详情）；成功或重跑不会清空本日志。仅展示，不可手改。
    */
@@ -861,13 +861,17 @@ export interface Category {
    */
   slotIndex?: number | null;
   /**
-   * 由「快捷操作 · 生成分类槽位」直接写入本分类（idle / running / done / error）。同站点下各分类通常一致。
+   * 首页 / Products 分类卡封面；也可用「Together 分类封面」快捷批量生成。
    */
-  categorySlotsWorkflowStatus?: string | null;
+  coverImage?: (number | null) | Media;
   /**
-   * DataForSEO Merchant → Offers（idle / running / done / error）。快捷操作写入。
+   * 由「快捷操作 · 生成分类槽位」写入；也可在此手工纠正（idle / running / done / error）。同站点下各分类通常一致。
    */
-  merchantOfferFetchWorkflowStatus?: string | null;
+  categorySlotsWorkflowStatus?: ('idle' | 'running' | 'done' | 'error') | null;
+  /**
+   * DataForSEO Merchant → Offers；快捷操作写入，也可在此手工调整（idle / running / done / error）。
+   */
+  merchantOfferFetchWorkflowStatus?: ('idle' | 'running' | 'done' | 'error') | null;
   merchantOfferFetchWorkflowLog?: string | null;
   merchantOfferFetchDfTaskTag?: string | null;
   merchantOfferFetchLastBatchId?: string | null;
@@ -876,10 +880,6 @@ export interface Category {
    */
   merchantOfferFetchLastSummary?: string | null;
   description?: string | null;
-  /**
-   * 首页 / Products 分类卡封面；也可用「Together 分类封面」快捷批量生成。
-   */
-  coverImage?: (number | null) | Media;
   updatedAt: string;
   createdAt: string;
 }
@@ -941,9 +941,9 @@ export interface Page {
   publishedAt?: string | null;
   excerpt?: string | null;
   /**
-   * n8n 同源：About/Contact/Privacy/Terms/Affiliate 五张 en 页一次生成。仅上列 slug 且 locale 为 en 时显示与更新。
+   * 「生成信任页包」快捷操作写入；也可在此手工调整（idle / running / done / error）。仅信任页包五个 slug 且 locale 为 en 时显示。列表「信任页包」列同步。
    */
-  sitePagesBundleWorkflowStatus?: string | null;
+  sitePagesBundleWorkflowStatus?: ('idle' | 'running' | 'done' | 'error') | null;
   /**
    * 失败时由「生成信任页包」追加；成功不整段清空。
    */
@@ -3395,6 +3395,7 @@ export interface CategoriesSelect<T extends boolean = true> {
   kind?: T;
   site?: T;
   slotIndex?: T;
+  coverImage?: T;
   categorySlotsWorkflowStatus?: T;
   merchantOfferFetchWorkflowStatus?: T;
   merchantOfferFetchWorkflowLog?: T;
@@ -3402,7 +3403,6 @@ export interface CategoriesSelect<T extends boolean = true> {
   merchantOfferFetchLastBatchId?: T;
   merchantOfferFetchLastSummary?: T;
   description?: T;
-  coverImage?: T;
   updatedAt?: T;
   createdAt?: T;
 }

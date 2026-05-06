@@ -1244,6 +1244,7 @@ export function CategoryListQuickAction(): React.ReactElement {
     <>
       <CategoryCoverQuickActionModal />
       <CategorySlotsQuickActionModal />
+      <OfferMerchantSlotQuickActionModal />
       <WorkflowQuickActionModal kind="categories" />
     </>
   )
@@ -1260,7 +1261,6 @@ export function KeywordSyncFetchListAction(): React.ReactElement {
 export function OfferListQuickAction(): React.ReactElement {
   return (
     <>
-      <OfferMerchantSlotQuickActionModal />
       <OfferReviewMdxQuickActionModal />
     </>
   )

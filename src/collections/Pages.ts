@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { postLikeFields } from '@/collections/shared/postLikeFields'
 import { adminGroups } from '@/constants/adminGroups'
 import { isTrustBundleEnPage } from '@/utilities/sitePagesBundleContent/trustPageConstants'
+import { workflowIdleRunningDoneErrorSelectOptions } from '@/collections/shared/workflowIdleRunningDoneErrorSelectOptions'
 import { validateDocLocaleAgainstSite } from '@/collections/hooks/validateDocLocaleAgainstSite'
 import { validateSlugLocaleUnique } from '@/collections/shared/validateSlugLocaleUnique'
 import { validateCategoriesMatchSite } from '@/collections/shared/validateCategoriesMatchSite'
@@ -16,13 +17,14 @@ const sitePagesBundleFields = ((): CollectionConfig['fields'] => {
   return [
     {
       name: 'sitePagesBundleWorkflowStatus',
-      type: 'text',
+      type: 'select',
       label: '信任页包流程',
       defaultValue: 'idle',
+      options: [...workflowIdleRunningDoneErrorSelectOptions],
       admin: {
         condition,
         description:
-          'n8n 同源：About/Contact/Privacy/Terms/Affiliate 五张 en 页一次生成。仅上列 slug 且 locale 为 en 时显示与更新。',
+          '「生成信任页包」快捷操作写入；也可在此手工调整（idle / running / done / error）。仅信任页包五个 slug 且 locale 为 en 时显示。列表「信任页包」列同步。',
         listView: { label: '信任页包' },
         components: {
           Cell: './components/SitePagesBundleWorkflowStatusCell#SitePagesBundleWorkflowStatusCell',

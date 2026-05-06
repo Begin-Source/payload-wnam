@@ -15,6 +15,7 @@ import {
   requireSiteOnCreate,
   siteScopedSiteField,
 } from '@/collections/shared/siteScopedSiteField'
+import { workflowIdleRunningDoneErrorSelectOptions } from '@/collections/shared/workflowIdleRunningDoneErrorSelectOptions'
 import { isUsersCollection } from '@/utilities/announcementAccess'
 import { isSystemConfigNavVisible } from '@/utilities/isSuperAdminLikeUser'
 import { userHasRole, userHasTenantGeneralManagerRole } from '@/utilities/userRoles'
@@ -99,12 +100,13 @@ export const SiteBlueprints: CollectionConfig = {
     },
     {
       name: 'designWorkflowStatus',
-      type: 'text',
+      type: 'select',
       label: '设计流程状态',
       defaultValue: 'idle',
+      options: [...workflowIdleRunningDoneErrorSelectOptions],
       admin: {
         description:
-          '推荐取值（小写英文）：idle 代办 · running 运行中 · done 已完成 · error 错误。由 AMZ 设计生成等流程写入；卡死时可手工改回 idle（代办）。',
+          '由 AMZ 设计生成等快捷操作写入；也可在此手工调整（idle / running / done / error）。卡死时可改回 idle。',
         listView: {
           label: '流程',
         },

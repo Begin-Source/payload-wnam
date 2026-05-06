@@ -287,6 +287,17 @@ export function OfferMerchantSlotQuickActionModal(): React.ReactElement {
     })
   }
 
+  const selectAllFilteredCategories = (): void => {
+    setSelectedCategoryIds(new Set(filteredCategories.map((c) => c.id)))
+  }
+
+  const clearCategorySelection = (): void => {
+    setSelectedCategoryIds(new Set())
+  }
+
+  const categoryBulkActionsDisabled =
+    selectedSiteId == null || catsLoading || filteredCategories.length === 0
+
   return (
     <>
       <Button buttonStyle="secondary" onClick={() => setOpen(true)} size="small" type="button">
@@ -317,10 +328,11 @@ export function OfferMerchantSlotQuickActionModal(): React.ReactElement {
               快捷操作 · DataForSEO 分类槽位拉品
             </h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
-              按类目关键词调用 DataForSEO Merchant Amazon Products，结果 postback 后写入本站 Offer。
+              在 <strong>分类</strong> 列表发起：按类目关键词调用 DataForSEO Merchant Amazon Products，postback 结果写入本站{' '}
+              <strong>Offer</strong>（无存量时会新建）。
               Tag 形如 <code>payload:category:…</code>。
-              <strong> 类目进度</strong>在 <strong>分类</strong> 列表的「Merchant 拉品」列；派发成功后，匹配的{' '}
-              <strong>Offer</strong> 「槽位拉取」会标为「运行中」（无匹配 Offer 时仍为「代办」）。
+              <strong>类目进度</strong>在本列表「Merchant 拉品」列；派发成功后，已绑定该类目的{' '}
+              <strong>Offer</strong>「槽位拉取」会标为「运行中」（无匹配 Offer 时不标记）。
             </p>
 
             {successPayload ?
@@ -343,8 +355,9 @@ export function OfferMerchantSlotQuickActionModal(): React.ReactElement {
                   槽位标为「运行中」。
                 </p>
                 <p style={{ margin: '0 0 0.5rem' }}>
-                  请在 <strong>分类</strong> 列表核对「Merchant 拉品」（running / done / error）；Webhook
-                  回填后 Offer 槽位会变为「已完成」等新状态。
+                  请先在<strong>分类</strong>列表「Merchant 拉品」列核对进度（running / done / error）；已有类目匹配的 Offer 可在{' '}
+                  <strong>Offer</strong> 列表「槽位拉取」列对照。
+                  Webhook 回填后会写入或更新 Offer。
                 </p>
                 <ul style={{ margin: '0 0 0.75rem', paddingLeft: '1.25rem' }}>
                   {successPayload.results.map((r, idx) => (
@@ -530,7 +543,60 @@ export function OfferMerchantSlotQuickActionModal(): React.ReactElement {
             </label>
 
             <div style={{ marginBottom: '1rem' }}>
-              <span style={fieldLabel}>分类（可多选）</span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  marginBottom: '0.35rem',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span style={{ ...fieldLabel, marginBottom: 0 }}>分类（可多选）</span>
+                <div style={{ display: 'flex', gap: '0.65rem', flexShrink: 0 }}>
+                  <button
+                    disabled={categoryBulkActionsDisabled}
+                    style={{
+                      border: 'none',
+                      padding: 0,
+                      background: 'transparent',
+                      color: 'var(--theme-text)',
+                      fontSize: '0.8125rem',
+                      cursor: categoryBulkActionsDisabled ? 'not-allowed' : 'pointer',
+                      opacity: categoryBulkActionsDisabled ? 0.45 : 0.9,
+                      textDecoration: 'underline',
+                      textUnderlineOffset: 2,
+                    }}
+                    type="button"
+                    onClick={() => {
+                      selectAllFilteredCategories()
+                    }}
+                  >
+                    全选当前列表
+                  </button>
+                  <button
+                    disabled={categoryBulkActionsDisabled}
+                    style={{
+                      border: 'none',
+                      padding: 0,
+                      background: 'transparent',
+                      color: 'var(--theme-text)',
+                      fontSize: '0.8125rem',
+                      cursor: categoryBulkActionsDisabled ? 'not-allowed' : 'pointer',
+                      opacity: categoryBulkActionsDisabled ? 0.45 : 0.9,
+                      textDecoration: 'underline',
+                      textUnderlineOffset: 2,
+                    }}
+                    type="button"
+                    onClick={() => {
+                      clearCategorySelection()
+                    }}
+                  >
+                    清空选择
+                  </button>
+                </div>
+              </div>
               <div
                 style={{
                   border: '1px solid var(--theme-elevation-150)',

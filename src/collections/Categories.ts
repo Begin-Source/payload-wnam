@@ -8,6 +8,7 @@ import {
   requireSiteOnCreate,
   siteScopedSiteField,
 } from '@/collections/shared/siteScopedSiteField'
+import { workflowIdleRunningDoneErrorSelectOptions } from '@/collections/shared/workflowIdleRunningDoneErrorSelectOptions'
 import { localeSelectOptions } from '@/i18n/localeRegistry'
 
 export const Categories: CollectionConfig = {
@@ -103,20 +104,29 @@ export const Categories: CollectionConfig = {
       min: 1,
       max: 5,
       admin: {
-        position: 'sidebar',
         description:
           '可选。1–5 由「快捷操作 · 生成分类槽位」管理；留空表示手工分类。',
       },
     },
     {
+      name: 'coverImage',
+      type: 'upload',
+      relationTo: 'media',
+      label: '封面图',
+      admin: {
+        description:
+          '首页 / Products 分类卡封面；也可用「Together 分类封面」快捷批量生成。',
+      },
+    },
+    {
       name: 'categorySlotsWorkflowStatus',
-      type: 'text',
+      type: 'select',
       label: '分类槽位流程状态',
       defaultValue: 'idle',
+      options: [...workflowIdleRunningDoneErrorSelectOptions],
       admin: {
-        readOnly: true,
         description:
-          '由「快捷操作 · 生成分类槽位」直接写入本分类（idle / running / done / error）。同站点下各分类通常一致。',
+          '由「快捷操作 · 生成分类槽位」写入；也可在此手工纠正（idle / running / done / error）。同站点下各分类通常一致。',
         listView: {
           label: '槽位流程',
         },
@@ -127,13 +137,13 @@ export const Categories: CollectionConfig = {
     },
     {
       name: 'merchantOfferFetchWorkflowStatus',
-      type: 'text',
+      type: 'select',
       label: '拉品槽位流程',
       defaultValue: 'idle',
+      options: [...workflowIdleRunningDoneErrorSelectOptions],
       admin: {
-        readOnly: true,
         description:
-          'DataForSEO Merchant → Offers（idle / running / done / error）。快捷操作写入。',
+          'DataForSEO Merchant → Offers；快捷操作写入，也可在此手工调整（idle / running / done / error）。',
         listView: {
           label: 'Merchant 拉品',
         },
@@ -184,17 +194,6 @@ export const Categories: CollectionConfig = {
     {
       name: 'description',
       type: 'textarea',
-    },
-    {
-      name: 'coverImage',
-      type: 'upload',
-      relationTo: 'media',
-      label: '封面图',
-      admin: {
-        description:
-          '首页 / Products 分类卡封面；也可用「Together 分类封面」快捷批量生成。',
-        position: 'sidebar',
-      },
     },
   ],
 }

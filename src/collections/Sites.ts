@@ -8,6 +8,7 @@ import { setSitesCreatedByOnCreate } from '@/collections/hooks/setSitesCreatedBy
 import { auditSitesMatrixChange } from '@/collections/hooks/sitesMatrixAudit'
 import { enforceSitesMatrixQuota } from '@/collections/hooks/sitesMatrixQuota'
 import { validateSitesPublicLocales } from '@/collections/hooks/validateSitesPublicLocales'
+import { workflowIdleRunningDoneErrorSelectOptions } from '@/collections/shared/workflowIdleRunningDoneErrorSelectOptions'
 import { adminGroups } from '@/constants/adminGroups'
 import { denyPortalAndFinanceCollection } from '@/utilities/userAccessTiers'
 import { localeSelectOptions } from '@/i18n/localeRegistry'
@@ -244,12 +245,13 @@ export const Sites: CollectionConfig = {
         },
         {
           name: 'domainWorkflowStatus',
-          type: 'text',
+          type: 'select',
           label: '域名流程状态',
           defaultValue: 'idle',
+          options: [...workflowIdleRunningDoneErrorSelectOptions],
           admin: {
             description:
-              '推荐取值（小写英文）：idle 代办 · running 运行中 · done 已完成 · error 错误。API 与列表徽章按此约定；任意其他值在列表中按代办样式显示。',
+              '由域名生成等 API 写入；也可在此手工调整（idle / running / done / error）。列表徽章与此一致。',
             components: {
               Cell: './components/DomainWorkflowStatusCell#DomainWorkflowStatusCell',
             },
