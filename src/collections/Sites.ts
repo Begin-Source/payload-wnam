@@ -1,12 +1,14 @@
 import type { CollectionConfig } from 'payload'
 
+import { sitesCollectionAccess } from '@/collections/access/sitesAccess'
 import { syncBlueprintsMirroredLayoutAfterSiteChange } from '@/collections/hooks/syncBlueprintMirroredLayout'
 import { fillSitesOptionalDbFields } from '@/collections/hooks/fillSitesOptionalDbFields'
+import { setSitesCreatedByOnCreate } from '@/collections/hooks/setSitesCreatedByOnCreate'
 import { auditSitesMatrixChange } from '@/collections/hooks/sitesMatrixAudit'
 import { enforceSitesMatrixQuota } from '@/collections/hooks/sitesMatrixQuota'
 import { validateSitesPublicLocales } from '@/collections/hooks/validateSitesPublicLocales'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
 import { adminGroups } from '@/constants/adminGroups'
+import { denyPortalAndFinanceCollection } from '@/utilities/userAccessTiers'
 import { localeSelectOptions } from '@/i18n/localeRegistry'
 
 export const Sites: CollectionConfig = {
@@ -16,6 +18,7 @@ export const Sites: CollectionConfig = {
   defaultPopulate: {
     name: true,
     slug: true,
+    createdBy: true,
   },
   admin: {
     group: adminGroups.website,
@@ -23,6 +26,7 @@ export const Sites: CollectionConfig = {
     defaultColumns: [
       'name',
       'slug',
+      'createdBy',
       'portfolio',
       'status',
       'domainWorkflowStatus',
@@ -37,15 +41,37 @@ export const Sites: CollectionConfig = {
       },
     },
   },
-  access: loggedInSuperAdminAccessFor('sites'),
+  access: {
+    read: denyPortalAndFinanceCollection('sites', sitesCollectionAccess.read),
+    create: denyPortalAndFinanceCollection('sites', sitesCollectionAccess.create),
+    update: denyPortalAndFinanceCollection('sites', sitesCollectionAccess.update),
+    delete: denyPortalAndFinanceCollection('sites', sitesCollectionAccess.delete),
+  },
   hooks: {
-    beforeChange: [fillSitesOptionalDbFields, validateSitesPublicLocales, enforceSitesMatrixQuota],
+    beforeChange: [
+      setSitesCreatedByOnCreate,
+      fillSitesOptionalDbFields,
+      validateSitesPublicLocales,
+      enforceSitesMatrixQuota,
+    ],
     afterChange: [
       syncBlueprintsMirroredLayoutAfterSiteChange,
       auditSitesMatrixChange,
     ],
   },
   fields: [
+    {
+      name: 'createdBy',
+      type: 'relationship',
+      relationTo: 'users',
+      label: '创建人',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description:
+          '站长仅可见自己创建的站点；组长可见本人及团队在籍站长创建的站点。总经理 / 运营经理可见租户内全部（含历史未填创建人的站点）。创建站点时始终记录为当前登录用户，保存后不可更改。',
+      },
+    },
     {
       name: 'name',
       type: 'text',

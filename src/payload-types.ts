@@ -357,6 +357,10 @@ export interface SitePortfolio {
 export interface Site {
   id: number;
   tenant?: (number | null) | Tenant;
+  /**
+   * 站长仅可见自己创建的站点；组长可见本人及团队在籍站长创建的站点。总经理 / 运营经理可见租户内全部（含历史未填创建人的站点）。创建站点时始终记录为当前登录用户，保存后不可更改。
+   */
+  createdBy?: (number | null) | User;
   name: string;
   /**
    * URL-safe key; pair with tenant for uniqueness in your workflows. 列表「快捷操作 · 生成域名」在写回主域名时会将 slug 同步为小写并把域名中的点替换为连字符。新建时若留空，会按名称自动生成占位 slug。
@@ -3299,6 +3303,7 @@ export interface SitePortfoliosSelect<T extends boolean = true> {
  */
 export interface SitesSelect<T extends boolean = true> {
   tenant?: T;
+  createdBy?: T;
   name?: T;
   slug?: T;
   primaryDomain?: T;
