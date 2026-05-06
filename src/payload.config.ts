@@ -566,6 +566,8 @@ function getCloudflareContextFromWrangler(): Promise<CloudflareContext> {
       getPlatformProxy({
         environment: process.env.CLOUDFLARE_ENV,
         remoteBindings: isProduction && !isNextBuild,
+        /** Avoid parallel Next build workers contending on `.wrangler/state/v3` D1 SQLite (SQLITE_BUSY). */
+        ...(isNextBuild ? { persist: false as const } : {}),
       } satisfies GetPlatformProxyOptions),
   )
 }
