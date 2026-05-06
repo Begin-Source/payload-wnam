@@ -7,7 +7,10 @@ import { adminGroups } from '@/constants/adminGroups'
 import {
   syncMirroredLayoutFromSiteBeforeChange,
 } from '@/collections/hooks/syncBlueprintMirroredLayout'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import {
+  validateSiteFieldWithinVisibilityScope,
+} from '@/collections/hooks/validateSiteVisibilityScope'
 import {
   requireSiteOnCreate,
   siteScopedSiteField,
@@ -50,9 +53,13 @@ export const SiteBlueprints: CollectionConfig = {
     },
   },
   hooks: {
-    beforeChange: [requireSiteOnCreate, syncMirroredLayoutFromSiteBeforeChange],
+    beforeChange: [
+      requireSiteOnCreate,
+      validateSiteFieldWithinVisibilityScope,
+      syncMirroredLayoutFromSiteBeforeChange,
+    ],
   },
-  access: loggedInSuperAdminAccessFor('site-blueprints'),
+  access: siteScopedCollectionAccess('site-blueprints'),
   fields: [
     {
       name: 'name',

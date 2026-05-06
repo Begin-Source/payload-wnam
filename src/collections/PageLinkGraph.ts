@@ -1,7 +1,8 @@
 import type { CollectionConfig } from 'payload'
 
 import { adminGroups } from '@/constants/adminGroups'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 
 export const PageLinkGraph: CollectionConfig = {
   slug: 'page-link-graph',
@@ -11,7 +12,10 @@ export const PageLinkGraph: CollectionConfig = {
     useAsTitle: 'anchorText',
     defaultColumns: ['site', 'fromCollection', 'toCollection', 'location', 'lastSeenAt'],
   },
-  access: loggedInSuperAdminAccessFor('page-link-graph'),
+  access: siteScopedCollectionAccess('page-link-graph'),
+  hooks: {
+    beforeChange: [validateSiteFieldWithinVisibilityScope],
+  },
   fields: [
     { name: 'site', type: 'relationship', relationTo: 'sites' },
     { name: 'fromCollection', type: 'text', required: true, index: true },

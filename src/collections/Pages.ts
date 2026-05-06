@@ -7,7 +7,8 @@ import { validateDocLocaleAgainstSite } from '@/collections/hooks/validateDocLoc
 import { validateSlugLocaleUnique } from '@/collections/shared/validateSlugLocaleUnique'
 import { validateCategoriesMatchSite } from '@/collections/shared/validateCategoriesMatchSite'
 import { pageLinkGraphSync } from '@/collections/hooks/pageLinkGraphSync'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 
 const sitePagesBundleFields = ((): CollectionConfig['fields'] => {
   const condition = (_data: unknown, sibling: unknown): boolean =>
@@ -90,12 +91,13 @@ export const Pages: CollectionConfig = {
   },
   hooks: {
     beforeChange: [
+      validateSiteFieldWithinVisibilityScope,
       validateCategoriesMatchSite,
       validateDocLocaleAgainstSite,
       validateSlugLocaleUnique('pages'),
     ],
     afterChange: [pageLinkGraphSync],
   },
-  access: loggedInSuperAdminAccessFor('pages'),
+  access: siteScopedCollectionAccess('pages'),
   fields: [...postLikeFields, ...sitePagesBundleFields],
 }

@@ -6,7 +6,8 @@ import {
 } from '@/collections/hooks/workflowJobMatrixTemplate'
 import { adminGroups } from '@/constants/adminGroups'
 import { WORKFLOW_MATRIX_TEMPLATE_LABELS } from '@/constants/workflowJobMatrixTemplates'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 
 export const WorkflowJobs: CollectionConfig = {
   slug: 'workflow-jobs',
@@ -25,9 +26,13 @@ export const WorkflowJobs: CollectionConfig = {
     description:
       '矩阵模板：新建任务时可选「矩阵模板」，在 Input payload 为空时自动填入 JSON 预设（见 constants/workflowJobMatrixTemplates）。',
   },
-  access: loggedInSuperAdminAccessFor('workflow-jobs'),
+  access: siteScopedCollectionAccess('workflow-jobs'),
   hooks: {
-    beforeChange: [applyWorkflowMatrixTemplate, guardWorkflowJobPipelineSpend],
+    beforeChange: [
+      validateSiteFieldWithinVisibilityScope,
+      applyWorkflowMatrixTemplate,
+      guardWorkflowJobPipelineSpend,
+    ],
   },
   fields: [
     {

@@ -1,7 +1,8 @@
 import type { CollectionConfig } from 'payload'
 
 import { adminGroups } from '@/constants/adminGroups'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 
 export const ClickEvents: CollectionConfig = {
   slug: 'click-events',
@@ -11,7 +12,10 @@ export const ClickEvents: CollectionConfig = {
     useAsTitle: 'id',
     defaultColumns: ['occurredAt', 'eventType', 'site', 'offer', 'updatedAt'],
   },
-  access: loggedInSuperAdminAccessFor('click-events'),
+  access: siteScopedCollectionAccess('click-events'),
+  hooks: {
+    beforeChange: [validateSiteFieldWithinVisibilityScope],
+  },
   fields: [
     {
       name: 'occurredAt',

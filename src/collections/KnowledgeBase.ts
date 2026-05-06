@@ -3,7 +3,8 @@ import type { CollectionConfig } from 'payload'
 import { lexicalEditorWithAi } from '@/utilities/lexicalEditorWithAi'
 
 import { adminGroups } from '@/constants/adminGroups'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 
 export const KnowledgeBase: CollectionConfig = {
   slug: 'knowledge-base',
@@ -23,7 +24,10 @@ export const KnowledgeBase: CollectionConfig = {
       ],
     },
   },
-  access: loggedInSuperAdminAccessFor('knowledge-base'),
+  access: siteScopedCollectionAccess('knowledge-base'),
+  hooks: {
+    beforeChange: [validateSiteFieldWithinVisibilityScope],
+  },
   fields: [
     { name: 'title', type: 'text', required: true },
     { name: 'slug', type: 'text', index: true },

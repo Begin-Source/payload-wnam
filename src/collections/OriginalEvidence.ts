@@ -1,7 +1,8 @@
 import type { CollectionConfig } from 'payload'
 
 import { adminGroups } from '@/constants/adminGroups'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateOriginalEvidenceArticleVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 
 export const OriginalEvidence: CollectionConfig = {
   slug: 'original-evidence',
@@ -11,7 +12,10 @@ export const OriginalEvidence: CollectionConfig = {
     useAsTitle: 'id',
     defaultColumns: ['kind', 'article', 'capturedAt', 'updatedAt'],
   },
-  access: loggedInSuperAdminAccessFor('original-evidence'),
+  access: siteScopedCollectionAccess('original-evidence', 'original-evidence'),
+  hooks: {
+    beforeChange: [validateOriginalEvidenceArticleVisibilityScope],
+  },
   fields: [
     {
       name: 'kind',

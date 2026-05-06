@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 import { contentBriefOutlineValidate } from '@/collections/hooks/contentBriefOutlineValidate'
 import { adminGroups } from '@/constants/adminGroups'
 
@@ -12,9 +13,10 @@ export const ContentBriefs: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'site', 'status', 'updatedAt'],
   },
-  access: loggedInSuperAdminAccessFor('content-briefs'),
+  access: siteScopedCollectionAccess('content-briefs'),
   hooks: {
     beforeValidate: [contentBriefOutlineValidate],
+    beforeChange: [validateSiteFieldWithinVisibilityScope],
   },
   fields: [
     { name: 'title', type: 'text', required: true },

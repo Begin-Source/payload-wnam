@@ -1,12 +1,13 @@
 import type { CollectionConfig } from 'payload'
 
 import { adminGroups } from '@/constants/adminGroups'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
 import { validateCategoryLocaleAgainstSite } from '@/collections/hooks/validateCategoryLocaleAgainstSite'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 import {
   requireSiteOnCreate,
   siteScopedSiteField,
 } from '@/collections/shared/siteScopedSiteField'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
 import { localeSelectOptions } from '@/i18n/localeRegistry'
 
 export const Categories: CollectionConfig = {
@@ -35,9 +36,13 @@ export const Categories: CollectionConfig = {
     },
   },
   hooks: {
-    beforeChange: [requireSiteOnCreate, validateCategoryLocaleAgainstSite],
+    beforeChange: [
+      requireSiteOnCreate,
+      validateSiteFieldWithinVisibilityScope,
+      validateCategoryLocaleAgainstSite,
+    ],
   },
-  access: loggedInSuperAdminAccessFor('categories'),
+  access: siteScopedCollectionAccess('categories'),
   fields: [
     {
       name: 'name',

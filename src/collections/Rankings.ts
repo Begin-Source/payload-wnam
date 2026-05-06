@@ -1,7 +1,8 @@
 import type { CollectionConfig } from 'payload'
 
 import { adminGroups } from '@/constants/adminGroups'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 
 export const Rankings: CollectionConfig = {
   slug: 'rankings',
@@ -12,7 +13,10 @@ export const Rankings: CollectionConfig = {
     defaultColumns: ['searchQuery', 'keyword', 'site', 'serpPosition', 'capturedAt', 'updatedAt'],
     listSearchableFields: ['searchQuery', 'serpUrl', 'notes'],
   },
-  access: loggedInSuperAdminAccessFor('rankings'),
+  access: siteScopedCollectionAccess('rankings'),
+  hooks: {
+    beforeChange: [validateSiteFieldWithinVisibilityScope],
+  },
   fields: [
     {
       name: 'keyword',

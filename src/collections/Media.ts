@@ -1,5 +1,6 @@
-import type { CollectionConfig } from 'payload'
+import type { Access, CollectionConfig, Where } from 'payload'
 
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 import { adminGroups } from '@/constants/adminGroups'
 import {
   requireSiteOnCreate,
@@ -7,13 +8,28 @@ import {
 } from '@/collections/shared/siteScopedSiteField'
 import { isUsersCollection } from '@/utilities/announcementAccess'
 import { financeOnlyBlocksCollection } from '@/utilities/financeRoleAccess'
+import { resolveVisibleSiteIds } from '@/utilities/siteVisibilityScope'
 import { userHasUnscopedAdminAccess } from '@/utilities/superAdmin'
-import { superAdminOrTenantGMPasses } from '@/utilities/superAdminPasses'
 import { getTenantScopeForStats } from '@/utilities/tenantScope'
+import { tenantWideContentPasses } from '@/utilities/tenantWideContentPasses'
 import {
   announcementsPortalBlocksCollection,
   denyPortalAndFinanceCollection,
 } from '@/utilities/userAccessTiers'
+
+function impossibleWhere(): Where {
+  return { id: { equals: 0 } }
+}
+
+const mediaScopedMutate: Access = tenantWideContentPasses(async ({ req }) => {
+  const ids = await resolveVisibleSiteIds(req.payload, req)
+  if (ids === false) return false
+  if (ids === true) return Boolean(req.user)
+  if (ids.length === 0) return impossibleWhere()
+  return { site: { in: ids } }
+})
+
+const loggedInAllowCreate: Access = ({ req: { user } }) => Boolean(user)
 
 export const Media: CollectionConfig = {
   slug: 'media',
@@ -38,7 +54,7 @@ export const Media: CollectionConfig = {
     },
   },
   hooks: {
-    beforeChange: [requireSiteOnCreate],
+    beforeChange: [requireSiteOnCreate, validateSiteFieldWithinVisibilityScope],
   },
   access: {
     read: async ({ req }) => {
@@ -47,32 +63,33 @@ export const Media: CollectionConfig = {
       if (!req.user) return true
       if (userHasUnscopedAdminAccess(req.user)) return true
       if (!isUsersCollection(req.user)) return false
-      const scope = getTenantScopeForStats(req.user)
-      if (scope.mode === 'all') return true
-      if (scope.mode === 'none') return { id: { equals: 0 } }
-      const sitesRes = await req.payload.find({
-        collection: 'sites',
-        depth: 0,
-        limit: 500,
-        pagination: false,
-        where: { tenant: { in: scope.tenantIds } },
-      })
-      const siteIds = sitesRes.docs.map((s: { id: number }) => s.id)
-      if (siteIds.length === 0) return { id: { equals: 0 } }
-      return { site: { in: siteIds } }
+
+      const ids = await resolveVisibleSiteIds(req.payload, req)
+      if (ids === false) return false
+      if (ids === true) {
+        const scope = getTenantScopeForStats(req.user)
+        if (scope.mode === 'all') return true
+        if (scope.mode === 'none') return { id: { equals: 0 } }
+        const sitesRes = await req.payload.find({
+          collection: 'sites',
+          depth: 0,
+          limit: 500,
+          pagination: false,
+          where: { tenant: { in: scope.tenantIds } },
+        })
+        const siteIds = sitesRes.docs.map((s: { id: number }) => s.id)
+        if (siteIds.length === 0) return { id: { equals: 0 } }
+        return { site: { in: siteIds } }
+      }
+      if (ids.length === 0) return { id: { equals: 0 } }
+      return { site: { in: ids } }
     },
     create: denyPortalAndFinanceCollection(
       'media',
-      superAdminOrTenantGMPasses(({ req: { user } }) => Boolean(user)),
+      tenantWideContentPasses(loggedInAllowCreate),
     ),
-    update: denyPortalAndFinanceCollection(
-      'media',
-      superAdminOrTenantGMPasses(({ req: { user } }) => Boolean(user)),
-    ),
-    delete: denyPortalAndFinanceCollection(
-      'media',
-      superAdminOrTenantGMPasses(({ req: { user } }) => Boolean(user)),
-    ),
+    update: denyPortalAndFinanceCollection('media', mediaScopedMutate),
+    delete: denyPortalAndFinanceCollection('media', mediaScopedMutate),
   },
   fields: [
     {
@@ -144,7 +161,6 @@ export const Media: CollectionConfig = {
     },
   ],
   upload: {
-    // These are not supported on Workers yet due to lack of sharp
     crop: false,
     focalPoint: false,
   },

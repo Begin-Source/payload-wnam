@@ -5,7 +5,8 @@ import { lexicalEditorWithAi } from '@/utilities/lexicalEditorWithAi'
 import { authorsGdprValidate } from '@/collections/hooks/authorsGdprValidate'
 import { authorsSitesSlugValidate } from '@/collections/hooks/authorsSitesSlugValidate'
 import { adminGroups } from '@/constants/adminGroups'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateAuthorsSitesWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 
 export const Authors: CollectionConfig = {
   slug: 'authors',
@@ -15,9 +16,10 @@ export const Authors: CollectionConfig = {
     useAsTitle: 'displayName',
     defaultColumns: ['displayName', 'sites', 'role', 'updatedAt'],
   },
-  access: loggedInSuperAdminAccessFor('authors'),
+  access: siteScopedCollectionAccess('authors', 'authors'),
   hooks: {
     beforeValidate: [authorsGdprValidate, authorsSitesSlugValidate],
+    beforeChange: [validateAuthorsSitesWithinVisibilityScope],
   },
   fields: [
     { name: 'displayName', type: 'text', required: true, index: true },

@@ -1,7 +1,8 @@
 import type { CollectionConfig } from 'payload'
 
 import { adminGroups } from '@/constants/adminGroups'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 
 export const Redirects: CollectionConfig = {
   slug: 'redirects',
@@ -11,7 +12,10 @@ export const Redirects: CollectionConfig = {
     useAsTitle: 'fromPath',
     defaultColumns: ['fromPath', 'toPath', 'statusCode', 'site', 'enabled', 'sortOrder'],
   },
-  access: loggedInSuperAdminAccessFor('redirects'),
+  access: siteScopedCollectionAccess('redirects'),
+  hooks: {
+    beforeChange: [validateSiteFieldWithinVisibilityScope],
+  },
   fields: [
     {
       name: 'site',

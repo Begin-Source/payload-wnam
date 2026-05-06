@@ -1,7 +1,8 @@
 import type { CollectionConfig } from 'payload'
 
 import { adminGroups } from '@/constants/adminGroups'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 
 export const SerpSnapshots: CollectionConfig = {
   slug: 'serp-snapshots',
@@ -12,7 +13,10 @@ export const SerpSnapshots: CollectionConfig = {
     defaultColumns: ['searchQuery', 'keyword', 'site', 'engine', 'capturedAt'],
     listSearchableFields: ['searchQuery', 'location'],
   },
-  access: loggedInSuperAdminAccessFor('serp-snapshots'),
+  access: siteScopedCollectionAccess('serp-snapshots'),
+  hooks: {
+    beforeChange: [validateSiteFieldWithinVisibilityScope],
+  },
   fields: [
     { name: 'searchQuery', type: 'text', label: 'Query' },
     { name: 'keyword', type: 'relationship', relationTo: 'keywords' },

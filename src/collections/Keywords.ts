@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 import { adminGroups } from '@/constants/adminGroups'
 
 export const Keywords: CollectionConfig = {
@@ -30,7 +31,10 @@ export const Keywords: CollectionConfig = {
       },
     },
   },
-  access: loggedInSuperAdminAccessFor('keywords'),
+  access: siteScopedCollectionAccess('keywords'),
+  hooks: {
+    beforeChange: [validateSiteFieldWithinVisibilityScope],
+  },
   fields: [
     {
       name: 'term',

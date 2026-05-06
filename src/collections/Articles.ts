@@ -11,7 +11,8 @@ import { pageLinkGraphSync } from '@/collections/hooks/pageLinkGraphSync'
 import { articleLifecycleOnPublish } from '@/collections/hooks/articleLifecycleOnPublish'
 import { articleAuthorsBelongToSite } from '@/collections/hooks/articleAuthorsBelongToSite'
 import { articlePublishGate } from '@/collections/hooks/articlePublishGate'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 import { validateDocLocaleAgainstSite } from '@/collections/hooks/validateDocLocaleAgainstSite'
 import { validateCategoriesMatchSite } from '@/collections/shared/validateCategoriesMatchSite'
 
@@ -41,6 +42,7 @@ export const Articles: CollectionConfig = {
   hooks: {
     beforeValidate: [articleLinkBudget],
     beforeChange: [
+      validateSiteFieldWithinVisibilityScope,
       validateCategoriesMatchSite,
       validateDocLocaleAgainstSite,
       validateSlugLocaleUnique('articles'),
@@ -51,7 +53,7 @@ export const Articles: CollectionConfig = {
     beforeRead: [articleBeforeReadAffiliate],
     afterChange: [articleAfterChangeWorkflow, pageLinkGraphSync],
   },
-  access: loggedInSuperAdminAccessFor('articles'),
+  access: siteScopedCollectionAccess('articles'),
   fields: [
     ...postLikeFields,
     {

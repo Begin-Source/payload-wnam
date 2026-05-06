@@ -1,7 +1,8 @@
 import type { CollectionConfig } from 'payload'
 
 import { adminGroups } from '@/constants/adminGroups'
-import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
+import { siteScopedCollectionAccess } from '@/collections/access/siteScopedContentAccess'
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 
 export const SocialAccounts: CollectionConfig = {
   slug: 'social-accounts',
@@ -11,7 +12,10 @@ export const SocialAccounts: CollectionConfig = {
     useAsTitle: 'handle',
     defaultColumns: ['handle', 'platform', 'site', 'status', 'updatedAt'],
   },
-  access: loggedInSuperAdminAccessFor('social-accounts'),
+  access: siteScopedCollectionAccess('social-accounts'),
+  hooks: {
+    beforeChange: [validateSiteFieldWithinVisibilityScope],
+  },
   fields: [
     {
       name: 'platform',

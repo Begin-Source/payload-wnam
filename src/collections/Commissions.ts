@@ -1,11 +1,28 @@
-import type { CollectionConfig } from 'payload'
+import type { Access, CollectionConfig, Where } from 'payload'
 
+import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 import { adminGroups } from '@/constants/adminGroups'
-import { userMayWriteCommissions } from '@/utilities/financeRoleAccess'
+import {
+  userIsFinanceManagerOnly,
+  userMayWriteCommissions,
+} from '@/utilities/financeRoleAccess'
+import { resolveVisibleSiteIds } from '@/utilities/siteVisibilityScope'
 import { superAdminOrTenantGMPasses } from '@/utilities/superAdminPasses'
+import { tenantWideContentPasses } from '@/utilities/tenantWideContentPasses'
 import { denyPortalAndFinanceCollection } from '@/utilities/userAccessTiers'
 
-const loggedInRead = superAdminOrTenantGMPasses(({ req: { user } }) => Boolean(user))
+function impossibleWhere(): Where {
+  return { id: { equals: 0 } }
+}
+
+const commissionsReadInner: Access = tenantWideContentPasses(async ({ req }) => {
+  if (userIsFinanceManagerOnly(req.user)) return Boolean(req.user)
+  const ids = await resolveVisibleSiteIds(req.payload, req)
+  if (ids === false) return false
+  if (ids === true) return Boolean(req.user)
+  if (ids.length === 0) return impossibleWhere()
+  return { site: { in: ids } }
+})
 
 export const Commissions: CollectionConfig = {
   slug: 'commissions',
@@ -15,8 +32,11 @@ export const Commissions: CollectionConfig = {
     useAsTitle: 'id',
     defaultColumns: ['amount', 'currency', 'status', 'recipient', 'offer', 'updatedAt'],
   },
+  hooks: {
+    beforeChange: [validateSiteFieldWithinVisibilityScope],
+  },
   access: {
-    read: denyPortalAndFinanceCollection('commissions', loggedInRead),
+    read: denyPortalAndFinanceCollection('commissions', commissionsReadInner),
     create: denyPortalAndFinanceCollection(
       'commissions',
       superAdminOrTenantGMPasses(({ req: { user } }) => userMayWriteCommissions(user)),
