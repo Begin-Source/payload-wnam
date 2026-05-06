@@ -3,7 +3,6 @@ import type { CollectionConfig } from 'payload'
 import { syncBlueprintsMirroredLayoutAfterSiteChange } from '@/collections/hooks/syncBlueprintMirroredLayout'
 import { fillSitesOptionalDbFields } from '@/collections/hooks/fillSitesOptionalDbFields'
 import { auditSitesMatrixChange } from '@/collections/hooks/sitesMatrixAudit'
-import { siteTrustPagesInstantiate } from '@/collections/hooks/siteTrustPagesInstantiate'
 import { enforceSitesMatrixQuota } from '@/collections/hooks/sitesMatrixQuota'
 import { validateSitesPublicLocales } from '@/collections/hooks/validateSitesPublicLocales'
 import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
@@ -43,7 +42,6 @@ export const Sites: CollectionConfig = {
     beforeChange: [fillSitesOptionalDbFields, validateSitesPublicLocales, enforceSitesMatrixQuota],
     afterChange: [
       syncBlueprintsMirroredLayoutAfterSiteChange,
-      siteTrustPagesInstantiate,
       auditSitesMatrixChange,
     ],
   },
