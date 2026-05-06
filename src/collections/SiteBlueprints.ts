@@ -7,14 +7,14 @@ import { adminGroups } from '@/constants/adminGroups'
 import {
   syncMirroredLayoutFromSiteBeforeChange,
 } from '@/collections/hooks/syncBlueprintMirroredLayout'
+import { loggedInSuperAdminAccessFor } from '@/collections/shared/loggedInSuperAdminAccess'
 import {
   requireSiteOnCreate,
   siteScopedSiteField,
 } from '@/collections/shared/siteScopedSiteField'
-import { denyPortalAndFinanceCollection } from '@/utilities/userAccessTiers'
+import { isUsersCollection } from '@/utilities/announcementAccess'
 import { isSystemConfigNavVisible } from '@/utilities/isSuperAdminLikeUser'
-import { superAdminOrTenantGMPasses } from '@/utilities/superAdminPasses'
-import { userHasTenantGeneralManagerRole } from '@/utilities/userRoles'
+import { userHasRole, userHasTenantGeneralManagerRole } from '@/utilities/userRoles'
 
 export const SiteBlueprints: CollectionConfig = {
   slug: 'site-blueprints',
@@ -31,7 +31,14 @@ export const SiteBlueprints: CollectionConfig = {
       'updatedAt',
     ],
     hidden: ({ user }) =>
-      !isSystemConfigNavVisible(user) && !userHasTenantGeneralManagerRole(user as User),
+      !isSystemConfigNavVisible(user) &&
+      !userHasTenantGeneralManagerRole(user as User) &&
+      !(
+        isUsersCollection(user) &&
+        (userHasRole(user, 'site-manager') ||
+          userHasRole(user, 'team-lead') ||
+          userHasRole(user, 'ops-manager'))
+      ),
     components: {
       beforeListTable: ['./components/ArticleCsvImportExport#CsvImportExportPanel'],
       listMenuItems: ['./components/ArticleCsvImportExport#CsvImportExportListMenuItem'],
@@ -45,12 +52,7 @@ export const SiteBlueprints: CollectionConfig = {
   hooks: {
     beforeChange: [requireSiteOnCreate, syncMirroredLayoutFromSiteBeforeChange],
   },
-  access: {
-    read: denyPortalAndFinanceCollection('site-blueprints', superAdminOrTenantGMPasses(() => false)),
-    create: denyPortalAndFinanceCollection('site-blueprints', superAdminOrTenantGMPasses(() => false)),
-    update: denyPortalAndFinanceCollection('site-blueprints', superAdminOrTenantGMPasses(() => false)),
-    delete: denyPortalAndFinanceCollection('site-blueprints', superAdminOrTenantGMPasses(() => false)),
-  },
+  access: loggedInSuperAdminAccessFor('site-blueprints'),
   fields: [
     {
       name: 'name',
