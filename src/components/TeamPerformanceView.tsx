@@ -1,6 +1,7 @@
 'use client'
 
 import { Gutter } from '@payloadcms/ui'
+import Link from 'next/link'
 import React, { useCallback, useEffect, useState } from 'react'
 
 /** Local types only — do not import `@/utilities/teamStatsScope` in client views (pulls server graph). */
@@ -138,9 +139,9 @@ export function TeamPerformanceView(_props: Record<string, unknown>): React.Reac
           <button type="button" disabled={busy} onClick={() => void load()}>
             刷新
           </button>
-          <a href="/admin/collections/teams" style={{ fontSize: '0.875rem' }}>
+          <Link href="/admin/collections/teams" prefetch={false} style={{ fontSize: '0.875rem' }}>
             成员管理列表
-          </a>
+          </Link>
         </div>
         {loadError ? (
           <div style={{ color: 'var(--theme-error-500)', marginTop: '0.75rem', fontSize: '0.875rem' }}>
