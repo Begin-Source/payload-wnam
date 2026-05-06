@@ -6,7 +6,7 @@
   "type": "module",
   "packageManager": "pnpm@10.11.1",
   "scripts": {
-    "build": "cross-env NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build",
+    "build": "cross-env NEXT_PRIVATE_WORKER_THREADS=false NODE_OPTIONS=\"--no-deprecation --max-old-space-size=8000\" next build",
     "deploy": "pnpm run deploy:database && pnpm run deploy:app",
     "deploy:ci": "pnpm run deploy:database && pnpm run deploy:app:ci",
     "deploy:app": "opennextjs-cloudflare build --env=$CLOUDFLARE_ENV && opennextjs-cloudflare deploy --env=$CLOUDFLARE_ENV",

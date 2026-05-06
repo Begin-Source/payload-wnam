@@ -2,6 +2,10 @@ import { withPayload } from '@payloadcms/next/withPayload'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  /** Fewer parallel static-generation tasks reduces concurrent Miniflare D1 SQLite opens during `next build` (workerd SQLITE_BUSY). */
+  experimental: {
+    staticGenerationMaxConcurrency: 1,
+  },
   /** Payload 3 + plugin-seo + multi-tenant can overflow TS checker on very large `payload-types.ts`. */
   typescript: {
     ignoreBuildErrors: true,
