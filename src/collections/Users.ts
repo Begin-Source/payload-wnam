@@ -162,19 +162,42 @@ const enforceUserTenantAndRoles: CollectionBeforeChangeHook = ({
   return next
 }
 
+/**
+ * Admin `/admin/account` loads the authenticated `users` document. Never return blanket `false`
+ * for logged-in `users` principals — narrow to self only instead (finance-only / 公告 portal / 纯站长).
+ */
+function ownUserDocWhereOrFalse(
+  actor: Config['user'] | null | undefined,
+): false | { id: { equals: number } } {
+  if (!isUsersCollection(actor) || actor.id == null) return false
+  return { id: { equals: actor.id } }
+}
+
 const usersReadAccess: Access = (args) => {
   const { user } = args.req
-  if (announcementsPortalBlocksCollection(user, 'users')) return false
-  if (financeOnlyBlocksCollection(user, 'users')) return false
-  if (userIsPureSiteManagerWithoutTeamOrOps(user)) return false
+  if (announcementsPortalBlocksCollection(user, 'users')) {
+    return ownUserDocWhereOrFalse(user)
+  }
+  if (financeOnlyBlocksCollection(user, 'users')) {
+    return ownUserDocWhereOrFalse(user)
+  }
+  if (userIsPureSiteManagerWithoutTeamOrOps(user)) {
+    return ownUserDocWhereOrFalse(user)
+  }
   return superAdminPasses(({ req: { user: u } }) => usersReadWhere(u))(args)
 }
 
 const usersUpdateAccess: Access = (args) => {
   const { user } = args.req
-  if (announcementsPortalBlocksCollection(user, 'users')) return false
-  if (financeOnlyBlocksCollection(user, 'users')) return false
-  if (userIsPureSiteManagerWithoutTeamOrOps(user)) return false
+  if (announcementsPortalBlocksCollection(user, 'users')) {
+    return ownUserDocWhereOrFalse(user)
+  }
+  if (financeOnlyBlocksCollection(user, 'users')) {
+    return ownUserDocWhereOrFalse(user)
+  }
+  if (userIsPureSiteManagerWithoutTeamOrOps(user)) {
+    return ownUserDocWhereOrFalse(user)
+  }
   return superAdminPasses(({ req: { user: u } }) => usersUpdateWhere(u))(args)
 }
 
