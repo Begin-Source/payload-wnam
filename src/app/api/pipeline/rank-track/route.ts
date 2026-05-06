@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
 import { dataForSeoPost } from '@/services/integrations/dataforseo/client'
+import { extractDataForSeoCostUsd } from '@/services/integrations/dataforseo/extractDataForSeoCostUsd'
 import { parseOrganicPositionAndAiOverview } from '@/utilities/dataForSeoOrganicParse'
 import { resolveDfsLocationLanguageFromMerged } from '@/utilities/pipelineDfsLocale'
 import { resolveMergedForPipelineRoute } from '@/utilities/resolvePipelineConfig'
@@ -144,7 +145,10 @@ export async function POST(request: Request): Promise<Response> {
 
     if (siteRel != null && Number.isFinite(siteRel)) {
       try {
-        await incrementSiteQuotaUsage(payload, siteRel, { dfs: 1 })
+        const usd = extractDataForSeoCostUsd(r)
+        if (usd > 0) {
+          await incrementSiteQuotaUsage(payload, siteRel, { dataForSeoUsd: usd })
+        }
       } catch {
         /* non-fatal */
       }

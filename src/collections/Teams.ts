@@ -64,12 +64,15 @@ const validateTeamsUserRelations: CollectionBeforeChangeHook = async ({ data, or
 
 export const Teams: CollectionConfig = {
   slug: 'teams',
-  labels: { singular: '团队', plural: '团队' },
+  labels: { singular: '成员管理', plural: '成员管理' },
   admin: {
     group: adminGroups.team,
     useAsTitle: 'name',
     defaultColumns: ['tenant', 'name', 'updatedAt'],
     description: '每租户可有多条团队记录；组长与成员由角色与本租户共同限定，账号在「系统」中管理。',
+    components: {
+      beforeListTable: ['./components/TeamPerformanceListLink#TeamPerformanceListLink'],
+    },
   },
   access: loggedInSuperAdminAccessFor('teams'),
   hooks: {
@@ -88,6 +91,17 @@ export const Teams: CollectionConfig = {
       label: 'Slug',
       admin: {
         description: '选填。站内链接或唯一定位可与租户联合使用。',
+      },
+    },
+    {
+      name: 'teamStatsPanel',
+      type: 'ui',
+      label: '团队绩效',
+      admin: {
+        description: '按本记录的组长与成员口径统计关联站点与文章（不写入数据库）。',
+        components: {
+          Field: './components/TeamStatsField#TeamStatsField',
+        },
       },
     },
     {

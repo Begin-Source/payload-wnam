@@ -17,6 +17,8 @@ import {
   formatD1MediaInsertFailureMessage,
 } from '@/utilities/pipelineDbErrorMessage'
 import { resolvePipelineConfigForSite } from '@/utilities/resolvePipelineConfig'
+import { recordTogetherImageAiCost } from '@/utilities/aiCostLog'
+import { resolveTogetherImageChargeUsd } from '@/utilities/aiCostPricing'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
@@ -169,7 +171,7 @@ export async function POST(request: Request): Promise<Response> {
   const nowIso = new Date().toISOString()
 
   try {
-    const { buffer, mimeType } = await togetherImageGenerateBytes(promptText, {
+    const { buffer, mimeType, raw } = await togetherImageGenerateBytes(promptText, {
       model: imageModel,
     })
     const ext = imageExtensionFromMime(mimeType)
@@ -236,7 +238,17 @@ export async function POST(request: Request): Promise<Response> {
         overrideAccess: true,
       })
 
-      await incrementSiteQuotaUsage(payload, catSiteNum, { imagesUsd: 0.05 })
+      await incrementSiteQuotaUsage(payload, catSiteNum, {
+        imagesUsd: resolveTogetherImageChargeUsd({ raw, kind: 'category_cover_auto' }).usd,
+      })
+
+      await recordTogetherImageAiCost({
+        payload,
+        target: { collection: 'media', id: existingMediaId },
+        raw,
+        kind: 'category_cover_auto',
+        model: imageModel ?? null,
+      })
 
       return Response.json({
         ok: true,
@@ -317,7 +329,17 @@ export async function POST(request: Request): Promise<Response> {
       overrideAccess: true,
     })
 
-    await incrementSiteQuotaUsage(payload, catSiteNum, { imagesUsd: 0.05 })
+    await incrementSiteQuotaUsage(payload, catSiteNum, {
+      imagesUsd: resolveTogetherImageChargeUsd({ raw, kind: 'category_cover_auto' }).usd,
+    })
+
+    await recordTogetherImageAiCost({
+      payload,
+      target: { collection: 'media', id: newMediaId },
+      raw,
+      kind: 'category_cover_auto',
+      model: imageModel ?? null,
+    })
 
     return Response.json({
       ok: true,

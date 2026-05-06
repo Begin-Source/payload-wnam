@@ -77,6 +77,26 @@ function formatSiteLine(s: SiteOption): string {
   return `${s.name} (${s.slug}) ${s.primaryDomain}`
 }
 
+function buildSeedsFromCategories(
+  categories: { name?: string | null }[],
+  mainProduct: string | null | undefined,
+): string {
+  const names = categories
+    .map((c) => (typeof c.name === 'string' ? c.name.trim() : ''))
+    .filter(Boolean)
+  const unique: string[] = []
+  const seen = new Set<string>()
+  for (const n of names) {
+    if (seen.has(n)) continue
+    seen.add(n)
+    unique.push(n)
+    if (unique.length >= 5) break
+  }
+  if (unique.length > 0) return unique.join('\n')
+  const mp = typeof mainProduct === 'string' ? mainProduct.trim() : ''
+  return mp
+}
+
 type SortKey = 'term' | 'volume' | 'kd' | 'intent' | 'opportunityScore' | 'eligible'
 
 export function KeywordSyncFetchDrawer(): React.ReactElement {
@@ -86,6 +106,8 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
   const [sitesLoading, setSitesLoading] = useState(false)
   const [selectedSiteId, setSelectedSiteId] = useState<number | null>(null)
   const [selectedSiteLabel, setSelectedSiteLabel] = useState('')
+  /** Last picked site row — used for mainProduct fallback when categories list is empty. */
+  const [selectedSiteOption, setSelectedSiteOption] = useState<SiteOption | null>(null)
   const [siteMenuOpen, setSiteMenuOpen] = useState(false)
   const siteComboboxRef = useRef<HTMLDivElement>(null)
   const skipSiteQueryDebounceRef = useRef(false)
@@ -107,7 +129,10 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
     persisted: number
     skipped: number
     eligibleCount: number
-    dfsCredits: number
+    /** USD charged from DataForSEO tasks[].cost for this fetch */
+    dataForSeoUsdCharged?: number
+    /** @deprecated prefer dataForSeoUsdCharged */
+    dfsCredits?: number
   } | null>(null)
   const [rows, setRows] = useState<DfsRow[]>([])
   const [sortKey, setSortKey] = useState<SortKey>('volume')
@@ -183,16 +208,19 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
     setSites([])
     setSelectedSiteId(null)
     setSelectedSiteLabel('')
+    setSelectedSiteOption(null)
     setSiteMenuOpen(false)
     setError(null)
     setStats(null)
     setRows([])
     setPipelineProfiles([])
     setPipelineProfileId(null)
+    setSeedsText('')
   }
 
   const pickSite = (s: SiteOption): void => {
     setSelectedSiteId(s.id)
+    setSelectedSiteOption(s)
     setSelectedSiteLabel(formatSiteLine(s))
     setSiteQuery('')
     setSiteMenuOpen(false)
@@ -241,6 +269,38 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
       cancelled = true
     }
   }, [selectedSiteId])
+
+  useEffect(() => {
+    if (selectedSiteId == null) return
+    let cancelled = false
+    const mainProduct =
+      selectedSiteOption != null && selectedSiteOption.id === selectedSiteId
+        ? selectedSiteOption.mainProduct
+        : undefined
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/article-quick-action/options?siteId=${encodeURIComponent(String(selectedSiteId))}`,
+          { credentials: 'include' },
+        )
+        const data = (await res.json().catch(() => ({}))) as {
+          categories?: { name?: string | null }[]
+        }
+        if (!res.ok) {
+          if (!cancelled) setSeedsText(buildSeedsFromCategories([], mainProduct))
+          return
+        }
+        const categories = Array.isArray(data.categories) ? data.categories : []
+        if (!cancelled)
+          setSeedsText(buildSeedsFromCategories(categories, mainProduct))
+      } catch {
+        if (!cancelled) setSeedsText(buildSeedsFromCategories([], mainProduct))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedSiteId, selectedSiteOption])
 
   const parseIntentOverride = (): string[] | undefined => {
     const t = intentOverride.trim()
@@ -311,6 +371,7 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
         persisted?: number
         skipped?: number
         eligibleCount?: number
+        dataForSeoUsdCharged?: number
         dfsCredits?: number
         rows?: DfsRow[]
       }
@@ -325,7 +386,9 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
         persisted: data.persisted ?? 0,
         skipped: data.skipped ?? 0,
         eligibleCount: data.eligibleCount ?? 0,
-        dfsCredits: data.dfsCredits ?? 0,
+        dataForSeoUsdCharged:
+          typeof data.dataForSeoUsdCharged === 'number' ? data.dataForSeoUsdCharged : undefined,
+        dfsCredits: typeof data.dfsCredits === 'number' ? data.dfsCredits : undefined,
       })
       setRows(Array.isArray(data.rows) ? data.rows : [])
     } catch (e) {
@@ -413,8 +476,15 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
                 }}
               >
                 总拉取 <strong>{stats.total}</strong> · 新写入 <strong>{stats.persisted}</strong> · eligible{' '}
-                <strong>{stats.eligibleCount}</strong> · 跳过/失败 <strong>{stats.skipped}</strong> · DFS 约{' '}
-                <strong>+{stats.dfsCredits}</strong> credits
+                <strong>{stats.eligibleCount}</strong> · 跳过/失败 <strong>{stats.skipped}</strong> ·{' '}
+                DataForSEO{' '}
+                <strong>
+                  {stats.dataForSeoUsdCharged != null
+                    ? `+$${stats.dataForSeoUsdCharged.toFixed(4)}`
+                    : stats.dfsCredits != null
+                      ? `+${stats.dfsCredits} credits`
+                      : '—'}
+                </strong>
               </div>
             ) : null}
 
@@ -567,6 +637,9 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
 
             <div style={{ marginBottom: '1rem' }}>
               <span style={fieldLabel}>种子词（每行一个，最多 5 行）</span>
+              <p style={{ margin: '0 0 0.35rem', fontSize: '0.7rem', opacity: 0.65, lineHeight: 1.35 }}>
+                选择站点后将按分类名称预填；若无分类则使用站点主品。
+              </p>
               <textarea
                 placeholder="例如：wireless earbuds"
                 rows={4}

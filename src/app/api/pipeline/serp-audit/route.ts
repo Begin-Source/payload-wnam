@@ -3,8 +3,10 @@ import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
 import { dataForSeoPost } from '@/services/integrations/dataforseo/client'
+import { extractDataForSeoCostUsd } from '@/services/integrations/dataforseo/extractDataForSeoCostUsd'
 import { resolveDfsLocationLanguageFromMerged } from '@/utilities/pipelineDfsLocale'
 import { resolveMergedForPipelineRoute } from '@/utilities/resolvePipelineConfig'
+import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 
 export const dynamic = 'force-dynamic'
 const PATH = '/api/pipeline/serp-audit'
@@ -46,6 +48,17 @@ export async function POST(request: Request): Promise<Response> {
         keyword: body.q,
       },
     ])
+    const sid = body.siteId
+    if (typeof sid === 'number' && Number.isFinite(sid)) {
+      try {
+        const usd = extractDataForSeoCostUsd(r)
+        if (usd > 0) {
+          await incrementSiteQuotaUsage(payload, sid, { dataForSeoUsd: usd })
+        }
+      } catch {
+        /* quota optional */
+      }
+    }
     return Response.json({ ok: true, r })
   } catch (e) {
     return Response.json({ ok: false, message: e instanceof Error ? e.message : String(e) })

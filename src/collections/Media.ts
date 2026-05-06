@@ -1,5 +1,6 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
+import { setContentCreatedByOnCreate } from '@/collections/hooks/setContentCreatedByOnCreate'
 import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
 import { adminGroups } from '@/constants/adminGroups'
 import {
@@ -54,7 +55,7 @@ export const Media: CollectionConfig = {
     },
   },
   hooks: {
-    beforeChange: [requireSiteOnCreate, validateSiteFieldWithinVisibilityScope],
+    beforeChange: [requireSiteOnCreate, setContentCreatedByOnCreate, validateSiteFieldWithinVisibilityScope],
   },
   access: {
     read: async ({ req }) => {
@@ -156,6 +157,37 @@ export const Media: CollectionConfig = {
             readOnly: true,
             description: '上次生成实际采用的提示来源（如 image_prompt / alt_fallback）。',
           },
+        },
+      ],
+    },
+    {
+      type: 'collapsible',
+      label: '成本与归属',
+      admin: {
+        position: 'sidebar',
+        initCollapsed: true,
+      },
+      fields: [
+        {
+          name: 'createdBy',
+          type: 'relationship',
+          relationTo: 'users',
+          label: '创建人',
+          admin: {
+            readOnly: true,
+            description: '用于 AI 配图等成本归属；创建时自动写入，之后不可改。',
+          },
+        },
+        {
+          name: 'aiCostUsd',
+          type: 'number',
+          defaultValue: 0,
+          admin: { readOnly: true, step: 0.0001 },
+        },
+        {
+          name: 'aiCostBreakdown',
+          type: 'json',
+          admin: { readOnly: true },
         },
       ],
     },

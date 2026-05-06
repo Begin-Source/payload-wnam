@@ -90,6 +90,9 @@ export interface Config {
     'site-quotas': SiteQuota;
     'click-events': ClickEvent;
     commissions: Commission;
+    'affiliate-earnings-imports': AffiliateEarningsImport;
+    'affiliate-earnings-rows': AffiliateEarningsRow;
+    'commission-statements': CommissionStatement;
     teams: Team;
     'tenant-prompt-templates': TenantPromptTemplate;
     'pipeline-profiles': PipelineProfile;
@@ -137,6 +140,9 @@ export interface Config {
     'site-quotas': SiteQuotasSelect<false> | SiteQuotasSelect<true>;
     'click-events': ClickEventsSelect<false> | ClickEventsSelect<true>;
     commissions: CommissionsSelect<false> | CommissionsSelect<true>;
+    'affiliate-earnings-imports': AffiliateEarningsImportsSelect<false> | AffiliateEarningsImportsSelect<true>;
+    'affiliate-earnings-rows': AffiliateEarningsRowsSelect<false> | AffiliateEarningsRowsSelect<true>;
+    'commission-statements': CommissionStatementsSelect<false> | CommissionStatementsSelect<true>;
     teams: TeamsSelect<false> | TeamsSelect<true>;
     'tenant-prompt-templates': TenantPromptTemplatesSelect<false> | TenantPromptTemplatesSelect<true>;
     'pipeline-profiles': PipelineProfilesSelect<false> | PipelineProfilesSelect<true>;
@@ -301,6 +307,26 @@ export interface User {
    */
   teamLead?: (number | null) | User;
   /**
+   * 联盟结算「运营抽成」收款人；用于 commission-statements（ops_cut）。
+   */
+  opsManager?: (number | null) | User;
+  /**
+   * Associates Tracking ID（小写存库）；同一租户内不可与其他用户重复。
+   */
+  amazonTrackingId?: string | null;
+  /**
+   * 覆盖 commission-rules 的 defaultEmployeePct；空则使用全局默认。
+   */
+  profitSharePct?: number | null;
+  /**
+   * 该用户作为组长时，对其组员毛利抽取的比例；空则用 defaultLeaderCutPct。
+   */
+  leaderCutPctOverride?: number | null;
+  /**
+   * 该用户作为运营经理时抽成比例；空则用 defaultOpsCutPct。
+   */
+  opsCutPctOverride?: number | null;
+  /**
    * Super Admin：全租户。仅 Super Admin 可修改本字段。其它角色（财务 / 运营 / 组长 / 站长）的具体权限在代码与各集合 access 中逐步收紧。
    */
   roles: (
@@ -370,6 +396,20 @@ export interface Site {
    * 可留空；入库前会存为空字符串，稍后可由域名生成流程或手工补全。
    */
   primaryDomain?: string | null;
+  /**
+   * 本站未单独指定时的联盟追踪 ID（小写存库）；可与员工 users.amazonTrackingId 并存，用于前台链接默认值等。
+   */
+  defaultAmazonTrackingId?: string | null;
+  aiCostUsd?: number | null;
+  aiCostBreakdown?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   /**
    * 可留空；未选择时按 draft 写入数据库。
    */
@@ -640,6 +680,20 @@ export interface Media {
    * 上次生成实际采用的提示来源（如 image_prompt / alt_fallback）。
    */
   aiImagePromptSource?: string | null;
+  /**
+   * 用于 AI 配图等成本归属；创建时自动写入，之后不可改。
+   */
+  createdBy?: (number | null) | User;
+  aiCostUsd?: number | null;
+  aiCostBreakdown?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -1496,6 +1550,23 @@ export interface Article {
     | boolean
     | null;
   skipLinkBudgetCheck?: boolean | null;
+  /**
+   * 用于 AI 成本归属与分成；创建时自动写入，之后不可改。
+   */
+  createdBy?: (number | null) | User;
+  aiCostUsd?: number | null;
+  /**
+   * 按次追加的 AI 费用明细（最多保留 50 条）。
+   */
+  aiCostBreakdown?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   meta?: {
     title?: string | null;
     description?: string | null;
@@ -1751,9 +1822,12 @@ export interface SiteQuota {
   dailyPostCap?: number | null;
   monthlyTokenBudgetUsd?: number | null;
   monthlyImagesBudgetUsd?: number | null;
+  /**
+   * 月度 DataForSEO 支出上限（USD）——与 API tasks[].cost 汇总对齐（migration 已将旧「点数」按 ×0.02 折算）。
+   */
   monthlyDfsCreditBudget?: number | null;
   /**
-   * Optional counters: dfs, tavily, openrouter, images
+   * 可选计数：dataForSeoUsd、tavilyCredits、tavilyUsd、openrouterUsd、imagesUsd（勿手写 dfs）。
    */
   usageYtd?:
     | {
@@ -1812,6 +1886,101 @@ export interface Commission {
   periodStart?: string | null;
   periodEnd?: string | null;
   paidAt?: string | null;
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Amazon Associates CSV 汇总头；明细见「联盟收益行」。批量报表请在列表页右上角三点菜单打开「Amazon 报表导入」。
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "affiliate-earnings-imports".
+ */
+export interface AffiliateEarningsImport {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  source?: 'amazon_associates' | null;
+  periodStart: string;
+  periodEnd: string;
+  fileName?: string | null;
+  rowsCount?: number | null;
+  grossEarningsUsd?: number | null;
+  importedBy?: (number | null) | User;
+  notes?: string | null;
+  rawSummaryJson?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * 按 Tracking ID 聚合的一行；用于分成结算。
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "affiliate-earnings-rows".
+ */
+export interface AffiliateEarningsRow {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  batch: number | AffiliateEarningsImport;
+  trackingId: string;
+  /**
+   * 由 Tracking Id 匹配 users.amazonTrackingId；未匹配时留空。
+   */
+  recipient?: (number | null) | User;
+  clicks?: number | null;
+  itemsOrdered?: number | null;
+  orderedRevenueUsd?: number | null;
+  itemsShipped?: number | null;
+  itemsReturned?: number | null;
+  shippedRevenueUsd?: number | null;
+  returnedRevenueUsd?: number | null;
+  totalEarningsUsd?: number | null;
+  bonusUsd?: number | null;
+  shippedEarningsUsd?: number | null;
+  returnedEarningsUsd?: number | null;
+  periodStart: string;
+  periodEnd: string;
+  rawJson?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * 员工本人 / 组长抽成 / 运营抽成；由期间聚合生成。
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "commission-statements".
+ */
+export interface CommissionStatement {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  kind: 'employee' | 'leader_cut' | 'ops_cut';
+  recipient: number | User;
+  sourceEmployee: number | User;
+  periodStart: string;
+  periodEnd: string;
+  grossEarningsUsd?: number | null;
+  aiCostsUsd?: number | null;
+  /**
+   * 手工调整（可负）；仅 kind=employee 时参与计算。
+   */
+  adjustmentsUsd?: number | null;
+  netProfitUsd?: number | null;
+  /**
+   * 结算使用的百分比。
+   */
+  pctApplied?: number | null;
+  payoutAmountUsd?: number | null;
+  lines?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  status: 'draft' | 'approved' | 'paid';
+  paidAt?: string | null;
+  paymentRef?: string | null;
   notes?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -3148,6 +3317,18 @@ export interface PayloadLockedDocument {
         value: number | Commission;
       } | null)
     | ({
+        relationTo: 'affiliate-earnings-imports';
+        value: number | AffiliateEarningsImport;
+      } | null)
+    | ({
+        relationTo: 'affiliate-earnings-rows';
+        value: number | AffiliateEarningsRow;
+      } | null)
+    | ({
+        relationTo: 'commission-statements';
+        value: number | CommissionStatement;
+      } | null)
+    | ({
         relationTo: 'teams';
         value: number | Team;
       } | null)
@@ -3307,6 +3488,9 @@ export interface SitesSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
   primaryDomain?: T;
+  defaultAmazonTrackingId?: T;
+  aiCostUsd?: T;
+  aiCostBreakdown?: T;
   status?: T;
   portfolio?: T;
   pipelineProfile?: T;
@@ -3561,6 +3745,9 @@ export interface MediaSelect<T extends boolean = true> {
   aiImageGenError?: T;
   aiImageGenAt?: T;
   aiImagePromptSource?: T;
+  createdBy?: T;
+  aiCostUsd?: T;
+  aiCostBreakdown?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -3682,6 +3869,9 @@ export interface ArticlesSelect<T extends boolean = true> {
   optimizationHistory?: T;
   linkBudgetWarnings?: T;
   skipLinkBudgetCheck?: T;
+  createdBy?: T;
+  aiCostUsd?: T;
+  aiCostBreakdown?: T;
   meta?:
     | T
     | {
@@ -3809,6 +3999,75 @@ export interface CommissionsSelect<T extends boolean = true> {
   periodStart?: T;
   periodEnd?: T;
   paidAt?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "affiliate-earnings-imports_select".
+ */
+export interface AffiliateEarningsImportsSelect<T extends boolean = true> {
+  tenant?: T;
+  source?: T;
+  periodStart?: T;
+  periodEnd?: T;
+  fileName?: T;
+  rowsCount?: T;
+  grossEarningsUsd?: T;
+  importedBy?: T;
+  notes?: T;
+  rawSummaryJson?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "affiliate-earnings-rows_select".
+ */
+export interface AffiliateEarningsRowsSelect<T extends boolean = true> {
+  tenant?: T;
+  batch?: T;
+  trackingId?: T;
+  recipient?: T;
+  clicks?: T;
+  itemsOrdered?: T;
+  orderedRevenueUsd?: T;
+  itemsShipped?: T;
+  itemsReturned?: T;
+  shippedRevenueUsd?: T;
+  returnedRevenueUsd?: T;
+  totalEarningsUsd?: T;
+  bonusUsd?: T;
+  shippedEarningsUsd?: T;
+  returnedEarningsUsd?: T;
+  periodStart?: T;
+  periodEnd?: T;
+  rawJson?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "commission-statements_select".
+ */
+export interface CommissionStatementsSelect<T extends boolean = true> {
+  tenant?: T;
+  kind?: T;
+  recipient?: T;
+  sourceEmployee?: T;
+  periodStart?: T;
+  periodEnd?: T;
+  grossEarningsUsd?: T;
+  aiCostsUsd?: T;
+  adjustmentsUsd?: T;
+  netProfitUsd?: T;
+  pctApplied?: T;
+  payoutAmountUsd?: T;
+  lines?: T;
+  status?: T;
+  paidAt?: T;
+  paymentRef?: T;
   notes?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -3956,6 +4215,11 @@ export interface UsersSelect<T extends boolean = true> {
         id?: T;
       };
   teamLead?: T;
+  opsManager?: T;
+  amazonTrackingId?: T;
+  profitSharePct?: T;
+  leaderCutPctOverride?: T;
+  opsCutPctOverride?: T;
   roles?: T;
   updatedAt?: T;
   createdAt?: T;

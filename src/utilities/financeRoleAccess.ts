@@ -9,7 +9,13 @@ import { getUserRoles, userHasRole, userHasTenantGeneralManagerRole } from '@/ut
  * Collections a finance-only admin may access (sidebar 财务；多租户同上)。
  * 含 `operation-manuals`：财务经理可读已发布流程说明（只读）；写仍为超管 / 运维 / system-admin。
  */
-export const FINANCE_COLLECTION_SLUGS = ['commissions', 'operation-manuals'] as const
+export const FINANCE_COLLECTION_SLUGS = [
+  'commissions',
+  'operation-manuals',
+  'affiliate-earnings-imports',
+  'affiliate-earnings-rows',
+  'commission-statements',
+] as const
 
 /** Globals finance-only users may read (writes follow per-global rules). */
 export const FINANCE_GLOBAL_SLUGS = ['commission-rules'] as const

@@ -12,6 +12,9 @@ export type TavilySearchParams = {
   max_results?: number
 }
 
+/** Tavily response body plus cache hint — callers must only bill quotas when `cacheHit` is false. */
+export type TavilySearchResult = { body: unknown; cacheHit: boolean }
+
 function cacheKey(params: TavilySearchParams): string {
   const raw = JSON.stringify({
     q: params.query,
@@ -58,10 +61,12 @@ async function writeR2Json(key: string, body: unknown): Promise<void> {
 export async function tavilySearch(
   params: TavilySearchParams,
   init?: { signal?: AbortSignal },
-): Promise<unknown> {
+): Promise<TavilySearchResult> {
   const key = `${CACHE_PREFIX}${cacheKey(params)}`
   const cached = await readR2Json(key)
-  if (cached != null) return cached
+  if (cached != null) {
+    return { body: cached, cacheHit: true }
+  }
 
   const apiKey = process.env.TAVILY_API_KEY?.trim()
   if (!apiKey) {
@@ -78,6 +83,7 @@ export async function tavilySearch(
       search_depth: params.search_depth || 'advanced',
       include_raw_content: params.include_raw_content ?? true,
       max_results: params.max_results ?? 12,
+      include_usage: true,
     }),
     signal: init?.signal,
   })
@@ -87,5 +93,5 @@ export async function tavilySearch(
   }
   const body: unknown = await res.json()
   await writeR2Json(key, body)
-  return body
+  return { body, cacheHit: false }
 }

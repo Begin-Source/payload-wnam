@@ -33,6 +33,11 @@ import { AffiliateNetworks } from './collections/AffiliateNetworks'
 import { Offers } from './collections/Offers'
 import { ClickEvents } from './collections/ClickEvents'
 import { Commissions } from './collections/Commissions'
+import {
+  AffiliateEarningsImports,
+  AffiliateEarningsRows,
+  CommissionStatements,
+} from './collections/AffiliateFinanceCollections'
 import { Categories } from './collections/Categories'
 import { Keywords } from './collections/Keywords'
 import { ContentBriefs } from './collections/ContentBriefs'
@@ -225,6 +230,7 @@ export default buildConfig({
       beforeNavLinks: [
         './components/PipelineProfilesCompareNavLink#PipelineProfilesCompareNavLink',
         './components/KnowledgeReadNavLink#KnowledgeReadNavLink',
+        './components/TeamPerformanceNavLink#TeamPerformanceNavLink',
       ],
       beforeDashboard: ['./components/BeforeDashboardMilestone#BeforeDashboardMilestone'],
       graphics: {
@@ -239,6 +245,10 @@ export default buildConfig({
         PipelineProfilesCompare: {
           Component: './components/PipelineProfilesCompareView#PipelineProfilesCompareView',
           path: '/pipeline-profiles/compare',
+        },
+        TeamPerformance: {
+          Component: './components/TeamPerformanceView#TeamPerformanceView',
+          path: '/teams/performance',
         },
       },
     },
@@ -266,6 +276,9 @@ export default buildConfig({
     SiteQuotas,
     ClickEvents,
     Commissions,
+    AffiliateEarningsImports,
+    AffiliateEarningsRows,
+    CommissionStatements,
     Teams,
     TenantPromptTemplates,
     PipelineProfiles,
@@ -327,6 +340,9 @@ export default buildConfig({
         offers: {},
         'click-events': {},
         commissions: {},
+        'affiliate-earnings-imports': {},
+        'affiliate-earnings-rows': {},
+        'commission-statements': {},
         categories: {},
         articles: {},
         pages: {},

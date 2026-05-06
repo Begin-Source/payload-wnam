@@ -55,8 +55,23 @@ export const SiteQuotas: CollectionConfig = {
     },
     { name: 'monthlyTokenBudgetUsd', type: 'number', defaultValue: 50 },
     { name: 'monthlyImagesBudgetUsd', type: 'number', defaultValue: 30 },
-    { name: 'monthlyDfsCreditBudget', type: 'number', defaultValue: 100 },
-    { name: 'usageYtd', type: 'json', admin: { description: 'Optional counters: dfs, tavily, openrouter, images' } },
+    {
+      name: 'monthlyDfsCreditBudget',
+      type: 'number',
+      defaultValue: 2,
+      admin: {
+        description:
+          '月度 DataForSEO 支出上限（USD）——与 API tasks[].cost 汇总对齐（migration 已将旧「点数」按 ×0.02 折算）。',
+      },
+    },
+    {
+      name: 'usageYtd',
+      type: 'json',
+      admin: {
+        description:
+          '可选计数：dataForSeoUsd、tavilyCredits、tavilyUsd、openrouterUsd、imagesUsd（勿手写 dfs）。',
+      },
+    },
     {
       name: 'notes',
       type: 'textarea',

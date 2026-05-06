@@ -25,6 +25,9 @@ import * as migration_20260501_120000_team_home_global from './20260501_120000_t
 import * as migration_20260501_130000_teams_collection from './20260501_130000_teams_collection';
 import * as migration_20260502_120000_operation_manuals from './20260502_120000_operation_manuals';
 import * as migration_20260506_120000_sites_created_by_id from './20260506_120000_sites_created_by_id';
+import * as migration_20260507_120000_affiliate_finance from './20260507_120000_affiliate_finance';
+import * as migration_20260508_120000_sites_ai_cost_ledger from './20260508_120000_sites_ai_cost_ledger';
+import * as migration_20260509_120000_site_quotas_dfs_usd_vendor_billing from './20260509_120000_site_quotas_dfs_usd_vendor_billing';
 import * as migration_20260601_100000_articles_affiliate_page_layout from './20260601_100000_articles_affiliate_page_layout';
 import * as migration_20260602_120000_sites_site_layout from './20260602_120000_sites_site_layout';
 import * as migration_20260603_120000_sites_review_hub_v1 from './20260603_120000_sites_review_hub_v1';
@@ -515,5 +518,20 @@ export const migrations = [
     up: migration_20260506_120000_sites_created_by_id.up,
     down: migration_20260506_120000_sites_created_by_id.down,
     name: '20260506_120000_sites_created_by_id',
+  },
+  {
+    up: migration_20260507_120000_affiliate_finance.up,
+    down: migration_20260507_120000_affiliate_finance.down,
+    name: '20260507_120000_affiliate_finance',
+  },
+  {
+    up: migration_20260508_120000_sites_ai_cost_ledger.up,
+    down: migration_20260508_120000_sites_ai_cost_ledger.down,
+    name: '20260508_120000_sites_ai_cost_ledger',
+  },
+  {
+    up: migration_20260509_120000_site_quotas_dfs_usd_vendor_billing.up,
+    down: migration_20260509_120000_site_quotas_dfs_usd_vendor_billing.down,
+    name: '20260509_120000_site_quotas_dfs_usd_vendor_billing',
   },
 ];

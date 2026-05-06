@@ -8,6 +8,7 @@ import { articleAfterChangeWorkflow } from '@/collections/hooks/articleAfterChan
 import { articleBeforeReadAffiliate } from '@/collections/hooks/articleBeforeReadAffiliate'
 import { articleLinkBudget } from '@/collections/hooks/articleLinkBudget'
 import { pageLinkGraphSync } from '@/collections/hooks/pageLinkGraphSync'
+import { setContentCreatedByOnCreate } from '@/collections/hooks/setContentCreatedByOnCreate'
 import { articleLifecycleOnPublish } from '@/collections/hooks/articleLifecycleOnPublish'
 import { articleAuthorsBelongToSite } from '@/collections/hooks/articleAuthorsBelongToSite'
 import { articlePublishGate } from '@/collections/hooks/articlePublishGate'
@@ -42,6 +43,7 @@ export const Articles: CollectionConfig = {
   hooks: {
     beforeValidate: [articleLinkBudget],
     beforeChange: [
+      setContentCreatedByOnCreate,
       validateSiteFieldWithinVisibilityScope,
       validateCategoriesMatchSite,
       validateDocLocaleAgainstSite,
@@ -106,5 +108,39 @@ export const Articles: CollectionConfig = {
       ],
     },
     ...articleSeoFields,
+    {
+      type: 'collapsible',
+      label: '成本与归属',
+      admin: {
+        position: 'sidebar',
+        initCollapsed: true,
+      },
+      fields: [
+        {
+          name: 'createdBy',
+          type: 'relationship',
+          relationTo: 'users',
+          label: '创建人',
+          admin: {
+            readOnly: true,
+            description: '用于 AI 成本归属与分成；创建时自动写入，之后不可改。',
+          },
+        },
+        {
+          name: 'aiCostUsd',
+          type: 'number',
+          defaultValue: 0,
+          admin: { readOnly: true, step: 0.0001 },
+        },
+        {
+          name: 'aiCostBreakdown',
+          type: 'json',
+          admin: {
+            readOnly: true,
+            description: '按次追加的 AI 费用明细（最多保留 50 条）。',
+          },
+        },
+      ],
+    },
   ],
 }

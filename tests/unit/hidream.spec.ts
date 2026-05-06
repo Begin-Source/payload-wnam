@@ -158,6 +158,11 @@ describe('Together hidream request bodies', () => {
 
     const r = await togetherImageGenerate('sunset')
     expect(r.url).toBe('https://example.com/i.png')
+    expect(r.raw).toEqual(
+      expect.objectContaining({
+        data: [{ type: 'url', url: 'https://example.com/i.png', index: 0 }],
+      }),
+    )
   })
 
   it('togetherImageGenerate sends negative_prompt when negativePrompt is provided', async () => {

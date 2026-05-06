@@ -3,10 +3,11 @@ import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
 import { dataForSeoPost } from '@/services/integrations/dataforseo/client'
+import { extractDataForSeoCostUsd } from '@/services/integrations/dataforseo/extractDataForSeoCostUsd'
 import { computeOpportunityScore } from '@/utilities/keywordOpportunity'
 import { resolveDfsLocationLanguageFromMerged } from '@/utilities/pipelineDfsLocale'
 import { resolveMergedForPipelineRoute } from '@/utilities/resolvePipelineConfig'
-import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
+import { incrementSiteQuotaUsage, LEGACY_DFS_UNIT_TO_USD } from '@/utilities/siteQuotaCheck'
 
 export const dynamic = 'force-dynamic'
 const PATH = '/api/pipeline/keyword-discover'
@@ -39,6 +40,17 @@ const FALLBACK_SEEDS: SeedRow[] = [
   { term: 'amazon affiliate disclosure template', volume: 880, kd: 22, intent: 'informational' },
   { term: 'seo content brief example', volume: 1600, kd: 41, intent: 'transactional' },
 ]
+
+type KeywordsForKeywordsEnvelope = {
+  tasks?: Array<{
+    result?: Array<{
+      keyword?: string
+      search_volume?: number
+      keyword_difficulty?: number
+      search_intent?: string
+    }>
+  } | null>
+}
 
 export async function POST(request: Request): Promise<Response> {
   const g = requirePipelineJson(request, PATH)
@@ -75,24 +87,18 @@ export async function POST(request: Request): Promise<Response> {
   let usedDfs = false
 
   try {
-    const dfs = await dataForSeoPost<
-      {
-        results?: {
-          keyword?: string
-          search_volume?: number
-          keyword_difficulty?: number
-          search_intent?: string
-        }[]
-      }[]
-    >('/v3/keywords_data/google_ads/keywords_for_keywords/live', [
-      {
-        language_code: loc.language_code,
-        location_code: loc.location_code,
-        keywords: [body.seed || 'affiliate marketing'],
-      },
-    ])
-    const first = Array.isArray(dfs) ? dfs[0] : undefined
-    const list = first?.results
+    const dfsEnvelope = await dataForSeoPost<KeywordsForKeywordsEnvelope>(
+      '/v3/keywords_data/google_ads/keywords_for_keywords/live',
+      [
+        {
+          language_code: loc.language_code,
+          location_code: loc.location_code,
+          keywords: [body.seed || 'affiliate marketing'],
+        },
+      ],
+    )
+    const costUsd = extractDataForSeoCostUsd(dfsEnvelope)
+    const list = dfsEnvelope.tasks?.[0]?.result
     if (Array.isArray(list) && list.length > 0) {
       rows = list.slice(0, 12).map((r) => ({
         term: String(r.keyword ?? body.seed ?? 'keyword'),
@@ -102,16 +108,17 @@ export async function POST(request: Request): Promise<Response> {
       }))
       usedDfs = true
     }
+    const billedUsd =
+      costUsd > 0 ? costUsd : usedDfs ? 2 * LEGACY_DFS_UNIT_TO_USD : 0
+    if (usedDfs && siteRelation != null && Number.isFinite(siteRelation) && billedUsd > 0) {
+      try {
+        await incrementSiteQuotaUsage(payload, siteRelation, { dataForSeoUsd: billedUsd })
+      } catch {
+        /* ignore */
+      }
+    }
   } catch {
     // keep FALLBACK_SEEDS
-  }
-
-  if (usedDfs && siteRelation != null && Number.isFinite(siteRelation)) {
-    try {
-      await incrementSiteQuotaUsage(payload, siteRelation, { dfs: 2 })
-    } catch {
-      /* ignore */
-    }
   }
 
   const scored = rows.map((r) => {

@@ -14,6 +14,7 @@ import {
   userIsPureSiteManagerWithoutTeamOrOps,
 } from '@/utilities/userAccessTiers'
 import { userHasRole, userHasTenantGeneralManagerRole } from '@/utilities/userRoles'
+import { validateUserAffiliateFields } from '@/collections/hooks/validateUserAffiliateFields'
 import { usersReadWhere, usersUpdateWhere } from '@/utilities/usersAccess'
 
 const OPS_CREATABLE_ROLES = new Set(['team-lead', 'site-manager'])
@@ -233,7 +234,7 @@ export const Users: CollectionConfig = {
     unlock: superAdminPasses(() => false),
   },
   hooks: {
-    beforeChange: [enforceUserTenantAndRoles],
+    beforeChange: [enforceUserTenantAndRoles, validateUserAffiliateFields],
   },
   fields: [
     tenantsArrayField({ tenantsCollectionSlug: 'tenants' }),
@@ -244,6 +245,51 @@ export const Users: CollectionConfig = {
       admin: {
         description:
           'Optional team lead for commission / reporting (same tenant; refine access in PRD as needed).',
+      },
+    },
+    {
+      name: 'opsManager',
+      type: 'relationship',
+      relationTo: 'users',
+      label: '运营经理',
+      admin: {
+        description: '联盟结算「运营抽成」收款人；用于 commission-statements（ops_cut）。',
+      },
+    },
+    {
+      name: 'amazonTrackingId',
+      type: 'text',
+      label: 'Amazon Tracking ID',
+      index: true,
+      admin: {
+        description: 'Associates Tracking ID（小写存库）；同一租户内不可与其他用户重复。',
+      },
+    },
+    {
+      name: 'profitSharePct',
+      type: 'number',
+      label: '员工净利分成 %',
+      admin: {
+        step: 0.1,
+        description: '覆盖 commission-rules 的 defaultEmployeePct；空则使用全局默认。',
+      },
+    },
+    {
+      name: 'leaderCutPctOverride',
+      type: 'number',
+      label: '组长抽成 %（覆盖）',
+      admin: {
+        step: 0.1,
+        description: '该用户作为组长时，对其组员毛利抽取的比例；空则用 defaultLeaderCutPct。',
+      },
+    },
+    {
+      name: 'opsCutPctOverride',
+      type: 'number',
+      label: '运营抽成 %（覆盖）',
+      admin: {
+        step: 0.1,
+        description: '该用户作为运营经理时抽成比例；空则用 defaultOpsCutPct。',
       },
     },
     {

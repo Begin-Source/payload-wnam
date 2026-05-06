@@ -1,18 +1,69 @@
 import type { Payload } from 'payload'
 
 /**
+ * Legacy: abstract DFS counter × LEGACY_DFS_UNIT_TO_USD → folded into dataForSeoUsd when reading until migrated away.
+ */
+export const LEGACY_DFS_UNIT_TO_USD = 0.02
+
+/**
  * SiteQuotas.usageYtd counters (incremented by pipeline routes on best-effort basis).
  */
 export type UsageYtdShape = {
+  /** DataForSEO Standard/Labs tasks[].cost (USD), summed */
+  dataForSeoUsd?: number
+  /** @deprecated Use dataForSeoUsd — migrated by coercion until absent */
   dfs?: number
   openrouterUsd?: number
   imagesUsd?: number
   tavilyUsd?: number
+  /** Tavily Search usage.credits (integer), summed only on live API responses */
+  tavilyCredits?: number
 }
 
 function parseUsage(raw: unknown): UsageYtdShape {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
   return raw as UsageYtdShape
+}
+
+/** Stored usage normalized for arithmetic / quota checks (legacy dfs folded once into USD). */
+export function coerceUsageYtdStored(raw: unknown): UsageYtdShape {
+  const base = parseUsage(raw)
+  const dfsLegacy =
+    typeof base.dfs === 'number' && Number.isFinite(base.dfs) && base.dfs > 0 ? base.dfs : 0
+  const foldedUsd = dfsLegacy * LEGACY_DFS_UNIT_TO_USD
+  const existingUsd =
+    typeof base.dataForSeoUsd === 'number' && Number.isFinite(base.dataForSeoUsd)
+      ? base.dataForSeoUsd
+      : 0
+  return {
+    dataForSeoUsd: existingUsd + foldedUsd,
+    openrouterUsd:
+      typeof base.openrouterUsd === 'number' && Number.isFinite(base.openrouterUsd)
+        ? base.openrouterUsd
+        : 0,
+    imagesUsd:
+      typeof base.imagesUsd === 'number' && Number.isFinite(base.imagesUsd) ? base.imagesUsd : 0,
+    tavilyUsd:
+      typeof base.tavilyUsd === 'number' && Number.isFinite(base.tavilyUsd) ? base.tavilyUsd : 0,
+    tavilyCredits:
+      typeof base.tavilyCredits === 'number' && Number.isFinite(base.tavilyCredits)
+        ? Math.floor(base.tavilyCredits)
+        : 0,
+  }
+}
+
+function roundUsd(n: number): number {
+  return Math.round(n * 1e6) / 1e6
+}
+
+/** Preserve migration / internal keys on usageYtd JSON (e.g. __dfsUsdVendorBillingMigratedAt). */
+function usageYtdPreservedMeta(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (k.startsWith('__')) out[k] = v
+  }
+  return out
 }
 
 export type SiteQuotaRow = {
@@ -47,12 +98,12 @@ export async function findSiteQuotaForSite(payload: Payload, siteId: number): Pr
     monthlyTokenBudgetUsd: Number(d.monthlyTokenBudgetUsd) || 0,
     monthlyImagesBudgetUsd: Number(d.monthlyImagesBudgetUsd) || 0,
     monthlyDfsCreditBudget: Number(d.monthlyDfsCreditBudget) || 0,
-    usageYtd: parseUsage(d.usageYtd),
+    usageYtd: coerceUsageYtdStored(d.usageYtd),
     maxMonthlyAiRuns: Number(d.maxMonthlyAiRuns) || 0,
   }
 }
 
-/** Rough per-job USD / credit estimates for pre-flight checks (not billing-grade). */
+/** Rough per-job USD estimates for pre-flight checks (not billing-grade). */
 const EST_OPENROUTER_USD: Partial<Record<string, number>> = {
   category_slots: 0.03,
   /** n8n Site Pages Bundle — one OpenRouter call, five pages written */
@@ -69,7 +120,8 @@ const EST_OPENROUTER_USD: Partial<Record<string, number>> = {
   meta_ab_optimize: 0.005,
 }
 
-const EST_DFS_UNITS: Partial<Record<string, number>> = {
+/** Legacy DFS integer weights × LEGACY_DFS_UNIT_TO_USD → expected USD ceiling */
+const EST_DATAFORSEO_LEGACY_UNITS: Partial<Record<string, number>> = {
   keyword_discover: 2,
   keyword_cluster: 10,
   rank_track: 1,
@@ -80,14 +132,14 @@ const EST_DFS_UNITS: Partial<Record<string, number>> = {
 
 export function jobTypeToSpendCategories(jobType: string): {
   openrouterUsd?: number
-  dfs?: number
+  dataForSeoUsd?: number
   imagesUsd?: number
 } {
   const o = EST_OPENROUTER_USD[jobType]
-  const d = EST_DFS_UNITS[jobType]
-  const out: { openrouterUsd?: number; dfs?: number; imagesUsd?: number } = {}
+  const d = EST_DATAFORSEO_LEGACY_UNITS[jobType]
+  const out: { openrouterUsd?: number; dataForSeoUsd?: number; imagesUsd?: number } = {}
   if (o != null) out.openrouterUsd = o
-  if (d != null) out.dfs = d
+  if (d != null) out.dataForSeoUsd = d * LEGACY_DFS_UNIT_TO_USD
   if (jobType === 'image_generate') out.imagesUsd = 0.05
   if (jobType === 'media_image_generate') out.imagesUsd = 0.05
   if (jobType === 'category_cover_generate') out.imagesUsd = 0.05
@@ -125,12 +177,12 @@ export async function checkPipelineSpendForJob(
     }
   }
 
-  if (est.dfs != null && row.monthlyDfsCreditBudget > 0) {
-    const spent = u.dfs ?? 0
-    if (spent + est.dfs > row.monthlyDfsCreditBudget) {
+  if (est.dataForSeoUsd != null && row.monthlyDfsCreditBudget > 0) {
+    const spent = u.dataForSeoUsd ?? 0
+    if (spent + est.dataForSeoUsd > row.monthlyDfsCreditBudget) {
       return {
         ok: false,
-        message: `DataForSEO 月度点数不足（已用 ${spent} / ${row.monthlyDfsCreditBudget}，预估本任务 ${est.dfs}）`,
+        message: `DataForSEO 月度支出上限不足（已用约 $${spent.toFixed(4)} / $${row.monthlyDfsCreditBudget} USD，预估本任务约 $${est.dataForSeoUsd.toFixed(4)}）`,
       }
     }
   }
@@ -158,17 +210,27 @@ export async function incrementSiteQuotaUsage(
 ): Promise<void> {
   const row = await findSiteQuotaForSite(payload, siteId)
   if (!row) return
+  const full = await payload.findByID({
+    collection: 'site-quotas',
+    id: row.docId,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const preserved = usageYtdPreservedMeta((full as { usageYtd?: unknown })?.usageYtd)
   const cur = row.usageYtd
-  const next: UsageYtdShape = {
-    dfs: (cur.dfs ?? 0) + (delta.dfs ?? 0),
-    openrouterUsd: (cur.openrouterUsd ?? 0) + (delta.openrouterUsd ?? 0),
-    imagesUsd: (cur.imagesUsd ?? 0) + (delta.imagesUsd ?? 0),
-    tavilyUsd: (cur.tavilyUsd ?? 0) + (delta.tavilyUsd ?? 0),
+  const next: Record<string, unknown> = {
+    ...preserved,
+    dataForSeoUsd: roundUsd((cur.dataForSeoUsd ?? 0) + (delta.dataForSeoUsd ?? 0)),
+    openrouterUsd: roundUsd((cur.openrouterUsd ?? 0) + (delta.openrouterUsd ?? 0)),
+    imagesUsd: roundUsd((cur.imagesUsd ?? 0) + (delta.imagesUsd ?? 0)),
+    tavilyUsd: roundUsd((cur.tavilyUsd ?? 0) + (delta.tavilyUsd ?? 0)),
+    tavilyCredits:
+      Math.floor(cur.tavilyCredits ?? 0) + Math.floor(delta.tavilyCredits ?? 0),
   }
   await payload.update({
     collection: 'site-quotas',
     id: row.docId,
-    data: { usageYtd: next as Record<string, unknown> },
+    data: { usageYtd: next },
     overrideAccess: true,
   })
 }
@@ -187,7 +249,7 @@ export async function assertSiteTokenBudget(
   if (row && row.monthlyTokenBudgetUsd > 0) {
     const spent = row.usageYtd.openrouterUsd ?? 0
     if (spent + incrementUsd > row.monthlyTokenBudgetUsd) {
-      throw new Error(`Token budget: used $${spent} + $${incrementUsd} exceeds $${row.monthlyTokenBudgetUsd}`)
+      throw new Error(`Token budget: used $${spent} + $${incrementUsd} exceeds ${row.monthlyTokenBudgetUsd}`)
     }
   }
 }

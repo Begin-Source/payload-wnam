@@ -26,9 +26,14 @@ import {
   type PipelineSettingShape,
 } from '@/utilities/pipelineSettingShape'
 import { resolvePipelineConfigForArticle } from '@/utilities/resolvePipelineConfig'
-import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
+import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
 import { markdownToPageBodyLexical } from '@/utilities/sitePagesBundleContent/markdownToPayloadLexical'
+import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
+import {
+  extractTavilyUsageCredits,
+  tavilyCreditsToUsd,
+} from '@/utilities/tavilyUsageCredits'
 
 function siteIdFromArticle(doc: Article | Record<string, unknown>): number | null {
   const raw = (doc as { site?: number | { id: number } | null }).site
@@ -113,27 +118,34 @@ async function finalizePassesToMarkdown(args: {
     if (merged.tavilyEnabled) {
       try {
         const qt = merged.frugalMode ? 'basic' : 'advanced'
-        const raw = await tavilySearch({
+        const tv = await tavilySearch({
           query: args.tavSearchQuery.slice(0, 280),
           search_depth: qt,
           max_results: merged.frugalMode ? 5 : 8,
           include_raw_content: false,
         })
-        tavSlice = JSON.stringify(raw ?? {}).slice(0, 6000)
+        tavSlice = JSON.stringify(tv.body ?? {}).slice(0, 6000)
         didTavily = true
+        if (
+          !tv.cacheHit &&
+          typeof args.siteId === 'number' &&
+          Number.isFinite(args.siteId)
+        ) {
+          const credits = extractTavilyUsageCredits(tv.body)
+          if (credits != null) {
+            try {
+              const usd = tavilyCreditsToUsd(credits)
+              await incrementSiteQuotaUsage(payload, args.siteId, {
+                tavilyCredits: credits,
+                ...(usd > 0 ? { tavilyUsd: usd } : {}),
+              })
+            } catch {
+              /* quota optional */
+            }
+          }
+        }
       } catch {
         tavSlice = '(tavily_error)'
-      }
-      if (
-        typeof args.siteId === 'number' &&
-        Number.isFinite(args.siteId) &&
-        didTavily
-      ) {
-        try {
-          await incrementSiteQuotaUsage(payload, args.siteId, { tavilyUsd: 0.002 })
-        } catch {
-          /* quota optional */
-        }
       }
     }
     const appendix = await runTpl(
@@ -266,6 +278,19 @@ export async function runDraftFinalizeForArticle(
     },
     overrideAccess: true,
   })
+
+  try {
+    await recordOpenRouterAiCost({
+      payload,
+      target: { collection: 'articles', id: articleIdNum },
+      model,
+      usage,
+      raw: undefined,
+      kind: 'draft_finalize',
+    })
+  } catch {
+    /* optional ledger */
+  }
 
   let orUsd = merged.frugalMode ? 0.03 : 0.08
   if (merged.finalizeVariant === 'fact_check_pass' && merged.tavilyEnabled) {

@@ -12,7 +12,11 @@ import {
   type AmzKeywordEligibilityThresholds,
   type KeywordIntent,
 } from '@/utilities/keywordEligibility'
-import { findSiteQuotaForSite, incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
+import {
+  findSiteQuotaForSite,
+  incrementSiteQuotaUsage,
+  LEGACY_DFS_UNIT_TO_USD,
+} from '@/utilities/siteQuotaCheck'
 import { resolveDfsLocationLanguageFromMerged } from '@/utilities/pipelineDfsLocale'
 import { resolvePipelineConfigForSite } from '@/utilities/resolvePipelineConfig'
 import { getTenantScopeForStats, type TenantScope } from '@/utilities/tenantScope'
@@ -179,35 +183,38 @@ export async function POST(request: Request): Promise<Response> {
       ? body.languageCode.trim().toLowerCase()
       : fromMerged.language_code
 
-  /** ~2 DFS credits per seed (same order of magnitude as `keyword_discover`). */
-  const dfsUnits = 2 * seeds.length
+  /** Preflight: legacy-equivalent USD ceiling (~2 abstract credits × LEGACY per seed). */
+  const estimateUsd = seeds.length > 0 ? seeds.length * 2 * LEGACY_DFS_UNIT_TO_USD : 0
   const quotaRow = await findSiteQuotaForSite(payload, siteId)
   if (quotaRow && quotaRow.monthlyDfsCreditBudget > 0) {
-    const spent = quotaRow.usageYtd.dfs ?? 0
-    if (spent + dfsUnits > quotaRow.monthlyDfsCreditBudget) {
+    const spent = quotaRow.usageYtd.dataForSeoUsd ?? 0
+    if (spent + estimateUsd > quotaRow.monthlyDfsCreditBudget) {
       return Response.json(
         {
-          error: `DataForSEO 月度点数不足（已用 ${spent} / ${quotaRow.monthlyDfsCreditBudget}，本操作约需 ${dfsUnits}）`,
+          error: `DataForSEO 月度 USD 上限不足（已用约 $${spent.toFixed(4)} / $${quotaRow.monthlyDfsCreditBudget}，本操作预估约 $${estimateUsd.toFixed(4)}）`,
         },
         { status: 402 },
       )
     }
   }
 
-  let normalized: Awaited<ReturnType<typeof fetchKeywordSuggestionsLive>>
+  let normalizedRows: Awaited<ReturnType<typeof fetchKeywordSuggestionsLive>>['rows']
+  let totalCostUsd = 0
   try {
-    normalized = await fetchKeywordSuggestionsLive({
+    const res = await fetchKeywordSuggestionsLive({
       seeds,
       locationCode,
       languageCode,
       limitTotal: thresholds.pullLimit,
     })
+    normalizedRows = res.rows
+    totalCostUsd = res.totalCostUsd
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     return Response.json({ error: `DataForSEO: ${msg}` }, { status: 502 })
   }
 
-  const enriched = normalized.map((r) => {
+  const enriched = normalizedRows.map((r) => {
     const opportunityScore = opportunityForKeywordRow({
       volume: r.volume,
       keywordDifficulty: r.kd,
@@ -319,7 +326,7 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
-  await incrementSiteQuotaUsage(payload, siteId, { dfs: dfsUnits })
+  await incrementSiteQuotaUsage(payload, siteId, { dataForSeoUsd: totalCostUsd })
 
   return Response.json({
     ok: true,
@@ -327,7 +334,7 @@ export async function POST(request: Request): Promise<Response> {
     persisted,
     skipped,
     eligibleCount,
-    dfsCredits: dfsUnits,
+    dataForSeoUsdCharged: totalCostUsd,
     location: { locationCode, languageCode },
     thresholds,
     seeds,

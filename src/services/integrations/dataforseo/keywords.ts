@@ -1,4 +1,5 @@
 import { dataForSeoPost } from '@/services/integrations/dataforseo/client'
+import { extractDataForSeoCostUsd } from '@/services/integrations/dataforseo/extractDataForSeoCostUsd'
 import {
   normalizeKeywordIntent,
   type KeywordIntent,
@@ -125,14 +126,15 @@ export async function fetchKeywordSuggestionsLive(args: {
   languageCode: string
   limitTotal: number
   signal?: AbortSignal
-}): Promise<NormalizedKeywordRow[]> {
+}): Promise<{ rows: NormalizedKeywordRow[]; totalCostUsd: number }> {
   const { seeds, locationCode, languageCode, limitTotal, signal } = args
   const cleanSeeds = seeds.map((s) => s.trim()).filter(Boolean)
-  if (cleanSeeds.length === 0 || limitTotal <= 0) return []
+  if (cleanSeeds.length === 0 || limitTotal <= 0) return { rows: [], totalCostUsd: 0 }
 
   const perSeedCap = Math.max(16, Math.ceil(limitTotal / cleanSeeds.length))
   const dfsLimit = Math.min(1000, perSeedCap)
   const byTerm = new Map<string, NormalizedKeywordRow>()
+  let totalCostUsd = 0
 
   for (const seed of cleanSeeds) {
     const dfs = await dataForSeoPost<DfsLabsEnvelope>(
@@ -149,6 +151,8 @@ export async function fetchKeywordSuggestionsLive(args: {
       ],
       { signal },
     )
+
+    totalCostUsd += extractDataForSeoCostUsd(dfs)
 
     throwIfBadStatus('DataForSEO', dfs.status_code, dfs.status_message)
 
@@ -173,5 +177,8 @@ export async function fetchKeywordSuggestionsLive(args: {
     if (byTerm.size >= limitTotal) break
   }
 
-  return Array.from(byTerm.values()).slice(0, limitTotal)
+  return {
+    rows: Array.from(byTerm.values()).slice(0, limitTotal),
+    totalCostUsd: Math.round(totalCostUsd * 1e9) / 1e9,
+  }
 }

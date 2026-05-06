@@ -15,7 +15,12 @@ import {
   wordBudgetHintFromArticleStrategy,
 } from '@/utilities/pipelineSettingShape'
 import { resolvePipelineConfig, resolvePipelineConfigForArticle } from '@/utilities/resolvePipelineConfig'
+import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
+import {
+  extractTavilyUsageCredits,
+  tavilyCreditsToUsd,
+} from '@/utilities/tavilyUsageCredits'
 
 export const dynamic = 'force-dynamic'
 
@@ -224,21 +229,30 @@ export async function POST(request: Request): Promise<Response> {
   if (merged?.sectionVariant === 'research_per_section' && merged.tavilyEnabled) {
     const qTail = `${globalContext}`.slice(0, 400)
     try {
-      const raw = await tavilySearch({
+      const tv = await tavilySearch({
         query:
           `${qTail}\nsection "${body.sectionId}"`.slice(0, 440),
         search_depth: merged.frugalMode ? 'basic' : 'advanced',
         max_results: merged.frugalMode ? 6 : 10,
         include_raw_content: false,
       })
-      researchSlice = JSON.stringify(raw ?? {}).slice(0, 8000)
-      if (typeof siteNum === 'number' && Number.isFinite(siteNum)) {
-        try {
-          await incrementSiteQuotaUsage(payload, siteNum, {
-            tavilyUsd: merged.frugalMode ? 0.0005 : 0.002,
-          })
-        } catch {
-          /* optional */
+      researchSlice = JSON.stringify(tv.body ?? {}).slice(0, 8000)
+      if (
+        !tv.cacheHit &&
+        typeof siteNum === 'number' &&
+        Number.isFinite(siteNum)
+      ) {
+        const credits = extractTavilyUsageCredits(tv.body)
+        if (credits != null) {
+          try {
+            const usd = tavilyCreditsToUsd(credits)
+            await incrementSiteQuotaUsage(payload, siteNum, {
+              tavilyCredits: credits,
+              ...(usd > 0 ? { tavilyUsd: usd } : {}),
+            })
+          } catch {
+            /* optional */
+          }
         }
       }
     } catch {
@@ -249,6 +263,7 @@ export async function POST(request: Request): Promise<Response> {
   let text = ''
   let lastError: Error | null = null
   let usageOut: Record<string, number | undefined> | undefined
+  let rawOut: unknown
   let modelUsed = model
 
   for (let attempt = 0; attempt < maxRetry; attempt += 1) {
@@ -256,7 +271,7 @@ export async function POST(request: Request): Promise<Response> {
       const trialModel =
         attempt > 0 && fbModel ? fbModel : model
       modelUsed = trialModel
-      const { text: tOut, usage } = await runSectionPrompt(payload, tenantId, {
+      const { text: tOut, usage, raw } = await runSectionPrompt(payload, tenantId, {
         model: trialModel,
         sectionId: body.sectionId,
         sectionType,
@@ -266,6 +281,7 @@ export async function POST(request: Request): Promise<Response> {
         ...(researchSlice ? { researchSlice } : {}),
       })
       text = tOut
+      rawOut = raw
       usageOut =
         usage ?
           {
@@ -332,6 +348,22 @@ export async function POST(request: Request): Promise<Response> {
       )
     }
     written = true
+    try {
+      await recordOpenRouterAiCost({
+        payload,
+        target: { collection: 'articles', id: aid },
+        model: modelUsed,
+        usage: usageOut as {
+          prompt_tokens?: number
+          completion_tokens?: number
+          total_tokens?: number
+        },
+        raw: rawOut,
+        kind: 'draft_section',
+      })
+    } catch {
+      /* ledger optional */
+    }
     try {
       const doc = await payload.findByID({
         collection: 'articles',

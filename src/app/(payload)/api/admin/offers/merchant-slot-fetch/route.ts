@@ -2,6 +2,7 @@ import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
 import { dataForSeoPost } from '@/services/integrations/dataforseo/client'
+import { extractDataForSeoCostUsd } from '@/services/integrations/dataforseo/extractDataForSeoCostUsd'
 import { formatMerchantSlotTag } from '@/utilities/merchantSlotTag'
 import {
   parseStoredSummaryRecord,
@@ -9,6 +10,7 @@ import {
 } from '@/collections/shared/sanitizeMerchantJsonFields'
 import { parseRelationshipId } from '@/utilities/parseRelationshipId'
 import { getTenantScopeForStats, type TenantScope } from '@/utilities/tenantScope'
+import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { assertUsersCollection } from '@/utilities/workflowQuickCreate'
 
 export const dynamic = 'force-dynamic'
@@ -222,7 +224,7 @@ export async function POST(request: Request): Promise<Response> {
         overrideAccess: true,
       })
 
-      await dataForSeoPost(DFS_PATH, [
+      const envPost = await dataForSeoPost(DFS_PATH, [
         {
           location_name: 'United States',
           language_name: 'English (United States)',
@@ -233,6 +235,15 @@ export async function POST(request: Request): Promise<Response> {
           postback_url: postbackUrl,
         },
       ])
+
+      try {
+        const usd = extractDataForSeoCostUsd(envPost)
+        if (usd > 0) {
+          await incrementSiteQuotaUsage(payload, siteId, { dataForSeoUsd: usd })
+        }
+      } catch {
+        /* quota optional */
+      }
 
       let offersMarkedRunning = 0
       try {

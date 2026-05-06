@@ -3,7 +3,9 @@ import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
 import { togetherImageGenerate } from '@/services/integrations/together/hidream'
+import { resolveTogetherImageChargeUsd } from '@/utilities/aiCostPricing'
 import { formatD1MediaInsertFailureMessage } from '@/utilities/pipelineDbErrorMessage'
+import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { resolveMergedForPipelineRoute } from '@/utilities/resolvePipelineConfig'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
@@ -76,9 +78,11 @@ export async function POST(request: Request): Promise<Response> {
   const imageModel = merged.defaultImageModel?.trim() || undefined
 
   let urlRemote: string
+  let togetherGenRaw: unknown
   try {
     const r = await togetherImageGenerate(body.prompt, imageModel ? { model: imageModel } : undefined)
     urlRemote = r.url
+    togetherGenRaw = r.raw
   } catch (e) {
     return Response.json(
       { ok: false, error: e instanceof Error ? e.message : String(e) },
@@ -182,6 +186,17 @@ export async function POST(request: Request): Promise<Response> {
         data: { featuredImage: mediaId },
         overrideAccess: true,
       })
+    }
+
+    try {
+      await incrementSiteQuotaUsage(payload, mediaSite, {
+        imagesUsd: resolveTogetherImageChargeUsd({
+          raw: togetherGenRaw,
+          kind: 'pipeline_image_generate',
+        }).usd,
+      })
+    } catch {
+      /* optional quota */
     }
   } catch (e) {
     return Response.json({

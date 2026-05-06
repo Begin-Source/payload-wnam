@@ -23,7 +23,11 @@ export async function runSectionPrompt(
     /** Extra Tavily / research JSON for `research_per_section`. */
     researchSlice?: string
   },
-): Promise<{ text: string; usage?: OpenRouterChatResult['usage'] }> {
+): Promise<{
+  text: string
+  usage?: OpenRouterChatResult['usage']
+  raw?: unknown
+}> {
   const defaultSystem = getSkillPrompt('seo-content-writer', {
     contentType: input.sectionType,
     ...(input.eeatWeights ? { eeatWeights: input.eeatWeights } : {}),
@@ -61,5 +65,5 @@ export async function runSectionPrompt(
     { role: 'system', content: system },
     { role: 'user', content: user },
   ])
-  return { text: r.text, usage: r.usage }
+  return { text: r.text, usage: r.usage, raw: r.raw }
 }

@@ -20,6 +20,8 @@ import {
   formatD1MediaInsertFailureMessage,
 } from '@/utilities/pipelineDbErrorMessage'
 import { resolvePipelineConfigForArticle, resolvePipelineConfigForSite } from '@/utilities/resolvePipelineConfig'
+import { recordTogetherImageAiCost } from '@/utilities/aiCostLog'
+import { resolveTogetherImageChargeUsd } from '@/utilities/aiCostPricing'
 import { resolveTogetherTenantPrompt } from '@/utilities/togetherTenantPrompts/resolveTogetherTenantPrompt'
 import { buildArticleFeaturedTogetherVars } from '@/utilities/togetherTenantPrompts/togetherImagePromptTemplates'
 
@@ -159,7 +161,7 @@ async function runReplaceOnMedia(
   const replaceModel = pipeReplace.merged.defaultImageModel?.trim() || undefined
 
   try {
-    const { buffer, mimeType } = await togetherImageGenerateBytes(resolved.promptText, {
+    const { buffer, mimeType, raw } = await togetherImageGenerateBytes(resolved.promptText, {
       model: replaceModel,
     })
     const ext = imageExtensionFromMime(mimeType)
@@ -194,7 +196,17 @@ async function runReplaceOnMedia(
       overrideAccess: true,
     })
 
-    await incrementSiteQuotaUsage(payload, mediaSiteId, { imagesUsd: 0.05 })
+    await incrementSiteQuotaUsage(payload, mediaSiteId, {
+      imagesUsd: resolveTogetherImageChargeUsd({ raw, kind: 'media_image_replace' }).usd,
+    })
+
+    await recordTogetherImageAiCost({
+      payload,
+      target: { collection: 'media', id: mediaId },
+      raw,
+      kind: 'media_image_replace',
+      model: replaceModel ?? null,
+    })
 
     return Response.json({
       ok: true,
@@ -369,7 +381,9 @@ async function runArticleOrPageFeatured(
   const featuredModel = pipeFeatured.merged.defaultImageModel?.trim() || undefined
 
   try {
-    const { buffer, mimeType } = await togetherImageGenerateBytes(promptText, { model: featuredModel })
+    const { buffer, mimeType, raw } = await togetherImageGenerateBytes(promptText, {
+      model: featuredModel,
+    })
     const ext = imageExtensionFromMime(mimeType)
     const slugBase = title
       .toLowerCase()
@@ -414,7 +428,17 @@ async function runArticleOrPageFeatured(
       overrideAccess: true,
     })
 
-    await incrementSiteQuotaUsage(payload, sid, { imagesUsd: 0.05 })
+    await incrementSiteQuotaUsage(payload, sid, {
+      imagesUsd: resolveTogetherImageChargeUsd({ raw, kind: 'article_page_featured_auto' }).usd,
+    })
+
+    await recordTogetherImageAiCost({
+      payload,
+      target: { collection: 'media', id: newMediaId },
+      raw,
+      kind: 'article_page_featured_auto',
+      model: featuredModel ?? null,
+    })
 
     return Response.json({
       ok: true,

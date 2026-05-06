@@ -24,6 +24,8 @@ import {
   formatD1MediaInsertFailureMessage,
 } from '@/utilities/pipelineDbErrorMessage'
 import { resolvePipelineConfigForSite } from '@/utilities/resolvePipelineConfig'
+import { recordTogetherImageAiCost } from '@/utilities/aiCostLog'
+import { resolveTogetherImageChargeUsd } from '@/utilities/aiCostPricing'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
@@ -155,7 +157,7 @@ export async function POST(request: Request): Promise<Response> {
     typeof siteRow.name === 'string' && siteRow.name.trim() ? siteRow.name.trim() : slug
 
   try {
-    const { buffer, mimeType } = await togetherImageGenerateBytes(promptText, {
+    const { buffer, mimeType, raw } = await togetherImageGenerateBytes(promptText, {
       width: genW,
       height: genH,
       negativePrompt,
@@ -252,7 +254,17 @@ export async function POST(request: Request): Promise<Response> {
         overrideAccess: true,
       })
 
-      await incrementSiteQuotaUsage(payload, siteId, { imagesUsd: 0.05 })
+      await incrementSiteQuotaUsage(payload, siteId, {
+        imagesUsd: resolveTogetherImageChargeUsd({ raw, kind: 'homepage_hero_auto' }).usd,
+      })
+
+      await recordTogetherImageAiCost({
+        payload,
+        target: { collection: 'media', id: existingMediaId },
+        raw,
+        kind: 'homepage_hero_auto',
+        model: imageModel ?? null,
+      })
 
       return Response.json({
         ok: true,
@@ -296,7 +308,17 @@ export async function POST(request: Request): Promise<Response> {
       overrideAccess: true,
     })
 
-    await incrementSiteQuotaUsage(payload, siteId, { imagesUsd: 0.05 })
+    await incrementSiteQuotaUsage(payload, siteId, {
+      imagesUsd: resolveTogetherImageChargeUsd({ raw, kind: 'homepage_hero_auto' }).usd,
+    })
+
+    await recordTogetherImageAiCost({
+      payload,
+      target: { collection: 'media', id: newMediaId },
+      raw,
+      kind: 'homepage_hero_auto',
+      model: imageModel ?? null,
+    })
 
     return Response.json({
       ok: true,

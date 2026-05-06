@@ -9,7 +9,11 @@ import { fetchKeywordSuggestionsLive } from '@/services/integrations/dataforseo/
 
 const LABS_ENDPOINT = '/v3/dataforseo_labs/google/keyword_suggestions/live'
 
-function labsEnvelope(resultSlices: Record<string, unknown>[]) {
+function labsEnvelope(
+  resultSlices: Record<string, unknown>[],
+  opts?: { taskCost?: number },
+) {
+  const taskCost = opts?.taskCost ?? 0
   return {
     status_code: 20000,
     status_message: 'Ok.',
@@ -17,6 +21,7 @@ function labsEnvelope(resultSlices: Record<string, unknown>[]) {
       {
         status_code: 20000,
         status_message: 'Ok.',
+        cost: taskCost,
         result: resultSlices,
       },
     ],
@@ -67,7 +72,7 @@ describe('fetchKeywordSuggestionsLive', () => {
         ]) as never,
       )
 
-    const rows = await fetchKeywordSuggestionsLive({
+    const { rows } = await fetchKeywordSuggestionsLive({
       seeds: ['wireless earbuds', 'other'],
       locationCode: 2840,
       languageCode: 'en',
@@ -91,6 +96,55 @@ describe('fetchKeywordSuggestionsLive', () => {
     expect(rows.find((x) => x.term === 'overlap')?.intent).toBe('transactional')
   })
 
+  it('aggregates totalCostUsd across seed POSTs from task cost', async () => {
+    vi.mocked(dataForSeoPost)
+      .mockResolvedValueOnce(
+        labsEnvelope(
+          [
+            {
+              seed_keyword: 'a',
+              items: [
+                {
+                  keyword: 'a-one',
+                  keyword_info: { search_volume: 1 },
+                  keyword_properties: { keyword_difficulty: 1 },
+                  search_intent_info: { main_intent: 'informational' },
+                },
+              ],
+            },
+          ],
+          { taskCost: 0.004 },
+        ) as never,
+      )
+      .mockResolvedValueOnce(
+        labsEnvelope(
+          [
+            {
+              seed_keyword: 'b',
+              items: [
+                {
+                  keyword: 'b-one',
+                  keyword_info: { search_volume: 2 },
+                  keyword_properties: { keyword_difficulty: 2 },
+                  search_intent_info: { main_intent: 'informational' },
+                },
+              ],
+            },
+          ],
+          { taskCost: 0.006 },
+        ) as never,
+      )
+
+    const out = await fetchKeywordSuggestionsLive({
+      seeds: ['a', 'b'],
+      locationCode: 2840,
+      languageCode: 'en',
+      limitTotal: 10,
+    })
+    expect(out.totalCostUsd).toBeCloseTo(0.01, 6)
+    expect(out.rows).toHaveLength(2)
+  })
+
   it('merges seed_keyword_data KD/intent from slice parent', async () => {
     vi.mocked(dataForSeoPost).mockResolvedValueOnce(
       labsEnvelope([
@@ -107,7 +161,7 @@ describe('fetchKeywordSuggestionsLive', () => {
       ]) as never,
     )
 
-    const rows = await fetchKeywordSuggestionsLive({
+    const { rows } = await fetchKeywordSuggestionsLive({
       seeds: ['coffee maker'],
       locationCode: 2840,
       languageCode: 'en',

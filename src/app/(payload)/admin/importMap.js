@@ -53,6 +53,10 @@ import { KeywordListQuickAction as KeywordListQuickAction_175e6fb4b4770cdb50ab07
 import { KeywordSyncFetchListAction as KeywordSyncFetchListAction_175e6fb4b4770cdb50ab070ca3750cb3 } from '../../../components/CollectionQuickActions'
 import { ArticleListQuickAction as ArticleListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3 } from '../../../components/CollectionQuickActions'
 import { PipelineRunNextDrawer as PipelineRunNextDrawer_07859e8b503a7687d3e47116994e494e } from '../../../components/PipelineRunNextDrawer'
+import { AffiliateEarningsImportListMenuItem as AffiliateEarningsImportListMenuItem_61dd445dc19d866487d7eb4f519f1ff7 } from '../../../components/AffiliateEarningsImportPanel'
+import { AffiliateEarningsImportPanel as AffiliateEarningsImportPanel_61dd445dc19d866487d7eb4f519f1ff7 } from '../../../components/AffiliateEarningsImportPanel'
+import { TeamStatsField as TeamStatsField_859969464dd29b86f45da8ae998ae288 } from '../../../components/TeamStatsField'
+import { TeamPerformanceListLink as TeamPerformanceListLink_5ad4138cdfe5f4330fc644fdd42bd558 } from '../../../components/TeamPerformanceListLink'
 import { PipelineProfilesListActions as PipelineProfilesListActions_37349c257620e493259301a50dca7338 } from '../../../components/PipelineProfilesListActions'
 import { WatchTenantCollection as WatchTenantCollection_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
 import { SelectField as SelectField_c25bd927cd468b8e16d7bdb2cc282659 } from '@ai-stack/payloadcms/fields'
@@ -66,12 +70,14 @@ import { BeforeDashboardMilestone as BeforeDashboardMilestone_3719a54b7b6993337f
 import { TenantSelector as TenantSelector_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { PipelineProfilesCompareNavLink as PipelineProfilesCompareNavLink_1898192308377dd5c2fe7681d1e4845d } from '../../../components/PipelineProfilesCompareNavLink'
 import { KnowledgeReadNavLink as KnowledgeReadNavLink_101990354097f86fa59616ae4a98e808 } from '../../../components/KnowledgeReadNavLink'
+import { TeamPerformanceNavLink as TeamPerformanceNavLink_12afe1daa5aec70db2bd5477fbacdacf } from '../../../components/TeamPerformanceNavLink'
 import { AdminBrandingProvider as AdminBrandingProvider_44ab57c43dcee8db134a3e5db338ce23 } from '../../../components/AdminBrandingProvider'
 import { TenantSelectionProvider as TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { InstructionsProvider as InstructionsProvider_4490b89d4413c1ffaecdacfe72efaf73 } from '@ai-stack/payloadcms/client'
 import { R2ClientUploadHandler as R2ClientUploadHandler_85cc02ed84006fcc91d3aff39dda669d } from '@payloadcms/storage-r2/client'
 import { MinimalDashboard as MinimalDashboard_1c676c4519e9773b53ff114b36bd0515 } from '../../../components/MinimalDashboard'
 import { PipelineProfilesCompareView as PipelineProfilesCompareView_645e3c12148c83054405a756729d5edb } from '../../../components/PipelineProfilesCompareView'
+import { TeamPerformanceView as TeamPerformanceView_43ca755606844bffd2b4692523c84c07 } from '../../../components/TeamPerformanceView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 export const importMap = {
@@ -130,6 +136,10 @@ export const importMap = {
   "./components/CollectionQuickActions#KeywordSyncFetchListAction": KeywordSyncFetchListAction_175e6fb4b4770cdb50ab070ca3750cb3,
   "./components/CollectionQuickActions#ArticleListQuickAction": ArticleListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3,
   "./components/PipelineRunNextDrawer#PipelineRunNextDrawer": PipelineRunNextDrawer_07859e8b503a7687d3e47116994e494e,
+  "./components/AffiliateEarningsImportPanel#AffiliateEarningsImportListMenuItem": AffiliateEarningsImportListMenuItem_61dd445dc19d866487d7eb4f519f1ff7,
+  "./components/AffiliateEarningsImportPanel#AffiliateEarningsImportPanel": AffiliateEarningsImportPanel_61dd445dc19d866487d7eb4f519f1ff7,
+  "./components/TeamStatsField#TeamStatsField": TeamStatsField_859969464dd29b86f45da8ae998ae288,
+  "./components/TeamPerformanceListLink#TeamPerformanceListLink": TeamPerformanceListLink_5ad4138cdfe5f4330fc644fdd42bd558,
   "./components/PipelineProfilesListActions#PipelineProfilesListActions": PipelineProfilesListActions_37349c257620e493259301a50dca7338,
   "@payloadcms/plugin-multi-tenant/client#WatchTenantCollection": WatchTenantCollection_1d0591e3cf4f332c83a86da13a0de59a,
   "@ai-stack/payloadcms/fields#SelectField": SelectField_c25bd927cd468b8e16d7bdb2cc282659,
@@ -143,11 +153,13 @@ export const importMap = {
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelector": TenantSelector_d6d5f193a167989e2ee7d14202901e62,
   "./components/PipelineProfilesCompareNavLink#PipelineProfilesCompareNavLink": PipelineProfilesCompareNavLink_1898192308377dd5c2fe7681d1e4845d,
   "./components/KnowledgeReadNavLink#KnowledgeReadNavLink": KnowledgeReadNavLink_101990354097f86fa59616ae4a98e808,
+  "./components/TeamPerformanceNavLink#TeamPerformanceNavLink": TeamPerformanceNavLink_12afe1daa5aec70db2bd5477fbacdacf,
   "./components/AdminBrandingProvider#AdminBrandingProvider": AdminBrandingProvider_44ab57c43dcee8db134a3e5db338ce23,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelectionProvider": TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62,
   "@ai-stack/payloadcms/client#InstructionsProvider": InstructionsProvider_4490b89d4413c1ffaecdacfe72efaf73,
   "@payloadcms/storage-r2/client#R2ClientUploadHandler": R2ClientUploadHandler_85cc02ed84006fcc91d3aff39dda669d,
   "./components/MinimalDashboard#MinimalDashboard": MinimalDashboard_1c676c4519e9773b53ff114b36bd0515,
   "./components/PipelineProfilesCompareView#PipelineProfilesCompareView": PipelineProfilesCompareView_645e3c12148c83054405a756729d5edb,
+  "./components/TeamPerformanceView#TeamPerformanceView": TeamPerformanceView_43ca755606844bffd2b4692523c84c07,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

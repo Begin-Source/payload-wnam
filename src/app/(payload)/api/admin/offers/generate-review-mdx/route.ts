@@ -17,6 +17,7 @@ import { extractOfferReviewFromLlm } from '@/utilities/offerReviewMdx/extractOff
 import { loadOfferReviewTemplate } from '@/utilities/offerReviewMdx/loadOfferReviewTemplate'
 import { ensureReviewSlugWithAsin } from '@/utilities/offerReviewMdx/offerReviewSlug'
 import { upsertArticleFromOfferReview } from '@/utilities/offerReviewMdx/upsertArticleFromOfferReview'
+import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
 import { resolveTenantPromptPair } from '@/utilities/openRouterTenantPrompts/loadTenantPromptTemplateBody'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { resolvePipelineConfigForSite } from '@/utilities/resolvePipelineConfig'
@@ -158,6 +159,7 @@ export async function POST(request: Request): Promise<Response> {
   }
   const scope = getTenantScopeForStats(user)
 
+  let lastModel = ''
   const results: {
     offerId: number
     ok: boolean
@@ -187,6 +189,7 @@ export async function POST(request: Request): Promise<Response> {
       }
 
       const model = await resolveReviewAiModel(payload, access.siteId, aiOverride)
+      lastModel = model
 
       await payload.update({
         collection: 'offers',
@@ -213,7 +216,7 @@ export async function POST(request: Request): Promise<Response> {
         offerVars,
       )
 
-      const { text: llmText, finishReason } = await openrouterChatWithMeta(
+      const { text: llmText, finishReason, usage, raw: llmRaw } = await openrouterChatWithMeta(
         model,
         [
           {
@@ -261,6 +264,17 @@ export async function POST(request: Request): Promise<Response> {
         })
         articleId = ar.articleId
         articleCreated = ar.created
+        if (articleId != null) {
+          await recordOpenRouterAiCost({
+            payload,
+            target: { collection: 'articles', id: articleId },
+            model,
+            usage,
+            raw: llmRaw,
+            kind: 'offer_review_mdx',
+            metaExtra: { offerId },
+          })
+        }
       }
 
       await incrementSiteQuotaUsage(payload, access.siteId, { openrouterUsd: OPENROUTER_EST_USD })
@@ -294,7 +308,7 @@ export async function POST(request: Request): Promise<Response> {
   const okCount = results.filter((r) => r.ok).length
   return Response.json({
     ok: okCount === results.length,
-    model,
+    model: lastModel,
     createArticle,
     results,
     okCount,

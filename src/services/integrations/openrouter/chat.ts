@@ -16,7 +16,11 @@ export type OpenRouterChatResult = {
     prompt_tokens?: number
     completion_tokens?: number
     total_tokens?: number
+    /** OpenRouter: USD charged for this call when present */
+    cost?: number
   }
+  /** Full JSON body for cost / extended usage fields */
+  raw?: unknown
 }
 
 export async function openrouterChat(
@@ -76,5 +80,5 @@ export async function openrouterChatWithMeta(
   if (!text) {
     throw new Error('OpenRouter: empty response')
   }
-  return { text, finishReason: ch?.finish_reason ?? '', usage: data.usage }
+  return { text, finishReason: ch?.finish_reason ?? '', usage: data.usage, raw: data }
 }

@@ -5,7 +5,8 @@ import {
   mergeAmzSiteConfigFromRaw,
   mergePatchOntoAmzConfig,
 } from '@/site-layouts/amz-template-1/mergeAmzSiteConfig'
-import { openrouterChat } from '@/services/integrations/openrouter/chat'
+import { openrouterChatWithMeta } from '@/services/integrations/openrouter/chat'
+import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
 import {
   AMZ_DESIGN_FILLABLE_DOT_PATHS,
   applyAllowedFillPatches,
@@ -473,6 +474,14 @@ export async function runAmzTemplateDesignForBlueprint(
   }
 
   let raw: string
+  let amzChatUsage:
+    | {
+        prompt_tokens?: number
+        completion_tokens?: number
+        total_tokens?: number
+      }
+    | undefined
+  let amzChatRaw: unknown
   try {
     const tenantId = tenantIdFromRelation(ctx.site.tenant)
     let system: string
@@ -529,7 +538,7 @@ export async function runAmzTemplateDesignForBlueprint(
       user = r.user
     }
 
-    raw = await openrouterChat(
+    const chatOut = await openrouterChatWithMeta(
       ctx.aiModel,
       [
         { role: 'system', content: system },
@@ -540,6 +549,9 @@ export async function runAmzTemplateDesignForBlueprint(
         temperature: ctx.fillSlots ? 0.52 : 0.35,
       },
     )
+    raw = chatOut.text
+    amzChatUsage = chatOut.usage
+    amzChatRaw = chatOut.raw
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     await markBlueprintDesignWorkflowError(payload, blueprintId, {
@@ -547,6 +559,19 @@ export async function runAmzTemplateDesignForBlueprint(
       message: msg,
     })
     return { ok: false, code: 'OPENROUTER', message: msg, status: 502 }
+  }
+
+  try {
+    await recordOpenRouterAiCost({
+      payload,
+      target: { collection: 'sites', id: ctx.siteId },
+      model: ctx.aiModel,
+      usage: amzChatUsage,
+      raw: amzChatRaw,
+      kind: 'amz_template_design',
+    })
+  } catch {
+    /* optional ledger */
   }
 
   let patch: unknown

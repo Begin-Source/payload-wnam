@@ -1,10 +1,17 @@
 const DEFAULT_BASE = 'https://api.together.xyz/v1'
 
-export type TogetherImageResult = { url: string; revised_prompt?: string }
+export type TogetherImageResult = {
+  url: string
+  revised_prompt?: string
+  /** Full Together JSON when available (URL-mode billing / diagnostics). */
+  raw?: unknown
+}
 
 export type TogetherImageBytesResult = {
   buffer: Uint8Array
   mimeType: string
+  /** Raw Together JSON for pricing fields when present */
+  raw?: unknown
 }
 
 /** Optional Together image dimensions in request body (pairs override env default 1024 square). */
@@ -99,7 +106,7 @@ export async function togetherImageGenerate(
   if (!url) {
     throw new Error('Together: no image url')
   }
-  return { url }
+  return { url, raw: data }
 }
 
 type TogetherImagesJson = {
@@ -180,7 +187,7 @@ export async function togetherImageGenerateBytes(
     }
     const mimeRaw = typeof first.mime_type === 'string' ? first.mime_type.trim() : ''
     const mimeType = mimeRaw || 'image/jpeg'
-    return { buffer: new Uint8Array(buffer), mimeType }
+    return { buffer: new Uint8Array(buffer), mimeType, raw: data }
   }
 
   const url = typeof first?.url === 'string' ? first.url : undefined
@@ -191,7 +198,7 @@ export async function togetherImageGenerateBytes(
     }
     const mimeType = imgRes.headers.get('content-type') ?? 'image/png'
     const buf = new Uint8Array(await imgRes.arrayBuffer())
-    return { buffer: buf, mimeType }
+    return { buffer: buf, mimeType, raw: data }
   }
 
   const apiErr =

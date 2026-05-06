@@ -1,6 +1,7 @@
 import type { Payload } from 'payload'
 
-import { openrouterChat } from '@/services/integrations/openrouter/chat'
+import { openrouterChatWithMeta } from '@/services/integrations/openrouter/chat'
+import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
 import { buildSiteUpdatePatch } from '@/utilities/domainGeneration/buildSitePatch'
 import {
   resolveAudienceStepPrompts,
@@ -104,6 +105,8 @@ export async function runDomainGenerationForSite(
   try {
     await markSiteDomainWorkflowRunning(payload, siteId)
 
+    const sid = typeof siteId === 'number' ? siteId : Number(siteId)
+
     const baseTopic = (mainProduct || siteName || niche).trim()
     if (!baseTopic) {
       throw new Error('main_product/site_name/niche are all empty')
@@ -120,14 +123,33 @@ export async function runDomainGenerationForSite(
         niche,
         currentAudience,
       })
-      audienceText = await openrouterChat(opts.aiModel, [
-        { role: 'system', content: ap.system },
-        { role: 'user', content: ap.user },
-      ], {
-        responseFormatJson: true,
-        temperature: 0.7,
-        signal: opts.signal,
-      })
+      const ar = await openrouterChatWithMeta(
+        opts.aiModel,
+        [
+          { role: 'system', content: ap.system },
+          { role: 'user', content: ap.user },
+        ],
+        {
+          responseFormatJson: true,
+          temperature: 0.7,
+          signal: opts.signal,
+        },
+      )
+      audienceText = ar.text
+      if (Number.isFinite(sid)) {
+        try {
+          await recordOpenRouterAiCost({
+            payload,
+            target: { collection: 'sites', id: sid },
+            model: opts.aiModel,
+            usage: ar.usage,
+            raw: ar.raw,
+            kind: 'domain_generation_audience',
+          })
+        } catch {
+          /* optional */
+        }
+      }
     } catch {
       audienceError = true
     }
@@ -145,7 +167,7 @@ export async function runDomainGenerationForSite(
 
     let domainRaw: unknown
     try {
-      const domainText = await openrouterChat(
+      const dr = await openrouterChatWithMeta(
         opts.aiModel,
         [
           { role: 'system', content: dp.system },
@@ -157,7 +179,21 @@ export async function runDomainGenerationForSite(
           signal: opts.signal,
         },
       )
-      domainRaw = wrapChatContent(domainText)
+      domainRaw = wrapChatContent(dr.text)
+      if (Number.isFinite(sid)) {
+        try {
+          await recordOpenRouterAiCost({
+            payload,
+            target: { collection: 'sites', id: sid },
+            model: opts.aiModel,
+            usage: dr.usage,
+            raw: dr.raw,
+            kind: 'domain_generation_domain',
+          })
+        } catch {
+          /* optional */
+        }
+      }
     } catch {
       domainRaw = { error: { message: 'OpenRouter domain step failed' } }
     }
@@ -195,7 +231,6 @@ export async function runDomainGenerationForSite(
       overrideAccess: true,
     })
 
-    const sid = typeof siteId === 'number' ? siteId : Number(siteId)
     if (Number.isFinite(sid)) {
       try {
         await incrementSiteQuotaUsage(payload, sid, { openrouterUsd: OPENROUTER_DOMAIN_USD * 2 })

@@ -2,7 +2,8 @@ import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
-import { openrouterChat } from '@/services/integrations/openrouter/chat'
+import { openrouterChatWithMeta } from '@/services/integrations/openrouter/chat'
+import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
 import { getSkillPrompt } from '@/services/prompts/skillPrompts'
 import {
   ALERT_EVAL_SYSTEM,
@@ -51,9 +52,24 @@ export async function POST(request: Request): Promise<Response> {
     siteId: body.siteId ?? null,
   })
   const model = pickPipelineOpenRouterModel(merged, 'custom')
-  const t = await openrouterChat(model, [
+  const r = await openrouterChatWithMeta(model, [
     { role: 'system', content: system },
     { role: 'user', content: user },
   ])
-  return Response.json({ ok: true, t })
+  const siteId = body.siteId
+  if (typeof siteId === 'number' && Number.isFinite(siteId)) {
+    try {
+      await recordOpenRouterAiCost({
+        payload,
+        target: { collection: 'sites', id: siteId },
+        model,
+        usage: r.usage,
+        raw: r.raw,
+        kind: 'alert_eval',
+      })
+    } catch {
+      /* optional */
+    }
+  }
+  return Response.json({ ok: true, t: r.text })
 }

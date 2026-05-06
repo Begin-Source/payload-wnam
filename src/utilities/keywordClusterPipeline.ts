@@ -1,6 +1,7 @@
 import type { Payload } from 'payload'
 
 import { dataForSeoPost, keywordDataLocationAndLanguage } from '@/services/integrations/dataforseo/client'
+import { extractDataForSeoCostUsd } from '@/services/integrations/dataforseo/extractDataForSeoCostUsd'
 import type { PipelineSettingShape } from '@/utilities/pipelineSettingShape'
 import { resolveDfsLocationLanguageFromMerged } from '@/utilities/pipelineDfsLocale'
 import { AMZ_DEFAULT_DEVICE } from '@/services/integrations/dataforseo/amzDefaults'
@@ -13,6 +14,7 @@ import {
 } from '@/utilities/serpClustering'
 import { appendSerpSnapshot, findRecentSerpSnapshotRaw } from '@/utilities/serpSnapshotPersist'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
+import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 
 export type KeywordClusterOutputCluster = {
   pillarId: number
@@ -94,6 +96,7 @@ export async function runKeywordClusterForSite(args: {
 
   const overlapItems: ClusterOverlapItem[] = []
   let totalDfsCalls = 0
+  let totalCostUsd = 0
 
   for (const kid of ids) {
     const kw = await payload.findByID({
@@ -156,6 +159,7 @@ export async function runKeywordClusterForSite(args: {
           { signal: ac.signal },
         )
         totalDfsCalls += 1
+        totalCostUsd += extractDataForSeoCostUsd(raw)
       } catch {
         raw = null
       } finally {
@@ -221,6 +225,14 @@ export async function runKeywordClusterForSite(args: {
         },
         overrideAccess: true,
       })
+    }
+  }
+
+  if (totalCostUsd > 0) {
+    try {
+      await incrementSiteQuotaUsage(payload, siteId, { dataForSeoUsd: totalCostUsd })
+    } catch {
+      /* non-fatal quota */
     }
   }
 

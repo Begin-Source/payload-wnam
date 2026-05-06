@@ -98,6 +98,38 @@ export const Sites: CollectionConfig = {
       },
     },
     {
+      name: 'defaultAmazonTrackingId',
+      type: 'text',
+      label: '默认 Amazon Tracking ID',
+      admin: {
+        description:
+          '本站未单独指定时的联盟追踪 ID（小写存库）；可与员工 users.amazonTrackingId 并存，用于前台链接默认值等。',
+      },
+    },
+    {
+      type: 'collapsible',
+      label: 'AI 成本（站点级流水线）',
+      admin: {
+        position: 'sidebar',
+        initCollapsed: true,
+        description:
+          '域名生成、信任页包、AMZ 模板设计等无单篇文章载体时的 OpenRouter/Together 支出汇总；分成结算与 articles/media 合并计入创建人。',
+      },
+      fields: [
+        {
+          name: 'aiCostUsd',
+          type: 'number',
+          defaultValue: 0,
+          admin: { readOnly: true, step: 0.0001 },
+        },
+        {
+          name: 'aiCostBreakdown',
+          type: 'json',
+          admin: { readOnly: true },
+        },
+      ],
+    },
+    {
       name: 'status',
       type: 'select',
       defaultValue: 'draft',

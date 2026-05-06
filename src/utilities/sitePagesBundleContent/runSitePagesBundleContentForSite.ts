@@ -1,6 +1,7 @@
 import type { Payload } from 'payload'
 
 import { openrouterChatWithMeta } from '@/services/integrations/openrouter/chat'
+import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
 import type { Page, Site } from '@/payload-types'
 import { emptyLexicalDocument } from '@/utilities/emptyLexical'
 import {
@@ -320,6 +321,18 @@ export async function runSitePagesBundleContentForSite(
   }
 
   await incrementSiteQuotaUsage(payload, siteId, { openrouterUsd: OPENROUTER_EST_USD })
+  try {
+    await recordOpenRouterAiCost({
+      payload,
+      target: { collection: 'sites', id: siteId },
+      model,
+      usage: r.usage,
+      raw: r.raw,
+      kind: 'site_pages_bundle_content',
+    })
+  } catch {
+    /* optional ledger */
+  }
   return { ok: true, siteId }
 }
 

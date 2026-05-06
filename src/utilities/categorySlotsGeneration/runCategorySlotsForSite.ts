@@ -1,6 +1,7 @@
 import type { Payload } from 'payload'
 
-import { openrouterChat } from '@/services/integrations/openrouter/chat'
+import { openrouterChatWithMeta } from '@/services/integrations/openrouter/chat'
+import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
 import type { Site } from '@/payload-types'
 import { checkPipelineSpendForJob, incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { parseRelationshipId } from '@/utilities/parseRelationshipId'
@@ -330,7 +331,7 @@ export async function runCategorySlotsForSite(
   )
   let raw: string
   try {
-    raw = await openrouterChat(
+    const cs = await openrouterChatWithMeta(
       aiModel,
       [
         { role: 'system', content: systemPrompt },
@@ -338,6 +339,19 @@ export async function runCategorySlotsForSite(
       ],
       { responseFormatJson: true, temperature: 0.7 },
     )
+    raw = cs.text
+    try {
+      await recordOpenRouterAiCost({
+        payload,
+        target: { collection: 'sites', id: siteId },
+        model: aiModel,
+        usage: cs.usage,
+        raw: cs.raw,
+        kind: 'category_slots',
+      })
+    } catch {
+      /* optional ledger */
+    }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     await markCategorySlotsWorkflowErrorForSite(payload, siteId, slotLocale)

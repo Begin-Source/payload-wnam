@@ -2,8 +2,10 @@ import type { Payload } from 'payload'
 
 import { AMZ_DEFAULT_DEVICE } from '@/services/integrations/dataforseo/amzDefaults'
 import { dataForSeoPost } from '@/services/integrations/dataforseo/client'
+import { extractDataForSeoCostUsd } from '@/services/integrations/dataforseo/extractDataForSeoCostUsd'
 import { tavilySearch } from '@/services/integrations/tavily/client'
-import { openrouterChat } from '@/services/integrations/openrouter/chat'
+import { openrouterChatWithMeta } from '@/services/integrations/openrouter/chat'
+import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
 import { appendMemoryBlock } from '@/services/prompts/skillPrompts'
 import { SERP_BRIEF_SYSTEM, SERP_BRIEF_USER } from '@/utilities/domainGeneration/promptKeys'
 import { fetchKnowledgeMemorySummaries } from '@/utilities/knowledgeMemoryFetch'
@@ -20,6 +22,10 @@ import { buildSerpBriefPromptDefaults } from '@/utilities/openRouterTenantPrompt
 import { resolveTenantPromptPair } from '@/utilities/openRouterTenantPrompts/loadTenantPromptTemplateBody'
 import { SERP_BRIEF_SYSTEM_ADDON } from '@/utilities/openRouterTenantPrompts/serpBriefConstants'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
+import {
+  extractTavilyUsageCredits,
+  tavilyCreditsToUsd,
+} from '@/utilities/tavilyUsageCredits'
 import { extractSerpBriefContext } from '@/utilities/serpBriefExtract'
 import { appendSerpSnapshot } from '@/utilities/serpSnapshotPersist'
 
@@ -69,37 +75,44 @@ export async function runBriefGeneration(
     (async () => {
       if (!merged.tavilyEnabled) return
       try {
+        let tv: { body: unknown; cacheHit: boolean }
         if (quick || depth === 'quick') {
-          research = await tavilySearch({
+          tv = await tavilySearch({
             query: term,
             search_depth: 'basic',
             max_results: depth === 'deep' ? 8 : 5,
             include_raw_content: false,
           })
         } else if (depth === 'deep') {
-          research = await tavilySearch({
+          tv = await tavilySearch({
             query: term,
             search_depth: 'advanced',
             max_results: 12,
           })
         } else {
-          research = await tavilySearch({
+          tv = await tavilySearch({
             query: term,
             search_depth: tavilyDepth(),
             max_results: 10,
           })
         }
-        if (typeof siteId === 'number' && Number.isFinite(siteId)) {
-          try {
-            await incrementSiteQuotaUsage(payload, siteId, {
-              tavilyUsd:
-                quick ?
-                  0.0005
-                : depth === 'deep' ? 0.004
-                : 0.002,
-            })
-          } catch {
-            /* optional quota */
+        research = tv.body
+        if (
+          !tv.cacheHit &&
+          typeof siteId === 'number' &&
+          Number.isFinite(siteId)
+        ) {
+          const credits = extractTavilyUsageCredits(tv.body)
+          if (credits != null) {
+            try {
+              const usd = tavilyCreditsToUsd(credits)
+              await incrementSiteQuotaUsage(payload, siteId, {
+                tavilyCredits: credits,
+                ...(usd > 0 ? { tavilyUsd: usd } : {}),
+              })
+            } catch {
+              /* optional quota */
+            }
           }
         }
       } catch {
@@ -137,7 +150,10 @@ export async function runBriefGeneration(
     !skipDfs
   ) {
     try {
-      await incrementSiteQuotaUsage(payload, siteId, { dfs: 1 })
+      const usd = extractDataForSeoCostUsd(serpRaw)
+      if (usd > 0) {
+        await incrementSiteQuotaUsage(payload, siteId, { dataForSeoUsd: usd })
+      }
     } catch {
       /* optional quota */
     }
@@ -211,10 +227,11 @@ export async function runBriefGeneration(
     briefVars,
   )
 
-  const text = await openrouterChat(briefModel, [
+  const chat = await openrouterChatWithMeta(briefModel, [
     { role: 'system', content: briefSystem },
     { role: 'user', content: userPrompt },
   ])
+  const text = chat.text
   const outline = {
     sections: [
       { id: 'intro', type: 'intro' as const, wordBudget: 150, inject: { hook: true, valuePromise: true } },
@@ -252,6 +269,21 @@ export async function runBriefGeneration(
       status: 'draft',
     },
   })
+
+  if (typeof siteId === 'number' && Number.isFinite(siteId)) {
+    try {
+      await recordOpenRouterAiCost({
+        payload,
+        target: { collection: 'sites', id: siteId },
+        model: briefModel,
+        usage: chat.usage,
+        raw: chat.raw,
+        kind: 'brief_generate',
+      })
+    } catch {
+      /* optional ledger */
+    }
+  }
 
   if (typeof siteId === 'number' && Number.isFinite(siteId)) {
     try {
