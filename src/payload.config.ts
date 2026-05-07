@@ -230,7 +230,6 @@ export default buildConfig({
       beforeNavLinks: [
         './components/PipelineProfilesCompareNavLink#PipelineProfilesCompareNavLink',
         './components/KnowledgeReadNavLink#KnowledgeReadNavLink',
-        './components/TeamPerformanceNavLink#TeamPerformanceNavLink',
       ],
       beforeDashboard: ['./components/BeforeDashboardMilestone#BeforeDashboardMilestone'],
       graphics: {
