@@ -3,6 +3,7 @@ import {
   adminCategoriesListPath,
   adminKeywordsListPath,
   adminPagesListPath,
+  adminWorkflowJobsListPath,
 } from '@/components/adminBackgroundActivity/categoriesListPath'
 
 describe('adminCategoriesListPath', () => {
@@ -47,6 +48,22 @@ describe('adminKeywordsListPath', () => {
   it('preserves path prefix before collections', () => {
     expect(adminKeywordsListPath('/org/admin/collections/articles')).toBe(
       '/org/admin/collections/keywords',
+    )
+  })
+})
+
+describe('adminWorkflowJobsListPath', () => {
+  it('uses /admin prefix when no collections', () => {
+    expect(adminWorkflowJobsListPath('/admin/dashboard')).toBe('/admin/collections/workflow-jobs')
+  })
+
+  it('replaces collection segment with workflow-jobs list', () => {
+    expect(adminWorkflowJobsListPath('/admin/collections/sites')).toBe('/admin/collections/workflow-jobs')
+  })
+
+  it('preserves path prefix before collections', () => {
+    expect(adminWorkflowJobsListPath('/org/admin/collections/articles')).toBe(
+      '/org/admin/collections/workflow-jobs',
     )
   })
 })

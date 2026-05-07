@@ -1,6 +1,6 @@
 'use client'
 
-import { adminCategoriesListPath, adminKeywordsListPath, adminPagesListPath } from '@/components/adminBackgroundActivity/categoriesListPath'
+import { adminCategoriesListPath, adminKeywordsListPath, adminPagesListPath, adminWorkflowJobsListPath } from '@/components/adminBackgroundActivity/categoriesListPath'
 import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityContext'
 import type {
   BackgroundActivityJob,
@@ -21,6 +21,7 @@ const LIST_BANNER_KINDS = [
   'trust-pages-bundle-sync',
   'keywords-dfs-fetch-sync',
   'keyword-quick-win-preview-sync',
+  'workflow-jobs-pipeline-sync',
 ] as const
 
 function inListBannerScope(j: BackgroundActivityJob): boolean {
@@ -251,6 +252,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
   const runningKeywordQuickWinPreview = running.filter(
     (j) => j.kind === 'keyword-quick-win-preview-sync',
   )
+  const runningWorkflowJobsPipeline = running.filter((j) => j.kind === 'workflow-jobs-pipeline-sync')
 
   const terminal = scoped.filter((j) => j.phase !== 'running')
   const latestTerminal =
@@ -265,6 +267,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     | { tag: 'running-trust-bundle'; batches: BackgroundActivityJob[] }
     | { tag: 'running-keywords-dfs'; batches: BackgroundActivityJob[] }
     | { tag: 'running-keywords-quick-win-preview'; batches: BackgroundActivityJob[] }
+    | { tag: 'running-workflow-jobs-pipeline'; batches: BackgroundActivityJob[] }
     | { tag: 'terminal'; job: BackgroundActivityJob }
     | null
 
@@ -281,6 +284,8 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     primary = { tag: 'running-keywords-dfs', batches: runningKeywordsDfsFetch }
   } else if (runningKeywordQuickWinPreview.length > 0) {
     primary = { tag: 'running-keywords-quick-win-preview', batches: runningKeywordQuickWinPreview }
+  } else if (runningWorkflowJobsPipeline.length > 0) {
+    primary = { tag: 'running-workflow-jobs-pipeline', batches: runningWorkflowJobsPipeline }
   } else if (latestTerminal !== null) {
     primary = { tag: 'terminal', job: latestTerminal }
   }
@@ -290,6 +295,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
   const categoriesHref = adminCategoriesListPath(pathname ?? '')
   const pagesHref = adminPagesListPath(pathname ?? '')
   const keywordsHref = adminKeywordsListPath(pathname ?? '')
+  const workflowJobsHref = adminWorkflowJobsListPath(pathname ?? '')
   const onOpenCategoriesList = (): void => {
     router.push(categoriesHref)
   }
@@ -298,6 +304,9 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
   }
   const onOpenKeywordsList = (): void => {
     router.push(keywordsHref)
+  }
+  const onOpenWorkflowJobsList = (): void => {
+    router.push(workflowJobsHref)
   }
 
   const baseBar: React.CSSProperties = {
@@ -376,6 +385,23 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
       onClick={onOpenKeywordsList}
     >
       打开关键词列表
+    </button>
+  )
+
+  const openWorkflowJobsListBtn = (
+    <button
+      style={{
+        padding: '4px 10px',
+        borderRadius: 4,
+        border: '1px solid var(--theme-elevation-150)',
+        background: 'var(--theme-elevation-0)',
+        cursor: 'pointer',
+        fontSize: '12px',
+      }}
+      type="button"
+      onClick={onOpenWorkflowJobsList}
+    >
+      打开工作流任务列表
     </button>
   )
 
@@ -595,6 +621,46 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         <span style={{ flex: '1 1 12rem' }}>{line}</span>
         <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
           {openKeywordsListBtn}
+          <button
+            aria-label="关闭横幅（后台任务继续进行）"
+            style={closeIconBtnStyle}
+            type="button"
+            onClick={() => dismissRunningBatches(primary.batches)}
+          >
+            ×
+          </button>
+        </span>
+      </div>
+    )
+  }
+
+  if (primary.tag === 'running-workflow-jobs-pipeline') {
+    const n = primary.batches.length
+    const j0 = primary.batches[0]
+    const scope = j0?.workflowPipelineScopeHint?.trim()
+    const scopeHint = scope ? `（${scope}）` : ''
+    const prog = j0?.workflowJobsPipelineProgress
+    const progLine =
+      prog != null && (prog.batches > 0 || prog.totalTicks > 0)
+        ? `进度：${prog.batches} 批 · 累计 ${prog.totalTicks} 次 tick — `
+        : ''
+    const line =
+      n === 1
+        ? `工作流 · Pipeline（run-next / tick）进行中${scopeHint} — ${progLine}请在「工作流任务」列表查看 Status`
+        : `工作流 · Pipeline 进行中（${n} 个并行任务）${scopeHint} — ${progLine}见工作流任务列表`
+
+    return (
+      <div
+        aria-live="polite"
+        role="status"
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar('running'),
+        }}
+      >
+        <span style={{ flex: '1 1 12rem' }}>{line}</span>
+        <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+          {openWorkflowJobsListBtn}
           <button
             aria-label="关闭横幅（后台任务继续进行）"
             style={closeIconBtnStyle}
@@ -999,6 +1065,100 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     }
 
     return null
+  }
+
+  if (job.kind === 'workflow-jobs-pipeline-sync') {
+    if (job.phase === 'failed') {
+      const msg = `工作流 · Pipeline 失败：${job.errorMessage ?? '未知错误'}`
+      return (
+        <div
+          aria-live="assertive"
+          role="alert"
+          style={{
+            ...baseBar,
+            ...badgeStyleForBar('error'),
+          }}
+        >
+          <span style={{ flex: '1 1 12rem' }}>{msg}</span>
+          <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+            {openWorkflowJobsListBtn}
+            <button
+              aria-label="关闭横幅"
+              style={closeIconBtnStyle}
+              type="button"
+              onClick={() => dismissJob(job.id)}
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )
+    }
+
+    if (job.phase !== 'succeeded' || !job.workflowJobsPipelineSummary) {
+      return null
+    }
+
+    const s = job.workflowJobsPipelineSummary
+    const hintBr = job.workflowPipelineScopeHint?.trim() ? ` ${job.workflowPipelineScopeHint.trim()}` : ''
+    const scopeLine = s.scope === 'selected' ? '勾选 id 范围' : '全局 pending'
+    const drainPart = s.drainMode ? ' · 分批' : ''
+    const failures = s.tickFailures ?? 0
+    const isRed =
+      !s.overallOk ||
+      failures > 0 ||
+      Boolean(s.cappedByMaxBatches) ||
+      Boolean(s.errorHint?.trim())
+    const summaryLine = `Pipeline run-next 已完成${hintBr}（${scopeLine}${drainPart}）：${s.batches} 批 · 累计 ${s.totalTicks} 次 tick · 末次 stopped=${s.stoppedReason ?? '—'}${failures > 0 ? ` · tick 失败 ${failures}` : ''}`
+    const extra = [
+      s.cappedByMaxBatches ? '已触达分批上限，勾选范围内可能仍有 pending。' : '',
+      s.errorHint?.trim() ?? '',
+    ]
+      .filter(Boolean)
+      .join(' ')
+    const titleAttr = clipText(extra ? `${summaryLine}\n${extra}` : summaryLine, 4000)
+
+    return (
+      <div
+        aria-live={isRed ? 'assertive' : 'polite'}
+        role={isRed ? 'alert' : 'status'}
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar(isRed ? 'error' : 'done'),
+        }}
+        title={titleAttr}
+      >
+        <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+          <span style={{ display: 'block' }}>{summaryLine}</span>
+          {extra ? (
+            <span
+              style={{
+                display: 'block',
+                marginTop: 6,
+                fontSize: '11px',
+                lineHeight: 1.45,
+                opacity: 0.95,
+                whiteSpace: 'pre-line',
+                wordBreak: 'break-word',
+              }}
+            >
+              {extra}
+            </span>
+          ) : null}
+        </div>
+        <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+          {openWorkflowJobsListBtn}
+          <button
+            aria-label="关闭横幅"
+            style={closeIconBtnStyle}
+            type="button"
+            onClick={() => dismissJob(job.id)}
+          >
+            ×
+          </button>
+        </span>
+      </div>
+    )
   }
 
   if (job.kind === 'keywords-dfs-fetch-sync') {

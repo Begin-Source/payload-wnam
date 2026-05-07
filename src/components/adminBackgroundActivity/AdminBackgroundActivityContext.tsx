@@ -11,6 +11,23 @@ export type BackgroundJobKind =
   | 'trust-pages-bundle-sync'
   | 'keywords-dfs-fetch-sync'
   | 'keyword-quick-win-preview-sync'
+  | 'workflow-jobs-pipeline-sync'
+
+/** POST /admin/pipeline/run-next drain / single batch summary */
+export type WorkflowJobsPipelineSummary = {
+  batches: number
+  totalTicks: number
+  stoppedReason?: string
+  scope: 'global' | 'selected'
+  drainMode: boolean
+  /** Last batch(es) aggregated ok flag */
+  overallOk: boolean
+  cappedByMaxBatches?: boolean
+  /** Tick rows with result failed across batches */
+  tickFailures?: number
+  /** e.g. max batches cap user message */
+  errorHint?: string
+}
 
 /** Mirrors `merchant-slot-fetch` payload `results[]` (subset for Banner); writeback fields filled after Webhook poll. */
 export type MerchantSlotDispatchRowResult = {
@@ -99,6 +116,11 @@ export type BackgroundActivityJob = {
       }
     }
   }
+  /** 工作流任务列表 · Pipeline run-next（顶栏简述，非 DB） */
+  workflowPipelineScopeHint?: string
+  /** 进行中：已跑批次数与累计 tick */
+  workflowJobsPipelineProgress?: { batches: number; totalTicks: number }
+  workflowJobsPipelineSummary?: WorkflowJobsPipelineSummary
 }
 
 export type AdminBackgroundActivityApi = {
@@ -147,6 +169,14 @@ export type AdminBackgroundActivityApi = {
     summary: NonNullable<BackgroundActivityJob['keywordQuickWinPreviewSummary']>
   }) => void
   failKeywordQuickWinPreviewJob: (args: { jobId: string; message: string }) => void
+  startWorkflowJobsPipelineJob: (args?: { scopeHint?: string }) => string
+  updateWorkflowJobsPipelineJobProgress: (args: {
+    jobId: string
+    batches: number
+    totalTicks: number
+  }) => void
+  completeWorkflowJobsPipelineJob: (args: { jobId: string; summary: WorkflowJobsPipelineSummary }) => void
+  failWorkflowJobsPipelineJob: (args: { jobId: string; message: string }) => void
   dismissJob: (jobId: string) => void
 }
 

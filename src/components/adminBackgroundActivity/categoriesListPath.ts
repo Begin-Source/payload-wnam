@@ -18,3 +18,10 @@ export function adminKeywordsListPath(currentPathname: string): string {
   if (idx === -1) return '/admin/collections/keywords'
   return `${currentPathname.slice(0, idx)}/collections/keywords`
 }
+
+/** Build workflow-jobs collection list URL from current admin pathname (preserves tenant / base prefix). */
+export function adminWorkflowJobsListPath(currentPathname: string): string {
+  const idx = currentPathname.indexOf('/collections/')
+  if (idx === -1) return '/admin/collections/workflow-jobs'
+  return `${currentPathname.slice(0, idx)}/collections/workflow-jobs`
+}

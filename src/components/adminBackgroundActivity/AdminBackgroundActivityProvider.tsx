@@ -7,6 +7,7 @@ import {
   type CategoryCoverSyncRowResult,
   type CategorySlotsSyncRowResult,
   type MerchantSlotDispatchRowResult,
+  type WorkflowJobsPipelineSummary,
 } from '@/components/adminBackgroundActivity/AdminBackgroundActivityContext'
 import { AdminBackgroundActivityBanner } from '@/components/adminBackgroundActivity/AdminBackgroundActivityBanner'
 import type { ReactElement, ReactNode } from 'react'
@@ -23,6 +24,8 @@ const POLL_CAP_MS_MERCHANT = 15 * 60_000
 const POLL_CAP_MS_TRUST_PAGES_BUNDLE = 6 * 60_000
 /** DataForSEO 关键词 Labs / Quick-win SERP 预览等可能超过 120s */
 const POLL_CAP_MS_KEYWORDS_LONG = 6 * 60_000
+/** Pipeline run-next 多批 drain 可能在后台持续较久 */
+const POLL_CAP_MS_WORKFLOW_PIPELINE = 30 * 60_000
 
 function newId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -81,6 +84,15 @@ export function AdminBackgroundActivityProvider({
     }
   }, [pathname, router])
 
+  const refreshIfWorkflowJobsList = useCallback((): void => {
+    if (
+      typeof window !== 'undefined' &&
+      pathname.includes('/collections/workflow-jobs')
+    ) {
+      router.refresh()
+    }
+  }, [pathname, router])
+
   const hasRunningCategoriesListWork = jobs.some(
     (j) =>
       j.phase === 'running' &&
@@ -105,11 +117,16 @@ export function AdminBackgroundActivityProvider({
     (j) => j.phase === 'running' && j.kind === 'keyword-quick-win-preview-sync',
   )
 
+  const hasRunningWorkflowJobsPipelineWork = jobs.some(
+    (j) => j.phase === 'running' && j.kind === 'workflow-jobs-pipeline-sync',
+  )
+
   const hasRunningListPollWork =
     hasRunningCategoriesListWork ||
     hasRunningTrustPagesBundleWork ||
     hasRunningKeywordsDfsFetchWork ||
-    hasRunningKeywordQuickWinPreviewWork
+    hasRunningKeywordQuickWinPreviewWork ||
+    hasRunningWorkflowJobsPipelineWork
 
   useEffect(() => {
     if (!hasRunningListPollWork) return
@@ -118,12 +135,16 @@ export function AdminBackgroundActivityProvider({
       refreshIfCategoriesList()
       refreshIfPagesList()
       refreshIfKeywordsList()
+      refreshIfWorkflowJobsList()
     }, POLL_MS)
     let capMs = POLL_CAP_MS
     if (hasRunningMerchantCategoriesWork) capMs = Math.max(capMs, POLL_CAP_MS_MERCHANT)
     if (hasRunningTrustPagesBundleWork) capMs = Math.max(capMs, POLL_CAP_MS_TRUST_PAGES_BUNDLE)
     if (hasRunningKeywordsDfsFetchWork || hasRunningKeywordQuickWinPreviewWork) {
       capMs = Math.max(capMs, POLL_CAP_MS_KEYWORDS_LONG)
+    }
+    if (hasRunningWorkflowJobsPipelineWork) {
+      capMs = Math.max(capMs, POLL_CAP_MS_WORKFLOW_PIPELINE)
     }
     const cap = window.setTimeout(() => {
       window.clearInterval(interval)
@@ -139,9 +160,11 @@ export function AdminBackgroundActivityProvider({
     hasRunningTrustPagesBundleWork,
     hasRunningKeywordsDfsFetchWork,
     hasRunningKeywordQuickWinPreviewWork,
+    hasRunningWorkflowJobsPipelineWork,
     refreshIfCategoriesList,
     refreshIfPagesList,
     refreshIfKeywordsList,
+    refreshIfWorkflowJobsList,
   ])
 
   const startCategoryCoverJob = useCallback(
@@ -529,6 +552,88 @@ export function AdminBackgroundActivityProvider({
     [refreshIfKeywordsList],
   )
 
+  const startWorkflowJobsPipelineJob = useCallback((args?: { scopeHint?: string }): string => {
+    const id = newId()
+    const hint = args?.scopeHint?.trim()
+    const job: BackgroundActivityJob = {
+      id,
+      kind: 'workflow-jobs-pipeline-sync',
+      phase: 'running',
+      ...(hint ? { workflowPipelineScopeHint: hint } : {}),
+      startedAt: Date.now(),
+    }
+    setJobs((prev) => [...prev, job])
+    refreshIfWorkflowJobsList()
+    return id
+  }, [refreshIfWorkflowJobsList])
+
+  const updateWorkflowJobsPipelineJobProgress = useCallback(
+    ({
+      jobId,
+      batches,
+      totalTicks,
+    }: {
+      jobId: string
+      batches: number
+      totalTicks: number
+    }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'workflow-jobs-pipeline-sync'
+            ? {
+                ...j,
+                workflowJobsPipelineProgress: { batches, totalTicks },
+              }
+            : j,
+        ),
+      )
+      refreshIfWorkflowJobsList()
+    },
+    [refreshIfWorkflowJobsList],
+  )
+
+  const completeWorkflowJobsPipelineJob = useCallback(
+    ({
+      jobId,
+      summary,
+    }: {
+      jobId: string
+      summary: WorkflowJobsPipelineSummary
+    }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'workflow-jobs-pipeline-sync'
+            ? {
+                ...j,
+                phase: 'succeeded',
+                workflowJobsPipelineSummary: summary,
+              }
+            : j,
+        ),
+      )
+      refreshIfWorkflowJobsList()
+    },
+    [refreshIfWorkflowJobsList],
+  )
+
+  const failWorkflowJobsPipelineJob = useCallback(
+    ({ jobId, message }: { jobId: string; message: string }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'workflow-jobs-pipeline-sync'
+            ? {
+                ...j,
+                phase: 'failed',
+                errorMessage: message,
+              }
+            : j,
+        ),
+      )
+      refreshIfWorkflowJobsList()
+    },
+    [refreshIfWorkflowJobsList],
+  )
+
   const value = useMemo<AdminBackgroundActivityApi>(
     () => ({
       jobs,
@@ -550,6 +655,10 @@ export function AdminBackgroundActivityProvider({
       startKeywordQuickWinPreviewJob,
       completeKeywordQuickWinPreviewJob,
       failKeywordQuickWinPreviewJob,
+      startWorkflowJobsPipelineJob,
+      updateWorkflowJobsPipelineJobProgress,
+      completeWorkflowJobsPipelineJob,
+      failWorkflowJobsPipelineJob,
       dismissJob,
     }),
     [
@@ -572,6 +681,10 @@ export function AdminBackgroundActivityProvider({
       startKeywordQuickWinPreviewJob,
       completeKeywordQuickWinPreviewJob,
       failKeywordQuickWinPreviewJob,
+      startWorkflowJobsPipelineJob,
+      updateWorkflowJobsPipelineJobProgress,
+      completeWorkflowJobsPipelineJob,
+      failWorkflowJobsPipelineJob,
       dismissJob,
     ],
   )

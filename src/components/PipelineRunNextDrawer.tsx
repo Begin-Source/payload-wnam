@@ -1,8 +1,15 @@
 'use client'
 
+import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
+
 import { Button, useSelection } from '@payloadcms/ui'
 import { SelectAllStatus } from '@payloadcms/ui/providers/Selection'
 import React, { useCallback, useEffect, useState } from 'react'
+
+import {
+  MAX_PIPELINE_DRAIN_BATCHES,
+  nextPipelineDrainBatchAction,
+} from '@/utilities/pipelineRunNextDrain'
 
 const backdropStyle: React.CSSProperties = {
   position: 'fixed',
@@ -81,11 +88,6 @@ function formatByType(byType: Record<string, number> | undefined): string {
     .join(', ')
 }
 
-function truncate120(s: string | undefined): string {
-  if (s == null || s === '') return '—'
-  return s.length <= 120 ? s : `${s.slice(0, 120)}…`
-}
-
 const MSG_PEEK_FORBIDDEN =
   '无权限：仅「普通 user」角色的账号不能查看待执行队列或执行 Pipeline Tick。请在 Users 中为该账号至少勾选一项后台角色（如站长、组长、运营经理、财务、总经理、系统管理员、超级管理员等）后重试。'
 
@@ -97,9 +99,26 @@ function mapRunNextHttpError(res: Response, bodyError: string | undefined): stri
   return typeof bodyError === 'string' ? bodyError : `请求失败（HTTP ${res.status}）`
 }
 
-/** Workflow jobs list: peek pending queue + run up to N `/api/pipeline/tick` (server-side secret). */
+function sortJobIdsCsv(ids: (string | number)[]): string {
+  return [...ids].sort((a, b) => String(a).localeCompare(String(b))).join(',')
+}
+
+function countTickRowFailures(data: RunResp): number {
+  const runs = data.runs
+  if (!Array.isArray(runs)) return 0
+  return runs.filter((r) => r.result === 'failed').length
+}
+
+/** Workflow jobs list: peek pending queue + run-next (progress in admin top Banner). */
 export function PipelineRunNextDrawer(): React.ReactElement {
   const { count, getSelectedIds, selectedIDs, selectAll } = useSelection()
+
+  const {
+    startWorkflowJobsPipelineJob,
+    updateWorkflowJobsPipelineJobProgress,
+    completeWorkflowJobsPipelineJob,
+    failWorkflowJobsPipelineJob,
+  } = useAdminBackgroundActivity()
 
   const [open, setOpen] = useState(false)
   const [peek, setPeek] = useState<PeekResp | null>(null)
@@ -108,9 +127,8 @@ export function PipelineRunNextDrawer(): React.ReactElement {
   const [budgetSeconds, setBudgetSeconds] = useState('25')
   const [stopOnFailure, setStopOnFailure] = useState(true)
   const [runSelectedOnly, setRunSelectedOnly] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const [drainUntilNoPending, setDrainUntilNoPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [lastRun, setLastRun] = useState<RunResp | null>(null)
 
   const selectAllBlocksSelection = selectAll === SelectAllStatus.AllAvailable
   const hasRowSelection = (count ?? 0) > 0 || selectedIDs.length > 0
@@ -130,21 +148,28 @@ export function PipelineRunNextDrawer(): React.ReactElement {
     }
   }, [runSelectedOnly, hasRowSelection])
 
-  const refreshPeek = useCallback(async (): Promise<void> => {
+  useEffect(() => {
+    if (!runSelectedOnly) {
+      setDrainUntilNoPending(false)
+    }
+  }, [runSelectedOnly])
+
+  const refreshPeek = useCallback(async (idsCsvOverride?: string | null): Promise<void> => {
     setPeekLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams()
-      if (
-        runSelectedOnly &&
-        selectAll !== SelectAllStatus.AllAvailable
-      ) {
-        const ids = getSelectedIds()
-        const sortedKey = [...ids]
-          .sort((a, b) => String(a).localeCompare(String(b)))
-          .join(',')
-        if (sortedKey.length > 0) {
-          params.set('ids', sortedKey)
+      if (runSelectedOnly && selectAll !== SelectAllStatus.AllAvailable) {
+        const override =
+          typeof idsCsvOverride === 'string' && idsCsvOverride.length > 0 ? idsCsvOverride : null
+        if (override != null) {
+          params.set('ids', override)
+        } else {
+          const ids = getSelectedIds()
+          const sortedKey = sortJobIdsCsv(ids)
+          if (sortedKey.length > 0) {
+            params.set('ids', sortedKey)
+          }
         }
       }
       const qs = params.toString()
@@ -187,58 +212,179 @@ export function PipelineRunNextDrawer(): React.ReactElement {
 
   const close = (): void => {
     setOpen(false)
-    setLastRun(null)
     setError(null)
   }
 
-  async function execute(): Promise<void> {
-    setSubmitting(true)
-    setError(null)
-    try {
-      const mr = Number.parseInt(maxRuns, 10)
-      const bs = Number.parseFloat(budgetSeconds)
-      if (!Number.isFinite(mr) || mr < 1 || mr > 20) {
-        setError('maxRuns 须为 1–20（默认 8 便于 Brief→多段正文→finalize→配图）')
-        setSubmitting(false)
+  function submitExecute(): void {
+    const mr = Number.parseInt(maxRuns, 10)
+    const bs = Number.parseFloat(budgetSeconds)
+    if (!Number.isFinite(mr) || mr < 1 || mr > 20) {
+      setError('maxRuns 须为 1–20（默认 8 便于 Brief→多段正文→finalize→配图）')
+      return
+    }
+    if (!Number.isFinite(bs) || bs < 3 || bs > 55) {
+      setError('时间预算（秒）须为 3–55')
+      return
+    }
+
+    const useDrainBatching =
+      drainUntilNoPending &&
+      runSelectedOnly &&
+      canOfferSelectedMode &&
+      selectAll !== SelectAllStatus.AllAvailable
+
+    let jobIdsPayload: (string | number)[] | undefined
+
+    if (runSelectedOnly && selectAll !== SelectAllStatus.AllAvailable) {
+      const ids = [...getSelectedIds()]
+      if (ids.length === 0) {
+        setError('请先在列表中勾选要执行的任务')
         return
       }
-      if (!Number.isFinite(bs) || bs < 3 || bs > 55) {
-        setError('时间预算（秒）须为 3–55')
-        setSubmitting(false)
-        return
-      }
+      jobIdsPayload = ids
+    } else {
+      jobIdsPayload = undefined
+    }
 
-      const jobIdsPayload =
-        runSelectedOnly && selectAll !== SelectAllStatus.AllAvailable
-          ? (() => {
-              const ids = getSelectedIds()
-              return ids.length > 0 ? { jobIds: [...ids] } : {}
-            })()
-          : {}
+    if (useDrainBatching && (!jobIdsPayload || jobIdsPayload.length === 0)) {
+      setError('请先勾选任务后再使用分批模式')
+      return
+    }
 
+    let scopeHint: string
+    if (jobIdsPayload == null) {
+      scopeHint = '全局 pending 队列'
+    } else if (useDrainBatching) {
+      scopeHint = `已选 ${jobIdsPayload.length} 条 · 分批直至无 pending`
+    } else {
+      scopeHint = `已选 ${jobIdsPayload.length} 条 · 单轮`
+    }
+
+    const bodyBase = {
+      maxRuns: mr,
+      budgetMs: Math.round(bs * 1000),
+      stopOnFailure,
+    }
+
+    async function postRunNext(
+      jobIds: (string | number)[] | undefined,
+    ): Promise<{ res: Response; data: RunResp }> {
       const res = await fetch('/api/admin/pipeline/run-next', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          maxRuns: mr,
-          budgetMs: Math.round(bs * 1000),
-          stopOnFailure,
-          ...jobIdsPayload,
+          ...bodyBase,
+          ...(jobIds != null && jobIds.length > 0 ? { jobIds } : {}),
         }),
       })
       const data = (await res.json().catch(() => ({}))) as RunResp
-      if (!res.ok) {
-        const errBody = data as unknown as { error?: string }
-        throw new Error(mapRunNextHttpError(res, errBody.error))
-      }
-      setLastRun(data)
-      await refreshPeek()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '执行失败')
-    } finally {
-      setSubmitting(false)
+      return { res, data }
     }
+
+    const jobId = startWorkflowJobsPipelineJob({ scopeHint })
+    setOpen(false)
+    setError(null)
+
+    void (async () => {
+      let batches = 0
+      let totalTicks = 0
+      let tickFailures = 0
+      let allBatchesOk = true
+      let lastData: RunResp | null = null
+
+      try {
+        if (useDrainBatching && jobIdsPayload != null && jobIdsPayload.length > 0) {
+          const snap = [...jobIdsPayload]
+          while (true) {
+            batches += 1
+            const { res, data } = await postRunNext(snap)
+            lastData = data
+
+            if (!res.ok) {
+              const errBody = data as unknown as { error?: string }
+              throw new Error(mapRunNextHttpError(res, errBody.error))
+            }
+
+            tickFailures += countTickRowFailures(data)
+            if (data.ok === false) allBatchesOk = false
+
+            totalTicks += data.totalRuns ?? data.runs?.length ?? 0
+            updateWorkflowJobsPipelineJobProgress({ jobId, batches, totalTicks })
+
+            const action = nextPipelineDrainBatchAction({
+              httpOk: true,
+              bodyOk: data.ok,
+              stoppedReason: data.stoppedReason,
+              batchesCompleted: batches,
+            })
+
+            if (action === 'stop_ok') {
+              break
+            }
+            if (action === 'stop_error') {
+              const cappedHit =
+                batches >= MAX_PIPELINE_DRAIN_BATCHES &&
+                (data.stoppedReason === 'budget' || data.stoppedReason === 'max_runs')
+              const hint =
+                cappedHit
+                  ? `已达分批上限 ${MAX_PIPELINE_DRAIN_BATCHES} 轮，勾选范围内可能仍有 pending。`
+                  : data.ok === false || data.stoppedReason === 'failure' || data.stoppedReason === 'aborted'
+                    ? '执行已停止（失败或中止）。'
+                    : '执行已停止。'
+              completeWorkflowJobsPipelineJob({
+                jobId,
+                summary: {
+                  batches,
+                  totalTicks,
+                  stoppedReason: data.stoppedReason,
+                  scope: 'selected',
+                  drainMode: true,
+                  overallOk: false,
+                  cappedByMaxBatches: cappedHit,
+                  tickFailures,
+                  errorHint: hint,
+                },
+              })
+              return
+            }
+          }
+        } else {
+          batches = 1
+          const { res, data } = await postRunNext(jobIdsPayload)
+          lastData = data
+
+          if (!res.ok) {
+            const errBody = data as unknown as { error?: string }
+            throw new Error(mapRunNextHttpError(res, errBody.error))
+          }
+          tickFailures = countTickRowFailures(data)
+          if (data.ok === false) allBatchesOk = false
+          totalTicks += data.totalRuns ?? data.runs?.length ?? 0
+          updateWorkflowJobsPipelineJobProgress({ jobId, batches, totalTicks })
+        }
+
+        const final = lastData
+        const scope: 'global' | 'selected' = jobIdsPayload != null ? 'selected' : 'global'
+        completeWorkflowJobsPipelineJob({
+          jobId,
+          summary: {
+            batches,
+            totalTicks,
+            stoppedReason: final?.stoppedReason,
+            scope,
+            drainMode: useDrainBatching,
+            overallOk: allBatchesOk && tickFailures === 0,
+            tickFailures,
+          },
+        })
+      } catch (e) {
+        failWorkflowJobsPipelineJob({
+          jobId,
+          message: e instanceof Error ? e.message : '执行失败',
+        })
+      }
+    })()
   }
 
   const tickBlockedByAuth =
@@ -282,8 +428,10 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                 执行下 N 条工作流 · Tick
               </h2>
               <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
-                按创建时间从早到晚依次执行 <code>pending</code> 任务（仅勾选模式下：仅在你勾选且<strong>仍可访问</strong>的 ID 中取最早创建的一条）。勾选顺序不参与排序。一次{' '}
-                <code>brief_generate</code> 成功后会自动入队 <code>draft_skeleton</code>，因此 N=5 大约覆盖 2–3 组「Brief + 骨架」链路。
+                按创建时间从早到晚依次执行 <code>pending</code> 任务（仅勾选模式下：仅在你勾选且<strong>仍可访问</strong>的
+                ID 中取最早创建的一条）。勾选顺序不参与排序。点击「执行下 N 条」后将<strong>立即关闭此窗</strong>；进度与摘要在
+                Admin 顶栏 Banner，工作流任务列表会周期性刷新。<code>brief_generate</code> 成功后会自动入队{' '}
+                <code>draft_skeleton</code>，因此 N=5 大约覆盖 2–3 组「Brief + 骨架」链路。
               </p>
 
               {selectAllBlocksSelection ? (
@@ -323,6 +471,39 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                 </span>
               </label>
 
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  marginBottom: '0.5rem',
+                  cursor: effectiveSelectedOnly ? 'pointer' : 'not-allowed',
+                  opacity: effectiveSelectedOnly ? 1 : 0.55,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={drainUntilNoPending}
+                  disabled={!effectiveSelectedOnly}
+                  onChange={(e) => setDrainUntilNoPending(e.target.checked)}
+                />
+                <span style={{ fontSize: '0.8125rem', lineHeight: 1.45 }}>
+                  持续执行直至勾选范围内无 pending（多轮请求；每轮仍受「次数 + 时间预算」限制）
+                </span>
+              </label>
+              {effectiveSelectedOnly && drainUntilNoPending ? (
+                <p
+                  style={{
+                    margin: '0 0 0.75rem',
+                    fontSize: '0.72rem',
+                    opacity: 0.82,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  说明：使用开始执行时的勾选 id 快照；链路新产生的任务若不在这些 id 内，不会被本模式自动跑。
+                </p>
+              ) : null}
+
               <div
                 style={{
                   marginBottom: '1rem',
@@ -347,7 +528,7 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                       </span>
                       <Button
                         buttonStyle="secondary"
-                        disabled={peekLoading || submitting}
+                        disabled={peekLoading}
                         onClick={() => void refreshPeek()}
                         type="button"
                       >
@@ -361,7 +542,7 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                       </span>
                       <Button
                         buttonStyle="secondary"
-                        disabled={peekLoading || submitting}
+                        disabled={peekLoading}
                         onClick={() => void refreshPeek()}
                         type="button"
                       >
@@ -372,7 +553,8 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                 </div>
                 {!peekLoading && peek != null && effectiveSelectedOnly && peek.requestedJobIdsCount != null ? (
                   <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', opacity: 0.88 }}>
-                    已选 <code>{peek.requestedJobIdsCount}</code> 个 id；其中当前为 pending 且可见约 <code>{peek.pending ?? 0}</code> 条
+                    已选 <code>{peek.requestedJobIdsCount}</code> 个 id；其中当前为 pending 且可见约{' '}
+                    <code>{peek.pending ?? 0}</code> 条
                     {peek.constrainedJobIdsTruncated ? '（id 列表已截断至多 500 条）' : ''}
                   </div>
                 ) : null}
@@ -430,68 +612,11 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                 <span style={{ fontSize: '0.8125rem' }}>遇失败即停止（默认开启）</span>
               </label>
 
-              {lastRun?.message ? (
-                <p style={{ fontSize: '0.8125rem', marginBottom: '0.75rem', opacity: 0.9, lineHeight: 1.45 }}>
-                  {lastRun.message}
-                  {lastRun.requestedJobIdsCount != null && lastRun.allowedJobIdsCount != null
-                    ? `（请求 id 数 ${lastRun.requestedJobIdsCount} · 可执行 pending ${lastRun.allowedJobIdsCount}）`
-                    : ''}
-                  {lastRun.constrainedJobIdsTruncated ? ' id 列表已截断。' : ''}
-                </p>
-              ) : null}
-
-              {lastRun?.runs != null && lastRun.runs.length > 0 ? (
-                <div style={{ marginBottom: '1rem', overflowX: 'auto' }}>
-                  <p style={{ fontSize: '0.8125rem', marginBottom: '0.5rem', opacity: 0.9 }}>
-                    本轮结果：<code>{lastRun.stoppedReason ?? '—'}</code>，共 {lastRun.totalRuns ?? lastRun.runs.length}{' '}
-                    次 tick，ok={String(lastRun.ok ?? false)}
-                    {lastRun.requestedJobIdsCount != null && lastRun.allowedJobIdsCount != null
-                      ? ` · 勾选 id ${lastRun.requestedJobIdsCount} · 服务端认可 pending ${lastRun.allowedJobIdsCount}`
-                      : ''}
-                  </p>
-                  <table
-                    style={{
-                      width: '100%',
-                      borderCollapse: 'collapse',
-                      fontSize: '0.75rem',
-                    }}
-                  >
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--theme-elevation-150)' }}>
-                        <th style={{ textAlign: 'left', padding: '0.35rem' }}>#</th>
-                        <th style={{ textAlign: 'left', padding: '0.35rem' }}>jobId</th>
-                        <th style={{ textAlign: 'left', padding: '0.35rem' }}>类型</th>
-                        <th style={{ textAlign: 'left', padding: '0.35rem' }}>result</th>
-                        <th style={{ textAlign: 'left', padding: '0.35rem' }}>HTTP</th>
-                        <th style={{ textAlign: 'left', padding: '0.35rem' }}>ms</th>
-                        <th style={{ textAlign: 'left', padding: '0.35rem' }}>错误</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {lastRun.runs.map((r, idx) => (
-                        <tr
-                          key={`${idx}-${String(r.jobId ?? '')}-${String(r.durationMs ?? '')}`}
-                          style={{ borderBottom: '1px solid var(--theme-elevation-100)' }}
-                        >
-                          <td style={{ padding: '0.35rem' }}>{idx + 1}</td>
-                          <td style={{ padding: '0.35rem' }}>{r.jobId != null ? String(r.jobId) : '—'}</td>
-                          <td style={{ padding: '0.35rem' }}>{r.jobType ?? '—'}</td>
-                          <td style={{ padding: '0.35rem' }}>{r.result ?? '—'}</td>
-                          <td style={{ padding: '0.35rem' }}>{r.httpStatus ?? '—'}</td>
-                          <td style={{ padding: '0.35rem' }}>{r.durationMs ?? '—'}</td>
-                          <td style={{ padding: '0.35rem' }}>{truncate120(r.errorMessage)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : null}
-
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <Button disabled={submitting || tickBlockedByAuth} onClick={() => void execute()} type="button">
+                <Button disabled={tickBlockedByAuth} onClick={submitExecute} type="button">
                   执行下 N 条
                 </Button>
-                <Button buttonStyle="secondary" disabled={submitting} onClick={close} type="button">
+                <Button buttonStyle="secondary" onClick={close} type="button">
                   关闭
                 </Button>
               </div>
