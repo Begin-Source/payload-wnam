@@ -29,6 +29,7 @@ import * as migration_20260507_120000_affiliate_finance from './20260507_120000_
 import * as migration_20260508_120000_sites_ai_cost_ledger from './20260508_120000_sites_ai_cost_ledger';
 import * as migration_20260509_120000_site_quotas_dfs_usd_vendor_billing from './20260509_120000_site_quotas_dfs_usd_vendor_billing';
 import * as migration_20260510_120000_categories_category_cover_workflow_status from './20260510_120000_categories_category_cover_workflow_status';
+import * as migration_20260511_120000_keywords_data_for_seo_seeds from './20260511_120000_keywords_data_for_seo_seeds';
 import * as migration_20260601_100000_articles_affiliate_page_layout from './20260601_100000_articles_affiliate_page_layout';
 import * as migration_20260602_120000_sites_site_layout from './20260602_120000_sites_site_layout';
 import * as migration_20260603_120000_sites_review_hub_v1 from './20260603_120000_sites_review_hub_v1';
@@ -88,6 +89,7 @@ import * as migration_20260815_120000_seed_seo_theory_pipeline_profiles from './
 import * as migration_20260816_120000_pipeline_t2_variants_and_article_snapshots from './20260816_120000_pipeline_t2_variants_and_article_snapshots';
 import * as migration_20260817_120000_seed_finalize_pipeline_tenant_prompts from './20260817_120000_seed_finalize_pipeline_tenant_prompts';
 import * as migration_20260818_120000_seed_seo_theory_pipeline_profiles from './20260818_120000_seed_seo_theory_pipeline_profiles';
+import * as migration_20260819_120000_keyword_batch_presets from './20260819_120000_keyword_batch_presets';
 
 export const migrations = [
   {
@@ -516,6 +518,11 @@ export const migrations = [
     name: '20260818_120000_seed_seo_theory_pipeline_profiles',
   },
   {
+    up: migration_20260819_120000_keyword_batch_presets.up,
+    down: migration_20260819_120000_keyword_batch_presets.down,
+    name: '20260819_120000_keyword_batch_presets',
+  },
+  {
     up: migration_20260506_120000_sites_created_by_id.up,
     down: migration_20260506_120000_sites_created_by_id.down,
     name: '20260506_120000_sites_created_by_id',
@@ -539,5 +546,10 @@ export const migrations = [
     up: migration_20260510_120000_categories_category_cover_workflow_status.up,
     down: migration_20260510_120000_categories_category_cover_workflow_status.down,
     name: '20260510_120000_categories_category_cover_workflow_status',
+  },
+  {
+    up: migration_20260511_120000_keywords_data_for_seo_seeds.up,
+    down: migration_20260511_120000_keywords_data_for_seo_seeds.down,
+    name: '20260511_120000_keywords_data_for_seo_seeds',
   },
 ];

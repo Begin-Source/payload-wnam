@@ -82,6 +82,7 @@ describe('fetchKeywordSuggestionsLive', () => {
     const overlap = rows.find((x) => x.term === 'overlap')
     expect(overlap?.volume).toBe(50)
     expect(overlap?.kd).toBe(20)
+    expect(overlap?.sourceSeeds).toEqual(['other', 'wireless earbuds'])
     expect(vi.mocked(dataForSeoPost)).toHaveBeenCalledTimes(2)
 
     expect(vi.mocked(dataForSeoPost).mock.calls[0]?.[0]).toBe(LABS_ENDPOINT)
@@ -174,6 +175,7 @@ describe('fetchKeywordSuggestionsLive', () => {
       kd: 42,
       intent: 'transactional',
       cpc: 2.5,
+      sourceSeeds: ['coffee maker'],
     })
     expect(rows[0].trend).toEqual([{ year: 2024 }])
   })

@@ -2,7 +2,7 @@ import configPromise from '@payload-config'
 import type { Payload, Where } from 'payload'
 import { getPayload } from 'payload'
 
-import { fetchKeywordSuggestionsLive } from '@/services/integrations/dataforseo/keywords'
+import { fetchKeywordSuggestionsLive, mergeUniqueSeeds } from '@/services/integrations/dataforseo/keywords'
 import type { Config } from '@/payload-types'
 import { isUsersCollection } from '@/utilities/announcementAccess'
 import {
@@ -55,12 +55,12 @@ const INTENT_ALLOWED = new Set<string>([
   'transactional',
 ])
 
-async function slugExistsForSite(
+async function findKeywordDocBySlugForSite(
   payload: Payload,
   userArg: Config['user'] & { collection: 'users' },
   siteId: number,
   slug: string,
-): Promise<boolean> {
+): Promise<{ id: string | number; dataForSeoSeeds?: unknown } | null> {
   const base: Where = {
     and: [{ slug: { equals: slug } }, { site: { equals: siteId } }],
   }
@@ -72,7 +72,13 @@ async function slugExistsForSite(
     user: userArg,
     overrideAccess: false,
   })
-  return r.docs.length > 0
+  const doc = r.docs[0]
+  return doc ? (doc as { id: string | number; dataForSeoSeeds?: unknown }) : null
+}
+
+function stringArrayFromJsonField(v: unknown): string[] {
+  if (!Array.isArray(v)) return []
+  return v.filter((x): x is string => typeof x === 'string').map((s) => s.trim()).filter(Boolean)
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -257,8 +263,24 @@ export async function POST(request: Request): Promise<Response> {
     if (row.eligible) eligibleCount += 1
     const slug = slugify(row.term) || `kw-${Date.now()}-${persisted}-${skipped}`
 
-    const exists = await slugExistsForSite(payload, userArg, siteId, slug)
-    if (exists) {
+    const existingDoc = await findKeywordDocBySlugForSite(payload, userArg, siteId, slug)
+    if (existingDoc) {
+      const incoming = row.sourceSeeds ?? []
+      if (incoming.length > 0) {
+        const prev = stringArrayFromJsonField(existingDoc.dataForSeoSeeds)
+        const merged = mergeUniqueSeeds(prev, incoming)
+        try {
+          await payload.update({
+            collection: 'keywords',
+            id: existingDoc.id,
+            data: { dataForSeoSeeds: merged },
+            user: userArg,
+            overrideAccess: false,
+          })
+        } catch {
+          /* optional merge */
+        }
+      }
       skipped += 1
       rowsOut.push({
         term: row.term,
@@ -289,6 +311,7 @@ export async function POST(request: Request): Promise<Response> {
       eligible: row.eligible,
       eligibilityReason: row.eligibilityReason,
       lastRefreshedAt: nowIso,
+      ...((row.sourceSeeds?.length ?? 0) > 0 ? { dataForSeoSeeds: row.sourceSeeds } : {}),
     }
 
     try {

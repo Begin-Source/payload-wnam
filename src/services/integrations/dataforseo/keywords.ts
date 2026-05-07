@@ -12,6 +12,8 @@ export type NormalizedKeywordRow = {
   intent: KeywordIntent
   cpc: number | null
   trend: unknown | null
+  /** Labs request seed(s) that produced this row (union when the same term appears under multiple seeds). */
+  sourceSeeds: string[]
 }
 
 type KeywordInfoPayload = {
@@ -55,6 +57,7 @@ function throwIfBadStatus(kind: string, code: unknown, message?: string): void {
 function mapLabsKeywordBlob(
   row: LabsKeywordBlob,
   fallbackTerm?: string,
+  sourceSeed?: string,
 ): NormalizedKeywordRow | null {
   const term = String(row.keyword ?? fallbackTerm ?? '').trim()
   if (!term) return null
@@ -72,6 +75,9 @@ function mapLabsKeywordBlob(
     if (Number.isFinite(n)) cpc = n
   }
 
+  const seedTrim = typeof sourceSeed === 'string' ? sourceSeed.trim() : ''
+  const sourceSeeds = seedTrim ? [seedTrim] : []
+
   return {
     term,
     volume,
@@ -79,6 +85,7 @@ function mapLabsKeywordBlob(
     intent,
     cpc,
     trend: ki?.monthly_searches ?? null,
+    sourceSeeds,
   }
 }
 
@@ -88,6 +95,8 @@ function mapLabsKeywordBlob(
  */
 function collectNormalizedFromResult(
   result: LabsResultSlice[] | null | undefined,
+  /** Seed passed to the Labs `keyword` field for this request (tags every returned row). */
+  sourceSeed: string,
 ): NormalizedKeywordRow[] {
   const out: NormalizedKeywordRow[] = []
   const slices = Array.isArray(result) ? result : []
@@ -102,18 +111,32 @@ function collectNormalizedFromResult(
         keyword_properties: part.keyword_properties ?? part.seed_keyword_data.keyword_properties,
         search_intent_info: part.search_intent_info ?? part.seed_keyword_data.search_intent_info,
       }
-      const row = mapLabsKeywordBlob(merged, seedFall)
+      const row = mapLabsKeywordBlob(merged, seedFall, sourceSeed)
       if (row) out.push(row)
     }
 
     const items = Array.isArray(part.items) ? part.items : []
     for (const item of items) {
-      const row = mapLabsKeywordBlob(item, seedFall)
+      const row = mapLabsKeywordBlob(item, seedFall, sourceSeed)
       if (row) out.push(row)
     }
   }
 
   return out
+}
+
+/** Merge DFS Labs seed strings for keyword dedupe / persistence (exported for dfs-fetch). */
+export function mergeUniqueSeeds(a: string[], b: string[]): string[] {
+  const set = new Set<string>()
+  for (const s of a) {
+    const t = s.trim()
+    if (t) set.add(t)
+  }
+  for (const s of b) {
+    const t = s.trim()
+    if (t) set.add(t)
+  }
+  return Array.from(set).sort((x, y) => x.localeCompare(y))
 }
 
 /**
@@ -166,13 +189,20 @@ export async function fetchKeywordSuggestionsLive(args: {
       task.status_message ?? undefined,
     )
 
-    const rows = collectNormalizedFromResult(task.result ?? undefined)
+    const rows = collectNormalizedFromResult(task.result ?? undefined, seed)
 
     for (const r of rows.slice(0, dfsLimit)) {
       const key = r.term.toLowerCase()
-      if (byTerm.has(key)) continue
-      byTerm.set(key, r)
+      const prev = byTerm.get(key)
+      if (prev) {
+        byTerm.set(key, {
+          ...prev,
+          sourceSeeds: mergeUniqueSeeds(prev.sourceSeeds, r.sourceSeeds),
+        })
+        continue
+      }
       if (byTerm.size >= limitTotal) break
+      byTerm.set(key, r)
     }
     if (byTerm.size >= limitTotal) break
   }

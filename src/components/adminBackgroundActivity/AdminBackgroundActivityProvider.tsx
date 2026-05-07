@@ -93,6 +93,15 @@ export function AdminBackgroundActivityProvider({
     }
   }, [pathname, router])
 
+  const refreshIfContentBriefsList = useCallback((): void => {
+    if (
+      typeof window !== 'undefined' &&
+      pathname.includes('/collections/content-briefs')
+    ) {
+      router.refresh()
+    }
+  }, [pathname, router])
+
   const hasRunningCategoriesListWork = jobs.some(
     (j) =>
       j.phase === 'running' &&
@@ -121,11 +130,16 @@ export function AdminBackgroundActivityProvider({
     (j) => j.phase === 'running' && j.kind === 'workflow-jobs-pipeline-sync',
   )
 
+  const hasRunningBatchEnqueueWork = jobs.some(
+    (j) => j.phase === 'running' && j.kind === 'batch-enqueue-sync',
+  )
+
   const hasRunningListPollWork =
     hasRunningCategoriesListWork ||
     hasRunningTrustPagesBundleWork ||
     hasRunningKeywordsDfsFetchWork ||
     hasRunningKeywordQuickWinPreviewWork ||
+    hasRunningBatchEnqueueWork ||
     hasRunningWorkflowJobsPipelineWork
 
   useEffect(() => {
@@ -136,6 +150,7 @@ export function AdminBackgroundActivityProvider({
       refreshIfPagesList()
       refreshIfKeywordsList()
       refreshIfWorkflowJobsList()
+      refreshIfContentBriefsList()
     }, POLL_MS)
     let capMs = POLL_CAP_MS
     if (hasRunningMerchantCategoriesWork) capMs = Math.max(capMs, POLL_CAP_MS_MERCHANT)
@@ -145,6 +160,9 @@ export function AdminBackgroundActivityProvider({
     }
     if (hasRunningWorkflowJobsPipelineWork) {
       capMs = Math.max(capMs, POLL_CAP_MS_WORKFLOW_PIPELINE)
+    }
+    if (hasRunningBatchEnqueueWork) {
+      capMs = Math.max(capMs, POLL_CAP_MS_KEYWORDS_LONG)
     }
     const cap = window.setTimeout(() => {
       window.clearInterval(interval)
@@ -160,11 +178,13 @@ export function AdminBackgroundActivityProvider({
     hasRunningTrustPagesBundleWork,
     hasRunningKeywordsDfsFetchWork,
     hasRunningKeywordQuickWinPreviewWork,
+    hasRunningBatchEnqueueWork,
     hasRunningWorkflowJobsPipelineWork,
     refreshIfCategoriesList,
     refreshIfPagesList,
     refreshIfKeywordsList,
     refreshIfWorkflowJobsList,
+    refreshIfContentBriefsList,
   ])
 
   const startCategoryCoverJob = useCallback(
@@ -552,6 +572,68 @@ export function AdminBackgroundActivityProvider({
     [refreshIfKeywordsList],
   )
 
+  const startBatchEnqueueJob = useCallback(
+    ({ siteLabel }: { siteLabel?: string } = {}): string => {
+      const id = newId()
+      const job: BackgroundActivityJob = {
+        id,
+        kind: 'batch-enqueue-sync',
+        phase: 'running',
+        ...(siteLabel?.trim() ? { siteLabel: siteLabel.trim() } : {}),
+        startedAt: Date.now(),
+      }
+      setJobs((prev) => [...prev, job])
+      refreshIfWorkflowJobsList()
+      refreshIfContentBriefsList()
+      return id
+    },
+    [refreshIfContentBriefsList, refreshIfWorkflowJobsList],
+  )
+
+  const completeBatchEnqueueJob = useCallback(
+    ({
+      jobId,
+      summary,
+    }: {
+      jobId: string
+      summary: NonNullable<BackgroundActivityJob['batchEnqueueSummary']>
+    }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'batch-enqueue-sync'
+            ? {
+                ...j,
+                phase: 'succeeded',
+                batchEnqueueSummary: summary,
+              }
+            : j,
+        ),
+      )
+      refreshIfWorkflowJobsList()
+      refreshIfContentBriefsList()
+    },
+    [refreshIfContentBriefsList, refreshIfWorkflowJobsList],
+  )
+
+  const failBatchEnqueueJob = useCallback(
+    ({ jobId, message }: { jobId: string; message: string }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'batch-enqueue-sync'
+            ? {
+                ...j,
+                phase: 'failed',
+                errorMessage: message,
+              }
+            : j,
+        ),
+      )
+      refreshIfWorkflowJobsList()
+      refreshIfContentBriefsList()
+    },
+    [refreshIfContentBriefsList, refreshIfWorkflowJobsList],
+  )
+
   const startWorkflowJobsPipelineJob = useCallback((args?: { scopeHint?: string }): string => {
     const id = newId()
     const hint = args?.scopeHint?.trim()
@@ -655,6 +737,9 @@ export function AdminBackgroundActivityProvider({
       startKeywordQuickWinPreviewJob,
       completeKeywordQuickWinPreviewJob,
       failKeywordQuickWinPreviewJob,
+      startBatchEnqueueJob,
+      completeBatchEnqueueJob,
+      failBatchEnqueueJob,
       startWorkflowJobsPipelineJob,
       updateWorkflowJobsPipelineJobProgress,
       completeWorkflowJobsPipelineJob,
@@ -681,6 +766,9 @@ export function AdminBackgroundActivityProvider({
       startKeywordQuickWinPreviewJob,
       completeKeywordQuickWinPreviewJob,
       failKeywordQuickWinPreviewJob,
+      startBatchEnqueueJob,
+      completeBatchEnqueueJob,
+      failBatchEnqueueJob,
       startWorkflowJobsPipelineJob,
       updateWorkflowJobsPipelineJobProgress,
       completeWorkflowJobsPipelineJob,

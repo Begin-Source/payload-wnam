@@ -10,7 +10,16 @@ export const Keywords: CollectionConfig = {
   admin: {
     group: adminGroups.website,
     useAsTitle: 'term',
-    defaultColumns: ['term', 'site', 'status', 'eligible', 'opportunityScore', 'volume', 'updatedAt'],
+    defaultColumns: [
+      'term',
+      'site',
+      'status',
+      'dataForSeoSeeds',
+      'eligible',
+      'opportunityScore',
+      'volume',
+      'updatedAt',
+    ],
     listSearchableFields: ['term', 'slug'],
     components: {
       beforeListTable: [
@@ -69,6 +78,15 @@ export const Keywords: CollectionConfig = {
     {
       name: 'notes',
       type: 'textarea',
+    },
+    {
+      name: 'dataForSeoSeeds',
+      type: 'json',
+      label: 'DFS 种子词',
+      admin: {
+        description:
+          'DataForSEO Labs 拉取时使用的种子词（可多个）；同词被不同种子碰到时会合并。手工建词可留空。',
+      },
     },
     { name: 'volume', type: 'number', admin: { description: 'Monthly search volume' } },
     { name: 'keywordDifficulty', type: 'number', label: 'KD' },

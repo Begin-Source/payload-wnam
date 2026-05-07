@@ -69,6 +69,7 @@ import { AdminBrandingIcon as AdminBrandingIcon_b1627480a7b1ea44a480239cce60653d
 import { AdminBrandingLogo as AdminBrandingLogo_ffcd50864d34f341cef09ccb08501192 } from '../../../components/AdminBrandingLogo'
 import { BeforeDashboardMilestone as BeforeDashboardMilestone_3719a54b7b6993337f9eb099b70f0f9b } from '../../../components/BeforeDashboardMilestone'
 import { TenantSelector as TenantSelector_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
+import { StrategyPanelNavLink as StrategyPanelNavLink_98d563a93802a0e463dcb2da665ce726 } from '../../../components/StrategyPanelNavLink'
 import { PipelineProfilesCompareNavLink as PipelineProfilesCompareNavLink_1898192308377dd5c2fe7681d1e4845d } from '../../../components/PipelineProfilesCompareNavLink'
 import { KnowledgeReadNavLink as KnowledgeReadNavLink_101990354097f86fa59616ae4a98e808 } from '../../../components/KnowledgeReadNavLink'
 import { AdminBrandingProvider as AdminBrandingProvider_44ab57c43dcee8db134a3e5db338ce23 } from '../../../components/AdminBrandingProvider'
@@ -76,6 +77,7 @@ import { TenantSelectionProvider as TenantSelectionProvider_d6d5f193a167989e2ee7
 import { InstructionsProvider as InstructionsProvider_4490b89d4413c1ffaecdacfe72efaf73 } from '@ai-stack/payloadcms/client'
 import { R2ClientUploadHandler as R2ClientUploadHandler_85cc02ed84006fcc91d3aff39dda669d } from '@payloadcms/storage-r2/client'
 import { MinimalDashboard as MinimalDashboard_1c676c4519e9773b53ff114b36bd0515 } from '../../../components/MinimalDashboard'
+import { StrategyPanelView as StrategyPanelView_ad085519e43002f0a9d16ed7015c8bd4 } from '../../../components/StrategyPanelView'
 import { PipelineProfilesCompareView as PipelineProfilesCompareView_645e3c12148c83054405a756729d5edb } from '../../../components/PipelineProfilesCompareView'
 import { TeamPerformanceView as TeamPerformanceView_43ca755606844bffd2b4692523c84c07 } from '../../../components/TeamPerformanceView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
@@ -152,6 +154,7 @@ export const importMap = {
   "./components/AdminBrandingLogo#AdminBrandingLogo": AdminBrandingLogo_ffcd50864d34f341cef09ccb08501192,
   "./components/BeforeDashboardMilestone#BeforeDashboardMilestone": BeforeDashboardMilestone_3719a54b7b6993337f9eb099b70f0f9b,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelector": TenantSelector_d6d5f193a167989e2ee7d14202901e62,
+  "./components/StrategyPanelNavLink#StrategyPanelNavLink": StrategyPanelNavLink_98d563a93802a0e463dcb2da665ce726,
   "./components/PipelineProfilesCompareNavLink#PipelineProfilesCompareNavLink": PipelineProfilesCompareNavLink_1898192308377dd5c2fe7681d1e4845d,
   "./components/KnowledgeReadNavLink#KnowledgeReadNavLink": KnowledgeReadNavLink_101990354097f86fa59616ae4a98e808,
   "./components/AdminBrandingProvider#AdminBrandingProvider": AdminBrandingProvider_44ab57c43dcee8db134a3e5db338ce23,
@@ -159,6 +162,7 @@ export const importMap = {
   "@ai-stack/payloadcms/client#InstructionsProvider": InstructionsProvider_4490b89d4413c1ffaecdacfe72efaf73,
   "@payloadcms/storage-r2/client#R2ClientUploadHandler": R2ClientUploadHandler_85cc02ed84006fcc91d3aff39dda669d,
   "./components/MinimalDashboard#MinimalDashboard": MinimalDashboard_1c676c4519e9773b53ff114b36bd0515,
+  "./components/StrategyPanelView#StrategyPanelView": StrategyPanelView_ad085519e43002f0a9d16ed7015c8bd4,
   "./components/PipelineProfilesCompareView#PipelineProfilesCompareView": PipelineProfilesCompareView_645e3c12148c83054405a756729d5edb,
   "./components/TeamPerformanceView#TeamPerformanceView": TeamPerformanceView_43ca755606844bffd2b4692523c84c07,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1

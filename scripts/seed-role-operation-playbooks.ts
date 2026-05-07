@@ -100,7 +100,7 @@ const PLAYBOOKS: Array<{
       '1）打开「网站」→「站点」→新建：填写名称、slug（全小写安全字符）、Primary domain（主域名按公司 HTTPS 规范）。',
       '2）选择 Blueprint / 站点布局（site layout）等：这会决定前台壳子与自动生成页能力；与公司模板负责人对齐后再保存。',
       '3）新建成功后，系统通常会尝试实例化多套合规固定页（About / Disclosure / Privacy 等）；若未出现请勿擅自乱删 slug，截图找管理员。',
-      '4）在「站点」上按需绑定流水线 Profile（SEO 流水线 A/B）；不绑则继承租户默认或全局默认值。',
+      '4）在「站点」上按需绑定 SEO 流水线方案（A/B）；不绑则继承租户默认或全局默认。',
       '5）请到「运营」→「站点配额」为该站设置 dailyPostCap 等：**否则批量排产的默认篇数与时间窗会与预期不符**。',
       '',
       '三、整站视觉与结构化素材（在内容大规模生成前先做）',
@@ -141,7 +141,7 @@ const PLAYBOOKS: Array<{
     level: 'standard',
     sortOrder: 21,
     summary:
-      '租户内运营统筹：配额与队列健康、关键词与排产策略、流水线 profile 与全局 SEO 流水线、内容日历/看板（若启用）、跨站协调与问题分流。',
+      '租户内运营统筹：配额与队列健康、关键词与排产策略、SEO 流水线方案与全局 SEO 流水线、内容日历/看板（若启用）、跨站协调与问题分流。',
     searchKeywords:
       '运营经理,ops-manager,配额,工作流,流水线,pipeline,profile,关键词,日历,SEO',
     bodyLines: [
@@ -158,8 +158,8 @@ const PLAYBOOKS: Array<{
       '2）遇到「批量排产为 0 或很少」先排除关键词与重复任务，再调配额或限流策略。',
       '',
       '三、流水线策略（A/B 与回溯）',
-      '1）全局默认在 Globals「SEO 流水线」（pipeline-settings）；按租户实验用「流水线配置 / pipeline-profiles」。',
-      '2）侧栏可进「流水线 Profile 对比」横向看 KPI（需权限）；站点/文章级 profile 绑定在站点或文章字段上。',
+      '1）全局默认在 Globals「全局 SEO 流水线」（pipeline-settings）；按租户实验用集合「SEO 流水线方案」（pipeline-profiles）。',
+      '2）侧栏可进「SEO 流水线方案 · 对比」横向看 KPI（需权限）；站点或文章级的方案绑定在站点/文章字段上。',
       '3）改策略前：记录当前 slug 与假设；改后观察工作流失败率、耗时与排名/质量分（以报表为准）。',
       '',
       '四、驱动发现与排产节奏',

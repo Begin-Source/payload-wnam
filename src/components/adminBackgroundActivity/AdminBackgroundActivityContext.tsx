@@ -11,6 +11,7 @@ export type BackgroundJobKind =
   | 'trust-pages-bundle-sync'
   | 'keywords-dfs-fetch-sync'
   | 'keyword-quick-win-preview-sync'
+  | 'batch-enqueue-sync'
   | 'workflow-jobs-pipeline-sync'
 
 /** POST /admin/pipeline/run-next drain / single batch summary */
@@ -88,6 +89,13 @@ export type BackgroundActivityJob = {
     persistErrorCount: number
     /** 失败条目明细（ Banner 预览） */
     persistErrorsPreview?: Array<{ term: string; message: string }>
+  }
+  /** 内容大纲「批量排产」：`POST /api/admin/articles/batch-enqueue`（非 dryRun 默认入队） */
+  batchEnqueueSummary?: {
+    enqueued: number
+    skipped: number
+    usedKeywordFallback?: boolean
+    errorsSample?: string[]
   }
   /** Quick-win：`POST batch-enqueue` dryRun 预览 pillar 候选（可能含 SERP 聚类写入） */
   keywordQuickWinPreviewSummary?: {
@@ -169,6 +177,12 @@ export type AdminBackgroundActivityApi = {
     summary: NonNullable<BackgroundActivityJob['keywordQuickWinPreviewSummary']>
   }) => void
   failKeywordQuickWinPreviewJob: (args: { jobId: string; message: string }) => void
+  startBatchEnqueueJob: (args?: { siteLabel?: string }) => string
+  completeBatchEnqueueJob: (args: {
+    jobId: string
+    summary: NonNullable<BackgroundActivityJob['batchEnqueueSummary']>
+  }) => void
+  failBatchEnqueueJob: (args: { jobId: string; message: string }) => void
   startWorkflowJobsPipelineJob: (args?: { scopeHint?: string }) => string
   updateWorkflowJobsPipelineJobProgress: (args: {
     jobId: string

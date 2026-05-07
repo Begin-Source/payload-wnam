@@ -120,6 +120,7 @@ export function KeywordQuickWinDrawer(): React.ReactElement {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastResult, setLastResult] = useState<string | null>(null)
+  const [sitePresetNotice, setSitePresetNotice] = useState<string | null>(null)
 
   const loadSites = useCallback(async (q: string) => {
     setSitesLoading(true)
@@ -181,6 +182,7 @@ export function KeywordQuickWinDrawer(): React.ReactElement {
     setPreview(null)
     setLastResult(null)
     setError(null)
+    setSitePresetNotice(null)
   }
 
   const pickSite = (s: SiteOption): void => {
@@ -189,7 +191,105 @@ export function KeywordQuickWinDrawer(): React.ReactElement {
     setSiteQuery('')
     setSiteMenuOpen(false)
     setPreview(null)
+    setSitePresetNotice(null)
   }
+
+  /** When site is selected, prefill from tenant keyword batch preset (Quick-win fields only if batchMode is quick_wins). */
+  useEffect(() => {
+    if (!open || selectedSiteId == null) {
+      setSitePresetNotice(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/keyword-batch-presets/for-site?siteId=${selectedSiteId}`,
+          { credentials: 'include' },
+        )
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as {
+          preset?: {
+            batchMode?: string
+            defaultBatchLimit?: number | null
+            eligibleOnly?: boolean
+            intentWhitelist?: string | null
+            minVolume?: number | null
+            maxVolume?: number | null
+            maxKd?: number | null
+            maxPick?: number | null
+            clusterBeforeEnqueue?: boolean | null
+            clusterMinOverlap?: number | null
+          } | null
+        }
+        if (cancelled) return
+        const p = data.preset
+        if (!p) {
+          setEligibleOnly(DEFAULT_QUICK_WIN_FILTER.eligibleOnly)
+          setIntentText(DEFAULT_QUICK_WIN_FILTER.intentWhitelist.join(', '))
+          setMinVolume(String(DEFAULT_QUICK_WIN_FILTER.minVolume))
+          setMaxVolume(String(DEFAULT_QUICK_WIN_FILTER.maxVolume))
+          setMaxKd(String(DEFAULT_QUICK_WIN_FILTER.maxKd))
+          setMaxPick(String(DEFAULT_QUICK_WIN_FILTER.maxPick))
+          setEnqueueLimit('')
+          setClusterBeforeEnqueue(true)
+          setClusterMinOverlap('3')
+          setSitePresetNotice(null)
+          return
+        }
+
+        if (p.batchMode === 'quick_wins') {
+          setSitePresetNotice(null)
+          if (typeof p.eligibleOnly === 'boolean') setEligibleOnly(p.eligibleOnly)
+          if (typeof p.intentWhitelist === 'string') setIntentText(p.intentWhitelist.trim())
+          if (typeof p.minVolume === 'number' && Number.isFinite(p.minVolume)) {
+            setMinVolume(String(p.minVolume))
+          }
+          if (typeof p.maxVolume === 'number' && Number.isFinite(p.maxVolume)) {
+            setMaxVolume(String(p.maxVolume))
+          }
+          if (typeof p.maxKd === 'number' && Number.isFinite(p.maxKd)) {
+            setMaxKd(String(p.maxKd))
+          }
+          if (typeof p.maxPick === 'number' && Number.isFinite(p.maxPick)) {
+            setMaxPick(String(p.maxPick))
+          }
+          if (typeof p.clusterBeforeEnqueue === 'boolean') {
+            setClusterBeforeEnqueue(p.clusterBeforeEnqueue)
+          }
+          if (
+            typeof p.clusterMinOverlap === 'number' &&
+            Number.isFinite(p.clusterMinOverlap) &&
+            p.clusterMinOverlap >= 2 &&
+            p.clusterMinOverlap <= 6
+          ) {
+            setClusterMinOverlap(String(p.clusterMinOverlap))
+          }
+          const lim = p.defaultBatchLimit
+          if (typeof lim === 'number' && Number.isFinite(lim) && lim >= 1) {
+            setEnqueueLimit(String(Math.min(100, Math.floor(lim))))
+          } else {
+            setEnqueueLimit('')
+          }
+        } else {
+          setSitePresetNotice(
+            '本站关键词排产预设为「默认」模式；未自动覆盖 Quick-win 筛选项。若要用默认机会分排产，请点「默认排产 · Brief」。此处仅预填本批上限（若预设中已填）。',
+          )
+          const lim = p.defaultBatchLimit
+          if (typeof lim === 'number' && Number.isFinite(lim) && lim >= 1) {
+            setEnqueueLimit(String(Math.min(100, Math.floor(lim))))
+          } else {
+            setEnqueueLimit('')
+          }
+        }
+      } catch {
+        if (!cancelled) setSitePresetNotice(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, selectedSiteId])
 
   function buildFilterPayload(): {
     eligibleOnly: boolean
@@ -416,6 +516,22 @@ export function KeywordQuickWinDrawer(): React.ReactElement {
                 </p>
               ) : null}
 
+              {sitePresetNotice ? (
+                <p
+                  style={{
+                    fontSize: '0.8125rem',
+                    marginBottom: '0.75rem',
+                    padding: '0.5rem 0.65rem',
+                    borderRadius: 4,
+                    background: 'var(--theme-elevation-50)',
+                    border: '1px solid var(--theme-elevation-150)',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {sitePresetNotice}
+                </p>
+              ) : null}
+
               {lastResult ? (
                 <p style={{ fontSize: '0.8125rem', marginBottom: '0.75rem', opacity: 0.9 }}>{lastResult}</p>
               ) : null}
@@ -480,6 +596,7 @@ export function KeywordQuickWinDrawer(): React.ReactElement {
                             key={s.id}
                             type="button"
                             role="option"
+                            aria-selected={selectedSiteId === s.id}
                             style={{
                               display: 'block',
                               width: '100%',

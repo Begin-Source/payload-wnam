@@ -164,7 +164,7 @@ export async function runCategoryCoverGenerate(
       ok: false,
       categoryId,
       error: 'together_image_disabled',
-      message: '当前流水线配置已关闭 Together 生图。',
+      message: '当前生效流水线已关闭 Together 生图。',
       httpStatus: 400,
     }
   }

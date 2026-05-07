@@ -87,9 +87,10 @@ export const articleSeoFields: Field[] = [
     name: 'pipelineProfile',
     type: 'relationship',
     relationTo: 'pipeline-profiles',
+    label: 'SEO 流水线方案',
     admin: {
       description:
-        '可选。指定后本篇文章的 AI 流水线使用该配置（优先于站点默认）。用于 A/B 对照；留空则继承站点或租户默认。',
+        '可选。运行时有效配置为「全局 SEO 流水线」与该方案的合并结果；本文优先于站点所选方案（A/B）。留空则继承站点或租户默认方案。',
       position: 'sidebar',
     },
         filterOptions: ({ data }) => {

@@ -6,10 +6,12 @@ import { OfferMerchantSlotQuickActionModal } from '@/components/OfferMerchantSlo
 import { OfferReviewMdxQuickActionModal } from '@/components/OfferReviewMdxQuickActionModal'
 import { ArticlePipelineCatchupDrawer } from '@/components/ArticlePipelineCatchupDrawer'
 import { MediaAiImageDrawer } from '@/components/MediaAiImageDrawer'
+import { KeywordDefaultBatchDrawer } from '@/components/KeywordDefaultBatchDrawer'
 import { KeywordQuickWinDrawer } from '@/components/KeywordQuickWinDrawer'
 import { KeywordSyncFetchDrawer } from '@/components/KeywordSyncFetchDrawer'
 import { SiteQuickActionsDrawer } from '@/components/SiteQuickActionsDrawer'
 import { TrustPagesBundleQuickActionModal } from '@/components/TrustPagesBundleQuickActionModal'
+import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
 import { Button } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
@@ -179,6 +181,8 @@ type ArticleQuickMode = 'single' | 'batch'
 function WorkflowQuickActionModal({ kind }: { kind: WorkflowQuickKind }): React.ReactElement {
   const ui = UI[kind]
   const isArticles = kind === 'articles'
+  const { startBatchEnqueueJob, completeBatchEnqueueJob, failBatchEnqueueJob } =
+    useAdminBackgroundActivity()
   const [open, setOpen] = useState(false)
   const [articleMode, setArticleMode] = useState<ArticleQuickMode>('single')
   const [batchLimitInput, setBatchLimitInput] = useState('')
@@ -353,35 +357,48 @@ function WorkflowQuickActionModal({ kind }: { kind: WorkflowQuickKind }): React.
           }
           limit = Math.min(100, Math.floor(n))
         }
-        const res = await fetch('/api/admin/articles/batch-enqueue', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            siteId: selectedSiteId,
-            ...(limit != null ? { limit } : {}),
-          }),
-        })
-        const data = (await res.json().catch(() => ({}))) as {
-          error?: string
-          enqueued?: number
-          skipped?: number
-          usedKeywordFallback?: boolean
-          errorsSample?: string[]
-        }
-        if (!res.ok) {
-          throw new Error(typeof data.error === 'string' ? data.error : '批量入队失败')
-        }
-        const extra =
-          (data.enqueued === 0 && (data.errorsSample?.length ?? 0) > 0
-            ? ` · ${(data.errorsSample ?? []).join(' ')}`
-            : '') + (data.usedKeywordFallback ? '（本批使用 draft 关键词：站点无 active 词）' : '')
-        setSuccess(
-          `已入队 ${data.enqueued ?? 0} 条 · 跳过 ${data.skipped ?? 0} 条${extra}`,
-        )
-        window.setTimeout(() => {
-          close()
-        }, 2000)
+        const siteLabelSnap = selectedSiteLabel.trim()
+        const siteIdSnap = selectedSiteId
+        const jobId = startBatchEnqueueJob(siteLabelSnap ? { siteLabel: siteLabelSnap } : {})
+        close()
+        void (async () => {
+          try {
+            const res = await fetch('/api/admin/articles/batch-enqueue', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                siteId: siteIdSnap,
+                ...(limit != null ? { limit } : {}),
+              }),
+            })
+            const data = (await res.json().catch(() => ({}))) as {
+              error?: string
+              enqueued?: number
+              skipped?: number
+              usedKeywordFallback?: boolean
+              errorsSample?: string[]
+            }
+            if (!res.ok) {
+              failBatchEnqueueJob({
+                jobId,
+                message: typeof data.error === 'string' ? data.error : '批量入队失败',
+              })
+              return
+            }
+            completeBatchEnqueueJob({
+              jobId,
+              summary: {
+                enqueued: data.enqueued ?? 0,
+                skipped: data.skipped ?? 0,
+                usedKeywordFallback: data.usedKeywordFallback,
+                errorsSample: data.errorsSample,
+              },
+            })
+          } catch {
+            failBatchEnqueueJob({ jobId, message: '批量入队请求失败' })
+          }
+        })()
         return
       }
 
@@ -1223,7 +1240,12 @@ export function CategoryListQuickAction(): React.ReactElement {
 }
 
 export function KeywordListQuickAction(): React.ReactElement {
-  return <KeywordQuickWinDrawer />
+  return (
+    <>
+      <KeywordQuickWinDrawer />
+      <KeywordDefaultBatchDrawer />
+    </>
+  )
 }
 
 export function KeywordSyncFetchListAction(): React.ReactElement {

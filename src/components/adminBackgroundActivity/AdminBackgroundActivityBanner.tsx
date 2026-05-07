@@ -1,6 +1,12 @@
 'use client'
 
-import { adminCategoriesListPath, adminKeywordsListPath, adminPagesListPath, adminWorkflowJobsListPath } from '@/components/adminBackgroundActivity/categoriesListPath'
+import {
+  adminCategoriesListPath,
+  adminContentBriefsListPath,
+  adminKeywordsListPath,
+  adminPagesListPath,
+  adminWorkflowJobsListPath,
+} from '@/components/adminBackgroundActivity/categoriesListPath'
 import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityContext'
 import type {
   BackgroundActivityJob,
@@ -21,6 +27,7 @@ const LIST_BANNER_KINDS = [
   'trust-pages-bundle-sync',
   'keywords-dfs-fetch-sync',
   'keyword-quick-win-preview-sync',
+  'batch-enqueue-sync',
   'workflow-jobs-pipeline-sync',
 ] as const
 
@@ -110,6 +117,13 @@ function clipText(s: string, max: number): string {
 
 function keywordQuickWinPreviewClusterFailed(notices: string[] | undefined): boolean {
   return (notices ?? []).some((n) => n.includes('SERP 聚类失败'))
+}
+
+function batchEnqueueSummaryIsError(s: {
+  enqueued: number
+  errorsSample?: string[]
+}): boolean {
+  return s.enqueued === 0 && (s.errorsSample?.length ?? 0) > 0
 }
 
 function formatCoverRowShortLabel(row: CategoryCoverSyncRowResult): string {
@@ -252,6 +266,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
   const runningKeywordQuickWinPreview = running.filter(
     (j) => j.kind === 'keyword-quick-win-preview-sync',
   )
+  const runningBatchEnqueue = running.filter((j) => j.kind === 'batch-enqueue-sync')
   const runningWorkflowJobsPipeline = running.filter((j) => j.kind === 'workflow-jobs-pipeline-sync')
 
   const terminal = scoped.filter((j) => j.phase !== 'running')
@@ -267,6 +282,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     | { tag: 'running-trust-bundle'; batches: BackgroundActivityJob[] }
     | { tag: 'running-keywords-dfs'; batches: BackgroundActivityJob[] }
     | { tag: 'running-keywords-quick-win-preview'; batches: BackgroundActivityJob[] }
+    | { tag: 'running-batch-enqueue'; batches: BackgroundActivityJob[] }
     | { tag: 'running-workflow-jobs-pipeline'; batches: BackgroundActivityJob[] }
     | { tag: 'terminal'; job: BackgroundActivityJob }
     | null
@@ -284,6 +300,8 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     primary = { tag: 'running-keywords-dfs', batches: runningKeywordsDfsFetch }
   } else if (runningKeywordQuickWinPreview.length > 0) {
     primary = { tag: 'running-keywords-quick-win-preview', batches: runningKeywordQuickWinPreview }
+  } else if (runningBatchEnqueue.length > 0) {
+    primary = { tag: 'running-batch-enqueue', batches: runningBatchEnqueue }
   } else if (runningWorkflowJobsPipeline.length > 0) {
     primary = { tag: 'running-workflow-jobs-pipeline', batches: runningWorkflowJobsPipeline }
   } else if (latestTerminal !== null) {
@@ -296,6 +314,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
   const pagesHref = adminPagesListPath(pathname ?? '')
   const keywordsHref = adminKeywordsListPath(pathname ?? '')
   const workflowJobsHref = adminWorkflowJobsListPath(pathname ?? '')
+  const contentBriefsHref = adminContentBriefsListPath(pathname ?? '')
   const onOpenCategoriesList = (): void => {
     router.push(categoriesHref)
   }
@@ -402,6 +421,27 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
       onClick={onOpenWorkflowJobsList}
     >
       打开工作流任务列表
+    </button>
+  )
+
+  const onOpenContentBriefsList = (): void => {
+    router.push(contentBriefsHref)
+  }
+
+  const openContentBriefsListBtn = (
+    <button
+      style={{
+        padding: '4px 10px',
+        borderRadius: 4,
+        border: '1px solid var(--theme-elevation-150)',
+        background: 'var(--theme-elevation-0)',
+        cursor: 'pointer',
+        fontSize: '12px',
+      }}
+      type="button"
+      onClick={onOpenContentBriefsList}
+    >
+      打开内容大纲列表
     </button>
   )
 
@@ -621,6 +661,43 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         <span style={{ flex: '1 1 12rem' }}>{line}</span>
         <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
           {openKeywordsListBtn}
+          <button
+            aria-label="关闭横幅（后台任务继续进行）"
+            style={closeIconBtnStyle}
+            type="button"
+            onClick={() => dismissRunningBatches(primary.batches)}
+          >
+            ×
+          </button>
+        </span>
+      </div>
+    )
+  }
+
+  if (primary.tag === 'running-batch-enqueue') {
+    const n = primary.batches.length
+    const siteHint =
+      n === 1 && primary.batches[0]?.siteLabel
+        ? `（站点：${primary.batches[0].siteLabel}）`
+        : ''
+    const line =
+      n === 1
+        ? `快捷操作 · 批量排产进行中${siteHint} — POST batch-enqueue 入队 brief_generate；请在工作流任务与内容大纲列表查看`
+        : `快捷操作 · 批量排产进行中（${n} 批）— batch-enqueue 入队中`
+
+    return (
+      <div
+        aria-live="polite"
+        role="status"
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar('running'),
+        }}
+      >
+        <span style={{ flex: '1 1 12rem' }}>{line}</span>
+        <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
+          {openWorkflowJobsListBtn}
+          {openContentBriefsListBtn}
           <button
             aria-label="关闭横幅（后台任务继续进行）"
             style={closeIconBtnStyle}
@@ -1065,6 +1142,100 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     }
 
     return null
+  }
+
+  if (job.kind === 'batch-enqueue-sync') {
+    if (job.phase === 'failed') {
+      const msg = `快捷操作 · 批量排产失败：${job.errorMessage ?? '未知错误'}`
+      return (
+        <div
+          aria-live="assertive"
+          role="alert"
+          style={{
+            ...baseBar,
+            ...badgeStyleForBar('error'),
+          }}
+        >
+          <span style={{ flex: '1 1 12rem' }}>{msg}</span>
+          <span
+            style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}
+          >
+            {openWorkflowJobsListBtn}
+            {openContentBriefsListBtn}
+            <button
+              aria-label="关闭横幅"
+              style={closeIconBtnStyle}
+              type="button"
+              onClick={() => dismissJob(job.id)}
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )
+    }
+
+    if (job.phase !== 'succeeded' || !job.batchEnqueueSummary) {
+      return null
+    }
+
+    const s = job.batchEnqueueSummary
+    const siteBr = job.siteLabel?.trim() ? `（${job.siteLabel.trim()}）` : ''
+    const fb = s.usedKeywordFallback ? ' · 本批使用 draft 关键词（站点无 active 词）' : ''
+    const errBad = batchEnqueueSummaryIsError(s)
+    const summaryLine = `快捷操作 · 批量排产已完成${siteBr}：已入队 ${s.enqueued} 条 · 跳过 ${s.skipped} 条${fb}。`
+    const samples = Array.isArray(s.errorsSample) ? s.errorsSample : []
+    const sampleLines =
+      samples.length > 0 ? samples.map((x) => clipText(`· ${x}`, COVER_DETAIL_LINE_MAX)).join('\n') : ''
+    const titleAttr = clipText(
+      sampleLines ? `${summaryLine}\n\n${samples.join('\n')}` : summaryLine,
+      4000,
+    )
+
+    return (
+      <div
+        aria-live={errBad ? 'assertive' : 'polite'}
+        role={errBad ? 'alert' : 'status'}
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar(errBad ? 'error' : 'done'),
+        }}
+        title={titleAttr}
+      >
+        <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+          <span style={{ display: 'block' }}>{summaryLine}</span>
+          {sampleLines ? (
+            <span
+              style={{
+                display: 'block',
+                marginTop: 6,
+                fontSize: '11px',
+                lineHeight: 1.45,
+                opacity: 0.95,
+                whiteSpace: 'pre-line',
+                wordBreak: 'break-word',
+              }}
+            >
+              {sampleLines}
+            </span>
+          ) : null}
+        </div>
+        <span
+          style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}
+        >
+          {openWorkflowJobsListBtn}
+          {openContentBriefsListBtn}
+          <button
+            aria-label="关闭横幅"
+            style={closeIconBtnStyle}
+            type="button"
+            onClick={() => dismissJob(job.id)}
+          >
+            ×
+          </button>
+        </span>
+      </div>
+    )
   }
 
   if (job.kind === 'workflow-jobs-pipeline-sync') {

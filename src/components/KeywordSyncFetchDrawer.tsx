@@ -235,7 +235,7 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
         if (!res.ok) {
           if (!cancelled) {
             setPipelineProfiles([])
-            setError(typeof data.error === 'string' ? data.error : '加载流水线配置失败')
+            setError(typeof data.error === 'string' ? data.error : '加载 SEO 流水线方案失败')
           }
           return
         }
@@ -245,7 +245,7 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
       } catch {
         if (!cancelled) {
           setPipelineProfiles([])
-          setError('加载流水线配置失败')
+          setError('加载 SEO 流水线方案失败')
         }
       } finally {
         if (!cancelled) setPipelineProfilesLoading(false)
@@ -437,7 +437,7 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
               同步拉取 · DataForSEO（关键词）
             </h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
-              按站点写入 <code>keywords</code>（status=draft），并按「SEO 流水线」中的 AMZ 资格 JSON 打{' '}
+              按站点写入 <code>keywords</code>（status=draft），并按生效配置（全局 SEO 流水线 + 所选方案）中的 AMZ 资格 JSON 打{' '}
               <code>eligible</code>
               。数据来自 DataForSEO Labs Keyword Suggestions（含 KD / intent）。提交后窗口会立即关闭；进度与摘要见顶栏
               Banner（关键词列表会随刷新更新）。
@@ -564,7 +564,7 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
 
             <div style={{ marginBottom: '1rem' }}>
               <label htmlFor="kw-dfs-pipeline-profile" style={fieldLabel}>
-                流水线配置（可选）
+                SEO 流水线方案（可选）
               </label>
               <select
                 id="kw-dfs-pipeline-profile"

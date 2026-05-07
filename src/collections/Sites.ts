@@ -155,10 +155,31 @@ export const Sites: CollectionConfig = {
       name: 'pipelineProfile',
       type: 'relationship',
       relationTo: 'pipeline-profiles',
-      label: '流水线配置',
+      label: 'SEO 流水线方案',
       admin: {
         description:
-          '可选。指定后本站关键词同步与文章流水线默认使用该配置（覆盖全局 SEO 流水线）。留空则用租户默认或全局。',
+          '可选。指定后本站关键词同步与文章流水线默认使用该方案（覆盖全局默认，即 Globals「全局 SEO 流水线」）。留空则用租户默认方案或仅用全局。',
+      },
+      filterOptions: ({ data }) => {
+        const raw = (data as { tenant?: number | { id: number } | null })?.tenant
+        const tid =
+          raw != null && typeof raw === 'object' && 'id' in raw
+            ? Number((raw as { id: number }).id)
+            : typeof raw === 'number'
+              ? raw
+              : null
+        if (tid == null || !Number.isFinite(tid)) return false
+        return { tenant: { equals: tid } }
+      },
+    },
+    {
+      name: 'keywordBatchPreset',
+      type: 'relationship',
+      relationTo: 'keyword-batch-presets',
+      label: '关键词排产预设',
+      admin: {
+        description:
+          '可选。选定后，关键词列表「默认排产 / Quick-win」弹窗在选站后预填该预设（仍可在弹窗内覆盖）。留空则不预填。',
       },
       filterOptions: ({ data }) => {
         const raw = (data as { tenant?: number | { id: number } | null })?.tenant

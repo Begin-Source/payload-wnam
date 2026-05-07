@@ -65,6 +65,7 @@ import { PublicLanding } from './globals/PublicLanding'
 import { PipelineSettings } from './globals/PipelineSettings'
 import { Announcements } from './collections/Announcements'
 import { Teams } from './collections/Teams'
+import { KeywordBatchPresets } from './collections/KeywordBatchPresets'
 import { PipelineProfiles } from './collections/PipelineProfiles'
 import { TenantPromptTemplates } from './collections/TenantPromptTemplates'
 import { OpenAIConfig } from './utilities/aiOpenAIConfigImport'
@@ -230,6 +231,7 @@ export default buildConfig({
     components: {
       providers: ['./components/AdminBrandingProvider#AdminBrandingProvider'],
       beforeNavLinks: [
+        './components/StrategyPanelNavLink#StrategyPanelNavLink',
         './components/PipelineProfilesCompareNavLink#PipelineProfilesCompareNavLink',
         './components/KnowledgeReadNavLink#KnowledgeReadNavLink',
       ],
@@ -242,6 +244,10 @@ export default buildConfig({
       views: {
         dashboard: {
           Component: './components/MinimalDashboard#MinimalDashboard',
+        },
+        StrategyPanel: {
+          Component: './components/StrategyPanelView#StrategyPanelView',
+          path: '/strategy',
         },
         PipelineProfilesCompare: {
           Component: './components/PipelineProfilesCompareView#PipelineProfilesCompareView',
@@ -283,6 +289,7 @@ export default buildConfig({
     Teams,
     TenantPromptTemplates,
     PipelineProfiles,
+    KeywordBatchPresets,
     KnowledgeBase,
     OperationManuals,
     AuditLogs,
@@ -362,6 +369,7 @@ export default buildConfig({
         teams: {},
         'tenant-prompt-templates': {},
         'pipeline-profiles': {},
+        'keyword-batch-presets': {},
         'social-platforms': {},
         'social-accounts': {},
         /**

@@ -79,7 +79,7 @@ export const pipelineSettingsDefaultLlmBySection = [
 
 export const PipelineSettings: GlobalConfig = {
   slug: 'pipeline-settings',
-  label: 'SEO 流水线',
+  label: '全局 SEO 流水线',
   admin: {
     group: adminGroups.operations,
     hidden: ({ user }) => !isSystemConfigNavVisible(user),

@@ -14,14 +14,14 @@ import {
 import { getTenantIdsForUser, tenantIdFromRelation } from '@/utilities/tenantScope'
 import { userHasTenantGeneralManagerRole } from '@/utilities/userRoles'
 
-const inheritLabel = '(继承全局)'
+const inheritLabel = '(继承全局默认)'
 const withInherit = <T extends string>(opts: readonly { label: string; value: T }[]) => [
   { label: inheritLabel, value: '' },
   ...(opts as { label: string; value: string }[]),
 ]
 
 const profileOverrideFieldsDescription =
-  '以下字段若留空则继承全局「SEO 流水线」；填写后仅覆盖对应项。'
+  '以下字段若留空则继承全局 SEO 流水线；填写后仅覆盖对应项。'
 
 const ensureUniqueTenantSlug: CollectionBeforeValidateHook = async ({
   data,
@@ -49,7 +49,7 @@ const ensureUniqueTenantSlug: CollectionBeforeValidateHook = async ({
   const selfId = originalDoc?.id
   for (const d of docs) {
     if (selfId != null && d.id === selfId) continue
-    throw new Error(`该租户下已存在 slug「${slug}」的流水线配置，请编辑现有记录。`)
+    throw new Error(`该租户下已存在 slug「${slug}」的 SEO 流水线方案，请编辑现有记录。`)
   }
   return data
 }
@@ -111,14 +111,14 @@ const enforceAssignedTenantOnly: CollectionBeforeChangeHook = async ({ data, ori
   if (tenantId == null) return data
   const allowed = getTenantIdsForUser(user)
   if (!allowed.includes(tenantId)) {
-    throw new Error('无权为该租户创建或修改流水线配置。')
+    throw new Error('无权为该租户创建或修改 SEO 流水线方案。')
   }
   return data
 }
 
 export const PipelineProfiles: CollectionConfig = {
   slug: 'pipeline-profiles',
-  labels: { singular: '流水线配置', plural: '流水线配置' },
+  labels: { singular: 'SEO 流水线方案', plural: 'SEO 流水线方案' },
   admin: {
     group: adminGroups.operations,
     useAsTitle: 'name',
@@ -131,7 +131,7 @@ export const PipelineProfiles: CollectionConfig = {
       },
     },
     description:
-      '按租户多套 SEO / AI 流水线参数（覆盖全局「SEO 流水线」）。站点或文章可指定其一以做对照试验。',
+      '按租户多套 SEO / AI 流水线参数（覆盖全局 SEO 流水线）。站点或文章可指定其一以做对照试验。',
   },
   access: loggedInSuperAdminAccessFor('pipeline-profiles'),
   hooks: {
@@ -171,7 +171,7 @@ export const PipelineProfiles: CollectionConfig = {
     },
     {
       type: 'collapsible',
-      label: '覆盖项（留空继承全局）',
+      label: '覆盖项（留空继承全局默认）',
       admin: {
         description: profileOverrideFieldsDescription,
         initCollapsed: true,

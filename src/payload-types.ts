@@ -96,6 +96,7 @@ export interface Config {
     teams: Team;
     'tenant-prompt-templates': TenantPromptTemplate;
     'pipeline-profiles': PipelineProfile;
+    'keyword-batch-presets': KeywordBatchPreset;
     'knowledge-base': KnowledgeBase;
     'operation-manuals': OperationManual;
     'audit-logs': AuditLog;
@@ -146,6 +147,7 @@ export interface Config {
     teams: TeamsSelect<false> | TeamsSelect<true>;
     'tenant-prompt-templates': TenantPromptTemplatesSelect<false> | TenantPromptTemplatesSelect<true>;
     'pipeline-profiles': PipelineProfilesSelect<false> | PipelineProfilesSelect<true>;
+    'keyword-batch-presets': KeywordBatchPresetsSelect<false> | KeywordBatchPresetsSelect<true>;
     'knowledge-base': KnowledgeBaseSelect<false> | KnowledgeBaseSelect<true>;
     'operation-manuals': OperationManualsSelect<false> | OperationManualsSelect<true>;
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
@@ -419,9 +421,13 @@ export interface Site {
    */
   portfolio?: (number | null) | SitePortfolio;
   /**
-   * 可选。指定后本站关键词同步与文章流水线默认使用该配置（覆盖全局 SEO 流水线）。留空则用租户默认或全局。
+   * 可选。指定后本站关键词同步与文章流水线默认使用该方案（覆盖全局默认，即 Globals「全局 SEO 流水线」）。留空则用租户默认方案或仅用全局。
    */
   pipelineProfile?: (number | null) | PipelineProfile;
+  /**
+   * 可选。选定后，关键词列表「默认排产 / Quick-win」弹窗在选站后预填该预设（仍可在弹窗内覆盖）。留空则不预填。
+   */
+  keywordBatchPreset?: (number | null) | KeywordBatchPreset;
   /**
    * Template1 / Template2：文案在「设计」t1LocaleJson / t2LocaleJson。amz-template-1 / amz-template-2：壳层与配色见「设计」amzSiteConfigJson（与 amz-template-1 仓库 site.config 同形）。说明与预览链接见「站点布局」目录。
    */
@@ -526,7 +532,7 @@ export interface Site {
   createdAt: string;
 }
 /**
- * 按租户多套 SEO / AI 流水线参数（覆盖全局「SEO 流水线」）。站点或文章可指定其一以做对照试验。
+ * 按租户多套 SEO / AI 流水线参数（覆盖全局 SEO 流水线）。站点或文章可指定其一以做对照试验。
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "pipeline-profiles".
@@ -653,6 +659,46 @@ export interface PipelineProfile {
     | number
     | boolean
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * 按租户配置「默认 / Quick-win」批量入队的默认值；站点可选关联一条，关键词列表排产弹窗将预填（可覆盖）。
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "keyword-batch-presets".
+ */
+export interface KeywordBatchPreset {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  name: string;
+  /**
+   * 租户内唯一；小写字母、数字、连字符。
+   */
+  slug: string;
+  /**
+   * 可选；实验假设或给运营看的备注。
+   */
+  description?: string | null;
+  /**
+   * 用于关键词列表预填：default 对应「默认排产 · Brief」；quick_wins 对应「精选 Quick-win」表单项。
+   */
+  batchMode: 'default' | 'quick_wins';
+  /**
+   * 可选。留空表示弹窗不预填上限，仍由服务端 defaultLimit / Quick-win 推导。1–100。
+   */
+  defaultBatchLimit?: number | null;
+  eligibleOnly?: boolean | null;
+  /**
+   * informational | navigational | commercial | transactional
+   */
+  intentWhitelist?: string | null;
+  minVolume?: number | null;
+  maxVolume?: number | null;
+  maxKd?: number | null;
+  maxPick?: number | null;
+  clusterBeforeEnqueue?: boolean | null;
+  clusterMinOverlap?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1226,6 +1272,18 @@ export interface Keyword {
   status: 'draft' | 'active' | 'archived';
   notes?: string | null;
   /**
+   * DataForSEO Labs 拉取时使用的种子词（可多个）；同词被不同种子碰到时会合并。手工建词可留空。
+   */
+  dataForSeoSeeds?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
    * Monthly search volume
    */
   volume?: number | null;
@@ -1470,7 +1528,7 @@ export interface Article {
   originalEvidence?: (number | OriginalEvidence)[] | null;
   sourceBrief?: (number | null) | ContentBrief;
   /**
-   * 可选。指定后本篇文章的 AI 流水线使用该配置（优先于站点默认）。用于 A/B 对照；留空则继承站点或租户默认。
+   * 可选。运行时有效配置为「全局 SEO 流水线」与该方案的合并结果；本文优先于站点所选方案（A/B）。留空则继承站点或租户默认方案。
    */
   pipelineProfile?: (number | null) | PipelineProfile;
   /**
@@ -3345,6 +3403,10 @@ export interface PayloadLockedDocument {
         value: number | PipelineProfile;
       } | null)
     | ({
+        relationTo: 'keyword-batch-presets';
+        value: number | KeywordBatchPreset;
+      } | null)
+    | ({
         relationTo: 'knowledge-base';
         value: number | KnowledgeBase;
       } | null)
@@ -3498,6 +3560,7 @@ export interface SitesSelect<T extends boolean = true> {
   status?: T;
   portfolio?: T;
   pipelineProfile?: T;
+  keywordBatchPreset?: T;
   siteLayout?: T;
   publicLocaleCodes?: T;
   defaultPublicLocale?: T;
@@ -3774,6 +3837,7 @@ export interface KeywordsSelect<T extends boolean = true> {
   site?: T;
   status?: T;
   notes?: T;
+  dataForSeoSeeds?: T;
   volume?: T;
   keywordDifficulty?: T;
   cpc?: T;
@@ -4138,6 +4202,28 @@ export interface PipelineProfilesSelect<T extends boolean = true> {
   briefDepth?: T;
   articleStrategy?: T;
   sectionRetryStrategy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "keyword-batch-presets_select".
+ */
+export interface KeywordBatchPresetsSelect<T extends boolean = true> {
+  tenant?: T;
+  name?: T;
+  slug?: T;
+  description?: T;
+  batchMode?: T;
+  defaultBatchLimit?: T;
+  eligibleOnly?: T;
+  intentWhitelist?: T;
+  minVolume?: T;
+  maxVolume?: T;
+  maxKd?: T;
+  maxPick?: T;
+  clusterBeforeEnqueue?: T;
+  clusterMinOverlap?: T;
   updatedAt?: T;
   createdAt?: T;
 }
