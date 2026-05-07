@@ -1,6 +1,6 @@
 'use client'
 
-import { adminCategoriesListPath } from '@/components/adminBackgroundActivity/categoriesListPath'
+import { adminCategoriesListPath, adminKeywordsListPath, adminPagesListPath } from '@/components/adminBackgroundActivity/categoriesListPath'
 import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityContext'
 import type {
   BackgroundActivityJob,
@@ -10,7 +10,7 @@ import type {
 } from '@/components/adminBackgroundActivity/AdminBackgroundActivityContext'
 import { WORKFLOW_STATUS_STYLES } from '@/components/workflowStatusBadge'
 import { usePathname, useRouter } from 'next/navigation'
-import React from 'react'
+import React, { useState } from 'react'
 
 const BANNER_Z = 9990
 
@@ -18,6 +18,9 @@ const LIST_BANNER_KINDS = [
   'category-cover-sync',
   'category-slots-sync',
   'merchant-slot-dispatch-sync',
+  'trust-pages-bundle-sync',
+  'keywords-dfs-fetch-sync',
+  'keyword-quick-win-preview-sync',
 ] as const
 
 function inListBannerScope(j: BackgroundActivityJob): boolean {
@@ -102,6 +105,10 @@ function clipText(s: string, max: number): string {
   const t = s.trim()
   if (t.length <= max) return t
   return `${t.slice(0, max - 1)}…`
+}
+
+function keywordQuickWinPreviewClusterFailed(notices: string[] | undefined): boolean {
+  return (notices ?? []).some((n) => n.includes('SERP 聚类失败'))
 }
 
 function formatCoverRowShortLabel(row: CategoryCoverSyncRowResult): string {
@@ -228,12 +235,22 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
   const router = useRouter()
   const { jobs, dismissJob } = useAdminBackgroundActivity()
 
+  const [qwBriefEnqueueBusyId, setQwBriefEnqueueBusyId] = useState<string | null>(null)
+  const [qwBriefEnqueueError, setQwBriefEnqueueError] = useState<{ id: string; text: string } | null>(
+    null,
+  )
+
   const scoped = jobs.filter(inListBannerScope)
 
   const running = scoped.filter((j) => j.phase === 'running')
   const runningCover = running.filter((j) => j.kind === 'category-cover-sync')
   const runningSlots = running.filter((j) => j.kind === 'category-slots-sync')
   const runningMerchant = running.filter((j) => j.kind === 'merchant-slot-dispatch-sync')
+  const runningTrustBundle = running.filter((j) => j.kind === 'trust-pages-bundle-sync')
+  const runningKeywordsDfsFetch = running.filter((j) => j.kind === 'keywords-dfs-fetch-sync')
+  const runningKeywordQuickWinPreview = running.filter(
+    (j) => j.kind === 'keyword-quick-win-preview-sync',
+  )
 
   const terminal = scoped.filter((j) => j.phase !== 'running')
   const latestTerminal =
@@ -245,6 +262,9 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     | { tag: 'running-cover'; batches: BackgroundActivityJob[] }
     | { tag: 'running-slots'; batches: BackgroundActivityJob[] }
     | { tag: 'running-merchant'; batches: BackgroundActivityJob[] }
+    | { tag: 'running-trust-bundle'; batches: BackgroundActivityJob[] }
+    | { tag: 'running-keywords-dfs'; batches: BackgroundActivityJob[] }
+    | { tag: 'running-keywords-quick-win-preview'; batches: BackgroundActivityJob[] }
     | { tag: 'terminal'; job: BackgroundActivityJob }
     | null
 
@@ -255,6 +275,12 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     primary = { tag: 'running-slots', batches: runningSlots }
   } else if (runningMerchant.length > 0) {
     primary = { tag: 'running-merchant', batches: runningMerchant }
+  } else if (runningTrustBundle.length > 0) {
+    primary = { tag: 'running-trust-bundle', batches: runningTrustBundle }
+  } else if (runningKeywordsDfsFetch.length > 0) {
+    primary = { tag: 'running-keywords-dfs', batches: runningKeywordsDfsFetch }
+  } else if (runningKeywordQuickWinPreview.length > 0) {
+    primary = { tag: 'running-keywords-quick-win-preview', batches: runningKeywordQuickWinPreview }
   } else if (latestTerminal !== null) {
     primary = { tag: 'terminal', job: latestTerminal }
   }
@@ -262,8 +288,16 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
   if (primary === null) return null
 
   const categoriesHref = adminCategoriesListPath(pathname ?? '')
-  const onOpenList = (): void => {
+  const pagesHref = adminPagesListPath(pathname ?? '')
+  const keywordsHref = adminKeywordsListPath(pathname ?? '')
+  const onOpenCategoriesList = (): void => {
     router.push(categoriesHref)
+  }
+  const onOpenPagesList = (): void => {
+    router.push(pagesHref)
+  }
+  const onOpenKeywordsList = (): void => {
+    router.push(keywordsHref)
   }
 
   const baseBar: React.CSSProperties = {
@@ -294,7 +328,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     }
   }
 
-  const openListBtn = (
+  const openCategoriesListBtn = (
     <button
       style={{
         padding: '4px 10px',
@@ -305,9 +339,43 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         fontSize: '12px',
       }}
       type="button"
-      onClick={onOpenList}
+      onClick={onOpenCategoriesList}
     >
       打开分类列表
+    </button>
+  )
+
+  const openPagesListBtn = (
+    <button
+      style={{
+        padding: '4px 10px',
+        borderRadius: 4,
+        border: '1px solid var(--theme-elevation-150)',
+        background: 'var(--theme-elevation-0)',
+        cursor: 'pointer',
+        fontSize: '12px',
+      }}
+      type="button"
+      onClick={onOpenPagesList}
+    >
+      打开页面列表
+    </button>
+  )
+
+  const openKeywordsListBtn = (
+    <button
+      style={{
+        padding: '4px 10px',
+        borderRadius: 4,
+        border: '1px solid var(--theme-elevation-150)',
+        background: 'var(--theme-elevation-0)',
+        cursor: 'pointer',
+        fontSize: '12px',
+      }}
+      type="button"
+      onClick={onOpenKeywordsList}
+    >
+      打开关键词列表
     </button>
   )
 
@@ -345,7 +413,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
       >
         <span style={{ flex: '1 1 12rem' }}>{line}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          {openListBtn}
+          {openCategoriesListBtn}
           <button
             aria-label="关闭横幅（后台任务继续进行）"
             style={closeIconBtnStyle}
@@ -381,7 +449,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
       >
         <span style={{ flex: '1 1 12rem' }}>{line}</span>
         <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
-          {openListBtn}
+          {openCategoriesListBtn}
           <button
             aria-label="关闭横幅（后台任务继续进行）"
             style={closeIconBtnStyle}
@@ -418,7 +486,115 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
       >
         <span style={{ flex: '1 1 12rem' }}>{line}</span>
         <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
-          {openListBtn}
+          {openCategoriesListBtn}
+          <button
+            aria-label="关闭横幅（后台任务继续进行）"
+            style={closeIconBtnStyle}
+            type="button"
+            onClick={() => dismissRunningBatches(primary.batches)}
+          >
+            ×
+          </button>
+        </span>
+      </div>
+    )
+  }
+
+  if (primary.tag === 'running-trust-bundle') {
+    const n = primary.batches.length
+    const siteHint =
+      n === 1 && primary.batches[0]?.siteLabel
+        ? `（站点：${primary.batches[0].siteLabel}）`
+        : ''
+    const line =
+      n === 1
+        ? `快捷操作 · 信任页包（en）生成进行中${siteHint} — OpenRouter 写回五页正文；请在页面列表「信任页包流程」列查看进度`
+        : `快捷操作 · 信任页包（en）生成进行中（${n} 个站点）— 见页面列表「信任页包流程」列`
+
+    return (
+      <div
+        aria-live="polite"
+        role="status"
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar('running'),
+        }}
+      >
+        <span style={{ flex: '1 1 12rem' }}>{line}</span>
+        <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+          {openPagesListBtn}
+          <button
+            aria-label="关闭横幅（后台任务继续进行）"
+            style={closeIconBtnStyle}
+            type="button"
+            onClick={() => dismissRunningBatches(primary.batches)}
+          >
+            ×
+          </button>
+        </span>
+      </div>
+    )
+  }
+
+  if (primary.tag === 'running-keywords-dfs') {
+    const n = primary.batches.length
+    const siteHint =
+      n === 1 && primary.batches[0]?.siteLabel
+        ? `（站点：${primary.batches[0].siteLabel}）`
+        : ''
+    const line =
+      n === 1
+        ? `同步拉取 · DataForSEO（关键词）进行中${siteHint} — Labs 建议词拉取并写入草稿；请在关键词列表查看最新行`
+        : `同步拉取 · DataForSEO（关键词）进行中（${n} 批）— 写入 keywords（draft）；见关键词列表`
+
+    return (
+      <div
+        aria-live="polite"
+        role="status"
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar('running'),
+        }}
+      >
+        <span style={{ flex: '1 1 12rem' }}>{line}</span>
+        <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+          {openKeywordsListBtn}
+          <button
+            aria-label="关闭横幅（后台任务继续进行）"
+            style={closeIconBtnStyle}
+            type="button"
+            onClick={() => dismissRunningBatches(primary.batches)}
+          >
+            ×
+          </button>
+        </span>
+      </div>
+    )
+  }
+
+  if (primary.tag === 'running-keywords-quick-win-preview') {
+    const n = primary.batches.length
+    const siteHint =
+      n === 1 && primary.batches[0]?.siteLabel
+        ? `（站点：${primary.batches[0].siteLabel}）`
+        : ''
+    const line =
+      n === 1
+        ? `精选 Quick-win → Brief 预览候选进行中${siteHint} — SERP 聚类 + dryRun batch-enqueue；结果见顶栏摘要，关键词列表可刷新 pillar 写入`
+        : `精选 Quick-win → Brief 预览候选进行中（${n} 批）— batch-enqueue dryRun`
+
+    return (
+      <div
+        aria-live="polite"
+        role="status"
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar('running'),
+        }}
+      >
+        <span style={{ flex: '1 1 12rem' }}>{line}</span>
+        <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+          {openKeywordsListBtn}
           <button
             aria-label="关闭横幅（后台任务继续进行）"
             style={closeIconBtnStyle}
@@ -449,7 +625,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         >
           <span style={{ flex: '1 1 12rem' }}>{msg}</span>
           <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
-            {openListBtn}
+            {openCategoriesListBtn}
             <button
               aria-label="关闭横幅"
               style={closeIconBtnStyle}
@@ -494,7 +670,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         >
           <span style={{ flex: '1 1 12rem' }}>{summaryLine}</span>
           <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
-            {openListBtn}
+            {openCategoriesListBtn}
             <button
               aria-label="关闭横幅"
               style={closeIconBtnStyle}
@@ -521,7 +697,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         >
           <span style={{ flex: '1 1 12rem' }}>{msg}</span>
           <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
-            {openListBtn}
+            {openCategoriesListBtn}
             <button
               aria-label="关闭横幅"
               style={closeIconBtnStyle}
@@ -577,7 +753,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
           </span>
         </div>
         <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
-          {openListBtn}
+          {openCategoriesListBtn}
           <button
             aria-label="关闭横幅"
             style={closeIconBtnStyle}
@@ -605,7 +781,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         >
           <span style={{ flex: '1 1 12rem' }}>{msg}</span>
           <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
-            {openListBtn}
+            {openCategoriesListBtn}
             <button
               aria-label="关闭横幅"
               style={closeIconBtnStyle}
@@ -650,7 +826,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         >
           <span style={{ flex: '1 1 12rem' }}>{summaryLine}</span>
           <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
-            {openListBtn}
+            {openCategoriesListBtn}
             <button
               aria-label="关闭横幅"
               style={closeIconBtnStyle}
@@ -677,7 +853,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         >
           <span style={{ flex: '1 1 12rem' }}>{msg}</span>
           <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
-            {openListBtn}
+            {openCategoriesListBtn}
             <button
               aria-label="关闭横幅"
               style={closeIconBtnStyle}
@@ -729,7 +905,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
           </span>
         </div>
         <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
-          {openListBtn}
+          {openCategoriesListBtn}
           <button
             aria-label="关闭横幅"
             style={closeIconBtnStyle}
@@ -741,6 +917,387 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         </span>
       </div>
     )
+  }
+
+  if (job.kind === 'trust-pages-bundle-sync') {
+    if (job.phase === 'failed') {
+      const msg = `信任页包（en）生成失败：${job.errorMessage ?? '未知错误'}`
+      return (
+        <div
+          aria-live="assertive"
+          role="alert"
+          style={{
+            ...baseBar,
+            ...badgeStyleForBar('error'),
+          }}
+        >
+          <span style={{ flex: '1 1 12rem' }}>{msg}</span>
+          <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+            {openPagesListBtn}
+            <button
+              aria-label="关闭横幅"
+              style={closeIconBtnStyle}
+              type="button"
+              onClick={() => dismissJob(job.id)}
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )
+    }
+
+    if (job.phase === 'succeeded') {
+      const siteBr = job.siteLabel?.trim() ? `（${job.siteLabel.trim()}）` : ''
+      const loc = job.trustPagesBundleLocale?.trim() || 'en'
+      const slugLine =
+        Array.isArray(job.trustPagesBundleSlugs) && job.trustPagesBundleSlugs.length > 0
+          ? job.trustPagesBundleSlugs.join(', ')
+          : 'about, contact, privacy, terms, affiliate-disclosure'
+      const summaryLine = `信任页包（${loc}）已生成并写回${siteBr}。`
+      const detailText = `slug：${slugLine}`
+      const titleAttr = clipText(`${summaryLine}\n${detailText}`, 4000)
+      return (
+        <div
+          aria-live="polite"
+          role="status"
+          style={{
+            ...baseBar,
+            ...badgeStyleForBar('done'),
+          }}
+          title={titleAttr}
+        >
+          <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+            <span style={{ display: 'block' }}>{summaryLine}</span>
+            <span
+              style={{
+                display: 'block',
+                marginTop: 6,
+                fontSize: '11px',
+                lineHeight: 1.45,
+                opacity: 0.95,
+                whiteSpace: 'pre-line',
+                wordBreak: 'break-word',
+              }}
+            >
+              {detailText}
+            </span>
+          </div>
+          <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+            {openPagesListBtn}
+            <button
+              aria-label="关闭横幅"
+              style={closeIconBtnStyle}
+              type="button"
+              onClick={() => dismissJob(job.id)}
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )
+    }
+
+    return null
+  }
+
+  if (job.kind === 'keywords-dfs-fetch-sync') {
+    if (job.phase === 'failed') {
+      const msg = `同步拉取 · DataForSEO（关键词）失败：${job.errorMessage ?? '未知错误'}`
+      return (
+        <div
+          aria-live="assertive"
+          role="alert"
+          style={{
+            ...baseBar,
+            ...badgeStyleForBar('error'),
+          }}
+        >
+          <span style={{ flex: '1 1 12rem' }}>{msg}</span>
+          <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+            {openKeywordsListBtn}
+            <button
+              aria-label="关闭横幅"
+              style={closeIconBtnStyle}
+              type="button"
+              onClick={() => dismissJob(job.id)}
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )
+    }
+
+    if (job.phase !== 'succeeded' || !job.keywordDfsFetchSummary) {
+      return null
+    }
+
+    const s = job.keywordDfsFetchSummary
+    const siteBr = job.siteLabel?.trim() ? `（${job.siteLabel.trim()}）` : ''
+    const costUsd =
+      typeof s.dataForSeoUsdCharged === 'number' ? ` · DataForSEO +$${s.dataForSeoUsdCharged.toFixed(4)}` : ''
+    const persistFails = s.persistErrorCount > 0
+    const summaryLine = `同步拉取 · DataForSEO（关键词）已完成${siteBr}：候选 ${s.total} 条 · 新写入 ${s.persisted} · eligible ${s.eligibleCount} · 跳过/未写入 ${s.skipped}${costUsd}。`
+    const errs = Array.isArray(s.persistErrorsPreview) ? s.persistErrorsPreview : []
+    const detailLines =
+      errs.length > 0
+        ? errs
+            .map((e) => clipText(`· ${e.term} — ${e.message}`, COVER_DETAIL_LINE_MAX))
+            .join('\n')
+        : ''
+    const titleAttr = clipText(
+      detailLines ? `${summaryLine}\n\n写入失败 ${s.persistErrorCount} 条：\n${errs.map((e) => `${e.term}: ${e.message}`).join('\n')}` : summaryLine,
+      4000,
+    )
+
+    return (
+      <div
+        aria-live={persistFails ? 'assertive' : 'polite'}
+        role={persistFails ? 'alert' : 'status'}
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar(persistFails ? 'error' : 'done'),
+        }}
+        title={titleAttr}
+      >
+        <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+          <span style={{ display: 'block' }}>{summaryLine}</span>
+          {detailLines ? (
+            <span
+              style={{
+                display: 'block',
+                marginTop: 6,
+                fontSize: '11px',
+                lineHeight: 1.45,
+                opacity: 0.95,
+                whiteSpace: 'pre-line',
+                wordBreak: 'break-word',
+              }}
+            >
+              {`写入失败明细（${s.persistErrorCount}）：\n${detailLines}`}
+            </span>
+          ) : null}
+        </div>
+        <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+          {openKeywordsListBtn}
+          <button
+            aria-label="关闭横幅"
+            style={closeIconBtnStyle}
+            type="button"
+            onClick={() => dismissJob(job.id)}
+          >
+            ×
+          </button>
+        </span>
+      </div>
+    )
+  }
+
+  if (job.kind === 'keyword-quick-win-preview-sync') {
+    if (job.phase === 'failed') {
+      const msg = `精选 Quick-win → Brief 预览失败：${job.errorMessage ?? '未知错误'}`
+      return (
+        <div
+          aria-live="assertive"
+          role="alert"
+          style={{
+            ...baseBar,
+            ...badgeStyleForBar('error'),
+          }}
+        >
+          <span style={{ flex: '1 1 12rem' }}>{msg}</span>
+          <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+            {openKeywordsListBtn}
+            <button
+              aria-label="关闭横幅"
+              style={closeIconBtnStyle}
+              type="button"
+              onClick={() => dismissJob(job.id)}
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )
+    }
+
+    if (job.phase !== 'succeeded' || !job.keywordQuickWinPreviewSummary) {
+      return null
+    }
+
+    const s = job.keywordQuickWinPreviewSummary
+    const siteBr = job.siteLabel?.trim() ? `（${job.siteLabel.trim()}）` : ''
+    const clusterBad = keywordQuickWinPreviewClusterFailed(s.notices)
+    const dfs =
+      typeof s.totalDfsCalls === 'number' ? ` · SERP/DataForSEO 调用约 ${s.totalDfsCalls} 次` : ''
+    const cl =
+      typeof s.clustersCount === 'number' && s.clustersCount > 0 ? ` · 簇 ${s.clustersCount} 个` : ''
+    const summaryLine = `精选 Quick-win → Brief 预览完成${siteBr}（dryRun）：pillar 候选 ${s.pickedTotal} 条 / 上限 ${s.limit} · 跳过 ${s.skipped}${dfs}${cl}。`
+    const termsLine =
+      s.termsPreview.length > 0
+        ? `pillar：${s.termsPreview.join('、')}${s.pickedTotal > s.termsPreview.length ? ' …' : ''}`
+        : '无 pillar 候选（详见接口 notices / 可调 filters）。'
+    const noticeLines =
+      Array.isArray(s.notices) && s.notices.length > 0
+        ? s.notices.map((n) => clipText(`· ${n}`, COVER_DETAIL_LINE_MAX)).join('\n')
+        : ''
+    const titleAttr = clipText(
+      [summaryLine, termsLine, ...(s.notices ?? [])].filter(Boolean).join('\n'),
+      4000,
+    )
+
+    const enqueueReplayAvailable =
+      !clusterBad && s.pickedTotal > 0 && s.enqueueReplay != null
+    const enqueueBusy = qwBriefEnqueueBusyId === job.id
+    const enqueueErrThis = qwBriefEnqueueError?.id === job.id ? qwBriefEnqueueError.text : null
+
+    return (
+      <div
+        aria-live={clusterBad ? 'assertive' : 'polite'}
+        role={clusterBad ? 'alert' : 'status'}
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar(clusterBad ? 'error' : 'done'),
+        }}
+        title={titleAttr}
+      >
+        <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+          <span style={{ display: 'block' }}>{summaryLine}</span>
+          <span
+            style={{
+              display: 'block',
+              marginTop: 6,
+              fontSize: '11px',
+              lineHeight: 1.45,
+              opacity: 0.95,
+              whiteSpace: 'pre-line',
+              wordBreak: 'break-word',
+            }}
+          >
+            {termsLine}
+          </span>
+          {noticeLines ? (
+            <span
+              style={{
+                display: 'block',
+                marginTop: 6,
+                fontSize: '11px',
+                lineHeight: 1.45,
+                opacity: 0.95,
+                whiteSpace: 'pre-line',
+                wordBreak: 'break-word',
+              }}
+            >
+              {noticeLines}
+            </span>
+          ) : null}
+        </div>
+        <span
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            gap: '6px',
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
+            {enqueueReplayAvailable ? (
+              <button
+                aria-busy={enqueueBusy}
+                disabled={enqueueBusy}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 4,
+                  border: '1px solid var(--theme-elevation-150)',
+                  background: 'var(--theme-elevation-0)',
+                  cursor: enqueueBusy ? 'wait' : 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  opacity: enqueueBusy ? 0.75 : 1,
+                }}
+                type="button"
+                onClick={() => {
+                  const r = s.enqueueReplay
+                  if (!r || clusterBad) return
+                  setQwBriefEnqueueBusyId(job.id)
+                  setQwBriefEnqueueError((prev) => (prev?.id === job.id ? null : prev))
+                  void (async () => {
+                    try {
+                      const res = await fetch('/api/admin/articles/batch-enqueue', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          siteId: r.siteId,
+                          mode: 'quick_wins',
+                          dryRun: false,
+                          clusterBeforeEnqueue: r.clusterBeforeEnqueue,
+                          clusterMinOverlap: r.clusterMinOverlap,
+                          filter: r.filter,
+                          ...(r.limit != null ? { limit: r.limit } : {}),
+                        }),
+                      })
+                      const data = (await res.json().catch(() => ({}))) as {
+                        ok?: boolean
+                        error?: string
+                      }
+                      if (!res.ok || data.ok !== true) {
+                        setQwBriefEnqueueError({
+                          id: job.id,
+                          text:
+                            typeof data.error === 'string'
+                              ? data.error
+                              : `并入队失败（HTTP ${res.status}）`,
+                        })
+                        setQwBriefEnqueueBusyId(null)
+                        return
+                      }
+                      setQwBriefEnqueueBusyId(null)
+                      dismissJob(job.id)
+                      router.refresh()
+                    } catch {
+                      setQwBriefEnqueueError({ id: job.id, text: '并入队请求失败' })
+                      setQwBriefEnqueueBusyId(null)
+                    }
+                  })()
+                }}
+              >
+                {enqueueBusy ? '入队中…' : '并入队 Brief'}
+              </button>
+            ) : null}
+            {openKeywordsListBtn}
+            <button
+              aria-label="关闭横幅"
+              style={closeIconBtnStyle}
+              type="button"
+              onClick={() => dismissJob(job.id)}
+            >
+              ×
+            </button>
+          </span>
+          {enqueueErrThis ? (
+            <span
+              style={{
+                fontSize: '11px',
+                lineHeight: 1.35,
+                color: 'var(--theme-error-500)',
+                maxWidth: '18rem',
+                textAlign: 'right',
+                wordBreak: 'break-word',
+              }}
+            >
+              {enqueueErrThis}
+            </span>
+          ) : null}
+        </span>
+      </div>
+    )
+  }
+
+  if (job.kind !== 'category-cover-sync') {
+    return null
   }
 
   const failN = job.failCount ?? 0
@@ -787,7 +1344,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         ) : null}
       </div>
       <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
-        {openListBtn}
+        {openCategoriesListBtn}
         <button
           aria-label="关闭横幅"
           style={closeIconBtnStyle}

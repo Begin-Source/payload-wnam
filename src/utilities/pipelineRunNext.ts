@@ -47,6 +47,8 @@ export async function runNextPendingJobs(args: {
   fetchImpl?: RunNextFetchImpl
   /** Test hook: monotonic clock (defaults to `Date.now`). */
   getNow?: () => number
+  /** If set, each tick picks the oldest pending job among these ids only. */
+  constrainedJobIds?: (string | number)[]
 }): Promise<RunNextResult> {
   const nowFn = args.getNow ?? (() => Date.now())
   const secret = process.env.PAYLOAD_SECRET?.trim()
@@ -69,6 +71,11 @@ export async function runNextPendingJobs(args: {
 
   const base = args.origin.replace(/\/$/, '')
   const url = `${base}/api/pipeline/tick?execute=1`
+
+  const tickBody =
+    args.constrainedJobIds != null && args.constrainedJobIds.length > 0
+      ? { execute: true as const, constrainedJobIds: args.constrainedJobIds }
+      : { execute: true as const }
 
   const runs: RunNextSingleResult[] = []
   const start = nowFn()
@@ -97,7 +104,7 @@ export async function runNextPendingJobs(args: {
           'Content-Type': 'application/json',
           'x-internal-token': secret,
         },
-        body: JSON.stringify({ execute: true }),
+        body: JSON.stringify(tickBody),
         signal: args.signal,
       })
       httpStatus = res.status

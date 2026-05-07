@@ -1,5 +1,7 @@
 'use client'
 
+import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
+
 import { Button } from '@payloadcms/ui'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -84,6 +86,11 @@ function formatSiteLine(s: SiteOption): string {
 
 /** Keywords list: quick-win filter → `brief_generate` jobs (SERP-aware brief at tick). */
 export function KeywordQuickWinDrawer(): React.ReactElement {
+  const {
+    startKeywordQuickWinPreviewJob,
+    completeKeywordQuickWinPreviewJob,
+    failKeywordQuickWinPreviewJob,
+  } = useAdminBackgroundActivity()
   const [open, setOpen] = useState(false)
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
@@ -209,14 +216,105 @@ export function KeywordQuickWinDrawer(): React.ReactElement {
     }
   }
 
-  async function postBatch(dryRun: boolean): Promise<void> {
+  /** 与「并入队 Brief」相同校验与请求体；成功后立即关窗，结果见顶栏 Banner（可能写入 pillar） */
+  const previewCandidatesInBackground = (): void => {
+    if (selectedSiteId == null) {
+      setError('请选择站点')
+      return
+    }
+    let limit: number | undefined
+    const lim = enqueueLimit.trim()
+    if (lim !== '') {
+      const n = Number(lim)
+      if (!Number.isFinite(n) || n < 1) {
+        setError('本批上限须为 ≥1 的整数，或留空使用服务端默认')
+        return
+      }
+      limit = Math.min(100, Math.floor(n))
+    }
+
+    const mo = Number.parseInt(clusterMinOverlap, 10)
+    if (!Number.isFinite(mo) || mo < 2 || mo > 6) {
+      setError('SERP 重叠阈值须为 2–6 的整数')
+      return
+    }
+
+    const siteId = selectedSiteId
+    const filter = buildFilterPayload()
+    const siteLabelSnap = selectedSiteLabel
+    const jobId = startKeywordQuickWinPreviewJob(
+      siteLabelSnap.trim() ? { siteLabel: siteLabelSnap } : {},
+    )
+    close()
+
+    void (async () => {
+      try {
+        const res = await fetch('/api/admin/articles/batch-enqueue', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            siteId,
+            mode: 'quick_wins',
+            dryRun: true,
+            clusterBeforeEnqueue,
+            clusterMinOverlap: mo,
+            filter,
+            ...(limit != null ? { limit } : {}),
+          }),
+        })
+        const data = (await res.json().catch(() => ({}))) as BatchResp
+        if (!res.ok || data.ok === false) {
+          failKeywordQuickWinPreviewJob({
+            jobId,
+            message:
+              typeof data.error === 'string' ? data.error : `请求失败（HTTP ${res.status}）`,
+          })
+          return
+        }
+
+        const terms = Array.isArray(data.pickedTerms) ? data.pickedTerms : []
+        const noticesRaw = Array.isArray(data.errorsSample) ? data.errorsSample : []
+        const notices = noticesRaw.slice(0, 6)
+
+        completeKeywordQuickWinPreviewJob({
+          jobId,
+          summary: {
+            limit: typeof data.limit === 'number' ? data.limit : terms.length,
+            pickedTotal: terms.length,
+            skipped: typeof data.skipped === 'number' ? data.skipped : 0,
+            termsPreview: terms.slice(0, 12),
+            ...(typeof data.totalDfsCalls === 'number' ? { totalDfsCalls: data.totalDfsCalls } : {}),
+            ...(Array.isArray(data.clusters) && data.clusters.length > 0
+              ? { clustersCount: data.clusters.length }
+              : {}),
+            ...(notices.length > 0 ? { notices } : {}),
+            enqueueReplay: {
+              siteId,
+              ...(limit != null ? { limit } : {}),
+              clusterBeforeEnqueue,
+              clusterMinOverlap: mo,
+              filter,
+            },
+          },
+        })
+      } catch (e) {
+        failKeywordQuickWinPreviewJob({
+          jobId,
+          message: e instanceof Error ? e.message : '请求失败',
+        })
+      }
+    })()
+  }
+
+  async function enqueueBriefBatch(): Promise<void> {
     if (selectedSiteId == null) {
       setError('请选择站点')
       return
     }
     setSubmitting(true)
     setError(null)
-    if (!dryRun) setLastResult(null)
+    setLastResult(null)
     try {
       const lim = enqueueLimit.trim()
       let limit: number | undefined
@@ -244,7 +342,7 @@ export function KeywordQuickWinDrawer(): React.ReactElement {
         body: JSON.stringify({
           siteId: selectedSiteId,
           mode: 'quick_wins',
-          dryRun,
+          dryRun: false,
           clusterBeforeEnqueue,
           clusterMinOverlap: mo,
           filter: buildFilterPayload(),
@@ -256,36 +354,18 @@ export function KeywordQuickWinDrawer(): React.ReactElement {
         throw new Error(typeof data.error === 'string' ? data.error : '请求失败')
       }
 
-      const terms = data.pickedTerms ?? []
-      const clusterRows =
-        data.clusters?.map((c) => ({
-          pillarId: c.pillarId,
-          pillarTerm: c.pillarTerm,
-          memberTerms: c.memberTerms,
-          serpOverlap: c.serpOverlap,
-        })) ?? undefined
-      if (dryRun) {
-        setPreview({
-          terms,
-          limit: data.limit ?? terms.length,
-          ...(clusterRows != null ? { clusters: clusterRows } : {}),
-          ...(typeof data.totalDfsCalls === 'number' ? { totalDfsCalls: data.totalDfsCalls } : {}),
-        })
-      } else {
-        setPreview(null)
-        const extra =
-          (data.enqueued === 0 && (data.errorsSample?.length ?? 0) > 0
-            ? ` · ${(data.errorsSample ?? []).join(' ')}`
-            : '') ?? ''
-        const dfs =
-          typeof data.totalDfsCalls === 'number' ? ` · SERP API 调用 ${data.totalDfsCalls} 次` : ''
-        setLastResult(
-          `已入队 brief_generate ${data.enqueued ?? 0} 条 · 跳过 ${data.skipped ?? 0}${dfs}${extra}`,
-        )
-      }
+      setPreview(null)
+      const extra =
+        (data.enqueued === 0 && (data.errorsSample?.length ?? 0) > 0
+          ? ` · ${(data.errorsSample ?? []).join(' ')}`
+          : '') ?? ''
+      const dfs =
+        typeof data.totalDfsCalls === 'number' ? ` · SERP API 调用 ${data.totalDfsCalls} 次` : ''
+      setLastResult(
+        `已入队 brief_generate ${data.enqueued ?? 0} 条 · 跳过 ${data.skipped ?? 0}${dfs}${extra}`,
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : '请求失败')
-      if (dryRun) setPreview(null)
     } finally {
       setSubmitting(false)
     }
@@ -327,6 +407,7 @@ export function KeywordQuickWinDrawer(): React.ReactElement {
               <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
                 按 eligible / 搜索量区间 / KD / intent 过滤长尾词，并入队 <code>brief_generate</code>
                 ；执行 <code>/api/pipeline/tick</code> 时用 Tavily + Google SERP top10 生成 Brief。
+                「预览候选」会立即关窗，SERP 聚类与 pillar 列表见顶栏 Banner（聚类可能写回关键词字段）。
               </p>
 
               {error ? (
@@ -580,13 +661,13 @@ export function KeywordQuickWinDrawer(): React.ReactElement {
               ) : null}
 
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <Button disabled={submitting} onClick={() => void postBatch(true)} type="button">
+                <Button disabled={submitting} onClick={previewCandidatesInBackground} type="button">
                   预览候选
                 </Button>
                 <Button buttonStyle="secondary" disabled={submitting} onClick={close} type="button">
                   关闭
                 </Button>
-                <Button disabled={submitting} onClick={() => void postBatch(false)} type="button">
+                <Button disabled={submitting} onClick={() => void enqueueBriefBatch()} type="button">
                   并入队 Brief
                 </Button>
               </div>

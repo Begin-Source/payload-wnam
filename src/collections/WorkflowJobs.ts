@@ -17,11 +17,7 @@ export const WorkflowJobs: CollectionConfig = {
     useAsTitle: 'label',
     defaultColumns: ['label', 'jobType', 'matrixTemplate', 'status', 'site', 'updatedAt'],
     components: {
-      views: {
-        list: {
-          actions: ['./components/PipelineRunNextDrawer#PipelineRunNextDrawer'],
-        },
-      },
+      beforeListTable: ['./components/PipelineRunNextDrawer#PipelineRunNextDrawer'],
     },
     description:
       '矩阵模板：新建任务时可选「矩阵模板」，在 Input payload 为空时自动填入 JSON 预设（见 constants/workflowJobMatrixTemplates）。',

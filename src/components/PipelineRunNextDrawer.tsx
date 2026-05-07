@@ -1,6 +1,7 @@
 'use client'
 
-import { Button } from '@payloadcms/ui'
+import { Button, useSelection } from '@payloadcms/ui'
+import { SelectAllStatus } from '@payloadcms/ui/providers/Selection'
 import React, { useCallback, useEffect, useState } from 'react'
 
 const backdropStyle: React.CSSProperties = {
@@ -49,6 +50,9 @@ type PeekResp = {
   pending?: number
   byType?: Record<string, number>
   byTypeTruncated?: boolean
+  scope?: 'global' | 'selected'
+  requestedJobIdsCount?: number
+  constrainedJobIdsTruncated?: boolean
 }
 
 type RunResp = {
@@ -63,6 +67,10 @@ type RunResp = {
     errorMessage?: string
   }>
   stoppedReason?: string
+  message?: string
+  requestedJobIdsCount?: number
+  allowedJobIdsCount?: number
+  constrainedJobIdsTruncated?: boolean
 }
 
 function formatByType(byType: Record<string, number> | undefined): string {
@@ -78,37 +86,99 @@ function truncate120(s: string | undefined): string {
   return s.length <= 120 ? s : `${s.slice(0, 120)}…`
 }
 
+const MSG_PEEK_FORBIDDEN =
+  '无权限：仅「普通 user」角色的账号不能查看待执行队列或执行 Pipeline Tick。请在 Users 中为该账号至少勾选一项后台角色（如站长、组长、运营经理、财务、总经理、系统管理员、超级管理员等）后重试。'
+
+const MSG_PEEK_UNAUTHORIZED = '未登录或会话已失效，请重新登录后台后再试。'
+
+function mapRunNextHttpError(res: Response, bodyError: string | undefined): string {
+  if (res.status === 403) return MSG_PEEK_FORBIDDEN
+  if (res.status === 401) return MSG_PEEK_UNAUTHORIZED
+  return typeof bodyError === 'string' ? bodyError : `请求失败（HTTP ${res.status}）`
+}
+
 /** Workflow jobs list: peek pending queue + run up to N `/api/pipeline/tick` (server-side secret). */
 export function PipelineRunNextDrawer(): React.ReactElement {
+  const { count, getSelectedIds, selectedIDs, selectAll } = useSelection()
+
   const [open, setOpen] = useState(false)
   const [peek, setPeek] = useState<PeekResp | null>(null)
   const [peekLoading, setPeekLoading] = useState(false)
   const [maxRuns, setMaxRuns] = useState('8')
   const [budgetSeconds, setBudgetSeconds] = useState('25')
   const [stopOnFailure, setStopOnFailure] = useState(true)
+  const [runSelectedOnly, setRunSelectedOnly] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastRun, setLastRun] = useState<RunResp | null>(null)
+
+  const selectAllBlocksSelection = selectAll === SelectAllStatus.AllAvailable
+  const hasRowSelection = (count ?? 0) > 0 || selectedIDs.length > 0
+  const canOfferSelectedMode = hasRowSelection && !selectAllBlocksSelection
+  const effectiveSelectedOnly = runSelectedOnly && canOfferSelectedMode
+  const selectedCountLabel = Math.max(count ?? 0, selectedIDs.length)
+
+  useEffect(() => {
+    if (selectAllBlocksSelection && runSelectedOnly) {
+      setRunSelectedOnly(false)
+    }
+  }, [selectAllBlocksSelection, runSelectedOnly])
+
+  useEffect(() => {
+    if (runSelectedOnly && !hasRowSelection) {
+      setRunSelectedOnly(false)
+    }
+  }, [runSelectedOnly, hasRowSelection])
 
   const refreshPeek = useCallback(async (): Promise<void> => {
     setPeekLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/admin/pipeline/run-next', {
+      const params = new URLSearchParams()
+      if (
+        runSelectedOnly &&
+        selectAll !== SelectAllStatus.AllAvailable
+      ) {
+        const ids = getSelectedIds()
+        const sortedKey = [...ids]
+          .sort((a, b) => String(a).localeCompare(String(b)))
+          .join(',')
+        if (sortedKey.length > 0) {
+          params.set('ids', sortedKey)
+        }
+      }
+      const qs = params.toString()
+      const res = await fetch(`/api/admin/pipeline/run-next${qs ? `?${qs}` : ''}`, {
         credentials: 'include',
       })
       const data = (await res.json().catch(() => ({}))) as PeekResp
+
+      if (res.status === 403) {
+        setPeek(null)
+        setError(MSG_PEEK_FORBIDDEN)
+        return
+      }
+      if (res.status === 401) {
+        setPeek(null)
+        setError(MSG_PEEK_UNAUTHORIZED)
+        return
+      }
       if (!res.ok || data.ok === false) {
-        throw new Error(typeof data.error === 'string' ? data.error : '加载队列失败')
+        setPeek(null)
+        setError(
+          typeof data.error === 'string' ? data.error : `加载队列失败（HTTP ${res.status}）`,
+        )
+        return
       }
       setPeek(data)
+      setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : '加载队列失败')
       setPeek(null)
+      setError(e instanceof Error ? e.message : '加载队列失败')
     } finally {
       setPeekLoading(false)
     }
-  }, [])
+  }, [runSelectedOnly, selectAll, getSelectedIds])
 
   useEffect(() => {
     if (!open) return
@@ -138,6 +208,14 @@ export function PipelineRunNextDrawer(): React.ReactElement {
         return
       }
 
+      const jobIdsPayload =
+        runSelectedOnly && selectAll !== SelectAllStatus.AllAvailable
+          ? (() => {
+              const ids = getSelectedIds()
+              return ids.length > 0 ? { jobIds: [...ids] } : {}
+            })()
+          : {}
+
       const res = await fetch('/api/admin/pipeline/run-next', {
         method: 'POST',
         credentials: 'include',
@@ -146,12 +224,13 @@ export function PipelineRunNextDrawer(): React.ReactElement {
           maxRuns: mr,
           budgetMs: Math.round(bs * 1000),
           stopOnFailure,
+          ...jobIdsPayload,
         }),
       })
       const data = (await res.json().catch(() => ({}))) as RunResp
       if (!res.ok) {
         const errBody = data as unknown as { error?: string }
-        throw new Error(typeof errBody.error === 'string' ? errBody.error : '执行失败')
+        throw new Error(mapRunNextHttpError(res, errBody.error))
       }
       setLastRun(data)
       await refreshPeek()
@@ -161,6 +240,13 @@ export function PipelineRunNextDrawer(): React.ReactElement {
       setSubmitting(false)
     }
   }
+
+  const tickBlockedByAuth =
+    Boolean(error) &&
+    (error === MSG_PEEK_FORBIDDEN ||
+      error === MSG_PEEK_UNAUTHORIZED ||
+      error.startsWith('无权限：') ||
+      error.startsWith('未登录'))
 
   const titleId = 'pipeline-run-next-title'
 
@@ -196,9 +282,46 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                 执行下 N 条工作流 · Tick
               </h2>
               <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
-                按创建时间从早到晚依次执行 <code>pending</code> 任务。一次 <code>brief_generate</code> 成功后会自动入队{' '}
-                <code>draft_skeleton</code>，因此 N=5 大约覆盖 2–3 组「Brief + 骨架」链路。
+                按创建时间从早到晚依次执行 <code>pending</code> 任务（仅勾选模式下：仅在你勾选且<strong>仍可访问</strong>的 ID 中取最早创建的一条）。勾选顺序不参与排序。一次{' '}
+                <code>brief_generate</code> 成功后会自动入队 <code>draft_skeleton</code>，因此 N=5 大约覆盖 2–3 组「Brief + 骨架」链路。
               </p>
+
+              {selectAllBlocksSelection ? (
+                <p
+                  style={{
+                    margin: '0 0 0.75rem',
+                    fontSize: '0.8125rem',
+                    color: 'var(--theme-warning-600)',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  当前为「全选所有结果」：无法把全部匹配行收敛为 ID 列表。请取消该全选，或改为逐页勾选后使用「仅执行已勾选」；否则请关闭该选项，使用全局待执行队列。
+                </p>
+              ) : null}
+
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  marginBottom: '0.75rem',
+                  cursor: canOfferSelectedMode ? 'pointer' : 'not-allowed',
+                  opacity: canOfferSelectedMode ? 1 : 0.55,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={effectiveSelectedOnly}
+                  disabled={!canOfferSelectedMode}
+                  onChange={(e) => setRunSelectedOnly(e.target.checked)}
+                />
+                <span style={{ fontSize: '0.8125rem', lineHeight: 1.45 }}>
+                  仅执行已勾选的任务
+                  {canOfferSelectedMode
+                    ? `（${selectedCountLabel} 条已选）`
+                    : '（请先在列表中勾选行）'}
+                </span>
+              </label>
 
               <div
                 style={{
@@ -211,13 +334,30 @@ export function PipelineRunNextDrawer(): React.ReactElement {
               >
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
                   <strong>待执行队列</strong>
+                  {effectiveSelectedOnly ? (
+                    <span style={{ fontSize: '0.75rem', opacity: 0.85 }}>（仅已勾选 ID 范围）</span>
+                  ) : null}
                   {peekLoading ? (
                     <span style={{ opacity: 0.8 }}>加载中…</span>
-                  ) : (
+                  ) : peek != null ? (
                     <>
                       <span>
-                        {(peek?.pending ?? 0) as number} 条
-                        {peek?.byTypeTruncated ? '（类型分布至多统计前 2000 条）' : ''}
+                        {peek.pending ?? 0} 条
+                        {peek.byTypeTruncated ? '（类型分布至多统计前 2000 条）' : ''}
+                      </span>
+                      <Button
+                        buttonStyle="secondary"
+                        disabled={peekLoading || submitting}
+                        onClick={() => void refreshPeek()}
+                        type="button"
+                      >
+                        刷新
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ color: 'var(--theme-error-500)' }}>
+                        {tickBlockedByAuth ? '无权限统计 pending 条数' : '加载失败（非 0；见下方说明）'}
                       </span>
                       <Button
                         buttonStyle="secondary"
@@ -230,6 +370,12 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                     </>
                   )}
                 </div>
+                {!peekLoading && peek != null && effectiveSelectedOnly && peek.requestedJobIdsCount != null ? (
+                  <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', opacity: 0.88 }}>
+                    已选 <code>{peek.requestedJobIdsCount}</code> 个 id；其中当前为 pending 且可见约 <code>{peek.pending ?? 0}</code> 条
+                    {peek.constrainedJobIdsTruncated ? '（id 列表已截断至多 500 条）' : ''}
+                  </div>
+                ) : null}
                 {!peekLoading && peek?.byType != null ? (
                   <div style={{ marginTop: '0.35rem', opacity: 0.9 }}>
                     {formatByType(peek.byType)}
@@ -284,11 +430,24 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                 <span style={{ fontSize: '0.8125rem' }}>遇失败即停止（默认开启）</span>
               </label>
 
+              {lastRun?.message ? (
+                <p style={{ fontSize: '0.8125rem', marginBottom: '0.75rem', opacity: 0.9, lineHeight: 1.45 }}>
+                  {lastRun.message}
+                  {lastRun.requestedJobIdsCount != null && lastRun.allowedJobIdsCount != null
+                    ? `（请求 id 数 ${lastRun.requestedJobIdsCount} · 可执行 pending ${lastRun.allowedJobIdsCount}）`
+                    : ''}
+                  {lastRun.constrainedJobIdsTruncated ? ' id 列表已截断。' : ''}
+                </p>
+              ) : null}
+
               {lastRun?.runs != null && lastRun.runs.length > 0 ? (
                 <div style={{ marginBottom: '1rem', overflowX: 'auto' }}>
                   <p style={{ fontSize: '0.8125rem', marginBottom: '0.5rem', opacity: 0.9 }}>
                     本轮结果：<code>{lastRun.stoppedReason ?? '—'}</code>，共 {lastRun.totalRuns ?? lastRun.runs.length}{' '}
                     次 tick，ok={String(lastRun.ok ?? false)}
+                    {lastRun.requestedJobIdsCount != null && lastRun.allowedJobIdsCount != null
+                      ? ` · 勾选 id ${lastRun.requestedJobIdsCount} · 服务端认可 pending ${lastRun.allowedJobIdsCount}`
+                      : ''}
                   </p>
                   <table
                     style={{
@@ -329,7 +488,7 @@ export function PipelineRunNextDrawer(): React.ReactElement {
               ) : null}
 
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <Button disabled={submitting} onClick={() => void execute()} type="button">
+                <Button disabled={submitting || tickBlockedByAuth} onClick={() => void execute()} type="button">
                   执行下 N 条
                 </Button>
                 <Button buttonStyle="secondary" disabled={submitting} onClick={close} type="button">

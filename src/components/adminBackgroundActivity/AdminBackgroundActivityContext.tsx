@@ -8,6 +8,9 @@ export type BackgroundJobKind =
   | 'category-cover-sync'
   | 'category-slots-sync'
   | 'merchant-slot-dispatch-sync'
+  | 'trust-pages-bundle-sync'
+  | 'keywords-dfs-fetch-sync'
+  | 'keyword-quick-win-preview-sync'
 
 /** Mirrors `merchant-slot-fetch` payload `results[]` (subset for Banner); writeback fields filled after Webhook poll. */
 export type MerchantSlotDispatchRowResult = {
@@ -53,6 +56,49 @@ export type BackgroundActivityJob = {
   merchantSlotDispatchResults?: MerchantSlotDispatchRowResult[]
   /** 派发批次 ID（成功时） */
   batchId?: string
+  /** 信任页包：`generate-trust-content` 写回的 slug 列表 */
+  trustPagesBundleSlugs?: string[]
+  /** 信任页包 locale（通常为 en） */
+  trustPagesBundleLocale?: string
+  /** DataForSEO 关键词 Labs 同步摘要（`/api/admin/keywords/dfs-fetch`） */
+  keywordDfsFetchSummary?: {
+    total: number
+    persisted: number
+    skipped: number
+    eligibleCount: number
+    dataForSeoUsdCharged?: number
+    /** 写入失败（非重复跳过）条数 */
+    persistErrorCount: number
+    /** 失败条目明细（ Banner 预览） */
+    persistErrorsPreview?: Array<{ term: string; message: string }>
+  }
+  /** Quick-win：`POST batch-enqueue` dryRun 预览 pillar 候选（可能含 SERP 聚类写入） */
+  keywordQuickWinPreviewSummary?: {
+    limit: number
+    pickedTotal: number
+    skipped: number
+    /** pillar 词条预览（Banner） */
+    termsPreview: string[]
+    totalDfsCalls?: number
+    clustersCount?: number
+    /** `errorsSample` 前几条（含 SERP 聚类失败等） */
+    notices?: string[]
+    /** 与预览相同参数，供 Banner「并入队 Brief」复现 POST（非 dryRun） */
+    enqueueReplay?: {
+      siteId: number
+      limit?: number
+      clusterBeforeEnqueue: boolean
+      clusterMinOverlap: number
+      filter: {
+        eligibleOnly: boolean
+        intentWhitelist: string[]
+        minVolume: number
+        maxVolume: number
+        maxKd: number
+        maxPick: number
+      }
+    }
+  }
 }
 
 export type AdminBackgroundActivityApi = {
@@ -82,6 +128,25 @@ export type AdminBackgroundActivityApi = {
     results?: MerchantSlotDispatchRowResult[]
   }) => void
   failMerchantSlotDispatchJob: (args: { jobId: string; message: string }) => void
+  startTrustPagesBundleJob: (args: { siteLabel?: string }) => string
+  completeTrustPagesBundleJob: (args: {
+    jobId: string
+    slugs?: string[]
+    locale?: string
+  }) => void
+  failTrustPagesBundleJob: (args: { jobId: string; message: string }) => void
+  startKeywordsDfsFetchJob: (args: { siteLabel?: string }) => string
+  completeKeywordsDfsFetchJob: (args: {
+    jobId: string
+    summary: NonNullable<BackgroundActivityJob['keywordDfsFetchSummary']>
+  }) => void
+  failKeywordsDfsFetchJob: (args: { jobId: string; message: string }) => void
+  startKeywordQuickWinPreviewJob: (args: { siteLabel?: string }) => string
+  completeKeywordQuickWinPreviewJob: (args: {
+    jobId: string
+    summary: NonNullable<BackgroundActivityJob['keywordQuickWinPreviewSummary']>
+  }) => void
+  failKeywordQuickWinPreviewJob: (args: { jobId: string; message: string }) => void
   dismissJob: (jobId: string) => void
 }
 

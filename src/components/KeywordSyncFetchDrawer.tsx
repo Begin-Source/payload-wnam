@@ -1,5 +1,7 @@
 'use client'
 
+import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
+
 import { Button } from '@payloadcms/ui'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -97,9 +99,9 @@ function buildSeedsFromCategories(
   return mp
 }
 
-type SortKey = 'term' | 'volume' | 'kd' | 'intent' | 'opportunityScore' | 'eligible'
-
 export function KeywordSyncFetchDrawer(): React.ReactElement {
+  const { startKeywordsDfsFetchJob, completeKeywordsDfsFetchJob, failKeywordsDfsFetchJob } =
+    useAdminBackgroundActivity()
   const [open, setOpen] = useState(false)
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
@@ -122,21 +124,7 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
   const [minOpportunityScore, setMinOpportunityScore] = useState('')
   const [pullLimit, setPullLimit] = useState('')
 
-  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [stats, setStats] = useState<{
-    total: number
-    persisted: number
-    skipped: number
-    eligibleCount: number
-    /** USD charged from DataForSEO tasks[].cost for this fetch */
-    dataForSeoUsdCharged?: number
-    /** @deprecated prefer dataForSeoUsdCharged */
-    dfsCredits?: number
-  } | null>(null)
-  const [rows, setRows] = useState<DfsRow[]>([])
-  const [sortKey, setSortKey] = useState<SortKey>('volume')
-  const [sortDesc, setSortDesc] = useState(true)
 
   const [pipelineProfiles, setPipelineProfiles] = useState<PipelineProfileOption[]>([])
   const [pipelineProfilesLoading, setPipelineProfilesLoading] = useState(false)
@@ -211,8 +199,6 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
     setSelectedSiteOption(null)
     setSiteMenuOpen(false)
     setError(null)
-    setStats(null)
-    setRows([])
     setPipelineProfiles([])
     setPipelineProfileId(null)
     setSeedsText('')
@@ -314,7 +300,7 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
     return out.length > 0 ? out : undefined
   }
 
-  const submit = async (): Promise<void> => {
+  const submit = (): void => {
     if (selectedSiteId == null) {
       setError('请选择站点')
       return
@@ -353,74 +339,73 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
       body.pipelineProfileId = pipelineProfileId
     }
 
-    setSubmitting(true)
     setError(null)
-    setStats(null)
-    setRows([])
-    try {
-      const res = await fetch('/api/admin/keywords/dfs-fetch', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      const data = (await res.json().catch(() => ({}))) as {
-        error?: string
-        ok?: boolean
-        total?: number
-        persisted?: number
-        skipped?: number
-        eligibleCount?: number
-        dataForSeoUsdCharged?: number
-        dfsCredits?: number
-        rows?: DfsRow[]
-      }
-      if (!res.ok) {
-        throw new Error(typeof data.error === 'string' ? data.error : `HTTP ${res.status}`)
-      }
-      if (data.ok !== true) {
-        throw new Error(typeof data.error === 'string' ? data.error : '请求失败')
-      }
-      setStats({
-        total: data.total ?? 0,
-        persisted: data.persisted ?? 0,
-        skipped: data.skipped ?? 0,
-        eligibleCount: data.eligibleCount ?? 0,
-        dataForSeoUsdCharged:
-          typeof data.dataForSeoUsdCharged === 'number' ? data.dataForSeoUsdCharged : undefined,
-        dfsCredits: typeof data.dfsCredits === 'number' ? data.dfsCredits : undefined,
-      })
-      setRows(Array.isArray(data.rows) ? data.rows : [])
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '请求失败')
-    } finally {
-      setSubmitting(false)
-    }
-  }
+    const siteLabelSnap = selectedSiteLabel
+    const jobId = startKeywordsDfsFetchJob(
+      siteLabelSnap.trim() ? { siteLabel: siteLabelSnap } : {},
+    )
+    close()
 
-  const sortedRows = React.useMemo(() => {
-    const copy = [...rows]
-    const dir = sortDesc ? -1 : 1
-    copy.sort((a, b) => {
-      const av = a[sortKey]
-      const bv = b[sortKey]
-      if (typeof av === 'boolean' && typeof bv === 'boolean') {
-        return av === bv ? 0 : av ? -dir : dir
-      }
-      if (typeof av === 'number' && typeof bv === 'number') {
-        return av === bv ? 0 : av < bv ? -dir : dir
-      }
-      return String(av).localeCompare(String(bv)) * dir
-    })
-    return copy
-  }, [rows, sortKey, sortDesc])
+    void (async () => {
+      try {
+        const res = await fetch('/api/admin/keywords/dfs-fetch', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string
+          ok?: boolean
+          total?: number
+          persisted?: number
+          skipped?: number
+          eligibleCount?: number
+          dataForSeoUsdCharged?: number
+          rows?: DfsRow[]
+        }
+        if (!res.ok || data.ok !== true) {
+          const errText =
+            typeof data.error === 'string'
+              ? data.error
+              : !res.ok
+                ? `请求失败（HTTP ${res.status}）`
+                : '请求失败'
+          failKeywordsDfsFetchJob({ jobId, message: errText })
+          return
+        }
 
-  const toggleSort = (k: SortKey): void => {
-    if (sortKey === k) setSortDesc((d) => !d)
-    else {
-      setSortKey(k)
-      setSortDesc(k !== 'term')
-    }
+        const rows = Array.isArray(data.rows) ? data.rows : []
+        const withErr = rows.filter(
+          (r): r is DfsRow & { persistError: string } =>
+            typeof r?.persistError === 'string' && r.persistError.trim().length > 0,
+        )
+        const persistErrorCount = withErr.length
+        const persistErrorsPreview = withErr.slice(0, 8).map((r) => ({
+          term: typeof r.term === 'string' ? r.term : '?',
+          message: r.persistError.trim(),
+        }))
+
+        completeKeywordsDfsFetchJob({
+          jobId,
+          summary: {
+            total: data.total ?? 0,
+            persisted: data.persisted ?? 0,
+            skipped: data.skipped ?? 0,
+            eligibleCount: data.eligibleCount ?? 0,
+            dataForSeoUsdCharged:
+              typeof data.dataForSeoUsdCharged === 'number' ? data.dataForSeoUsdCharged : undefined,
+            persistErrorCount,
+            ...(persistErrorsPreview.length > 0 ? { persistErrorsPreview } : {}),
+          },
+        })
+      } catch (e) {
+        failKeywordsDfsFetchJob({
+          jobId,
+          message: e instanceof Error ? e.message : '请求失败',
+        })
+      }
+    })()
   }
 
   const titleId = 'keyword-dfs-sync-title'
@@ -454,38 +439,14 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
               按站点写入 <code>keywords</code>（status=draft），并按「SEO 流水线」中的 AMZ 资格 JSON 打{' '}
               <code>eligible</code>
-              。数据来自 DataForSEO Labs Keyword Suggestions（含 KD / intent）。
+              。数据来自 DataForSEO Labs Keyword Suggestions（含 KD / intent）。提交后窗口会立即关闭；进度与摘要见顶栏
+              Banner（关键词列表会随刷新更新）。
             </p>
 
             {error ? (
               <p style={{ color: 'var(--theme-error-500)', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>
                 {error}
               </p>
-            ) : null}
-
-            {stats ? (
-              <div
-                style={{
-                  marginBottom: '1rem',
-                  padding: '0.65rem 0.75rem',
-                  borderRadius: 6,
-                  border: '1px solid var(--theme-elevation-150)',
-                  background: 'var(--theme-elevation-50)',
-                  fontSize: '0.8125rem',
-                  lineHeight: 1.6,
-                }}
-              >
-                总拉取 <strong>{stats.total}</strong> · 新写入 <strong>{stats.persisted}</strong> · eligible{' '}
-                <strong>{stats.eligibleCount}</strong> · 跳过/失败 <strong>{stats.skipped}</strong> ·{' '}
-                DataForSEO{' '}
-                <strong>
-                  {stats.dataForSeoUsdCharged != null
-                    ? `+$${stats.dataForSeoUsdCharged.toFixed(4)}`
-                    : stats.dfsCredits != null
-                      ? `+${stats.dfsCredits} credits`
-                      : '—'}
-                </strong>
-              </div>
             ) : null}
 
             <div ref={siteComboboxRef} style={{ marginBottom: '1rem', position: 'relative' }}>
@@ -751,85 +712,10 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
               <Button buttonStyle="secondary" onClick={close} type="button">
                 关闭
               </Button>
-              <Button
-                disabled={submitting || selectedSiteId == null}
-                type="button"
-                onClick={() => void submit()}
-              >
-                {submitting ? '拉取中…' : '同步拉取并标记'}
+              <Button disabled={selectedSiteId == null} type="button" onClick={submit}>
+                同步拉取并标记
               </Button>
             </div>
-
-            {sortedRows.length > 0 ? (
-              <div style={{ overflow: 'auto', maxHeight: '45vh' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
-                  <thead>
-                    <tr>
-                      {(
-                        [
-                          ['term', 'Keyword'],
-                          ['volume', 'Vol'],
-                          ['kd', 'KD'],
-                          ['intent', 'Intent'],
-                          ['opportunityScore', 'Score'],
-                          ['eligible', 'Elig.'],
-                        ] as const
-                      ).map(([k, label]) => (
-                        <th key={k} style={{ textAlign: 'left', padding: '0.35rem', cursor: 'pointer' }}>
-                          <button
-                            style={{
-                              border: 'none',
-                              background: 'transparent',
-                              color: 'inherit',
-                              cursor: 'pointer',
-                              fontWeight: 600,
-                              padding: 0,
-                            }}
-                            type="button"
-                            onClick={() => toggleSort(k as SortKey)}
-                          >
-                            {label}
-                            {sortKey === k ? (sortDesc ? ' ↓' : ' ↑') : ''}
-                          </button>
-                        </th>
-                      ))}
-                      <th style={{ textAlign: 'left', padding: '0.35rem' }}>Note</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedRows.map((r, idx) => (
-                      <tr
-                        key={`${idx}-${r.term}`}
-                        style={{
-                          background: r.eligible
-                            ? 'var(--theme-success-50, rgba(34, 197, 94, 0.12))'
-                            : undefined,
-                        }}
-                      >
-                        <td style={{ padding: '0.35rem', verticalAlign: 'top' }}>{r.term}</td>
-                        <td style={{ padding: '0.35rem' }}>{r.volume}</td>
-                        <td style={{ padding: '0.35rem' }}>{r.kd}</td>
-                        <td style={{ padding: '0.35rem' }}>{r.intent}</td>
-                        <td style={{ padding: '0.35rem' }}>{r.opportunityScore}</td>
-                        <td style={{ padding: '0.35rem' }}>{r.eligible ? '✓' : '—'}</td>
-                        <td
-                          style={{ padding: '0.35rem', maxWidth: 220, wordBreak: 'break-word' }}
-                          title={r.eligibilityReason}
-                        >
-                          {r.skippedDuplicate
-                            ? '跳过（重复 slug+站点）'
-                            : r.persistError
-                              ? r.persistError
-                              : r.eligibilityReason.length > 80
-                                ? `${r.eligibilityReason.slice(0, 80)}…`
-                                : r.eligibilityReason}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
           </div>
         </div>
       ) : null}

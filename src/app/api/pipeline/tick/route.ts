@@ -19,20 +19,32 @@ import {
   siteIdFromJob,
   type WorkflowJobDoc,
 } from '@/app/api/pipeline/lib/workflowJobRunner'
+import {
+  buildPendingConstrainedWhere,
+  normalizeConstrainedJobIds,
+  parseConstrainedIdsFromCommaQuery,
+} from '@/utilities/workflowJobTickConstraints'
 
 export const dynamic = 'force-dynamic'
 
 const PATH = '/api/pipeline/tick'
 
-async function peekPendingJob(request: Request): Promise<Response> {
+function tickAuth(request: Request) {
   const g = requirePipelineJson(request, PATH)
   if (isPipelineUnauthorized(g)) {
     return g.response
   }
+  return null
+}
+
+async function peekPendingCore(
+  constrainedIds: (string | number)[],
+  opts?: { constrainedJobIdsTruncated?: boolean },
+): Promise<Response> {
   const payload = await getPayload({ config: configPromise })
   const jobs = await payload.find({
     collection: 'workflow-jobs',
-    where: { status: { equals: 'pending' } },
+    where: buildPendingConstrainedWhere(constrainedIds),
     limit: 1,
     sort: 'createdAt',
     depth: 0,
@@ -45,6 +57,7 @@ async function peekPendingJob(request: Request): Promise<Response> {
       cronDispatch: '/api/pipeline/cron-dispatch',
       executeHint: 'POST with body {"execute":true} or ?execute=1 to run one pending job.',
       hint: 'Schedule HTTP POST to cron-dispatch (preset daily_lifecycle / weekly_link_audits); Worker crons need a scheduled handler or external curl.',
+      ...(opts?.constrainedJobIdsTruncated ? { constrainedJobIdsTruncated: true } : {}),
     })
   }
   return Response.json({
@@ -53,31 +66,49 @@ async function peekPendingJob(request: Request): Promise<Response> {
     jobType: doc.jobType,
     cronDispatch: '/api/pipeline/cron-dispatch',
     executeHint: 'POST with body {"execute":true} or ?execute=1 to run one pending job.',
+    ...(opts?.constrainedJobIdsTruncated ? { constrainedJobIdsTruncated: true } : {}),
   })
 }
 
 export async function GET(request: Request): Promise<Response> {
-  return peekPendingJob(request)
+  const unauthorized = tickAuth(request)
+  if (unauthorized) return unauthorized
+  const parsed = parseConstrainedIdsFromCommaQuery(new URL(request.url).searchParams.get('ids'))
+  if (!parsed.ok) {
+    return Response.json({ error: parsed.error }, { status: 400 })
+  }
+  return peekPendingCore(parsed.ids, {
+    constrainedJobIdsTruncated: parsed.truncated,
+  })
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const g = requirePipelineJson(request, PATH)
-  if (isPipelineUnauthorized(g)) {
-    return g.response
-  }
+  const unauthorized = tickAuth(request)
+  if (unauthorized) return unauthorized
 
   const url = new URL(request.url)
-  const body = (await request.json().catch(() => ({}))) as { execute?: boolean }
+  const body = (await request.json().catch(() => ({}))) as {
+    execute?: boolean
+    constrainedJobIds?: unknown
+  }
+  const normalized = normalizeConstrainedJobIds(body.constrainedJobIds)
+  if (!normalized.ok) {
+    return Response.json({ error: normalized.error }, { status: 400 })
+  }
+  const constrainedIds = normalized.ids
+
   const execute = body.execute === true || url.searchParams.get('execute') === '1'
 
   if (!execute) {
-    return peekPendingJob(request)
+    return peekPendingCore(constrainedIds, {
+      constrainedJobIdsTruncated: normalized.truncated,
+    })
   }
 
   const payload = await getPayload({ config: configPromise })
   const jobs = await payload.find({
     collection: 'workflow-jobs',
-    where: { status: { equals: 'pending' } },
+    where: buildPendingConstrainedWhere(constrainedIds),
     limit: 1,
     sort: 'createdAt',
     depth: 1,
@@ -90,6 +121,7 @@ export async function POST(request: Request): Promise<Response> {
       pending: 0,
       message: 'No pending jobs',
       cronDispatch: '/api/pipeline/cron-dispatch',
+      ...(normalized.truncated ? { constrainedJobIdsTruncated: true } : {}),
     })
   }
 

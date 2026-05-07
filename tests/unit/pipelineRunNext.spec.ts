@@ -146,6 +146,23 @@ describe('runNextPendingJobs', () => {
     expect(r.totalRuns).toBe(1)
   })
 
+  it('sends constrainedJobIds in tick body when provided', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ ok: true, executed: false, message: 'No pending jobs' }),
+    )
+    await runNextPendingJobs({
+      origin: 'http://localhost:3000',
+      maxRuns: 2,
+      constrainedJobIds: [7, 9],
+      fetchImpl,
+    })
+    const init = fetchImpl.mock.calls[0][1] as RequestInit
+    expect(JSON.parse(init.body as string)).toEqual({
+      execute: true,
+      constrainedJobIds: [7, 9],
+    })
+  })
+
   it('stops on non-OK HTTP when stopOnFailure is true', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ error: 'Unauthorized' }, 401))
     const r = await runNextPendingJobs({

@@ -1,4 +1,4 @@
-import type { User } from '@/payload-types'
+import type { Config, User } from '@/payload-types'
 import { isUsersCollection } from '@/utilities/announcementAccess'
 
 /** Values stored on `users.roles` (kebab-case). */
@@ -29,4 +29,15 @@ export function userHasRole(user: User | null | undefined, role: AppUserRole | s
 export function userHasTenantGeneralManagerRole(user: User | null | undefined): boolean {
   if (!isUsersCollection(user)) return false
   return userHasRole(user, 'general-manager')
+}
+
+/**
+ * Admin Pipeline Tick（查看待执行队列 + 触发 run-next）：除「仅 user 角色」外的后台登录用户。
+ * 至少需具备一项非 `user` 的角色（如 site-manager、team-lead、ops-manager 等）。
+ */
+export function userHasPipelineRunNextAccess(user: Config['user'] | null | undefined): boolean {
+  if (!isUsersCollection(user)) return false
+  const roles = getUserRoles(user)
+  if (roles.length === 0) return false
+  return roles.some((r) => r !== 'user')
 }

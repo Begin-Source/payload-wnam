@@ -1,7 +1,8 @@
 'use client'
 
+import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
+
 import { Button } from '@payloadcms/ui'
-import { useRouter } from 'next/navigation'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 type SiteOption = {
@@ -61,7 +62,8 @@ const titleId = 'quick-action-trust-pages-bundle'
  * 对齐 n8n「Site Pages Bundle | Generate Page Content」：一次 OpenRouter 调用，写回五张 en 信任页（Lexical body）。
  */
 export function TrustPagesBundleQuickActionModal(): React.ReactElement {
-  const router = useRouter()
+  const { startTrustPagesBundleJob, completeTrustPagesBundleJob, failTrustPagesBundleJob } =
+    useAdminBackgroundActivity()
   const [open, setOpen] = useState(false)
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
@@ -158,12 +160,13 @@ export function TrustPagesBundleQuickActionModal(): React.ReactElement {
     void loadSites('')
   }
 
-  const submit = async (): Promise<void> => {
+  const submit = (): void => {
     if (selectedSiteId == null) {
       setError('请选择站点')
       return
     }
     setError(null)
+
     const siteId = selectedSiteId
     const aiModelTrim = aiModel.trim()
     const baseBody = {
@@ -171,52 +174,69 @@ export function TrustPagesBundleQuickActionModal(): React.ReactElement {
       ...(aiModelTrim ? { aiModel: aiModelTrim } : {}),
     }
 
-    try {
-      const prepRes = await fetch('/api/admin/pages/generate-trust-content', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...baseBody, prepare: true }),
-      })
-      const prepData = (await prepRes.json().catch(() => ({}))) as { ok?: boolean; error?: string }
-      if (!prepRes.ok || prepData.ok !== true) {
-        setError(
-          typeof prepData.error === 'string' ? prepData.error : `请求失败（HTTP ${prepRes.status}）`,
-        )
-        return
-      }
-    } catch {
-      setError('网络错误，请稍后重试')
-      return
-    }
-
+    const siteLabelSnap = selectedSiteLabel
+    const jobId = startTrustPagesBundleJob(
+      siteLabelSnap.trim() ? { siteLabel: siteLabelSnap } : {},
+    )
     close()
-
-    if (typeof window !== 'undefined' && window.location.pathname.includes('/collections/pages')) {
-      router.refresh()
-    }
 
     void (async () => {
       try {
+        const prepRes = await fetch('/api/admin/pages/generate-trust-content', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...baseBody, prepare: true }),
+        })
+        const prepData = (await prepRes.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+        if (!prepRes.ok || prepData.ok !== true) {
+          const errText =
+            typeof prepData.error === 'string'
+              ? prepData.error
+              : `请求失败（HTTP ${prepRes.status}）`
+          failTrustPagesBundleJob({ jobId, message: errText })
+          return
+        }
+
         const res = await fetch('/api/admin/pages/generate-trust-content', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...baseBody, afterPrepare: true }),
         })
-        const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string }
+        const data = (await res.json().catch(() => ({}))) as {
+          ok?: boolean
+          error?: string
+          slugs?: unknown
+          locale?: unknown
+        }
         if (!res.ok || data.ok !== true) {
-          console.warn(
-            '[generate-trust-content]',
-            typeof data.error === 'string' ? data.error : `HTTP ${res.status}`,
-          )
+          const errText =
+            typeof data.error === 'string' ? data.error : `请求失败（HTTP ${res.status}）`
+          failTrustPagesBundleJob({ jobId, message: errText })
+          return
         }
+
+        const loc = typeof data.locale === 'string' && data.locale.trim() ? data.locale.trim() : undefined
+        const rawSlugs = data.slugs
+        let slugs: string[] | undefined
+        if (Array.isArray(rawSlugs)) {
+          const parsed = rawSlugs
+            .map((x) => (typeof x === 'string' ? x.trim() : String(x ?? '').trim()))
+            .filter(Boolean)
+          if (parsed.length > 0) slugs = parsed
+        }
+
+        completeTrustPagesBundleJob({
+          jobId,
+          ...(loc ? { locale: loc } : {}),
+          ...(slugs ? { slugs } : {}),
+        })
       } catch (e) {
-        console.warn('[generate-trust-content] network error', e)
-      } finally {
-        if (typeof window !== 'undefined' && window.location.pathname.includes('/collections/pages')) {
-          router.refresh()
-        }
+        failTrustPagesBundleJob({
+          jobId,
+          message: e instanceof Error ? e.message : '网络错误，请稍后重试',
+        })
       }
     })()
   }
@@ -227,7 +247,7 @@ export function TrustPagesBundleQuickActionModal(): React.ReactElement {
         快捷操作 · 生成信任页包
       </Button>
 
-      {open ? (
+      {open ?
         <div aria-labelledby={titleId} aria-modal role="dialog" style={backdropStyle}>
           <button
             aria-label="关闭"
@@ -248,13 +268,15 @@ export function TrustPagesBundleQuickActionModal(): React.ReactElement {
               快捷操作 · 生成信任页包（en）
             </h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
-              与 n8n「Site Pages Bundle | Generate Page Content」一致：用 OpenRouter 一次生成 About / Contact / Privacy / Terms
-              / Affiliate Disclosure 五段英文 Markdown，写入本站对应 <strong>en</strong> 页面正文（无则先创建）。需配置
-              OPENROUTER_API_KEY 或 OPENAI_API_KEY。进度在列表「信任页包流程」列查看（仅上列五个 slug 的 en
-              页有状态）。
+              与 n8n「Site Pages Bundle | Generate Page Content」一致：用 OpenRouter 一次生成 About / Contact /
+              Privacy / Terms / Affiliate Disclosure 五段英文 Markdown，写入本站对应 <strong>en</strong> 页面正文（无则先创建）。需配置
+              OPENROUTER_API_KEY 或 OPENAI_API_KEY。
+              <strong style={{ display: 'block', marginTop: '0.5rem', fontWeight: 600 }}>
+                提交后窗口会立即关闭，后台继续执行；进度与成败见顶栏 Banner，并在页面列表「信任页包流程」列同步。
+              </strong>
             </p>
 
-            {error ? (
+            {error ?
               <p
                 style={{
                   color: 'var(--theme-error-500)',
@@ -264,7 +286,7 @@ export function TrustPagesBundleQuickActionModal(): React.ReactElement {
               >
                 {error}
               </p>
-            ) : null}
+            : null}
 
             <div ref={siteComboboxRef} style={{ marginBottom: '1rem', position: 'relative' }}>
               <span style={fieldLabel} id="trust-bundle-site-label">
@@ -312,7 +334,7 @@ export function TrustPagesBundleQuickActionModal(): React.ReactElement {
                 </span>
               </button>
 
-              {siteMenuOpen ? (
+              {siteMenuOpen ?
                 <div
                   role="listbox"
                   style={{
@@ -365,12 +387,11 @@ export function TrustPagesBundleQuickActionModal(): React.ReactElement {
                     >
                       清空选择
                     </button>
-                    {sitesLoading ? (
+                    {sitesLoading ?
                       <span style={{ fontSize: '0.75rem', opacity: 0.7, padding: '0.25rem 0.5rem' }}>
                         加载中…
                       </span>
-                    ) : (
-                      sites.map((s) => (
+                    : sites.map((s) => (
                         <button
                           key={s.id}
                           role="option"
@@ -383,9 +404,7 @@ export function TrustPagesBundleQuickActionModal(): React.ReactElement {
                             border: 'none',
                             borderRadius: 4,
                             background:
-                              selectedSiteId === s.id
-                                ? 'var(--theme-elevation-100)'
-                                : 'transparent',
+                              selectedSiteId === s.id ? 'var(--theme-elevation-100)' : 'transparent',
                             color: 'inherit',
                             cursor: 'pointer',
                             fontSize: '0.8125rem',
@@ -396,10 +415,10 @@ export function TrustPagesBundleQuickActionModal(): React.ReactElement {
                           {formatSiteLine(s)}
                         </button>
                       ))
-                    )}
+                    }
                   </div>
                 </div>
-              ) : null}
+              : null}
             </div>
 
             <div style={{ marginBottom: '1.25rem' }}>
@@ -420,14 +439,16 @@ export function TrustPagesBundleQuickActionModal(): React.ReactElement {
               <Button
                 type="button"
                 disabled={selectedSiteId == null}
-                onClick={() => void submit()}
+                onClick={() => {
+                  submit()
+                }}
               >
                 生成并写回
               </Button>
             </div>
           </div>
         </div>
-      ) : null}
+      : null}
     </>
   )
 }

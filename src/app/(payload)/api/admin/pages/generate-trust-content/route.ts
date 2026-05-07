@@ -5,6 +5,7 @@ import {
   prepareSitePagesBundleForSite,
   runSitePagesBundleContentForSite,
 } from '@/utilities/sitePagesBundleContent/runSitePagesBundleContentForSite'
+import { TRUST_BUNDLE_LOCALE, TRUST_BUNDLE_SLUGS } from '@/utilities/sitePagesBundleContent/trustPageConstants'
 import { getTenantScopeForStats, type TenantScope } from '@/utilities/tenantScope'
 import { assertUsersCollection } from '@/utilities/workflowQuickCreate'
 
@@ -110,5 +111,10 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: result.message, code: result.code }, { status: result.status })
   }
 
-  return Response.json({ ok: true, siteId: result.siteId })
+  return Response.json({
+    ok: true,
+    siteId: result.siteId,
+    locale: TRUST_BUNDLE_LOCALE,
+    slugs: [...TRUST_BUNDLE_SLUGS],
+  })
 }
