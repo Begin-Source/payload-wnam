@@ -118,8 +118,8 @@ const UI: Record<
   }
 > = {
   articles: {
-    buttonText: '快捷操作 · 文章',
-    title: '快捷操作 · 文章',
+    buttonText: '快捷操作 · 内容大纲',
+    title: '快捷操作 · 内容大纲',
     description: '选定站点与可选分类后，发起「生成文章」工作流；主题会与分类说明合并传给后端。',
     topicLabel: '文章主题 / 要点（可选）',
     topicPlaceholder: '留空则由系统选题',

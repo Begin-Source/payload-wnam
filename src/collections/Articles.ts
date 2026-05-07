@@ -33,11 +33,6 @@ export const Articles: CollectionConfig = {
         './components/ArticleFindReplacePanel#FindReplaceListMenuItem',
         './components/ArticleCsvImportExport#CsvImportExportListMenuItem',
       ],
-      views: {
-        list: {
-          actions: ['./components/CollectionQuickActions#ArticleListQuickAction'],
-        },
-      },
     },
   },
   hooks: {

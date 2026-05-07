@@ -12,6 +12,13 @@ export const ContentBriefs: CollectionConfig = {
     group: adminGroups.website,
     useAsTitle: 'title',
     defaultColumns: ['title', 'site', 'status', 'updatedAt'],
+    components: {
+      views: {
+        list: {
+          actions: ['./components/CollectionQuickActions#ArticleListQuickAction'],
+        },
+      },
+    },
   },
   access: siteScopedCollectionAccess('content-briefs'),
   hooks: {
