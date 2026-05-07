@@ -24,6 +24,7 @@ export const Categories: CollectionConfig = {
       'site',
       'categorySlotsWorkflowStatus',
       'merchantOfferFetchWorkflowStatus',
+      'categoryCoverWorkflowStatus',
       'updatedAt',
     ],
     components: {
@@ -116,6 +117,23 @@ export const Categories: CollectionConfig = {
       admin: {
         description:
           '首页 / Products 分类卡封面；也可用「Together 分类封面」快捷批量生成。',
+      },
+    },
+    {
+      name: 'categoryCoverWorkflowStatus',
+      type: 'select',
+      label: 'Together 封面流程状态',
+      defaultValue: 'idle',
+      options: [...workflowIdleRunningDoneErrorSelectOptions],
+      admin: {
+        description:
+          '由「Together · 分类封面」快捷操作同步写入。也可手工调整。异步仅入队可用 admin `queue-ai-cover`（不写本列）。',
+        listView: {
+          label: 'Together 封面',
+        },
+        components: {
+          Cell: './components/CategoryCoverWorkflowStatusCell#CategoryCoverWorkflowStatusCell',
+        },
       },
     },
     {

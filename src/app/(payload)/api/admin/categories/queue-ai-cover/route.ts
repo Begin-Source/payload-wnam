@@ -8,6 +8,11 @@ import { getTenantScopeForStats, tenantIdFromRelation } from '@/utilities/tenant
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Legacy: enqueues `category_cover_generate` workflow jobs for pipeline tick.
+ * Prefer `POST .../categories/generate-cover-sync` from Admin (updates `categoryCoverWorkflowStatus` inline).
+ */
+
 const MAX_TOTAL = 50
 
 function parsePositiveIds(raw: unknown): number[] {

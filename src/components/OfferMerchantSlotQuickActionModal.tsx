@@ -1,7 +1,9 @@
 'use client'
 
+import type { MerchantSlotDispatchRowResult } from '@/components/adminBackgroundActivity/AdminBackgroundActivityContext'
+import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
+
 import { Button } from '@payloadcms/ui'
-import { useRouter } from 'next/navigation'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 type SiteOption = {
@@ -65,8 +67,181 @@ const inputStyle: React.CSSProperties = {
 
 const merchantSlotTitleId = 'quick-action-offer-merchant-slot'
 
+function parseMerchantSlotDispatchResults(
+  raw: unknown,
+): MerchantSlotDispatchRowResult[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const out: MerchantSlotDispatchRowResult[] = []
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') continue
+    const o = row as Record<string, unknown>
+    const cid = typeof o.categoryId === 'number' ? o.categoryId : Number(o.categoryId)
+    if (!Number.isFinite(cid)) continue
+    out.push({
+      categoryId: Math.floor(cid),
+      ok: o.ok === true,
+      ...(o.skipped === true ? { skipped: true } : {}),
+      ...(typeof o.tag === 'string' ? { tag: o.tag } : {}),
+      ...(typeof o.error === 'string' ? { error: o.error } : {}),
+      ...(typeof o.offersMarkedRunning === 'number' ? { offersMarkedRunning: o.offersMarkedRunning } : {}),
+    })
+  }
+  return out.length > 0 ? out : undefined
+}
+
+const POLL_INTERVAL_MS = 2000
+/** 等待 DataForSEO postback Webhook 将 Offer 写入；本地无公网时需隧道否则将超时失败 */
+const WRITE_BACK_TIMEOUT_MS = 15 * 60 * 1000
+
+type DispatchStatusCategoryRow = {
+  categoryId: number
+  merchantOfferFetchWorkflowStatus: string | null
+  batchMatches: boolean
+  logSnippet?: string
+}
+
+async function fetchMerchantDispatchStatuses(args: {
+  siteId: number
+  batchId: string
+  categoryIds: number[]
+}): Promise<DispatchStatusCategoryRow[]> {
+  const { siteId, batchId, categoryIds } = args
+  const qs = new URLSearchParams({
+    siteId: String(siteId),
+    batchId,
+    categoryIds: categoryIds.join(','),
+  })
+  const res = await fetch(`/api/admin/offers/merchant-slot-dispatch-status?${qs}`, {
+    credentials: 'include',
+  })
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean
+    categories?: DispatchStatusCategoryRow[]
+    error?: string
+  }
+  if (!res.ok || data.ok !== true || !Array.isArray(data.categories)) {
+    throw new Error(typeof data.error === 'string' ? data.error : `状态请求失败（HTTP ${res.status}）`)
+  }
+  return data.categories
+}
+
+async function pollUntilOfferWriteback(args: {
+  siteId: number
+  batchId: string
+  categoryIds: number[]
+}): Promise<Map<number, { ok: boolean; error?: string }>> {
+  const { siteId, batchId, categoryIds } = args
+  const settled = new Map<number, { ok: boolean; error?: string }>()
+  if (categoryIds.length === 0) return settled
+
+  const pending = new Set(categoryIds)
+  const started = Date.now()
+
+  while (pending.size > 0) {
+    if (Date.now() - started >= WRITE_BACK_TIMEOUT_MS) break
+
+    let rows: DispatchStatusCategoryRow[]
+    try {
+      rows = await fetchMerchantDispatchStatuses({ siteId, batchId, categoryIds })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      for (const id of pending) {
+        settled.set(id, { ok: false, error: msg })
+      }
+      pending.clear()
+      break
+    }
+
+    for (const id of [...pending]) {
+      const row = rows.find((c) => c.categoryId === id)
+      if (!row) {
+        settled.set(id, { ok: false, error: '状态响应缺行' })
+        pending.delete(id)
+        continue
+      }
+
+      if (!row.batchMatches) {
+        settled.set(id, {
+          ok: false,
+          error:
+            row.logSnippet?.trim() || '类目「拉品」批次已变更（可能被新派发覆盖），无法确认本次写入',
+        })
+        pending.delete(id)
+        continue
+      }
+
+      const st = (row.merchantOfferFetchWorkflowStatus ?? '').trim().toLowerCase()
+      if (st === 'done') {
+        settled.set(id, { ok: true })
+        pending.delete(id)
+        continue
+      }
+      if (st === 'error') {
+        settled.set(id, {
+          ok: false,
+          error: row.logSnippet?.trim() || '类目侧标记为错误',
+        })
+        pending.delete(id)
+        continue
+      }
+    }
+
+    if (pending.size === 0) break
+    await new Promise((r) => {
+      window.setTimeout(r, POLL_INTERVAL_MS)
+    })
+  }
+
+  for (const id of pending) {
+    settled.set(id, {
+      ok: false,
+      error: `等待 Webhook 写入超时（${Math.round(WRITE_BACK_TIMEOUT_MS / 60000)} 分钟内未完成）`,
+    })
+  }
+
+  return settled
+}
+
+function mergeDispatchRowsWithWriteback(
+  dispatchRows: MerchantSlotDispatchRowResult[],
+  writeback: Map<number, { ok: boolean; error?: string }>,
+): MerchantSlotDispatchRowResult[] {
+  return dispatchRows.map((r) => {
+    if (!r.ok) return r
+    if (r.skipped) {
+      return {
+        ...r,
+        writebackNote: '无需 Webhook（派发已跳过）',
+      }
+    }
+    const w = writeback.get(r.categoryId)
+    if (!w) {
+      return {
+        ...r,
+        ok: false,
+        error: '缺少 Webhook 写入结果',
+      }
+    }
+    if (w.ok) {
+      return {
+        ...r,
+        writebackNote: 'Offer 已通过 Webhook 写入',
+      }
+    }
+    return {
+      ...r,
+      ok: false,
+      error: w.error ?? 'Webhook 写入失败',
+    }
+  })
+}
+
 export function OfferMerchantSlotQuickActionModal(): React.ReactElement {
-  const router = useRouter()
+  const {
+    startMerchantSlotDispatchJob,
+    completeMerchantSlotDispatchJob,
+    failMerchantSlotDispatchJob,
+  } = useAdminBackgroundActivity()
   const [open, setOpen] = useState(false)
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
@@ -86,19 +261,6 @@ export function OfferMerchantSlotQuickActionModal(): React.ReactElement {
   const [force, setForce] = useState(false)
 
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [successPayload, setSuccessPayload] = useState<{
-    batchId: string
-    offersMarkedRunningTotal: number
-    results: {
-      categoryId: number
-      ok: boolean
-      tag?: string
-      skipped?: boolean
-      error?: string
-      offersMarkedRunning?: number
-    }[]
-  } | null>(null)
 
   const loadSites = useCallback(async (q: string) => {
     setSitesLoading(true)
@@ -188,8 +350,6 @@ export function OfferMerchantSlotQuickActionModal(): React.ReactElement {
     setSlottedOnly(true)
     setForce(false)
     setError(null)
-    setSuccessPayload(null)
-    setSubmitting(false)
   }
 
   const pickSite = (s: SiteOption): void => {
@@ -202,7 +362,7 @@ export function OfferMerchantSlotQuickActionModal(): React.ReactElement {
   const filteredCategories =
     slottedOnly ? categories.filter((c) => c.slotIndex != null && c.slotIndex >= 1) : categories
 
-  const submit = async (): Promise<void> => {
+  const submit = (): void => {
     if (selectedSiteId == null) {
       setError('请选择站点')
       return
@@ -213,69 +373,89 @@ export function OfferMerchantSlotQuickActionModal(): React.ReactElement {
       return
     }
     setError(null)
-    setSubmitting(true)
 
-    try {
-      const res = await fetch('/api/admin/offers/merchant-slot-fetch', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          siteId: selectedSiteId,
-          categoryIds: ids,
-          fetchAsinLimit: fetchLimit,
-          force,
-        }),
-      })
-      const data = (await res.json().catch(() => ({}))) as {
-        ok?: boolean
-        error?: string
-        batchId?: string
-        offersMarkedRunningTotal?: number
-        results?: {
-          categoryId: number
-          ok: boolean
-          tag?: string
-          skipped?: boolean
-          error?: string
-          offersMarkedRunning?: number
-        }[]
-      }
-      if (!res.ok || data.ok !== true) {
-        setError(typeof data.error === 'string' ? data.error : `请求失败（HTTP ${res.status}）`)
-        return
-      }
-      setSuccessPayload({
-        batchId: String(data.batchId ?? ''),
-        offersMarkedRunningTotal: Number(data.offersMarkedRunningTotal ?? 0) || 0,
-        results: Array.isArray(data.results) ? data.results : [],
-      })
-    } catch {
-      setError('网络错误')
-      return
-    } finally {
-      setSubmitting(false)
-    }
-
-    if (
-      typeof window !== 'undefined' &&
-      (window.location.pathname.includes('/collections/offers') ||
-        window.location.pathname.includes('/collections/categories'))
-    ) {
-      router.refresh()
-    }
-  }
-
-  const finishSuccess = (): void => {
-    setSuccessPayload(null)
+    const siteId = selectedSiteId
+    const siteLabelSnap = selectedSiteLabel
+    const jobId = startMerchantSlotDispatchJob({
+      categoryCount: ids.length,
+      ...(siteLabelSnap.trim() ? { siteLabel: siteLabelSnap } : {}),
+    })
     close()
-    if (
-      typeof window !== 'undefined' &&
-      (window.location.pathname.includes('/collections/offers') ||
-        window.location.pathname.includes('/collections/categories'))
-    ) {
-      router.refresh()
-    }
+
+    void (async () => {
+      try {
+        const res = await fetch('/api/admin/offers/merchant-slot-fetch', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            siteId,
+            categoryIds: ids,
+            fetchAsinLimit: fetchLimit,
+            force,
+          }),
+        })
+        const data = (await res.json().catch(() => ({}))) as {
+          ok?: boolean
+          error?: string
+          batchId?: unknown
+          results?: unknown
+        }
+        if (!res.ok || data.ok !== true) {
+          failMerchantSlotDispatchJob({
+            jobId,
+            message:
+              typeof data.error === 'string' ? data.error : `请求失败（HTTP ${res.status}）`,
+          })
+          return
+        }
+
+        const rowResults = parseMerchantSlotDispatchResults(data.results) ?? []
+
+        const batchRaw = data.batchId
+        const batchId =
+          typeof batchRaw === 'string'
+            ? batchRaw
+            : batchRaw != null && String(batchRaw).trim()
+              ? String(batchRaw)
+              : undefined
+
+        const idsToPoll = rowResults.filter((r) => r.ok && !r.skipped).map((r) => r.categoryId)
+        if (idsToPoll.length > 0 && !batchId?.trim()) {
+          failMerchantSlotDispatchJob({
+            jobId,
+            message: '服务端未返回批次 ID，无法确认 Offer 写入进度',
+          })
+          return
+        }
+
+        let writeMap = new Map<number, { ok: boolean; error?: string }>()
+        if (idsToPoll.length > 0 && batchId?.trim()) {
+          writeMap = await pollUntilOfferWriteback({
+            siteId,
+            batchId: batchId.trim(),
+            categoryIds: idsToPoll,
+          })
+        }
+
+        const merged = mergeDispatchRowsWithWriteback(rowResults, writeMap)
+        const okCount = merged.filter((r) => r.ok).length
+        const failCount = merged.filter((r) => !r.ok).length
+
+        completeMerchantSlotDispatchJob({
+          jobId,
+          okCount,
+          failCount,
+          ...(batchId?.trim() ? { batchId: batchId.trim() } : {}),
+          ...(merged.length > 0 ? { results: merged } : {}),
+        })
+      } catch (e) {
+        failMerchantSlotDispatchJob({
+          jobId,
+          message: e instanceof Error ? e.message : '网络错误',
+        })
+      }
+    })()
   }
 
   const toggleCat = (id: number): void => {
@@ -333,52 +513,14 @@ export function OfferMerchantSlotQuickActionModal(): React.ReactElement {
               Tag 形如 <code>payload:category:…</code>。
               <strong>类目进度</strong>在本列表「Merchant 拉品」列；派发成功后，已绑定该类目的{' '}
               <strong>Offer</strong>「槽位拉取」会标为「运行中」（无匹配 Offer 时不标记）。
+              <strong style={{ display: 'block', marginTop: '0.5rem', fontWeight: 600 }}>
+                提交后窗口会立即关闭；顶栏 Banner 会先保持「进行中」，在 DataForSEO Webhook 将结果写入 Offer
+                （类目「Merchant 拉品」列为完成/失败）后转为绿/红终态明细。若无公网 postback（如纯 localhost），约 15
+                分钟会超时失败。
+              </strong>
             </p>
 
-            {successPayload ?
-              <div
-                style={{
-                  marginBottom: '1rem',
-                  padding: '0.75rem 1rem',
-                  borderRadius: 8,
-                  border: '1px solid var(--theme-success-500)',
-                  background: 'var(--theme-success-50)',
-                  color: 'var(--theme-success-700)',
-                  fontSize: '0.8125rem',
-                  lineHeight: 1.55,
-                }}
-              >
-                <p style={{ margin: '0 0 0.5rem', fontWeight: 600 }}>派发已完成</p>
-                <p style={{ margin: '0 0 0.5rem' }}>
-                  批次 <code>{successPayload.batchId}</code> · 已将{' '}
-                  <strong>{successPayload.offersMarkedRunningTotal}</strong> 条符合条件的 Offer
-                  槽位标为「运行中」。
-                </p>
-                <p style={{ margin: '0 0 0.5rem' }}>
-                  请先在<strong>分类</strong>列表「Merchant 拉品」列核对进度（running / done / error）；已有类目匹配的 Offer 可在{' '}
-                  <strong>Offer</strong> 列表「槽位拉取」列对照。
-                  Webhook 回填后会写入或更新 Offer。
-                </p>
-                <ul style={{ margin: '0 0 0.75rem', paddingLeft: '1.25rem' }}>
-                  {successPayload.results.map((r, idx) => (
-                    <li key={`${r.categoryId}-${idx}`}>
-                      类目 #{r.categoryId}
-                      {r.skipped ? ' · 已跳过（摘要为 fetched；可勾选「强制」）' : ''}
-                      {r.ok && !r.skipped && r.tag ? ` · tag ${r.tag}` : ''}
-                      {typeof r.offersMarkedRunning === 'number' && !r.skipped && r.ok ?
-                        ` · Offer +${r.offersMarkedRunning}`
-                      : ''}
-                      {r.error ? ` · ${r.error}` : ''}
-                    </li>
-                  ))}
-                </ul>
-                <Button type="button" onClick={() => finishSuccess()}>
-                  关闭
-                </Button>
-              </div>
-            : null}
-
-            {successPayload ? null : error ?
+            {error ?
               <p
                 style={{
                   color: 'var(--theme-error-500)',
@@ -390,8 +532,6 @@ export function OfferMerchantSlotQuickActionModal(): React.ReactElement {
               </p>
             : null}
 
-            {successPayload ? null : (
-              <>
             <div ref={siteComboboxRef} style={{ marginBottom: '1rem', position: 'relative' }}>
               <span style={fieldLabel} id="merchant-slot-site-label">
                 站点
@@ -647,16 +787,14 @@ export function OfferMerchantSlotQuickActionModal(): React.ReactElement {
               </Button>
               <Button
                 type="button"
-                disabled={submitting || selectedSiteId == null || selectedCategoryIds.size === 0}
+                disabled={selectedSiteId == null || selectedCategoryIds.size === 0}
                 onClick={() => {
-                  void submit()
+                  submit()
                 }}
               >
-                {submitting ? '派发中…' : '派发 DFS 任务'}
+                派发 DFS 任务
               </Button>
             </div>
-              </>
-            )}
           </div>
         </div>
       : null}

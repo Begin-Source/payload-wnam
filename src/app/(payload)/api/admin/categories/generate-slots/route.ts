@@ -114,5 +114,11 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: result.message, code: result.code }, { status: result.status })
   }
 
-  return Response.json({ ok: true, siteId: result.siteId })
+  return Response.json({
+    ok: true,
+    siteId: result.siteId,
+    results: result.results,
+    okCount: result.okCount,
+    failCount: result.failCount,
+  })
 }

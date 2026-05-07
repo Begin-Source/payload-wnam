@@ -7,6 +7,7 @@ import { DesignWorkflowStatusCell as DesignWorkflowStatusCell_22909da9cd5de942db
 import { CsvImportExportListMenuItem as CsvImportExportListMenuItem_4c39b1e20c32c7d5b42c969ff894026e } from '../../../components/ArticleCsvImportExport'
 import { CsvImportExportPanel as CsvImportExportPanel_4c39b1e20c32c7d5b42c969ff894026e } from '../../../components/ArticleCsvImportExport'
 import { DesignListQuickAction as DesignListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3 } from '../../../components/CollectionQuickActions'
+import { CategoryCoverWorkflowStatusCell as CategoryCoverWorkflowStatusCell_dda7a58089a633d27f74e96a4589bb0f } from '../../../components/CategoryCoverWorkflowStatusCell'
 import { CategorySlotsWorkflowStatusCell as CategorySlotsWorkflowStatusCell_6f5ace4c14c56b8b9e05676fcf152c70 } from '../../../components/CategorySlotsWorkflowStatusCell'
 import { CategoryMerchantOfferFetchWorkflowCell as CategoryMerchantOfferFetchWorkflowCell_25ec9ba2b1d876be826e2b8772c1e33e } from '../../../components/CategoryMerchantOfferFetchWorkflowCell'
 import { CategoryListQuickAction as CategoryListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3 } from '../../../components/CollectionQuickActions'
@@ -89,6 +90,7 @@ export const importMap = {
   "./components/ArticleCsvImportExport#CsvImportExportListMenuItem": CsvImportExportListMenuItem_4c39b1e20c32c7d5b42c969ff894026e,
   "./components/ArticleCsvImportExport#CsvImportExportPanel": CsvImportExportPanel_4c39b1e20c32c7d5b42c969ff894026e,
   "./components/CollectionQuickActions#DesignListQuickAction": DesignListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3,
+  "./components/CategoryCoverWorkflowStatusCell#CategoryCoverWorkflowStatusCell": CategoryCoverWorkflowStatusCell_dda7a58089a633d27f74e96a4589bb0f,
   "./components/CategorySlotsWorkflowStatusCell#CategorySlotsWorkflowStatusCell": CategorySlotsWorkflowStatusCell_6f5ace4c14c56b8b9e05676fcf152c70,
   "./components/CategoryMerchantOfferFetchWorkflowCell#CategoryMerchantOfferFetchWorkflowCell": CategoryMerchantOfferFetchWorkflowCell_25ec9ba2b1d876be826e2b8772c1e33e,
   "./components/CollectionQuickActions#CategoryListQuickAction": CategoryListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3,

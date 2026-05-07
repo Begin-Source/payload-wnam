@@ -919,6 +919,10 @@ export interface Category {
    */
   coverImage?: (number | null) | Media;
   /**
+   * 由「Together · 分类封面」快捷操作同步写入。也可手工调整。异步仅入队可用 admin `queue-ai-cover`（不写本列）。
+   */
+  categoryCoverWorkflowStatus?: ('idle' | 'running' | 'done' | 'error') | null;
+  /**
    * 由「快捷操作 · 生成分类槽位」写入；也可在此手工纠正（idle / running / done / error）。同站点下各分类通常一致。
    */
   categorySlotsWorkflowStatus?: ('idle' | 'running' | 'done' | 'error') | null;
@@ -3580,6 +3584,7 @@ export interface CategoriesSelect<T extends boolean = true> {
   site?: T;
   slotIndex?: T;
   coverImage?: T;
+  categoryCoverWorkflowStatus?: T;
   categorySlotsWorkflowStatus?: T;
   merchantOfferFetchWorkflowStatus?: T;
   merchantOfferFetchWorkflowLog?: T;

@@ -1,7 +1,9 @@
 'use client'
 
+import type { CategorySlotsSyncRowResult } from '@/components/adminBackgroundActivity/AdminBackgroundActivityContext'
+import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
+
 import { Button } from '@payloadcms/ui'
-import { useRouter } from 'next/navigation'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 type SiteOption = {
@@ -58,8 +60,41 @@ const inputStyle: React.CSSProperties = {
 
 const categorySlotsTitleId = 'quick-action-title-category-slots'
 
+function parseCategorySlotsSyncResults(raw: unknown): CategorySlotsSyncRowResult[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const out: CategorySlotsSyncRowResult[] = []
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') continue
+    const o = row as Record<string, unknown>
+    const idx = typeof o.slotIndex === 'number' ? o.slotIndex : Number(o.slotIndex)
+    if (!Number.isFinite(idx)) continue
+    const slotIndex = Math.floor(idx)
+    if (slotIndex < 1 || slotIndex > 5) continue
+
+    const categoryIdRaw = o.categoryId
+    let categoryId: number | undefined
+    if (categoryIdRaw != null) {
+      const nid =
+        typeof categoryIdRaw === 'number' ? categoryIdRaw : Number(categoryIdRaw)
+      if (Number.isFinite(nid)) categoryId = Math.floor(nid)
+    }
+
+    out.push({
+      slotIndex,
+      ok: o.ok === true,
+      ...(categoryId !== undefined ? { categoryId } : {}),
+      ...(typeof o.name === 'string' ? { name: o.name } : {}),
+      ...(typeof o.slug === 'string' ? { slug: o.slug } : {}),
+      ...(typeof o.error === 'string' ? { error: o.error } : {}),
+      ...(typeof o.message === 'string' ? { message: o.message } : {}),
+    })
+  }
+  return out.length > 0 ? out : undefined
+}
+
 export function CategorySlotsQuickActionModal(): React.ReactElement {
-  const router = useRouter()
+  const { startCategorySlotsJob, completeCategorySlotsJob, failCategorySlotsJob } =
+    useAdminBackgroundActivity()
   const [open, setOpen] = useState(false)
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
@@ -163,7 +198,7 @@ export function CategorySlotsQuickActionModal(): React.ReactElement {
     void loadSites('')
   }
 
-  const submit = async (): Promise<void> => {
+  const submit = (): void => {
     if (selectedSiteId == null) {
       setError('请选择站点')
       return
@@ -182,41 +217,33 @@ export function CategorySlotsQuickActionModal(): React.ReactElement {
       ...(aiModelTrim ? { aiModel: aiModelTrim } : {}),
     }
 
-    try {
-      const prepRes = await fetch('/api/admin/categories/generate-slots', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...baseBody, prepare: true }),
-      })
-      const prepData = (await prepRes.json().catch(() => ({}))) as {
-        ok?: boolean
-        error?: string
-      }
-      if (!prepRes.ok || prepData.ok !== true) {
-        setError(
-          typeof prepData.error === 'string'
-            ? prepData.error
-            : `请求失败（HTTP ${prepRes.status}）`,
-        )
-        return
-      }
-    } catch {
-      setError('网络错误，请稍后重试')
-      return
-    }
-
+    const siteLabelSnapshot = selectedSiteLabel
+    const jobId = startCategorySlotsJob(
+      siteLabelSnapshot.trim() ? { siteLabel: siteLabelSnapshot } : {},
+    )
     close()
-
-    if (
-      typeof window !== 'undefined' &&
-      window.location.pathname.includes('/collections/categories')
-    ) {
-      router.refresh()
-    }
 
     void (async () => {
       try {
+        const prepRes = await fetch('/api/admin/categories/generate-slots', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...baseBody, prepare: true }),
+        })
+        const prepData = (await prepRes.json().catch(() => ({}))) as {
+          ok?: boolean
+          error?: string
+        }
+        if (!prepRes.ok || prepData.ok !== true) {
+          const errText =
+            typeof prepData.error === 'string'
+              ? prepData.error
+              : `请求失败（HTTP ${prepRes.status}）`
+          failCategorySlotsJob({ jobId, message: errText })
+          return
+        }
+
         const res = await fetch('/api/admin/categories/generate-slots', {
           method: 'POST',
           credentials: 'include',
@@ -226,22 +253,25 @@ export function CategorySlotsQuickActionModal(): React.ReactElement {
         const data = (await res.json().catch(() => ({}))) as {
           ok?: boolean
           error?: string
+          results?: unknown
+          okCount?: unknown
+          failCount?: unknown
         }
         if (!res.ok || data.ok !== true) {
-          console.warn(
-            '[generate-slots]',
-            typeof data.error === 'string' ? data.error : `HTTP ${res.status}`,
-          )
+          const errText =
+            typeof data.error === 'string' ? data.error : `请求失败（HTTP ${res.status}）`
+          failCategorySlotsJob({ jobId, message: errText })
+          return
         }
+        const rowResults = parseCategorySlotsSyncResults(data.results)
+        const okCount = typeof data.okCount === 'number' ? data.okCount : undefined
+        const failCount = typeof data.failCount === 'number' ? data.failCount : undefined
+        completeCategorySlotsJob({ jobId, okCount, failCount, results: rowResults })
       } catch (e) {
-        console.warn('[generate-slots] network error', e)
-      } finally {
-        if (
-          typeof window !== 'undefined' &&
-          window.location.pathname.includes('/collections/categories')
-        ) {
-          router.refresh()
-        }
+        failCategorySlotsJob({
+          jobId,
+          message: e instanceof Error ? e.message : '网络错误，请稍后重试',
+        })
       }
     })()
   }
@@ -285,7 +315,8 @@ export function CategorySlotsQuickActionModal(): React.ReactElement {
               条分类名称；写入本站「分类」集合中槽位 1–5（已有任意分类且未勾选强制时跳过 AI）。需配置 OPENROUTER_API_KEY
               或 OPENAI_API_KEY。
               <strong style={{ display: 'block', marginTop: '0.5rem', fontWeight: 600 }}>
-                点击「生成并写回分类槽位」后先标为「运行中」并关闭弹窗，列表会马上刷新；结束后会再刷新。请在表格「槽位流程」列查看状态（站点「分类槽位流程状态」为权威来源）。
+                提交后窗口会立即关闭，后台继续执行；请在分类列表「分类槽位流程状态」列与顶栏 Banner
+                查看进度（站点汇总字段为权威来源）。首轮校验或配额失败会以顶栏红条提示。
               </strong>
             </p>
 
@@ -475,7 +506,7 @@ export function CategorySlotsQuickActionModal(): React.ReactElement {
                 type="button"
                 disabled={selectedSiteId == null}
                 onClick={() => {
-                  void submit()
+                  submit()
                 }}
               >
                 生成并写回分类槽位

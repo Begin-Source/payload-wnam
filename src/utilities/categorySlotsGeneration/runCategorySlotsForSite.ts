@@ -156,7 +156,80 @@ export type RunCategorySlotsArgs = {
   afterPrepare?: boolean
 }
 
+/** API / Admin Banner：`generate-slots` 成功响应里 `results[]` 的形态（每槽位一行）。 */
+export type CategorySlotsSyncRowResult = {
+  slotIndex: number
+  ok: boolean
+  categoryId?: number
+  name?: string
+  slug?: string
+  error?: string
+  message?: string
+}
+
+async function fetchCategorySlotsSyncRowResults(
+  payload: Payload,
+  siteId: number,
+  locale: string,
+): Promise<CategorySlotsSyncRowResult[]> {
+  const rows: CategorySlotsSyncRowResult[] = []
+  for (let slotIndex = 1; slotIndex <= 5; slotIndex += 1) {
+    const found = await payload.find({
+      collection: 'categories',
+      where: {
+        and: [
+          { site: { equals: siteId } },
+          { slotIndex: { equals: slotIndex } },
+          { locale: { equals: locale } },
+        ],
+      },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const doc = found.docs[0] as { id?: number; name?: string; slug?: string } | undefined
+    if (
+      doc &&
+      typeof doc.id === 'number' &&
+      Number.isFinite(doc.id)
+    ) {
+      rows.push({
+        slotIndex,
+        ok: true,
+        categoryId: doc.id,
+        ...(typeof doc.name === 'string' ? { name: doc.name } : {}),
+        ...(typeof doc.slug === 'string' ? { slug: doc.slug } : {}),
+      })
+    } else {
+      rows.push({
+        slotIndex,
+        ok: false,
+        message: '该槽位尚无分类文档',
+      })
+    }
+  }
+  return rows
+}
+
+function summarizeSlotRows(
+  rows: CategorySlotsSyncRowResult[],
+): { okCount: number; failCount: number } {
+  const okCount = rows.filter((r) => r.ok).length
+  return { okCount, failCount: rows.length - okCount }
+}
+
 export type RunCategorySlotsResult =
+  | {
+      ok: true
+      siteId: number
+      /** 本站 locale 下槽位 1–5 的读回快照（Banner 明细用）。 */
+      results: CategorySlotsSyncRowResult[]
+      okCount: number
+      failCount: number
+    }
+  | { ok: false; code: string; message: string; status: number }
+
+export type PrepareCategorySlotsResult =
   | { ok: true; siteId: number }
   | { ok: false; code: string; message: string; status: number }
 
@@ -247,7 +320,7 @@ async function loadContext(args: RunCategorySlotsArgs): Promise<
 
 export async function prepareCategorySlotsForSite(
   args: RunCategorySlotsArgs,
-): Promise<RunCategorySlotsResult> {
+): Promise<PrepareCategorySlotsResult> {
   const ctx = await loadContext(args)
   if (!ctx.ok) return ctx
 
@@ -306,7 +379,9 @@ export async function runCategorySlotsForSite(
       const msg = e instanceof Error ? e.message : String(e)
       return { ok: false, code: 'UPDATE', message: msg, status: 500 }
     }
-    return { ok: true, siteId }
+    const slotRows = await fetchCategorySlotsSyncRowResults(payload, siteId, slotLocale)
+    const { okCount, failCount } = summarizeSlotRows(slotRows)
+    return { ok: true, siteId, results: slotRows, okCount, failCount }
   }
 
   if (!afterPrepare) {
@@ -404,5 +479,7 @@ export async function runCategorySlotsForSite(
 
   await incrementSiteQuotaUsage(payload, siteId, { openrouterUsd: OPENROUTER_EST_USD })
 
-  return { ok: true, siteId }
+  const slotRows = await fetchCategorySlotsSyncRowResults(payload, siteId, slotLocale)
+  const { okCount, failCount } = summarizeSlotRows(slotRows)
+  return { ok: true, siteId, results: slotRows, okCount, failCount }
 }

@@ -1,7 +1,8 @@
 'use client'
 
+import type { CategoryCoverSyncRowResult } from '@/components/adminBackgroundActivity/AdminBackgroundActivityContext'
+import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
 import { Button } from '@payloadcms/ui'
-import { useRouter } from 'next/navigation'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 type SiteOption = {
@@ -63,8 +64,31 @@ const inputStyle: React.CSSProperties = {
 
 const titleId = 'quick-action-category-cover'
 
+function parseCategoryCoverSyncResults(raw: unknown): CategoryCoverSyncRowResult[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const out: CategoryCoverSyncRowResult[] = []
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') continue
+    const o = row as Record<string, unknown>
+    const id = typeof o.categoryId === 'number' ? o.categoryId : Number(o.categoryId)
+    if (!Number.isFinite(id)) continue
+    out.push({
+      categoryId: Math.floor(id),
+      ok: o.ok === true,
+      ...(typeof o.name === 'string' ? { name: o.name } : {}),
+      ...(typeof o.slug === 'string' ? { slug: o.slug } : {}),
+      ...(typeof o.error === 'string' ? { error: o.error } : {}),
+      ...(typeof o.message === 'string' ? { message: o.message } : {}),
+      ...(typeof o.mediaId === 'number' ? { mediaId: o.mediaId } : {}),
+      ...(typeof o.mode === 'string' ? { mode: o.mode } : {}),
+    })
+  }
+  return out.length > 0 ? out : undefined
+}
+
 export function CategoryCoverQuickActionModal(): React.ReactElement {
-  const router = useRouter()
+  const { startCategoryCoverJob, completeCategoryCoverJob, failCategoryCoverJob } =
+    useAdminBackgroundActivity()
   const [open, setOpen] = useState(false)
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
@@ -78,9 +102,7 @@ export function CategoryCoverQuickActionModal(): React.ReactElement {
   const [categories, setCategories] = useState<CategoryOption[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
   const loadSites = useCallback(async (q: string) => {
     setSitesLoading(true)
@@ -183,7 +205,6 @@ export function CategoryCoverQuickActionModal(): React.ReactElement {
     setCategories([])
     setSelectedIds([])
     setError(null)
-    setSuccess(null)
   }
 
   const pickSite = (s: SiteOption): void => {
@@ -197,7 +218,7 @@ export function CategoryCoverQuickActionModal(): React.ReactElement {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
   }
 
-  const submit = async (): Promise<void> => {
+  const submit = (): void => {
     if (selectedSiteId == null) {
       setError('请选择站点')
       return
@@ -206,36 +227,52 @@ export function CategoryCoverQuickActionModal(): React.ReactElement {
       setError('请选择至少一个分类')
       return
     }
-    setSubmitting(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      const res = await fetch('/api/admin/categories/queue-ai-cover', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          siteId: selectedSiteId,
-          categoryIds: selectedIds,
-        }),
-      })
-      const data = (await res.json().catch(() => ({}))) as {
-        error?: string
-        queuedCount?: number
-      }
-      if (!res.ok) {
-        throw new Error(typeof data.error === 'string' ? data.error : `HTTP ${res.status}`)
-      }
-      setSuccess(`已入队 Together 封面任务 ${data.queuedCount ?? 0} 条（见「工作流任务」）。`)
-      if (typeof window !== 'undefined' && window.location.pathname.includes('/collections/categories')) {
-        router.refresh()
-      }
-      window.setTimeout(() => close(), 1600)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '提交失败')
-    } finally {
-      setSubmitting(false)
+    if (selectedIds.length > 10) {
+      setError('单次最多选择 10 个分类，请分批执行。')
+      return
     }
+    const siteId = selectedSiteId
+    const categoryIds = [...selectedIds]
+    const jobId = startCategoryCoverJob({ categoryCount: categoryIds.length })
+
+    close()
+
+    void (async () => {
+      try {
+        const res = await fetch('/api/admin/categories/generate-cover-sync', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            siteId,
+            categoryIds,
+          }),
+        })
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string
+          okCount?: number
+          failCount?: number
+          results?: unknown
+        }
+        if (!res.ok) {
+          throw new Error(typeof data.error === 'string' ? data.error : `HTTP ${res.status}`)
+        }
+        const okN = data.okCount ?? 0
+        const failN = data.failCount ?? 0
+        const rowResults = parseCategoryCoverSyncResults(data.results)
+        completeCategoryCoverJob({
+          jobId,
+          okCount: okN,
+          failCount: failN,
+          ...(rowResults ? { results: rowResults } : {}),
+        })
+      } catch (e) {
+        failCategoryCoverJob({
+          jobId,
+          message: e instanceof Error ? e.message : '提交失败',
+        })
+      }
+    })()
   }
 
   return (
@@ -265,21 +302,15 @@ export function CategoryCoverQuickActionModal(): React.ReactElement {
               Together · 分类封面
             </h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.55 }}>
-              选定站点并勾选 Payload 分类，将创建{' '}
-              <code style={{ fontSize: '0.78em' }}>category_cover_generate</code>{' '}
-              队列任务（需 TOGETHER_API_KEY、pipeline tick；每次 tick 仅跑一条{' '}
-              <code style={{ fontSize: '0.78em' }}>pending</code>，多条需多次触发）；生成后写入{' '}
-              <strong>封面图</strong> 字段并在首页卡片优先展示。
+              选定站点并勾选分类后，将<strong>在本页一次请求内</strong>调用 Together 生成封面并写回「封面图」。列表{' '}
+              <strong>Together 封面</strong> 列会显示运行中 / 已完成 / 错误；开始后<strong>可随时关闭本窗口</strong>
+              ，顶部细条提示与同一列可关注进度。需 TOGETHER_API_KEY 与流水线开启 Together 生图；单次最多 10 条，
+              耗时随条数增加。
             </p>
 
             {error ? (
               <p style={{ color: 'var(--theme-error-500)', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>
                 {error}
-              </p>
-            ) : null}
-            {success ? (
-              <p style={{ color: 'var(--theme-success-500)', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>
-                {success}
               </p>
             ) : null}
 
@@ -358,6 +389,7 @@ export function CategoryCoverQuickActionModal(): React.ReactElement {
                       sites.map((s) => (
                         <button
                           key={s.id}
+                          aria-selected={selectedSiteId === s.id}
                           role="option"
                           style={{
                             display: 'block',
@@ -423,11 +455,13 @@ export function CategoryCoverQuickActionModal(): React.ReactElement {
                 关闭
               </Button>
               <Button
-                disabled={submitting || selectedSiteId == null || selectedIds.length === 0}
-                onClick={() => void submit()}
+                disabled={
+                  selectedSiteId == null || selectedIds.length === 0 || selectedIds.length > 10
+                }
+                onClick={submit}
                 type="button"
               >
-                入队生成
+                生成封面
               </Button>
             </div>
           </div>
