@@ -69,8 +69,10 @@ import { PipelineProfiles } from './collections/PipelineProfiles'
 import { TenantPromptTemplates } from './collections/TenantPromptTemplates'
 import { OpenAIConfig } from './utilities/aiOpenAIConfigImport'
 import type { Config } from './payload-types'
+import { isUsersCollection } from './utilities/announcementAccess'
 import { expandMcpAccessForSuperAdmin } from './utilities/mcpSuperAdminAccess'
 import { userHasUnscopedAdminAccess } from './utilities/superAdmin'
+import { userHasRole } from './utilities/userRoles'
 import { aiPluginSeedPrompts } from './utilities/aiPluginSeedPrompts'
 import {
   applyOpenRouterToGenerationModels,
@@ -368,7 +370,14 @@ export default buildConfig({
          */
         media: { useTenantAccess: false },
       },
-      userHasAccessToAllTenants: (user) => userHasUnscopedAdminAccess(user),
+      /**
+       * 财务经理（`finance`）需看全租户财务数据；若仅依赖 `users.tenants[]`，无分配时侧栏会隐藏
+       * commissions / 联盟收益等。非财务集合仍由 `financeOnlyBlocksCollection` 白名单拦截。
+       */
+      userHasAccessToAllTenants: (user) => {
+        if (userHasUnscopedAdminAccess(user)) return true
+        return isUsersCollection(user) && userHasRole(user, 'finance')
+      },
     }),
     // @ai-stack plugin typings recurse deeply with `Config`; `opts: any` avoids `tsc` stack overflow in this repo.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- cast only
