@@ -22,6 +22,8 @@ export async function runSectionPrompt(
     eeatWeights?: Record<string, number>
     /** Extra Tavily / research JSON for `research_per_section`. */
     researchSlice?: string
+    /** When set, prefer `tenant-prompt-templates` scoped to this pipeline profile. */
+    pipelineProfileId?: number | null
   },
 ): Promise<{
   text: string
@@ -60,6 +62,7 @@ export async function runSectionPrompt(
     DRAFT_SECTION_USER,
     defaults,
     vars,
+    input.pipelineProfileId,
   )
   const r = await openrouterChatWithMeta(input.model, [
     { role: 'system', content: system },

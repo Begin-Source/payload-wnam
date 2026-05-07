@@ -30,6 +30,8 @@ import * as migration_20260508_120000_sites_ai_cost_ledger from './20260508_1200
 import * as migration_20260509_120000_site_quotas_dfs_usd_vendor_billing from './20260509_120000_site_quotas_dfs_usd_vendor_billing';
 import * as migration_20260510_120000_categories_category_cover_workflow_status from './20260510_120000_categories_category_cover_workflow_status';
 import * as migration_20260511_120000_keywords_data_for_seo_seeds from './20260511_120000_keywords_data_for_seo_seeds';
+import * as migration_20260820_120000_rankings_ranking_source from './20260820_120000_rankings_ranking_source';
+import * as migration_20260821_120000_tenant_prompt_templates_pipeline_profile from './20260821_120000_tenant_prompt_templates_pipeline_profile';
 import * as migration_20260601_100000_articles_affiliate_page_layout from './20260601_100000_articles_affiliate_page_layout';
 import * as migration_20260602_120000_sites_site_layout from './20260602_120000_sites_site_layout';
 import * as migration_20260603_120000_sites_review_hub_v1 from './20260603_120000_sites_review_hub_v1';
@@ -551,5 +553,15 @@ export const migrations = [
     up: migration_20260511_120000_keywords_data_for_seo_seeds.up,
     down: migration_20260511_120000_keywords_data_for_seo_seeds.down,
     name: '20260511_120000_keywords_data_for_seo_seeds',
+  },
+  {
+    up: migration_20260820_120000_rankings_ranking_source.up,
+    down: migration_20260820_120000_rankings_ranking_source.down,
+    name: '20260820_120000_rankings_ranking_source',
+  },
+  {
+    up: migration_20260821_120000_tenant_prompt_templates_pipeline_profile.up,
+    down: migration_20260821_120000_tenant_prompt_templates_pipeline_profile.down,
+    name: '20260821_120000_tenant_prompt_templates_pipeline_profile',
   },
 ];

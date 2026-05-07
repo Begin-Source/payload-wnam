@@ -36,6 +36,12 @@ export async function POST(request: Request): Promise<Response> {
   })
   const metrics_json = body.metricsJson || '{}'
   const vars = { metrics_json }
+  const routeCfg = await resolveMergedForPipelineRoute({
+    payload,
+    tenantId,
+    siteId: body.siteId ?? null,
+  })
+  const { merged, profileId } = routeCfg
   const defaultSystem = getSkillPrompt('alert-manager')
   const defaultUser = substitutePromptPlaceholders(DEFAULT_ALERT_EVAL_USER_TEMPLATE, vars)
   const { system, user } = await resolveTenantPromptPair(
@@ -45,12 +51,8 @@ export async function POST(request: Request): Promise<Response> {
     ALERT_EVAL_USER,
     { system: defaultSystem, user: defaultUser },
     vars,
+    profileId,
   )
-  const merged = await resolveMergedForPipelineRoute({
-    payload,
-    tenantId,
-    siteId: body.siteId ?? null,
-  })
   const model = pickPipelineOpenRouterModel(merged, 'custom')
   const r = await openrouterChatWithMeta(model, [
     { role: 'system', content: system },

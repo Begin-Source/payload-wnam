@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
 import { planArticleTriage } from '@/utilities/articleLifecycleTriage'
 import { needsMoneyPageReinforce } from '@/utilities/moneyPageLinkRules'
+import { RankingSource } from '@/utilities/seoMatrixPipeline'
 
 export const dynamic = 'force-dynamic'
 const PATH = '/api/pipeline/triage'
@@ -146,7 +147,11 @@ async function latestRankings(
   const res = await payload.find({
     collection: 'rankings',
     where: {
-      and: [{ site: { equals: siteId } }, { keyword: { equals: keywordId } }],
+      and: [
+        { site: { equals: siteId } },
+        { keyword: { equals: keywordId } },
+        { rankingSource: { equals: RankingSource.serpLive } },
+      ],
     },
     sort: '-capturedAt',
     limit: 2,

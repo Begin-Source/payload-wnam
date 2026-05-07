@@ -100,33 +100,6 @@ export async function POST(request: Request): Promise<Response> {
   })
   const blueprint = (bpFind.docs[0] as SiteBlueprint | undefined) ?? null
 
-  const overridePrompt = typeof body.prompt === 'string' ? body.prompt : null
-  const hasPromptOverride = Boolean(overridePrompt?.trim())
-  const defaultHeroPrompt = composeHeroBannerPromptFromSiteBlueprint(siteRow, blueprint, null)
-  const promptText = hasPromptOverride
-    ? composeHeroBannerPromptFromSiteBlueprint(siteRow, blueprint, overridePrompt)
-    : await resolveTogetherTenantPrompt(
-        payload,
-        tenantIdFromRelation(siteRow.tenant),
-        TOGETHER_HERO_BANNER_PROMPT,
-        defaultHeroPrompt,
-        buildHeroBannerTogetherVars(siteRow),
-      )
-  if (!promptText.trim()) {
-    return Response.json({ ok: false, error: 'empty prompt' }, { status: 400 })
-  }
-
-  const defaultHeroNegative = heroBannerImageNegativePrompt()
-  const negativePrompt = hasPromptOverride
-    ? defaultHeroNegative
-    : await resolveTogetherTenantPrompt(
-        payload,
-        tenantIdFromRelation(siteRow.tenant),
-        TOGETHER_HERO_BANNER_NEGATIVE,
-        defaultHeroNegative,
-        {},
-      )
-
   const pipe = await resolvePipelineConfigForSite(payload, siteId)
   if ('ok' in pipe) {
     return Response.json(
@@ -144,6 +117,36 @@ export async function POST(request: Request): Promise<Response> {
       { status: 400 },
     )
   }
+
+  const overridePrompt = typeof body.prompt === 'string' ? body.prompt : null
+  const hasPromptOverride = Boolean(overridePrompt?.trim())
+  const defaultHeroPrompt = composeHeroBannerPromptFromSiteBlueprint(siteRow, blueprint, null)
+  const promptText = hasPromptOverride
+    ? composeHeroBannerPromptFromSiteBlueprint(siteRow, blueprint, overridePrompt)
+    : await resolveTogetherTenantPrompt(
+        payload,
+        tenantIdFromRelation(siteRow.tenant),
+        TOGETHER_HERO_BANNER_PROMPT,
+        defaultHeroPrompt,
+        buildHeroBannerTogetherVars(siteRow),
+        pipe.profileId,
+      )
+  if (!promptText.trim()) {
+    return Response.json({ ok: false, error: 'empty prompt' }, { status: 400 })
+  }
+
+  const defaultHeroNegative = heroBannerImageNegativePrompt()
+  const negativePrompt = hasPromptOverride
+    ? defaultHeroNegative
+    : await resolveTogetherTenantPrompt(
+        payload,
+        tenantIdFromRelation(siteRow.tenant),
+        TOGETHER_HERO_BANNER_NEGATIVE,
+        defaultHeroNegative,
+        {},
+        pipe.profileId,
+      )
+
   const imageModel = pipe.merged.defaultImageModel?.trim() || undefined
 
   const { width: genW, height: genH } = heroBannerImageDimensions()

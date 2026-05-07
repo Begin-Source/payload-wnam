@@ -342,18 +342,6 @@ async function runArticleOrPageFeatured(
     )
   }
 
-  const promptText = await resolveTogetherTenantPrompt(
-    payload,
-    tenantNumeric,
-    TOGETHER_ARTICLE_FEATURED_IMAGE_PROMPT,
-    defaultFeaturedPrompt,
-    buildArticleFeaturedTogetherVars({ title, excerpt, keywordTerm }),
-  )
-
-  if (!promptText.trim()) {
-    return Response.json({ ok: false, error: 'empty prompt' }, { status: 400 })
-  }
-
   const pipeFeatured =
     args.collection === 'articles'
       ? await resolvePipelineConfigForArticle(payload, args.docId)
@@ -378,6 +366,20 @@ async function runArticleOrPageFeatured(
       { status: 400 },
     )
   }
+
+  const promptText = await resolveTogetherTenantPrompt(
+    payload,
+    tenantNumeric,
+    TOGETHER_ARTICLE_FEATURED_IMAGE_PROMPT,
+    defaultFeaturedPrompt,
+    buildArticleFeaturedTogetherVars({ title, excerpt, keywordTerm }),
+    pipeFeatured.profileId,
+  )
+
+  if (!promptText.trim()) {
+    return Response.json({ ok: false, error: 'empty prompt' }, { status: 400 })
+  }
+
   const featuredModel = pipeFeatured.merged.defaultImageModel?.trim() || undefined
 
   try {

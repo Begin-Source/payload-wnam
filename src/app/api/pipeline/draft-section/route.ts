@@ -160,11 +160,15 @@ export async function POST(request: Request): Promise<Response> {
   const sectionType = body.sectionType || 'custom'
 
   let merged: PipelineSettingShape | null = null
+  let pipelineProfileIdForPrompts: number | null = null
   if (body.articleId != null) {
     const aid = typeof body.articleId === 'number' ? body.articleId : Number(body.articleId)
     if (Number.isFinite(aid)) {
       const cfg = await resolvePipelineConfigForArticle(payload, aid, explicitPipelineProfileId)
-      if (!('ok' in cfg && cfg.ok === false)) merged = cfg.merged
+      if (!('ok' in cfg && cfg.ok === false)) {
+        merged = cfg.merged
+        pipelineProfileIdForPrompts = cfg.profileId
+      }
     }
   }
   if (merged == null && tenantId != null) {
@@ -175,6 +179,7 @@ export async function POST(request: Request): Promise<Response> {
       explicitProfileId: explicitPipelineProfileId,
     })
     merged = cfg.merged
+    pipelineProfileIdForPrompts = cfg.profileId
   }
 
   let model =
@@ -279,6 +284,7 @@ export async function POST(request: Request): Promise<Response> {
         globalContext,
         ...(eeatWeights ? { eeatWeights } : {}),
         ...(researchSlice ? { researchSlice } : {}),
+        pipelineProfileId: pipelineProfileIdForPrompts,
       })
       text = tOut
       rawOut = raw

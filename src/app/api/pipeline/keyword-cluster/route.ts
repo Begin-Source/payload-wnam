@@ -44,7 +44,7 @@ export async function POST(request: Request): Promise<Response> {
   const minOverlap = Number.isFinite(mo) ? Math.min(6, Math.max(2, Math.floor(mo))) : 3
 
   const payload = await getPayload({ config: configPromise })
-  const merged = await resolveMergedForPipelineRoute({ payload, siteId })
+  const { merged } = await resolveMergedForPipelineRoute({ payload, siteId })
   if (!merged.dataForSeoEnabled) {
     return Response.json(
       { ok: false, error: 'DataForSEO disabled in pipeline-settings / profile' },

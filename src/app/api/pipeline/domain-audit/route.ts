@@ -38,6 +38,12 @@ export async function POST(request: Request): Promise<Response> {
   const pageUrl = body.pageUrl ?? ''
   const htmlExcerpt = (body.htmlExcerpt || '').slice(0, 4000)
   const vars = { page_url: pageUrl, html_excerpt: htmlExcerpt }
+  const routeCfg = await resolveMergedForPipelineRoute({
+    payload,
+    tenantId,
+    siteId: body.siteId ?? null,
+  })
+  const { merged, profileId } = routeCfg
   const defaultSystem = getSkillPrompt('domain-authority-auditor')
   const defaultUser = substitutePromptPlaceholders(DEFAULT_DOMAIN_AUDIT_USER_TEMPLATE, vars)
   const { system, user } = await resolveTenantPromptPair(
@@ -47,12 +53,8 @@ export async function POST(request: Request): Promise<Response> {
     DOMAIN_AUDIT_USER,
     { system: defaultSystem, user: defaultUser },
     vars,
+    profileId,
   )
-  const merged = await resolveMergedForPipelineRoute({
-    payload,
-    tenantId,
-    siteId: body.siteId ?? null,
-  })
   const model = pickPipelineOpenRouterModel(merged, 'custom')
   const r = await openrouterChatWithMeta(model, [
     { role: 'system', content: system },

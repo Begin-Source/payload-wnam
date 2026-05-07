@@ -25,7 +25,7 @@ import {
   pickPipelineOpenRouterModel,
   type PipelineSettingShape,
 } from '@/utilities/pipelineSettingShape'
-import { resolvePipelineConfigForArticle } from '@/utilities/resolvePipelineConfig'
+import { resolvePipelineConfigForArticle, type ResolvedPipelineConfig } from '@/utilities/resolvePipelineConfig'
 import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
 import { markdownToPageBodyLexical } from '@/utilities/sitePagesBundleContent/markdownToPayloadLexical'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
@@ -64,8 +64,9 @@ async function finalizePassesToMarkdown(args: {
   articlePlain: string
   siteId: number | null
   tavSearchQuery: string
+  pipelineProfileId?: number | null
 }): Promise<{ text: string; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number } }> {
-  const { payload, tenantId, model, merged, articlePlain } = args
+  const { payload, tenantId, model, merged, articlePlain, pipelineProfileId } = args
   let md =
     finalizeArticleBodyText(articlePlain)
       .trim()
@@ -87,6 +88,7 @@ async function finalizePassesToMarkdown(args: {
       userKey,
       defaults,
       vars,
+      pipelineProfileId,
     )
     const r = await openrouterChatWithMeta(model, [
       { role: 'system', content: system },
@@ -207,12 +209,17 @@ export async function runDraftFinalizeForArticle(
   }
 
   const cfg = await resolvePipelineConfigForArticle(payload, articleIdNum, null)
-  const merged: PipelineSettingShape =
-    'ok' in cfg && cfg.ok === false ?
-      normalizeGlobalPipelineDoc(
-        (await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })) as Record<string, unknown>,
-      )
-    : (cfg as { merged: PipelineSettingShape }).merged
+  let merged: PipelineSettingShape
+  let pipelineProfileId: number | null = null
+  if ('ok' in cfg && cfg.ok === false) {
+    merged = normalizeGlobalPipelineDoc(
+      (await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })) as Record<string, unknown>,
+    )
+  } else {
+    const resolved = cfg as ResolvedPipelineConfig
+    merged = resolved.merged
+    pipelineProfileId = resolved.profileId
+  }
 
   const tenantId = tenantIdFromRelation((doc as { tenant?: unknown }).tenant)
   const siteId = siteIdFromArticle(doc)
@@ -263,6 +270,7 @@ export async function runDraftFinalizeForArticle(
     articlePlain,
     siteId,
     tavSearchQuery,
+    pipelineProfileId,
   })
 
   const nextLex = markdownToPageBodyLexical(polishedMd) as Article['body']

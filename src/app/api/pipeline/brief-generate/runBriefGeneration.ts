@@ -225,6 +225,7 @@ export async function runBriefGeneration(
     SERP_BRIEF_USER,
     briefDefaults,
     briefVars,
+    args.pipelineCfg?.profileId,
   )
 
   const chat = await openrouterChatWithMeta(briefModel, [

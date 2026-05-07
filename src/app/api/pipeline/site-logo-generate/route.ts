@@ -96,22 +96,6 @@ export async function POST(request: Request): Promise<Response> {
   })
   const blueprint = (bpFind.docs[0] as SiteBlueprint | undefined) ?? null
 
-  const overridePrompt = typeof body.prompt === 'string' ? body.prompt : null
-  const hasPromptOverride = Boolean(overridePrompt?.trim())
-  const defaultLogoPrompt = composeSiteLogoPromptFromSiteBlueprint(siteRow, blueprint, null)
-  const promptText = hasPromptOverride
-    ? composeSiteLogoPromptFromSiteBlueprint(siteRow, blueprint, overridePrompt)
-    : await resolveTogetherTenantPrompt(
-        payload,
-        tenantIdFromRelation(siteRow.tenant),
-        TOGETHER_SITE_LOGO_PROMPT,
-        defaultLogoPrompt,
-        buildSiteLogoTogetherVars(siteRow, blueprint),
-      )
-  if (!promptText.trim()) {
-    return Response.json({ ok: false, error: 'empty prompt' }, { status: 400 })
-  }
-
   const pipe = await resolvePipelineConfigForSite(payload, siteId)
   if ('ok' in pipe) {
     return Response.json(
@@ -129,6 +113,24 @@ export async function POST(request: Request): Promise<Response> {
       { status: 400 },
     )
   }
+
+  const overridePrompt = typeof body.prompt === 'string' ? body.prompt : null
+  const hasPromptOverride = Boolean(overridePrompt?.trim())
+  const defaultLogoPrompt = composeSiteLogoPromptFromSiteBlueprint(siteRow, blueprint, null)
+  const promptText = hasPromptOverride
+    ? composeSiteLogoPromptFromSiteBlueprint(siteRow, blueprint, overridePrompt)
+    : await resolveTogetherTenantPrompt(
+        payload,
+        tenantIdFromRelation(siteRow.tenant),
+        TOGETHER_SITE_LOGO_PROMPT,
+        defaultLogoPrompt,
+        buildSiteLogoTogetherVars(siteRow, blueprint),
+        pipe.profileId,
+      )
+  if (!promptText.trim()) {
+    return Response.json({ ok: false, error: 'empty prompt' }, { status: 400 })
+  }
+
   const imageModel = pipe.merged.defaultImageModel?.trim() || undefined
 
   const { width: genW, height: genH } = siteLogoImageDimensions()

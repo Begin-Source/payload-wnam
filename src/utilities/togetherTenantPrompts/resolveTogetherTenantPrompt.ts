@@ -12,8 +12,9 @@ export async function resolveTogetherTenantPrompt(
   key: TenantPromptTemplateKey,
   defaultText: string,
   vars: Record<string, string>,
+  pipelineProfileId?: number | null,
 ): Promise<string> {
   if (tenantId == null) return defaultText
-  const custom = await loadTenantPromptTemplateBody(payload, tenantId, key)
+  const custom = await loadTenantPromptTemplateBody(payload, tenantId, key, pipelineProfileId)
   return pickTenantPromptPart(custom, defaultText, vars)
 }

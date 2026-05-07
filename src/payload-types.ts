@@ -1743,6 +1743,10 @@ export interface OriginalEvidence {
 export interface Ranking {
   id: number;
   tenant?: (number | null) | Tenant;
+  /**
+   * domain_ranked_keywords 为 DataForSEO Labs 域名出词导入；文章生命周期 triage 仅使用 serp_live。
+   */
+  rankingSource?: ('serp_live' | 'domain_ranked_keywords') | null;
   keyword?: (number | null) | Keyword;
   site?: (number | null) | Site;
   searchQuery: string;
@@ -2083,6 +2087,10 @@ export interface TenantPromptTemplate {
   id: number;
   tenant?: (number | null) | Tenant;
   /**
+   * 留空：该 key 的租户全局默认。填写：仅当流水线 API 解析到此方案时优先用本条覆盖全局默认；域名/分类等非 pipeline 入口仍只用全局默认。须选择与当前租户一致的 SEO 流水线方案（保存时会校验）。
+   */
+  pipelineProfile?: (number | null) | PipelineProfile;
+  /**
    * 域名四段、分类槽位两段、信任页包两段，OpenRouter：serp_brief_*、draft_section_*、domain_audit_*、alert_eval_*、competitor_gap_*、offer_review_mdx_*、amz_template_design_*（merge/fill 各 system+user），及 Together：together_* 生图键。详见下方 body 说明。
    */
   key:
@@ -2139,6 +2147,7 @@ export interface TenantPromptTemplate {
    * 修改生图模板若破坏构图/禁字约束，由运营自担；未配置租户模板时与代码默认一致。
    * domain_audit / alert_eval / competitor_gap / draft_section 的 System 未配置租户正文时使用内置 skill 默认；一旦配置模板则以模板为准（可与 skill 源码漂移）。
    * 受众须输出严格 JSON：`{"audiences":["..."]}`；域名 `{"items":[...]}`；分类槽位 `{"rows":[...]}`；信任页包须产出 about/contact/privacy/terms/disclosure 五段 Markdown（见 System）— 详见各流程与解析器约定。
+   * 若选择了「限定 SEO 流水线方案」，仅当 `/api/pipeline/*` 运行时解析到该方案生效才用本条；未选择时为本 key 的租户全局默认。
    */
   body: string;
   updatedAt: string;
@@ -3979,6 +3988,7 @@ export interface AuthorsSelect<T extends boolean = true> {
  */
 export interface RankingsSelect<T extends boolean = true> {
   tenant?: T;
+  rankingSource?: T;
   keyword?: T;
   site?: T;
   searchQuery?: T;
@@ -4161,6 +4171,7 @@ export interface TeamsSelect<T extends boolean = true> {
  */
 export interface TenantPromptTemplatesSelect<T extends boolean = true> {
   tenant?: T;
+  pipelineProfile?: T;
   key?: T;
   body?: T;
   updatedAt?: T;

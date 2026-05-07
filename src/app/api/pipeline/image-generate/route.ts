@@ -60,7 +60,7 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
-  const merged = await resolveMergedForPipelineRoute({
+  const { merged } = await resolveMergedForPipelineRoute({
     payload,
     siteId: siteNumeric,
     articleId: articleNumeric,

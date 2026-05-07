@@ -26,7 +26,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const payload = await getPayload({ config: configPromise })
-  const merged = await resolveMergedForPipelineRoute({
+  const { merged } = await resolveMergedForPipelineRoute({
     payload,
     siteId: body.siteId ?? null,
     tenantId: body.tenantId ?? null,

@@ -70,10 +70,11 @@ export async function POST(request: Request): Promise<Response> {
   const persist = Boolean(body.persist)
   const payload = await getPayload({ config: configPromise })
 
-  const merged =
+  const routeCfg =
     siteRelation != null && Number.isFinite(siteRelation)
       ? await resolveMergedForPipelineRoute({ payload, siteId: siteRelation })
       : await resolveMergedForPipelineRoute({ payload })
+  const { merged } = routeCfg
 
   if (!merged.dataForSeoEnabled) {
     return Response.json(

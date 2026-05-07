@@ -19,6 +19,15 @@ export const SeoMatrixJsonFields = {
 /** DataForSEO organic live 在代码中的解析入口（与 `dataForSeoPost` 路径成对使用）。 */
 export const DataForSeoMatrixEndpoints = {
   serpGoogleOrganicLive: '/v3/serp/google/organic/live/regular',
+  labsGoogleRankedKeywordsLive: '/v3/dataforseo_labs/google/ranked_keywords/live',
 } as const
+
+/** `rankings.rankingSource` — triage 仅使用 `serp_live`。 */
+export const RankingSource = {
+  serpLive: 'serp_live',
+  domainRankedKeywords: 'domain_ranked_keywords',
+} as const
+
+export type RankingSourceId = (typeof RankingSource)[keyof typeof RankingSource]
 
 export type SeoMatrixJsonFieldKey = keyof typeof SeoMatrixJsonFields

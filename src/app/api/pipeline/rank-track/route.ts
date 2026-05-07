@@ -7,7 +7,11 @@ import { extractDataForSeoCostUsd } from '@/services/integrations/dataforseo/ext
 import { parseOrganicPositionAndAiOverview } from '@/utilities/dataForSeoOrganicParse'
 import { resolveDfsLocationLanguageFromMerged } from '@/utilities/pipelineDfsLocale'
 import { resolveMergedForPipelineRoute } from '@/utilities/resolvePipelineConfig'
-import { DataForSeoMatrixEndpoints, SeoMatrixJsonFields } from '@/utilities/seoMatrixPipeline'
+import {
+  DataForSeoMatrixEndpoints,
+  RankingSource,
+  SeoMatrixJsonFields,
+} from '@/utilities/seoMatrixPipeline'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 
 export const dynamic = 'force-dynamic'
@@ -84,7 +88,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'keyword or keywordId required' }, { status: 400 })
   }
 
-  const merged = await resolveMergedForPipelineRoute({
+  const { merged } = await resolveMergedForPipelineRoute({
     payload,
     siteId: siteRel ?? null,
     tenantId: tenantRel ?? null,
@@ -115,7 +119,11 @@ export async function POST(request: Request): Promise<Response> {
       const prev = await payload.find({
         collection: 'rankings',
         where: {
-          and: [{ keyword: { equals: keywordRel } }, { site: { equals: siteRel } }],
+          and: [
+            { keyword: { equals: keywordRel } },
+            { site: { equals: siteRel } },
+            { rankingSource: { equals: RankingSource.serpLive } },
+          ],
         },
         sort: '-capturedAt',
         limit: 1,
@@ -132,6 +140,7 @@ export async function POST(request: Request): Promise<Response> {
       data: {
         searchQuery,
         capturedAt,
+        rankingSource: RankingSource.serpLive,
         ...(keywordRel != null ? { keyword: keywordRel } : {}),
         ...(siteRel != null ? { site: siteRel } : {}),
         ...(tenantRel != null && Number.isFinite(tenantRel) ? { tenant: tenantRel } : {}),

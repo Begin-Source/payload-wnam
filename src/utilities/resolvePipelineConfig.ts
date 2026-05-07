@@ -246,36 +246,41 @@ export type ResolveMergedForPipelineRouteArgs = {
 
 /**
  * Best-effort merged pipeline knobs for HTTP handlers: article → site → tenant → global only.
+ * Returns full `ResolvedPipelineConfig` so callers can pass `profileId` into scoped tenant prompts.
  */
 export async function resolveMergedForPipelineRoute(
   args: ResolveMergedForPipelineRouteArgs,
-): Promise<PipelineSettingShape> {
+): Promise<ResolvedPipelineConfig> {
   const { payload, explicitProfileId } = args
   const ex = explicitProfileId != null && Number.isFinite(explicitProfileId) ? explicitProfileId : undefined
 
   const articleId = args.articleId
   if (articleId != null && Number.isFinite(articleId)) {
     const cfg = await resolvePipelineConfigForArticle(payload, Math.floor(articleId), ex)
-    if (!('ok' in cfg)) return cfg.merged
+    if (!('ok' in cfg)) return cfg
   }
 
   const siteId = args.siteId
   if (siteId != null && Number.isFinite(siteId)) {
     const cfg = await resolvePipelineConfigForSite(payload, Math.floor(siteId), ex)
-    if (!('ok' in cfg)) return cfg.merged
+    if (!('ok' in cfg)) return cfg
   }
 
   const tenantId = args.tenantId
   if (tenantId != null && Number.isFinite(tenantId)) {
-    const cfg = await resolvePipelineConfig({
+    return resolvePipelineConfig({
       payload,
       tenantId: Math.floor(tenantId),
       siteId: siteId != null && Number.isFinite(siteId) ? Math.floor(siteId) : undefined,
       explicitProfileId: ex,
     })
-    return cfg.merged
   }
 
   const globalRaw = await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })
-  return normalizeGlobalPipelineDoc(globalRaw as Record<string, unknown>)
+  return {
+    merged: normalizeGlobalPipelineDoc(globalRaw as Record<string, unknown>),
+    profileId: null,
+    profileSlug: null,
+    source: 'global_only',
+  }
 }
