@@ -112,6 +112,11 @@ export async function GET(request: Request): Promise<Response> {
       maxPick: presetDoc.maxPick,
       clusterBeforeEnqueue: presetDoc.clusterBeforeEnqueue,
       clusterMinOverlap: presetDoc.clusterMinOverlap,
+      geoIntentWhitelist: presetDoc.geoIntentWhitelist,
+      geoQuestionOnly: presetDoc.geoQuestionOnly,
+      pillarKeywordId: presetDoc.pillarKeywordId,
+      minSeasonalScore: presetDoc.minSeasonalScore,
+      decayThreshold: presetDoc.decayThreshold,
     },
   })
 }

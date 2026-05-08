@@ -27,6 +27,7 @@ const LIST_BANNER_KINDS = [
   'trust-pages-bundle-sync',
   'keywords-dfs-fetch-sync',
   'keyword-quick-win-preview-sync',
+  'keyword-batch-mode-preview-sync',
   'batch-enqueue-sync',
   'workflow-jobs-pipeline-sync',
 ] as const
@@ -254,6 +255,13 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
   const [qwBriefEnqueueError, setQwBriefEnqueueError] = useState<{ id: string; text: string } | null>(
     null,
   )
+  const [batchModePreviewEnqueueBusyId, setBatchModePreviewEnqueueBusyId] = useState<string | null>(
+    null,
+  )
+  const [batchModePreviewEnqueueError, setBatchModePreviewEnqueueError] = useState<{
+    id: string
+    text: string
+  } | null>(null)
 
   const scoped = jobs.filter(inListBannerScope)
 
@@ -265,6 +273,9 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
   const runningKeywordsDfsFetch = running.filter((j) => j.kind === 'keywords-dfs-fetch-sync')
   const runningKeywordQuickWinPreview = running.filter(
     (j) => j.kind === 'keyword-quick-win-preview-sync',
+  )
+  const runningKeywordBatchModePreview = running.filter(
+    (j) => j.kind === 'keyword-batch-mode-preview-sync',
   )
   const runningBatchEnqueue = running.filter((j) => j.kind === 'batch-enqueue-sync')
   const runningWorkflowJobsPipeline = running.filter((j) => j.kind === 'workflow-jobs-pipeline-sync')
@@ -282,6 +293,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     | { tag: 'running-trust-bundle'; batches: BackgroundActivityJob[] }
     | { tag: 'running-keywords-dfs'; batches: BackgroundActivityJob[] }
     | { tag: 'running-keywords-quick-win-preview'; batches: BackgroundActivityJob[] }
+    | { tag: 'running-keyword-batch-mode-preview'; batches: BackgroundActivityJob[] }
     | { tag: 'running-batch-enqueue'; batches: BackgroundActivityJob[] }
     | { tag: 'running-workflow-jobs-pipeline'; batches: BackgroundActivityJob[] }
     | { tag: 'terminal'; job: BackgroundActivityJob }
@@ -300,6 +312,8 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     primary = { tag: 'running-keywords-dfs', batches: runningKeywordsDfsFetch }
   } else if (runningKeywordQuickWinPreview.length > 0) {
     primary = { tag: 'running-keywords-quick-win-preview', batches: runningKeywordQuickWinPreview }
+  } else if (runningKeywordBatchModePreview.length > 0) {
+    primary = { tag: 'running-keyword-batch-mode-preview', batches: runningKeywordBatchModePreview }
   } else if (runningBatchEnqueue.length > 0) {
     primary = { tag: 'running-batch-enqueue', batches: runningBatchEnqueue }
   } else if (runningWorkflowJobsPipeline.length > 0) {
@@ -648,6 +662,42 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
       n === 1
         ? `精选 Quick-win → Brief 预览候选进行中${siteHint} — SERP 聚类 + dryRun batch-enqueue；结果见顶栏摘要，关键词列表可刷新 pillar 写入`
         : `精选 Quick-win → Brief 预览候选进行中（${n} 批）— batch-enqueue dryRun`
+
+    return (
+      <div
+        aria-live="polite"
+        role="status"
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar('running'),
+        }}
+      >
+        <span style={{ flex: '1 1 12rem' }}>{line}</span>
+        <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+          {openKeywordsListBtn}
+          <button
+            aria-label="关闭横幅（后台任务继续进行）"
+            style={closeIconBtnStyle}
+            type="button"
+            onClick={() => dismissRunningBatches(primary.batches)}
+          >
+            ×
+          </button>
+        </span>
+      </div>
+    )
+  }
+
+  if (primary.tag === 'running-keyword-batch-mode-preview') {
+    const n = primary.batches.length
+    const siteHint =
+      n === 1 && primary.batches[0]?.siteLabel
+        ? `（站点：${primary.batches[0].siteLabel}）`
+        : ''
+    const line =
+      n === 1
+        ? `关键词排产 · 预览候选进行中${siteHint} — batch-enqueue dryRun；结果见顶栏摘要`
+        : `关键词排产 · 预览候选进行中（${n} 批）— batch-enqueue dryRun`
 
     return (
       <div
@@ -1596,6 +1646,219 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
                 }}
               >
                 {enqueueBusy ? '入队中…' : '并入队 Brief'}
+              </button>
+            ) : null}
+            {openKeywordsListBtn}
+            <button
+              aria-label="关闭横幅"
+              style={closeIconBtnStyle}
+              type="button"
+              onClick={() => dismissJob(job.id)}
+            >
+              ×
+            </button>
+          </span>
+          {enqueueErrThis ? (
+            <span
+              style={{
+                fontSize: '11px',
+                lineHeight: 1.35,
+                color: 'var(--theme-error-500)',
+                maxWidth: '18rem',
+                textAlign: 'right',
+                wordBreak: 'break-word',
+              }}
+            >
+              {enqueueErrThis}
+            </span>
+          ) : null}
+        </span>
+      </div>
+    )
+  }
+
+  if (job.kind === 'keyword-batch-mode-preview-sync') {
+    if (job.phase === 'failed') {
+      const msg = `${job.keywordBatchModePreviewSummary?.titleLabel ?? '关键词排产'}预览失败：${job.errorMessage ?? '未知错误'}`
+      return (
+        <div
+          aria-live="assertive"
+          role="alert"
+          style={{
+            ...baseBar,
+            ...badgeStyleForBar('error'),
+          }}
+        >
+          <span style={{ flex: '1 1 12rem' }}>{msg}</span>
+          <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
+            {openKeywordsListBtn}
+            <button
+              aria-label="关闭横幅"
+              style={closeIconBtnStyle}
+              type="button"
+              onClick={() => dismissJob(job.id)}
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )
+    }
+
+    if (job.phase !== 'succeeded' || !job.keywordBatchModePreviewSummary) {
+      return null
+    }
+
+    const s = job.keywordBatchModePreviewSummary
+    const siteBr = job.siteLabel?.trim() ? `（${job.siteLabel.trim()}）` : ''
+    const limPart = typeof s.limit === 'number' ? ` · 上限 ${s.limit}` : ''
+    const summaryLine = `${s.titleLabel}预览完成${siteBr}（dryRun）：候选 ${s.pickedTotal} 条${limPart} · 跳过 ${s.skipped}。`
+    const termsLine =
+      s.termsPreview.length > 0
+        ? `词：${s.termsPreview.join('、')}${s.pickedTotal > s.termsPreview.length ? ' …' : ''}`
+        : '无匹配候选。'
+    const noticeLines =
+      Array.isArray(s.notices) && s.notices.length > 0
+        ? s.notices.map((n) => clipText(`· ${n}`, COVER_DETAIL_LINE_MAX)).join('\n')
+        : ''
+    const detailBlock =
+      Array.isArray(s.detailLines) && s.detailLines.length > 0
+        ? s.detailLines.map((ln) => clipText(ln, COVER_DETAIL_LINE_MAX)).join('\n')
+        : ''
+    const titleAttr = clipText(
+      [summaryLine, termsLine, detailBlock, ...(s.notices ?? [])].filter(Boolean).join('\n'),
+      4000,
+    )
+
+    const replay = s.enqueueReplay
+    const replayOk =
+      replay != null &&
+      typeof replay === 'object' &&
+      typeof (replay as { siteId?: unknown }).siteId === 'number'
+    const enqueueAvailable = replayOk && s.pickedTotal > 0
+    const enqueueBusy = batchModePreviewEnqueueBusyId === job.id
+    const enqueueErrThis =
+      batchModePreviewEnqueueError?.id === job.id ? batchModePreviewEnqueueError.text : null
+    const enqueueLabel = s.mode === 'refresh_decay' ? '并入队刷新任务' : '并入队 Brief'
+
+    return (
+      <div
+        aria-live="polite"
+        role="status"
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar('done'),
+        }}
+        title={titleAttr}
+      >
+        <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+          <span style={{ display: 'block' }}>{summaryLine}</span>
+          <span
+            style={{
+              display: 'block',
+              marginTop: 6,
+              fontSize: '11px',
+              lineHeight: 1.45,
+              opacity: 0.95,
+              whiteSpace: 'pre-line',
+              wordBreak: 'break-word',
+            }}
+          >
+            {termsLine}
+          </span>
+          {detailBlock ? (
+            <span
+              style={{
+                display: 'block',
+                marginTop: 6,
+                fontSize: '11px',
+                lineHeight: 1.45,
+                opacity: 0.95,
+                whiteSpace: 'pre-line',
+                wordBreak: 'break-word',
+              }}
+            >
+              {detailBlock}
+            </span>
+          ) : null}
+          {noticeLines ? (
+            <span
+              style={{
+                display: 'block',
+                marginTop: 6,
+                fontSize: '11px',
+                lineHeight: 1.45,
+                opacity: 0.95,
+                whiteSpace: 'pre-line',
+                wordBreak: 'break-word',
+              }}
+            >
+              {noticeLines}
+            </span>
+          ) : null}
+        </div>
+        <span
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            gap: '6px',
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
+            {enqueueAvailable ? (
+              <button
+                aria-busy={enqueueBusy}
+                disabled={enqueueBusy}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 4,
+                  border: '1px solid var(--theme-elevation-150)',
+                  background: 'var(--theme-elevation-0)',
+                  cursor: enqueueBusy ? 'wait' : 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  opacity: enqueueBusy ? 0.75 : 1,
+                }}
+                type="button"
+                onClick={() => {
+                  if (!replayOk || !enqueueAvailable) return
+                  setBatchModePreviewEnqueueBusyId(job.id)
+                  setBatchModePreviewEnqueueError((prev) => (prev?.id === job.id ? null : prev))
+                  void (async () => {
+                    try {
+                      const res = await fetch('/api/admin/articles/batch-enqueue', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...replay }),
+                      })
+                      const data = (await res.json().catch(() => ({}))) as {
+                        ok?: boolean
+                        error?: string}
+                      if (!res.ok || data.ok !== true) {
+                        setBatchModePreviewEnqueueError({
+                          id: job.id,
+                          text:
+                            typeof data.error === 'string'
+                              ? data.error
+                              : `并入队失败（HTTP ${res.status}）`,
+                        })
+                        setBatchModePreviewEnqueueBusyId(null)
+                        return
+                      }
+                      setBatchModePreviewEnqueueBusyId(null)
+                      dismissJob(job.id)
+                      router.refresh()
+                    } catch {
+                      setBatchModePreviewEnqueueError({ id: job.id, text: '并入队请求失败' })
+                      setBatchModePreviewEnqueueBusyId(null)
+                    }
+                  })()
+                }}
+              >
+                {enqueueBusy ? '入队中…' : enqueueLabel}
               </button>
             ) : null}
             {openKeywordsListBtn}

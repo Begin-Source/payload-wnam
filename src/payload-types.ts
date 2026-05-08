@@ -663,7 +663,7 @@ export interface PipelineProfile {
   createdAt: string;
 }
 /**
- * 按租户配置「默认 / Quick-win」批量入队的默认值；站点可选关联一条，关键词列表排产弹窗将预填（可覆盖）。
+ * 按租户配置各批量入队模式的默认值；站点可选关联一条，关键词列表排产弹窗将预填（可覆盖）。
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "keyword-batch-presets".
@@ -681,9 +681,9 @@ export interface KeywordBatchPreset {
    */
   description?: string | null;
   /**
-   * 用于关键词列表预填：default 对应「默认排产 · Brief」；quick_wins 对应「精选 Quick-win」表单项。
+   * 用于关键词列表预填：与各排产抽屉对应；default / quick_wins 与原名一致。
    */
-  batchMode: 'default' | 'quick_wins';
+  batchMode: 'default' | 'quick_wins' | 'geo_friendly' | 'pillar_sprint' | 'seasonal' | 'refresh_decay';
   /**
    * 可选。留空表示弹窗不预填上限，仍由服务端 defaultLimit / Quick-win 推导。1–100。
    */
@@ -699,6 +699,14 @@ export interface KeywordBatchPreset {
   maxPick?: number | null;
   clusterBeforeEnqueue?: boolean | null;
   clusterMinOverlap?: number | null;
+  geoIntentWhitelist?: string | null;
+  geoQuestionOnly?: boolean | null;
+  /**
+   * 本站关键词文档 ID；抽屉可覆盖。
+   */
+  pillarKeywordId?: number | null;
+  minSeasonalScore?: number | null;
+  decayThreshold?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -4235,6 +4243,11 @@ export interface KeywordBatchPresetsSelect<T extends boolean = true> {
   maxPick?: T;
   clusterBeforeEnqueue?: T;
   clusterMinOverlap?: T;
+  geoIntentWhitelist?: T;
+  geoQuestionOnly?: T;
+  pillarKeywordId?: T;
+  minSeasonalScore?: T;
+  decayThreshold?: T;
   updatedAt?: T;
   createdAt?: T;
 }

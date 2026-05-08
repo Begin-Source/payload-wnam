@@ -66,7 +66,7 @@ export const KeywordBatchPresets: CollectionConfig = {
     useAsTitle: 'name',
     defaultColumns: ['name', 'slug', 'tenant', 'batchMode', 'updatedAt'],
     description:
-      '按租户配置「默认 / Quick-win」批量入队的默认值；站点可选关联一条，关键词列表排产弹窗将预填（可覆盖）。',
+      '按租户配置各批量入队模式的默认值；站点可选关联一条，关键词列表排产弹窗将预填（可覆盖）。',
   },
   access: loggedInSuperAdminAccessFor('keyword-batch-presets'),
   hooks: {
@@ -104,10 +104,14 @@ export const KeywordBatchPresets: CollectionConfig = {
       options: [
         { label: '默认（active→机会分）', value: 'default' },
         { label: 'Quick-win（过滤 + 可选聚类）', value: 'quick_wins' },
+        { label: 'GEO / AI 引用向', value: 'geo_friendly' },
+        { label: 'Pillar 冲刺（pillar + 簇内词）', value: 'pillar_sprint' },
+        { label: '季节 / trend 峰值向', value: 'seasonal' },
+        { label: '衰减刷新（rank → content_refresh）', value: 'refresh_decay' },
       ],
       admin: {
         description:
-          '用于关键词列表预填：default 对应「默认排产 · Brief」；quick_wins 对应「精选 Quick-win」表单项。',
+          '用于关键词列表预填：与各排产抽屉对应；default / quick_wins 与原名一致。',
       },
     },
     {
@@ -201,6 +205,95 @@ export const KeywordBatchPresets: CollectionConfig = {
           defaultValue: 3,
           min: 2,
           max: 6,
+        },
+      ],
+    },
+    {
+      type: 'collapsible',
+      label: 'GEO 向（预填）',
+      admin: {
+        initCollapsed: true,
+        condition: (_, sibling) =>
+          sibling &&
+          typeof sibling === 'object' &&
+          (sibling as { batchMode?: string }).batchMode === 'geo_friendly',
+      },
+      fields: [
+        {
+          name: 'geoIntentWhitelist',
+          type: 'text',
+          label: '意图（逗号分隔）',
+          defaultValue: 'informational, commercial',
+        },
+        {
+          name: 'geoQuestionOnly',
+          type: 'checkbox',
+          label: '仅问句 / 定义型（term 含 ? 或疑问词）',
+          defaultValue: false,
+        },
+      ],
+    },
+    {
+      type: 'collapsible',
+      label: 'Pillar 冲刺（预填 pillarId）',
+      admin: {
+        initCollapsed: true,
+        condition: (_, sibling) =>
+          sibling &&
+          typeof sibling === 'object' &&
+          (sibling as { batchMode?: string }).batchMode === 'pillar_sprint',
+      },
+      fields: [
+        {
+          name: 'pillarKeywordId',
+          type: 'number',
+          label: 'Pillar 关键词 ID',
+          admin: {
+            description: '本站关键词文档 ID；抽屉可覆盖。',
+          },
+          min: 1,
+        },
+      ],
+    },
+    {
+      type: 'collapsible',
+      label: '季节向（预填阈值）',
+      admin: {
+        initCollapsed: true,
+        condition: (_, sibling) =>
+          sibling &&
+          typeof sibling === 'object' &&
+          (sibling as { batchMode?: string }).batchMode === 'seasonal',
+      },
+      fields: [
+        {
+          name: 'minSeasonalScore',
+          type: 'number',
+          label: '最低季节分（0.35–0.95）',
+          defaultValue: 0.7,
+          min: 0.35,
+          max: 0.95,
+        },
+      ],
+    },
+    {
+      type: 'collapsible',
+      label: '衰减刷新（预填阈值）',
+      admin: {
+        initCollapsed: true,
+        condition: (_, sibling) =>
+          sibling &&
+          typeof sibling === 'object' &&
+          (sibling as { batchMode?: string }).batchMode === 'refresh_decay',
+      },
+      fields: [
+        {
+          name: 'decayThreshold',
+          type: 'number',
+          label: '衰减分阈值（0.1–0.95）',
+          defaultValue: 0.5,
+          min: 0.1,
+          max: 0.95,
         },
       ],
     },

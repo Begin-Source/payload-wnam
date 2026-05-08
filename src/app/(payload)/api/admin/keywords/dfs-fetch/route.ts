@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import { fetchKeywordSuggestionsLive, mergeUniqueSeeds } from '@/services/integrations/dataforseo/keywords'
 import type { Config } from '@/payload-types'
 import { isUsersCollection } from '@/utilities/announcementAccess'
+import { classifyGeoFriendly } from '@/utilities/classifyGeoFriendly'
 import {
   evaluateKeywordEligibility,
   loadAmzEligibilityThresholdsFromMerged,
@@ -307,6 +308,7 @@ export async function POST(request: Request): Promise<Response> {
       ...(row.cpc != null ? { cpc: row.cpc } : {}),
       ...(row.trend != null ? { trend: row.trend } : {}),
       intent: row.intent,
+      geoFriendly: classifyGeoFriendly(row.term, row.intent),
       opportunityScore: row.opportunityScore,
       eligible: row.eligible,
       eligibilityReason: row.eligibilityReason,

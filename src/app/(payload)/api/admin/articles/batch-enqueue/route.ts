@@ -1,27 +1,20 @@
 import configPromise from '@payload-config'
-import type { Where } from 'payload'
 import { getPayload } from 'payload'
 
-import { defaultBatchLimitFromDailyCap, sortKeywordDocsByOpportunity } from '@/utilities/briefBatchDefaults'
+import { defaultBatchLimitFromDailyCap } from '@/utilities/briefBatchDefaults'
 import {
-  buildQuickWinWhere,
-  mergeQuickWinFilter,
-  quickWinDefaultLimit,
-  type QuickWinFilter,
-} from '@/utilities/quickWinFilter'
+  loadKeywordBatchCandidates,
+  parseKeywordBatchMode,
+  type KeywordBatchMode,
+  type KeywordBatchRow,
+} from '@/utilities/keywordBatchModes'
+import { mergeQuickWinFilter, quickWinDefaultLimit, type QuickWinFilter } from '@/utilities/quickWinFilter'
 import type { KeywordClusterOutputCluster } from '@/utilities/keywordClusterPipeline'
 import { runKeywordClusterForSite } from '@/utilities/keywordClusterPipeline'
 import { assertUsersCollection } from '@/utilities/workflowQuickCreate'
 import { getTenantScopeForStats, type TenantScope } from '@/utilities/tenantScope'
 
 export const dynamic = 'force-dynamic'
-
-type KeywordRow = {
-  id: number
-  term: string
-  opportunityScore?: number | null
-  status: string
-}
 
 function tenantIdFromRelation(
   tenant: number | { id: number } | null | undefined,
@@ -53,49 +46,6 @@ async function fetchDailyPostCap(
   return row?.dailyPostCap ?? null
 }
 
-/**
- * Picks `active` keywords for a site; if none, falls back to `draft`.
- */
-async function loadKeywordCandidates(
-  payload: Awaited<ReturnType<typeof getPayload>>,
-  siteId: number,
-): Promise<{ keywords: KeywordRow[]; usedFallback: boolean }> {
-  const baseWhere = (status: string): Where => ({
-    and: [{ site: { equals: siteId } }, { status: { equals: status } }],
-  })
-  for (const st of ['active', 'draft'] as const) {
-    const res = await payload.find({
-      collection: 'keywords',
-      where: baseWhere(st),
-      limit: 500,
-      depth: 0,
-    })
-    const raw = res.docs as unknown as KeywordRow[]
-    if (raw.length > 0) {
-      return {
-        keywords: sortKeywordDocsByOpportunity(raw),
-        usedFallback: st === 'draft',
-      }
-    }
-  }
-  return { keywords: [], usedFallback: false }
-}
-
-async function loadQuickWinCandidates(
-  payload: Awaited<ReturnType<typeof getPayload>>,
-  siteId: number,
-  filter: QuickWinFilter,
-): Promise<KeywordRow[]> {
-  const res = await payload.find({
-    collection: 'keywords',
-    where: buildQuickWinWhere(siteId, filter),
-    limit: 500,
-    depth: 0,
-  })
-  const raw = res.docs as unknown as KeywordRow[]
-  return sortKeywordDocsByOpportunity(raw)
-}
-
 async function hasPendingBriefJobForKeyword(
   payload: Awaited<ReturnType<typeof getPayload>>,
   keywordId: number,
@@ -113,9 +63,26 @@ async function hasPendingBriefJobForKeyword(
   return c.totalDocs > 0
 }
 
+async function hasPendingRefreshJobForArticle(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  articleId: number,
+): Promise<boolean> {
+  const c = await payload.count({
+    collection: 'workflow-jobs',
+    where: {
+      and: [
+        { jobType: { equals: 'content_refresh' } },
+        { status: { in: ['pending', 'running'] } },
+        { article: { equals: articleId } },
+      ],
+    },
+  })
+  return c.totalDocs > 0
+}
+
 export type BatchEnqueueResult = {
   ok: true
-  mode: 'default' | 'quick_wins'
+  mode: KeywordBatchMode
   dryRun?: boolean
   enqueued: number
   skipped: number
@@ -125,17 +92,26 @@ export type BatchEnqueueResult = {
   errorsSample: string[]
   pickedTerms?: string[]
   pickedIds?: number[]
-  appliedFilter?: QuickWinFilter
+  pickedArticleIds?: number[]
+  appliedFilter?: QuickWinFilter | Record<string, unknown>
   clusters?: KeywordClusterOutputCluster[]
   totalDfsCalls?: number
   clusterBeforeEnqueue?: boolean
   clusterMinOverlap?: number
+  jobType?: 'brief_generate' | 'content_refresh'
+  pickedRefreshMeta?: Array<{
+    keywordId: number
+    articleId: number
+    decayScore: number
+    decayReason: string
+  }>
+  pickedSeasonalMeta?: Array<{ term: string; seasonalScore: number }>
 }
 
 /**
- * POST { siteId, limit?, mode?, dryRun?, filter?, clusterBeforeEnqueue?, clusterMinOverlap?, refreshCluster? }
- * Tenant-scoped; enqueues `brief_generate` for top keywords (default) or quick-win-filtered keywords.
- * Quick-win + `clusterBeforeEnqueue` (default): SERP overlap clustering, writes `keywords.pillar`, enqueues pillars only.
+ * POST { siteId, limit?, mode?, dryRun?, filter?, clusterBeforeEnqueue?, clusterMinOverlap?, refreshCluster?,
+ *        pillarId?, minSeasonalScore?, decayThreshold?, geoIntentWhitelist?, geoQuestionOnly? }
+ * Tenant-scoped; enqueues `brief_generate` or `content_refresh` per mode.
  */
 export async function POST(request: Request): Promise<Response> {
   const payload = await getPayload({ config: configPromise })
@@ -159,8 +135,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'siteId is required' }, { status: 400 })
   }
 
-  const modeRaw = typeof body.mode === 'string' ? body.mode.trim() : 'default'
-  const mode = modeRaw === 'quick_wins' ? ('quick_wins' as const) : ('default' as const)
+  const mode = parseKeywordBatchMode(typeof body.mode === 'string' ? body.mode : 'default')
   const dryRun = body.dryRun === true
   const filterMerged = mergeQuickWinFilter(body.filter as Partial<Record<string, unknown>> | undefined)
 
@@ -179,37 +154,50 @@ export async function POST(request: Request): Promise<Response> {
   const dpc = await fetchDailyPostCap(payload, siteId)
   const defaultLimit = defaultBatchLimitFromDailyCap(dpc)
 
-  let keywords: KeywordRow[]
-  let usedFallback = false
-  let appliedFilter: QuickWinFilter | undefined
+  const loaded = await loadKeywordBatchCandidates(
+    payload,
+    siteId,
+    mode,
+    body,
+    defaultLimit,
+  )
 
-  if (mode === 'quick_wins') {
-    appliedFilter = filterMerged
-    keywords = await loadQuickWinCandidates(payload, siteId, filterMerged)
-    if (keywords.length === 0) {
-      const r: BatchEnqueueResult = {
-        ok: true,
-        mode,
-        ...(dryRun ? { dryRun: true } : {}),
-        enqueued: 0,
-        skipped: 0,
-        usedKeywordFallback: false,
-        defaultLimit,
-        limit: Math.min(Math.max(1, quickWinDefaultLimit(filterMerged, defaultLimit)), 100),
-        errorsSample: ['该站点没有符合 Quick-win 条件的关键词（eligible / KD / volume / intent）。'],
-        pickedTerms: [],
-        pickedIds: [],
-        appliedFilter,
-      }
-      return Response.json(r)
+  let keywords: KeywordBatchRow[] = loaded.rows
+  let usedFallback = loaded.usedKeywordFallback
+  const appliedFilter = loaded.appliedFilter
+  const jobType = loaded.jobType
+
+  if (mode === 'quick_wins' && keywords.length === 0) {
+    const r: BatchEnqueueResult = {
+      ok: true,
+      mode,
+      ...(dryRun ? { dryRun: true } : {}),
+      jobType: 'brief_generate',
+      enqueued: 0,
+      skipped: 0,
+      usedKeywordFallback: false,
+      defaultLimit,
+      limit: Math.min(Math.max(1, quickWinDefaultLimit(filterMerged, defaultLimit)), 100),
+      errorsSample: ['该站点没有符合 Quick-win 条件的关键词（eligible / KD / volume / intent）。'],
+      pickedTerms: [],
+      pickedIds: [],
+      appliedFilter: filterMerged as QuickWinFilter,
     }
-  } else {
-    const loaded = await loadKeywordCandidates(payload, siteId)
-    keywords = loaded.keywords
-    usedFallback = loaded.usedFallback
+    return Response.json(r)
   }
 
-  const limitQuickDefault = quickWinDefaultLimit(filterMerged, defaultLimit)
+  if (mode === 'pillar_sprint' && appliedFilter && 'error' in appliedFilter && appliedFilter.error) {
+    return Response.json(
+      {
+        ok: false,
+        error: String(appliedFilter.error),
+      },
+      { status: 400 },
+    )
+  }
+
+  const limitQuickDefault =
+    loaded.limitQuickDefault ?? quickWinDefaultLimit(filterMerged, defaultLimit)
   const limitRaw =
     typeof body.limit === 'number'
       ? body.limit
@@ -243,16 +231,26 @@ export async function POST(request: Request): Promise<Response> {
   let totalDfsCalls: number | undefined
 
   if (keywords.length === 0) {
+    const msg =
+      mode === 'geo_friendly'
+        ? '没有 geoFriendly=true 且符合意图筛选的关键词（可先运行「回填 geo」或 DFS 同步）。'
+        : mode === 'seasonal'
+          ? '没有带 trend 或季节分未达阈值的关键词。'
+          : mode === 'refresh_decay'
+            ? '没有达衰减阈值的文章/关键词（可先跑 rank_track 积累位次快照）。'
+            : '该站点下没有 active 或 draft 状态的关键词。'
+
     const r: BatchEnqueueResult = {
       ok: true,
       mode,
       ...(dryRun ? { dryRun: true } : {}),
+      jobType,
       enqueued: 0,
       skipped: 0,
       usedKeywordFallback: false,
       defaultLimit,
       limit,
-      errorsSample: ['该站点下没有 active 或 draft 状态的关键词。'],
+      errorsSample: [msg],
       pickedTerms: [],
       pickedIds: [],
       ...(appliedFilter != null ? { appliedFilter } : {}),
@@ -288,6 +286,14 @@ export async function POST(request: Request): Promise<Response> {
   let skipped = 0
   const pickedTerms: string[] = []
   const pickedIds: number[] = []
+  const pickedArticleIds: number[] = []
+  const pickedRefreshMeta: Array<{
+    keywordId: number
+    articleId: number
+    decayScore: number
+    decayReason: string
+  }> = []
+  const pickedSeasonalMeta: Array<{ term: string; seasonalScore: number }> = []
   const siteIdNum = siteId
 
   for (const row of keywords) {
@@ -310,37 +316,92 @@ export async function POST(request: Request): Promise<Response> {
       continue
     }
 
-    if (await hasPendingBriefJobForKeyword(payload, row.id)) {
-      skipped += 1
-      if (errorsSample.length < 5) {
-        errorsSample.push(`keyword ${row.id} (${row.term}): 已有进行中的 brief_generate`)
+    if (jobType === 'brief_generate') {
+      if (await hasPendingBriefJobForKeyword(payload, row.id)) {
+        skipped += 1
+        if (errorsSample.length < 5) {
+          errorsSample.push(`keyword ${row.id} (${row.term}): 已有进行中的 brief_generate`)
+        }
+        continue
       }
-      continue
+    } else if (jobType === 'content_refresh') {
+      const aid = row.articleId
+      if (aid == null || !Number.isFinite(aid)) {
+        skipped += 1
+        if (errorsSample.length < 5) {
+          errorsSample.push(`keyword ${row.id}: 缺少 articleId，跳过`)
+        }
+        continue
+      }
+      if (await hasPendingRefreshJobForArticle(payload, aid)) {
+        skipped += 1
+        if (errorsSample.length < 5) {
+          errorsSample.push(`article ${aid}: 已有进行中的 content_refresh`)
+        }
+        continue
+      }
     }
 
     pickedTerms.push(row.term)
     pickedIds.push(row.id)
+    if (row.articleId != null) pickedArticleIds.push(row.articleId)
+    if (
+      mode === 'refresh_decay' &&
+      row.articleId != null &&
+      row.decayScore != null &&
+      row.decayReason != null
+    ) {
+      pickedRefreshMeta.push({
+        keywordId: row.id,
+        articleId: row.articleId,
+        decayScore: row.decayScore,
+        decayReason: row.decayReason,
+      })
+    }
+    if (mode === 'seasonal' && row.seasonalScore != null) {
+      pickedSeasonalMeta.push({ term: row.term, seasonalScore: row.seasonalScore })
+    }
 
     if (dryRun) {
       enqueued += 1
       continue
     }
 
-    const label = `Brief queue: ${row.term}`.slice(0, 120)
+    const labelBase =
+      jobType === 'content_refresh'
+        ? `Refresh: ${row.term}`.slice(0, 120)
+        : `Brief queue: ${row.term}`.slice(0, 120)
+
+    const inputPayload: Record<string, unknown> =
+      jobType === 'content_refresh'
+        ? {
+            keywordId: row.id,
+            articleId: row.articleId,
+            batch: true,
+            siteId: siteIdNum,
+            decayReason: row.decayReason ?? '',
+            decayScore: row.decayScore,
+          }
+        : {
+            keywordId: row.id,
+            batch: true,
+            siteId: siteIdNum,
+            ...(loaded.briefQuickWins ? { quickWins: true } : {}),
+            ...(row.seasonalScore != null ? { seasonalScore: row.seasonalScore } : {}),
+          }
+
     await payload.create({
       collection: 'workflow-jobs',
       data: {
-        label,
-        jobType: 'brief_generate',
+        label: labelBase,
+        jobType,
         status: 'pending',
         site: siteIdNum,
         pipelineKeyword: row.id,
-        input: {
-          keywordId: row.id,
-          batch: true,
-          siteId: siteIdNum,
-          ...(mode === 'quick_wins' ? { quickWins: true } : {}),
-        },
+        ...(jobType === 'content_refresh' && row.articleId != null
+          ? { article: row.articleId }
+          : {}),
+        input: inputPayload,
         ...(siteTenantId != null ? { tenant: siteTenantId } : {}),
       },
     })
@@ -351,6 +412,7 @@ export async function POST(request: Request): Promise<Response> {
     ok: true,
     mode,
     ...(dryRun ? { dryRun: true } : {}),
+    jobType,
     enqueued,
     skipped,
     usedKeywordFallback: mode === 'default' ? usedFallback : false,
@@ -359,6 +421,9 @@ export async function POST(request: Request): Promise<Response> {
     errorsSample,
     pickedTerms,
     pickedIds,
+    ...(pickedArticleIds.length > 0 ? { pickedArticleIds } : {}),
+    ...(pickedRefreshMeta.length > 0 ? { pickedRefreshMeta } : {}),
+    ...(pickedSeasonalMeta.length > 0 ? { pickedSeasonalMeta } : {}),
     ...(appliedFilter != null ? { appliedFilter } : {}),
     ...(clustersOut != null ? { clusters: clustersOut } : {}),
     ...(totalDfsCalls != null ? { totalDfsCalls } : {}),

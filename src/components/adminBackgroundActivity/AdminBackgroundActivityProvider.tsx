@@ -126,6 +126,10 @@ export function AdminBackgroundActivityProvider({
     (j) => j.phase === 'running' && j.kind === 'keyword-quick-win-preview-sync',
   )
 
+  const hasRunningKeywordBatchModePreviewWork = jobs.some(
+    (j) => j.phase === 'running' && j.kind === 'keyword-batch-mode-preview-sync',
+  )
+
   const hasRunningWorkflowJobsPipelineWork = jobs.some(
     (j) => j.phase === 'running' && j.kind === 'workflow-jobs-pipeline-sync',
   )
@@ -139,6 +143,7 @@ export function AdminBackgroundActivityProvider({
     hasRunningTrustPagesBundleWork ||
     hasRunningKeywordsDfsFetchWork ||
     hasRunningKeywordQuickWinPreviewWork ||
+    hasRunningKeywordBatchModePreviewWork ||
     hasRunningBatchEnqueueWork ||
     hasRunningWorkflowJobsPipelineWork
 
@@ -155,7 +160,11 @@ export function AdminBackgroundActivityProvider({
     let capMs = POLL_CAP_MS
     if (hasRunningMerchantCategoriesWork) capMs = Math.max(capMs, POLL_CAP_MS_MERCHANT)
     if (hasRunningTrustPagesBundleWork) capMs = Math.max(capMs, POLL_CAP_MS_TRUST_PAGES_BUNDLE)
-    if (hasRunningKeywordsDfsFetchWork || hasRunningKeywordQuickWinPreviewWork) {
+    if (
+      hasRunningKeywordsDfsFetchWork ||
+      hasRunningKeywordQuickWinPreviewWork ||
+      hasRunningKeywordBatchModePreviewWork
+    ) {
       capMs = Math.max(capMs, POLL_CAP_MS_KEYWORDS_LONG)
     }
     if (hasRunningWorkflowJobsPipelineWork) {
@@ -178,6 +187,7 @@ export function AdminBackgroundActivityProvider({
     hasRunningTrustPagesBundleWork,
     hasRunningKeywordsDfsFetchWork,
     hasRunningKeywordQuickWinPreviewWork,
+    hasRunningKeywordBatchModePreviewWork,
     hasRunningBatchEnqueueWork,
     hasRunningWorkflowJobsPipelineWork,
     refreshIfCategoriesList,
@@ -572,6 +582,65 @@ export function AdminBackgroundActivityProvider({
     [refreshIfKeywordsList],
   )
 
+  const startKeywordBatchModePreviewJob = useCallback(
+    ({ siteLabel }: { siteLabel?: string } = {}): string => {
+      const id = newId()
+      const job: BackgroundActivityJob = {
+        id,
+        kind: 'keyword-batch-mode-preview-sync',
+        phase: 'running',
+        ...(siteLabel?.trim() ? { siteLabel: siteLabel.trim() } : {}),
+        startedAt: Date.now(),
+      }
+      setJobs((prev) => [...prev, job])
+      refreshIfKeywordsList()
+      return id
+    },
+    [refreshIfKeywordsList],
+  )
+
+  const completeKeywordBatchModePreviewJob = useCallback(
+    ({
+      jobId,
+      summary,
+    }: {
+      jobId: string
+      summary: NonNullable<BackgroundActivityJob['keywordBatchModePreviewSummary']>
+    }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'keyword-batch-mode-preview-sync'
+            ? {
+                ...j,
+                phase: 'succeeded',
+                keywordBatchModePreviewSummary: summary,
+              }
+            : j,
+        ),
+      )
+      refreshIfKeywordsList()
+    },
+    [refreshIfKeywordsList],
+  )
+
+  const failKeywordBatchModePreviewJob = useCallback(
+    ({ jobId, message }: { jobId: string; message: string }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'keyword-batch-mode-preview-sync'
+            ? {
+                ...j,
+                phase: 'failed',
+                errorMessage: message,
+              }
+            : j,
+        ),
+      )
+      refreshIfKeywordsList()
+    },
+    [refreshIfKeywordsList],
+  )
+
   const startBatchEnqueueJob = useCallback(
     ({ siteLabel }: { siteLabel?: string } = {}): string => {
       const id = newId()
@@ -737,6 +806,9 @@ export function AdminBackgroundActivityProvider({
       startKeywordQuickWinPreviewJob,
       completeKeywordQuickWinPreviewJob,
       failKeywordQuickWinPreviewJob,
+      startKeywordBatchModePreviewJob,
+      completeKeywordBatchModePreviewJob,
+      failKeywordBatchModePreviewJob,
       startBatchEnqueueJob,
       completeBatchEnqueueJob,
       failBatchEnqueueJob,
@@ -766,6 +838,9 @@ export function AdminBackgroundActivityProvider({
       startKeywordQuickWinPreviewJob,
       completeKeywordQuickWinPreviewJob,
       failKeywordQuickWinPreviewJob,
+      startKeywordBatchModePreviewJob,
+      completeKeywordBatchModePreviewJob,
+      failKeywordBatchModePreviewJob,
       startBatchEnqueueJob,
       completeBatchEnqueueJob,
       failBatchEnqueueJob,

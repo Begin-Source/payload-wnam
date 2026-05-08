@@ -7,7 +7,11 @@ import { OfferReviewMdxQuickActionModal } from '@/components/OfferReviewMdxQuick
 import { ArticlePipelineCatchupDrawer } from '@/components/ArticlePipelineCatchupDrawer'
 import { MediaAiImageDrawer } from '@/components/MediaAiImageDrawer'
 import { KeywordDefaultBatchDrawer } from '@/components/KeywordDefaultBatchDrawer'
+import { KeywordGeoDrawer } from '@/components/KeywordGeoDrawer'
+import { KeywordPillarSprintDrawer } from '@/components/KeywordPillarSprintDrawer'
 import { KeywordQuickWinDrawer } from '@/components/KeywordQuickWinDrawer'
+import { KeywordRefreshDecayDrawer } from '@/components/KeywordRefreshDecayDrawer'
+import { KeywordSeasonalDrawer } from '@/components/KeywordSeasonalDrawer'
 import { KeywordSyncFetchDrawer } from '@/components/KeywordSyncFetchDrawer'
 import { SiteQuickActionsDrawer } from '@/components/SiteQuickActionsDrawer'
 import { TrustPagesBundleQuickActionModal } from '@/components/TrustPagesBundleQuickActionModal'
@@ -1244,6 +1248,10 @@ export function KeywordListQuickAction(): React.ReactElement {
     <>
       <KeywordQuickWinDrawer />
       <KeywordDefaultBatchDrawer />
+      <KeywordGeoDrawer />
+      <KeywordPillarSprintDrawer />
+      <KeywordSeasonalDrawer />
+      <KeywordRefreshDecayDrawer />
     </>
   )
 }

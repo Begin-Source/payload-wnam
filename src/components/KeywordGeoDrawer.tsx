@@ -1,7 +1,6 @@
 'use client'
 
 import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
-
 import type { BatchEnqueueOkJson } from '@/utilities/keywordBatchEnqueuePreview'
 import { Button } from '@payloadcms/ui'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
@@ -11,7 +10,6 @@ type SiteOption = {
   name: string
   slug: string
   primaryDomain: string
-  mainProduct?: string | null
 }
 
 const backdropStyle: React.CSSProperties = {
@@ -54,18 +52,18 @@ const inputStyle: React.CSSProperties = {
   fontSize: '0.875rem',
 }
 
-function formatSiteLine(s: SiteOption): string {
-  return `${s.name} (${s.slug}) ${s.primaryDomain}`
+const warnStyle: React.CSSProperties = {
+  marginBottom: '1rem',
+  padding: '0.65rem 0.75rem',
+  borderRadius: 6,
+  border: '1px solid var(--theme-elevation-150)',
+  background: 'var(--theme-elevation-50)',
+  fontSize: '0.8125rem',
+  lineHeight: 1.5,
 }
 
-type DryRunPreview = {
-  defaultLimit: number
-  effectiveLimit: number
-  usedKeywordFallback: boolean
-  wouldEnqueue: number
-  wouldSkip: number
-  pickedTerms: string[]
-  errorsSample: string[]
+function formatSiteLine(s: SiteOption): string {
+  return `${s.name} (${s.slug}) ${s.primaryDomain}`
 }
 
 function parseLimitOverride(batchLimitInput: string): number | undefined {
@@ -76,8 +74,8 @@ function parseLimitOverride(batchLimitInput: string): number | undefined {
   return Math.min(100, Math.floor(n))
 }
 
-/** Keywords list: default opportunity-sorted keywords → `brief_generate` batch (same API as Articles batch). */
-export function KeywordDefaultBatchDrawer(): React.ReactElement {
+/** GEO / AI 引用向 → brief_generate */
+export function KeywordGeoDrawer(): React.ReactElement {
   const {
     startBatchEnqueueJob,
     completeBatchEnqueueJob,
@@ -96,12 +94,18 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
   const [siteMenuOpen, setSiteMenuOpen] = useState(false)
   const siteComboboxRef = useRef<HTMLDivElement>(null)
 
+  const [intentText, setIntentText] = useState('informational, commercial')
+  const [geoQuestionOnly, setGeoQuestionOnly] = useState(false)
   const [batchLimitInput, setBatchLimitInput] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [backfillBusy, setBackfillBusy] = useState(false)
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null)
 
-  const [dryRunPreview, setDryRunPreview] = useState<DryRunPreview | null>(null)
+  const [dryRunPreview, setDryRunPreview] = useState<{
+    pickedTerms: string[]
+    wouldEnqueue: number
+  } | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
-  const [previewError, setPreviewError] = useState<string | null>(null)
 
   const loadSites = useCallback(async (q: string) => {
     setSitesLoading(true)
@@ -112,10 +116,7 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
       const res = await fetch(`/api/admin/article-quick-action/options?${params}`, {
         credentials: 'include',
       })
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { error?: unknown }
-        throw new Error(typeof err.error === 'string' ? err.error : '加载站点失败')
-      }
+      if (!res.ok) throw new Error('加载站点失败')
       const data = (await res.json()) as { sites: SiteOption[] }
       setSites(data.sites ?? [])
     } catch (e) {
@@ -128,39 +129,20 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
 
   useEffect(() => {
     if (!open || !siteMenuOpen) return
-    const t = window.setTimeout(() => {
-      void loadSites(siteQuery)
-    }, 300)
+    const t = window.setTimeout(() => void loadSites(siteQuery), 300)
     return () => window.clearTimeout(t)
   }, [open, siteMenuOpen, siteQuery, loadSites])
 
   useEffect(() => {
     if (!siteMenuOpen) return
-    const onDocMouseDown = (e: MouseEvent): void => {
+    const onDoc = (e: MouseEvent): void => {
       const root = siteComboboxRef.current
-      if (root && !root.contains(e.target as Node)) {
-        setSiteMenuOpen(false)
-      }
+      if (root && !root.contains(e.target as Node)) setSiteMenuOpen(false)
     }
-    document.addEventListener('mousedown', onDocMouseDown)
-    return () => document.removeEventListener('mousedown', onDocMouseDown)
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
   }, [siteMenuOpen])
 
-  useEffect(() => {
-    if (!siteMenuOpen) return
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        setSiteMenuOpen(false)
-      }
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [siteMenuOpen])
-
-  const previewRequestSeqRef = useRef(0)
-
-  /** After site pick, prefill batch limit from site's keyword batch preset when set. */
   useEffect(() => {
     if (!open || selectedSiteId == null) return
     let cancelled = false
@@ -172,19 +154,26 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
         )
         if (!res.ok || cancelled) return
         const data = (await res.json()) as {
-          preset?: { defaultBatchLimit?: number | null } | null
+          preset?: {
+            batchMode?: string
+            defaultBatchLimit?: number | null
+            geoIntentWhitelist?: string | null
+            geoQuestionOnly?: boolean | null
+          } | null
         }
         if (cancelled) return
         const p = data.preset
-        if (!p) {
+        if (!p || p.batchMode !== 'geo_friendly') {
           setBatchLimitInput('')
           return
         }
+        if (typeof p.geoIntentWhitelist === 'string' && p.geoIntentWhitelist.trim()) {
+          setIntentText(p.geoIntentWhitelist.trim())
+        }
+        if (typeof p.geoQuestionOnly === 'boolean') setGeoQuestionOnly(p.geoQuestionOnly)
         const lim = p.defaultBatchLimit
         if (typeof lim === 'number' && Number.isFinite(lim) && lim >= 1) {
           setBatchLimitInput(String(Math.min(100, Math.floor(lim))))
-        } else {
-          setBatchLimitInput('')
         }
       } catch {
         if (!cancelled) setBatchLimitInput('')
@@ -195,88 +184,52 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
     }
   }, [open, selectedSiteId])
 
-  const fetchDryRunPreview = useCallback(async (siteId: number, limit?: number) => {
-    const seq = ++previewRequestSeqRef.current
+  const geoIntentsArray = (): string[] => {
+    return intentText
+      .split(/[,，\s]+/)
+      .map((x) => x.trim().toLowerCase())
+      .filter(Boolean)
+  }
+
+  const fetchDryRun = useCallback(async () => {
+    if (selectedSiteId == null) return
     setPreviewLoading(true)
-    setPreviewError(null)
+    setDryRunPreview(null)
+    setError(null)
     try {
-      const body: Record<string, unknown> = { siteId, dryRun: true }
-      if (limit != null) body.limit = limit
+      const body: Record<string, unknown> = {
+        siteId: selectedSiteId,
+        mode: 'geo_friendly',
+        dryRun: true,
+        geoIntentWhitelist: geoIntentsArray(),
+        geoQuestionOnly,
+      }
+      const lim = parseLimitOverride(batchLimitInput)
+      if (lim != null) body.limit = lim
       const res = await fetch('/api/admin/articles/batch-enqueue', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      const data = (await res.json().catch(() => ({}))) as {
-        error?: string
-        defaultLimit?: number
-        limit?: number
-        usedKeywordFallback?: boolean
-        enqueued?: number
-        skipped?: number
-        pickedTerms?: string[]
-        errorsSample?: string[]
-      }
-      if (seq !== previewRequestSeqRef.current) return
-      if (!res.ok) {
-        setDryRunPreview(null)
-        setPreviewError(typeof data.error === 'string' ? data.error : '预览失败')
+      const data = (await res.json().catch(() => ({}))) as BatchEnqueueOkJson
+      if (!res.ok || data.ok !== true) {
+        setError(typeof data.error === 'string' ? data.error : '预览失败')
         return
       }
       setDryRunPreview({
-        defaultLimit: typeof data.defaultLimit === 'number' ? data.defaultLimit : 0,
-        effectiveLimit: typeof data.limit === 'number' ? data.limit : 0,
-        usedKeywordFallback: data.usedKeywordFallback === true,
-        wouldEnqueue: typeof data.enqueued === 'number' ? data.enqueued : 0,
-        wouldSkip: typeof data.skipped === 'number' ? data.skipped : 0,
         pickedTerms: Array.isArray(data.pickedTerms) ? data.pickedTerms : [],
-        errorsSample: Array.isArray(data.errorsSample) ? data.errorsSample : [],
+        wouldEnqueue: typeof data.enqueued === 'number' ? data.enqueued : 0,
       })
-    } catch {
-      if (seq !== previewRequestSeqRef.current) return
-      setDryRunPreview(null)
-      setPreviewError('预览请求失败')
     } finally {
-      if (seq === previewRequestSeqRef.current) {
-        setPreviewLoading(false)
-      }
-    }
-  }, [])
-
-  const prevSiteForPreviewRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    if (!open) {
-      prevSiteForPreviewRef.current = null
-      setDryRunPreview(null)
-      setPreviewError(null)
       setPreviewLoading(false)
-      return
     }
-    if (selectedSiteId == null) {
-      prevSiteForPreviewRef.current = null
-      setDryRunPreview(null)
-      setPreviewError(null)
-      setPreviewLoading(false)
-      return
-    }
-
-    const siteChanged = prevSiteForPreviewRef.current !== selectedSiteId
-    prevSiteForPreviewRef.current = selectedSiteId
-    const delay = siteChanged ? 0 : 450
-    const siteIdSnap = selectedSiteId
-    const limitArg = parseLimitOverride(batchLimitInput)
-
-    const t = window.setTimeout(() => {
-      void fetchDryRunPreview(siteIdSnap, limitArg)
-    }, delay)
-    return () => window.clearTimeout(t)
-  }, [open, selectedSiteId, batchLimitInput, fetchDryRunPreview])
+  }, [selectedSiteId, intentText, geoQuestionOnly, batchLimitInput])
 
   const close = (): void => {
     setOpen(false)
     setError(null)
+    setBackfillMsg(null)
   }
 
   const pickSite = (s: SiteOption): void => {
@@ -286,17 +239,48 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
     setSiteMenuOpen(false)
   }
 
+  const runBackfill = async (): Promise<void> => {
+    if (selectedSiteId == null) {
+      setError('请选择站点')
+      return
+    }
+    setBackfillBusy(true)
+    setBackfillMsg(null)
+    setError(null)
+    try {
+      const res = await fetch('/api/admin/keywords/backfill-geo-friendly', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteId: selectedSiteId }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        scanned?: number
+        updated?: number
+      }
+      if (!res.ok) {
+        setError(typeof data.error === 'string' ? data.error : '回填失败')
+        return
+      }
+      setBackfillMsg(`已扫描 ${data.scanned ?? 0} 条，更新 ${data.updated ?? 0} 条 geoFriendly`)
+      void fetchDryRun()
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
   const submit = (): void => {
     if (selectedSiteId == null) {
       setError('请选择站点')
       return
     }
-    const lim = batchLimitInput.trim()
+    const limRaw = batchLimitInput.trim()
     let limit: number | undefined
-    if (lim !== '') {
-      const n = Number(lim)
+    if (limRaw !== '') {
+      const n = Number(limRaw)
       if (!Number.isFinite(n) || n < 1) {
-        setError('本批上限须为 ≥1 的整数，或留空使用默认')
+        setError('本批上限须为 ≥1 的整数')
         return
       }
       limit = Math.min(100, Math.floor(n))
@@ -304,6 +288,8 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
 
     const siteLabelSnap = selectedSiteLabel.trim()
     const siteIdSnap = selectedSiteId
+    const intentsSnap = geoIntentsArray()
+    const qOnly = geoQuestionOnly
     const jobId = startBatchEnqueueJob(siteLabelSnap ? { siteLabel: siteLabelSnap } : {})
     close()
     void (async () => {
@@ -314,6 +300,9 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             siteId: siteIdSnap,
+            mode: 'geo_friendly',
+            geoIntentWhitelist: intentsSnap,
+            geoQuestionOnly: qOnly,
             ...(limit != null ? { limit } : {}),
           }),
         })
@@ -321,8 +310,6 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
           error?: string
           enqueued?: number
           skipped?: number
-          usedKeywordFallback?: boolean
-          errorsSample?: string[]
         }
         if (!res.ok) {
           failBatchEnqueueJob({
@@ -336,8 +323,6 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
           summary: {
             enqueued: data.enqueued ?? 0,
             skipped: data.skipped ?? 0,
-            usedKeywordFallback: data.usedKeywordFallback,
-            errorsSample: data.errorsSample,
           },
         })
       } catch {
@@ -351,22 +336,29 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
       setError('请选择站点')
       return
     }
-    const lim = batchLimitInput.trim()
-    if (lim !== '') {
-      const n = Number(lim)
+    const limRaw = batchLimitInput.trim()
+    if (limRaw !== '') {
+      const n = Number(limRaw)
       if (!Number.isFinite(n) || n < 1) {
-        setError('本批上限须为 ≥1 的整数，或留空使用默认')
+        setError('本批上限须为 ≥1 的整数')
         return
       }
     }
     setError(null)
-    const siteIdSnap = selectedSiteId
     const siteLabelSnap = selectedSiteLabel.trim()
+    const siteIdSnap = selectedSiteId
+    const intentsSnap = geoIntentsArray()
+    const qOnly = geoQuestionOnly
     let limit: number | undefined
-    if (lim !== '') {
-      limit = Math.min(100, Math.floor(Number(lim)))
+    if (limRaw !== '') {
+      limit = Math.min(100, Math.floor(Number(limRaw)))
     }
-    const enqueueReplay: Record<string, unknown> = { siteId: siteIdSnap }
+    const enqueueReplay: Record<string, unknown> = {
+      siteId: siteIdSnap,
+      mode: 'geo_friendly',
+      geoIntentWhitelist: intentsSnap,
+      geoQuestionOnly: qOnly,
+    }
     if (limit != null) enqueueReplay.limit = limit
     const jobId = startKeywordBatchModePreviewJob(siteLabelSnap ? { siteLabel: siteLabelSnap } : {})
     close()
@@ -391,8 +383,8 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
         completeKeywordBatchModePreviewJob({
           jobId,
           summary: {
-            mode: 'default',
-            titleLabel: '默认排产',
+            mode: 'geo_friendly',
+            titleLabel: 'GEO 向',
             pickedTotal: typeof data.enqueued === 'number' ? data.enqueued : pickedTerms.length,
             skipped: typeof data.skipped === 'number' ? data.skipped : 0,
             ...(typeof data.limit === 'number' ? { limit: data.limit } : {}),
@@ -410,24 +402,25 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
     })()
   }
 
-  const titleId = 'keyword-default-batch-title'
+  useEffect(() => {
+    if (!open || selectedSiteId == null) {
+      setDryRunPreview(null)
+    }
+  }, [open, selectedSiteId])
+
+  const titleId = 'keyword-geo-title'
 
   return (
     <>
       <Button buttonStyle="secondary" onClick={() => setOpen(true)} type="button">
-        默认排产 · Brief
+        GEO 向 · Brief
       </Button>
       {open ? (
         <>
           <button
             aria-label="关闭"
             type="button"
-            style={{
-              ...backdropStyle,
-              cursor: 'pointer',
-              border: 'none',
-              appearance: 'none',
-            }}
+            style={{ ...backdropStyle, cursor: 'pointer', border: 'none', appearance: 'none' }}
             onClick={close}
           />
           <div style={{ ...backdropStyle, pointerEvents: 'none' }}>
@@ -441,18 +434,23 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
               }}
             >
               <h2 id={titleId} style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>
-                默认批量排产 → Brief
+                GEO / AI 引用向 → Brief
               </h2>
               <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
-                按站点机会分排序的 <code>active</code>（若无则 <code>draft</code>）关键词入队{' '}
-                <code>brief_generate</code>，与「快捷操作 · 文章」中的批量排产相同。「预览候选」会关窗并在顶栏
-                Banner 展示 dry-run 结果，可一键并入队；提交「并入队 Brief」同样会关窗并走批量入队 Banner。
+                仅 <code>geoFriendly=true</code> 且符合意图的关键词入队 <code>brief_generate</code>。新词请在「同步拉取
+                · DFS」后自动打标；存量可点「回填 geo」按 term 规则重算。「预览候选」会关窗并在顶栏展示 dry-run，可一键并入队；抽屉内需先点「刷新预览」查看本地摘要。
               </p>
+              <div style={warnStyle}>
+                <strong>提示</strong>：若预览为空，请先对本站执行「回填 geo」或确认 DFS 同步已写入 geoFriendly。
+              </div>
 
               {error ? (
                 <p style={{ color: 'var(--theme-error-500)', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>
                   {error}
                 </p>
+              ) : null}
+              {backfillMsg ? (
+                <p style={{ fontSize: '0.8125rem', marginBottom: '0.75rem', opacity: 0.9 }}>{backfillMsg}</p>
               ) : null}
 
               <div style={{ marginBottom: '1rem' }}>
@@ -461,15 +459,7 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
                   <button
                     type="button"
                     aria-expanded={siteMenuOpen}
-                    aria-haspopup="listbox"
-                    style={{
-                      ...inputStyle,
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: 8,
-                    }}
+                    style={{ ...inputStyle, textAlign: 'left', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
                     onClick={() => {
                       setSiteMenuOpen((x) => !x)
                       if (!siteMenuOpen && sites.length === 0) void loadSites('')
@@ -480,7 +470,6 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
                   </button>
                   {siteMenuOpen ? (
                     <div
-                      role="listbox"
                       style={{
                         position: 'absolute',
                         left: 0,
@@ -496,26 +485,18 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
                     >
                       <input
                         aria-label="筛选站点"
-                        placeholder="搜索站点名称 / slug / 域名"
-                        style={{
-                          ...inputStyle,
-                          borderRadius: 0,
-                          borderLeft: 'none',
-                          borderRight: 'none',
-                          borderTop: 'none',
-                        }}
+                        placeholder="搜索…"
+                        style={{ ...inputStyle, borderRadius: 0, border: 'none', borderBottom: '1px solid var(--theme-elevation-150)' }}
                         value={siteQuery}
                         onChange={(e) => setSiteQuery(e.target.value)}
                       />
                       {sitesLoading ? (
-                        <div style={{ padding: '0.5rem', fontSize: '0.75rem', opacity: 0.8 }}>加载中…</div>
+                        <div style={{ padding: '0.5rem', fontSize: '0.75rem' }}>加载中…</div>
                       ) : (
                         sites.map((s) => (
                           <button
                             key={s.id}
                             type="button"
-                            role="option"
-                            aria-selected={selectedSiteId === s.id}
                             style={{
                               display: 'block',
                               width: '100%',
@@ -537,125 +518,71 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
                 </div>
               </div>
 
-              {selectedSiteId != null ? (
-                <div
-                  style={{
-                    marginBottom: '1rem',
-                    padding: '0.75rem 0.85rem',
-                    borderRadius: 6,
-                    border: '1px solid var(--theme-elevation-150)',
-                    background: 'var(--theme-elevation-50)',
-                    fontSize: '0.78rem',
-                    lineHeight: 1.45,
-                  }}
-                >
-                  <div style={{ fontWeight: 600, marginBottom: '0.4rem', fontSize: '0.8rem' }}>
-                    参数预览（dry-run，不入队）
-                  </div>
-                  {previewLoading ? (
-                    <p style={{ margin: 0, opacity: 0.85 }}>正在拉取服务端计算结果…</p>
-                  ) : null}
-                  {previewError ? (
-                    <p style={{ margin: 0, color: 'var(--theme-error-500)' }}>{previewError}</p>
-                  ) : null}
-                  {!previewLoading && dryRunPreview ? (
-                    <>
-                      <ul style={{ margin: '0.35rem 0 0.5rem', paddingLeft: '1.1rem' }}>
-                        <li>
-                          <strong>模式</strong>：<code>default</code>（机会分排序；无 Quick-win / SERP 聚类）
-                        </li>
-                        <li>
-                          <strong>关键词状态</strong>：优先 <code>active</code>
-                          {dryRunPreview.usedKeywordFallback ? (
-                            <>；当前站点无 active，已用 <code>draft</code> 池</>
-                          ) : (
-                            <>；使用 <code>active</code> 池</>
-                          )}
-                        </li>
-                        <li>
-                          <strong>服务端推导默认上限</strong>（来自站点日更配额等）：{' '}
-                          <code>{dryRunPreview.defaultLimit}</code>
-                        </li>
-                        <li>
-                          <strong>本轮生效上限</strong>（与下文「本批入队上限」一致时为准）：{' '}
-                          <code>{dryRunPreview.effectiveLimit}</code>
-                          {batchLimitInput.trim() === '' ? (
-                            <span style={{ opacity: 0.85 }}>（未手动覆盖）</span>
-                          ) : (
-                            <span style={{ opacity: 0.85 }}>（已按你填写的上限参与预览）</span>
-                          )}
-                        </li>
-                        <li>
-                          <strong>模拟入队 / 跳过</strong>：{dryRunPreview.wouldEnqueue} /{' '}
-                          {dryRunPreview.wouldSkip}
-                        </li>
-                      </ul>
-                      {dryRunPreview.pickedTerms.length > 0 ? (
-                        <div style={{ marginTop: '0.35rem' }}>
-                          <strong>将 pick 的词（前 {Math.min(25, dryRunPreview.pickedTerms.length)} 条）</strong>
-                          <ul
-                            style={{
-                              margin: '0.25rem 0 0',
-                              paddingLeft: '1.1rem',
-                              maxHeight: '9rem',
-                              overflow: 'auto',
-                            }}
-                          >
-                            {dryRunPreview.pickedTerms.slice(0, 25).map((t, idx) => (
-                              <li key={`${idx}-${t}`}>{t}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : !previewError && dryRunPreview.wouldEnqueue === 0 ? (
-                        <p style={{ margin: '0.35rem 0 0', opacity: 0.9 }}>当前无可入队候选。</p>
-                      ) : null}
-                      {dryRunPreview.errorsSample.length > 0 ? (
-                        <div style={{ marginTop: '0.5rem', opacity: 0.92 }}>
-                          <strong>说明 / 样例</strong>
-                          <ul style={{ margin: '0.2rem 0 0', paddingLeft: '1.1rem' }}>
-                            {dryRunPreview.errorsSample.slice(0, 6).map((m) => (
-                              <li key={m}>{m}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                      <p style={{ margin: '0.6rem 0 0', opacity: 0.8, fontSize: '0.72rem' }}>
-                        修改「本批入队上限」后请点击「立即刷新预览」，或直接用「预览候选」在顶栏查看。
-                      </p>
-                    </>
-                  ) : !previewLoading && !previewError && !dryRunPreview ? (
-                    <p style={{ margin: 0, opacity: 0.85 }}>正在准备预览…</p>
-                  ) : null}
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <Button
-                      buttonStyle="secondary"
-                      size="small"
-                      type="button"
-                      disabled={previewLoading || selectedSiteId == null}
-                      onClick={() => {
-                        if (selectedSiteId == null) return
-                        void fetchDryRunPreview(selectedSiteId, parseLimitOverride(batchLimitInput))
-                      }}
-                    >
-                      立即刷新预览
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={fieldLabel}>意图（逗号分隔）</label>
+                <input style={inputStyle} value={intentText} onChange={(e) => setIntentText(e.target.value)} />
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem' }}>
+                <input type="checkbox" checked={geoQuestionOnly} onChange={(e) => setGeoQuestionOnly(e.target.checked)} />
+                <span style={{ fontSize: '0.8125rem' }}>仅问句 / 定义型（? 或疑问词开头）</span>
+              </label>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label style={fieldLabel} htmlFor="keyword-default-batch-limit">
-                  本批入队上限（可选，覆盖上方预览中的生效上限）
-                </label>
+                <label style={fieldLabel}>本批入队上限（可选）</label>
                 <input
-                  id="keyword-default-batch-limit"
                   style={inputStyle}
                   inputMode="numeric"
                   value={batchLimitInput}
                   onChange={(e) => setBatchLimitInput(e.target.value)}
-                  placeholder="留空 = 使用服务端推导默认上限（见预览）"
+                  placeholder="留空使用服务端默认"
                 />
               </div>
+
+              <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <Button buttonStyle="secondary" disabled={backfillBusy || selectedSiteId == null} onClick={() => void runBackfill()} type="button">
+                  {backfillBusy ? '回填中…' : '回填本站 geoFriendly'}
+                </Button>
+                <Button
+                  buttonStyle="secondary"
+                  disabled={selectedSiteId == null || previewLoading}
+                  onClick={() => void fetchDryRun()}
+                  type="button"
+                >
+                  {previewLoading ? '刷新中…' : '刷新预览'}
+                </Button>
+              </div>
+
+              {selectedSiteId != null ? (
+                <div
+                  style={{
+                    marginBottom: '1rem',
+                    padding: '0.75rem',
+                    borderRadius: 6,
+                    border: '1px solid var(--theme-elevation-150)',
+                    fontSize: '0.78rem',
+                  }}
+                >
+                  <strong>预览（dry-run，不入队）</strong>
+                  {previewLoading ? <p style={{ margin: '0.35rem 0 0' }}>计算中…</p> : null}
+                  {!previewLoading && dryRunPreview ? (
+                    <>
+                      <p style={{ margin: '0.35rem 0 0' }}>
+                        将入队约 <strong>{dryRunPreview.wouldEnqueue}</strong> 条
+                      </p>
+                      {dryRunPreview.pickedTerms.length > 0 ? (
+                        <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.1rem', maxHeight: '8rem', overflow: 'auto' }}>
+                          {dryRunPreview.pickedTerms.slice(0, 20).map((t) => (
+                            <li key={t}>{t}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p style={{ margin: '0.35rem 0 0', opacity: 0.85 }}>无候选</p>
+                      )}
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <Button onClick={previewCandidatesInBackground} type="button" disabled={selectedSiteId == null}>
@@ -664,7 +591,7 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
                 <Button buttonStyle="secondary" onClick={close} type="button">
                   关闭
                 </Button>
-                <Button onClick={submit} type="button">
+                <Button onClick={submit} type="button" disabled={selectedSiteId == null}>
                   并入队 Brief
                 </Button>
               </div>

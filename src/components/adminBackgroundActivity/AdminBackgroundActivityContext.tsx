@@ -11,8 +11,17 @@ export type BackgroundJobKind =
   | 'trust-pages-bundle-sync'
   | 'keywords-dfs-fetch-sync'
   | 'keyword-quick-win-preview-sync'
+  | 'keyword-batch-mode-preview-sync'
   | 'batch-enqueue-sync'
   | 'workflow-jobs-pipeline-sync'
+
+/** Strategies that use `POST /api/admin/articles/batch-enqueue` preview + replay (non–Quick-win). */
+export type KeywordBatchModePreviewMode =
+  | 'default'
+  | 'geo_friendly'
+  | 'pillar_sprint'
+  | 'seasonal'
+  | 'refresh_decay'
 
 /** POST /admin/pipeline/run-next drain / single batch summary */
 export type WorkflowJobsPipelineSummary = {
@@ -124,6 +133,19 @@ export type BackgroundActivityJob = {
       }
     }
   }
+  /** default / geo / pillar / seasonal / refresh_decay：dryRun 预览（顶栏并入队复用 enqueueReplay） */
+  keywordBatchModePreviewSummary?: {
+    mode: KeywordBatchModePreviewMode
+    titleLabel: string
+    pickedTotal: number
+    skipped: number
+    limit?: number
+    termsPreview: string[]
+    notices?: string[]
+    detailLines?: string[]
+    /** 与真实入队相同字段，勿含 dryRun */
+    enqueueReplay: Record<string, unknown>
+  }
   /** 工作流任务列表 · Pipeline run-next（顶栏简述，非 DB） */
   workflowPipelineScopeHint?: string
   /** 进行中：已跑批次数与累计 tick */
@@ -177,6 +199,12 @@ export type AdminBackgroundActivityApi = {
     summary: NonNullable<BackgroundActivityJob['keywordQuickWinPreviewSummary']>
   }) => void
   failKeywordQuickWinPreviewJob: (args: { jobId: string; message: string }) => void
+  startKeywordBatchModePreviewJob: (args?: { siteLabel?: string }) => string
+  completeKeywordBatchModePreviewJob: (args: {
+    jobId: string
+    summary: NonNullable<BackgroundActivityJob['keywordBatchModePreviewSummary']>
+  }) => void
+  failKeywordBatchModePreviewJob: (args: { jobId: string; message: string }) => void
   startBatchEnqueueJob: (args?: { siteLabel?: string }) => string
   completeBatchEnqueueJob: (args: {
     jobId: string
