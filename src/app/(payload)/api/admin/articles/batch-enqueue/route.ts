@@ -162,8 +162,8 @@ export async function POST(request: Request): Promise<Response> {
     defaultLimit,
   )
 
-  let keywords: KeywordBatchRow[] = loaded.rows
-  let usedFallback = loaded.usedKeywordFallback
+  const keywords: KeywordBatchRow[] = loaded.rows
+  const usedFallback = loaded.usedKeywordFallback
   const appliedFilter = loaded.appliedFilter
   const jobType = loaded.jobType
 
