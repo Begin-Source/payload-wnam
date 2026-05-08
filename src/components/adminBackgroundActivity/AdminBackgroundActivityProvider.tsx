@@ -130,6 +130,10 @@ export function AdminBackgroundActivityProvider({
     (j) => j.phase === 'running' && j.kind === 'keyword-batch-mode-preview-sync',
   )
 
+  const hasRunningContentBriefDraftSkeletonPreviewWork = jobs.some(
+    (j) => j.phase === 'running' && j.kind === 'content-brief-draft-skeleton-preview-sync',
+  )
+
   const hasRunningWorkflowJobsPipelineWork = jobs.some(
     (j) => j.phase === 'running' && j.kind === 'workflow-jobs-pipeline-sync',
   )
@@ -144,6 +148,7 @@ export function AdminBackgroundActivityProvider({
     hasRunningKeywordsDfsFetchWork ||
     hasRunningKeywordQuickWinPreviewWork ||
     hasRunningKeywordBatchModePreviewWork ||
+    hasRunningContentBriefDraftSkeletonPreviewWork ||
     hasRunningBatchEnqueueWork ||
     hasRunningWorkflowJobsPipelineWork
 
@@ -173,6 +178,9 @@ export function AdminBackgroundActivityProvider({
     if (hasRunningBatchEnqueueWork) {
       capMs = Math.max(capMs, POLL_CAP_MS_KEYWORDS_LONG)
     }
+    if (hasRunningContentBriefDraftSkeletonPreviewWork) {
+      capMs = Math.max(capMs, POLL_CAP_MS_KEYWORDS_LONG)
+    }
     const cap = window.setTimeout(() => {
       window.clearInterval(interval)
     }, capMs)
@@ -188,6 +196,7 @@ export function AdminBackgroundActivityProvider({
     hasRunningKeywordsDfsFetchWork,
     hasRunningKeywordQuickWinPreviewWork,
     hasRunningKeywordBatchModePreviewWork,
+    hasRunningContentBriefDraftSkeletonPreviewWork,
     hasRunningBatchEnqueueWork,
     hasRunningWorkflowJobsPipelineWork,
     refreshIfCategoriesList,
@@ -641,6 +650,68 @@ export function AdminBackgroundActivityProvider({
     [refreshIfKeywordsList],
   )
 
+  const startContentBriefDraftSkeletonPreviewJob = useCallback(
+    ({ siteLabel }: { siteLabel?: string } = {}): string => {
+      const id = newId()
+      const job: BackgroundActivityJob = {
+        id,
+        kind: 'content-brief-draft-skeleton-preview-sync',
+        phase: 'running',
+        ...(siteLabel?.trim() ? { siteLabel: siteLabel.trim() } : {}),
+        startedAt: Date.now(),
+      }
+      setJobs((prev) => [...prev, job])
+      refreshIfWorkflowJobsList()
+      refreshIfContentBriefsList()
+      return id
+    },
+    [refreshIfContentBriefsList, refreshIfWorkflowJobsList],
+  )
+
+  const completeContentBriefDraftSkeletonPreviewJob = useCallback(
+    ({
+      jobId,
+      summary,
+    }: {
+      jobId: string
+      summary: NonNullable<BackgroundActivityJob['contentBriefDraftSkeletonPreviewSummary']>
+    }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'content-brief-draft-skeleton-preview-sync'
+            ? {
+                ...j,
+                phase: 'succeeded',
+                contentBriefDraftSkeletonPreviewSummary: summary,
+              }
+            : j,
+        ),
+      )
+      refreshIfWorkflowJobsList()
+      refreshIfContentBriefsList()
+    },
+    [refreshIfContentBriefsList, refreshIfWorkflowJobsList],
+  )
+
+  const failContentBriefDraftSkeletonPreviewJob = useCallback(
+    ({ jobId, message }: { jobId: string; message: string }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'content-brief-draft-skeleton-preview-sync'
+            ? {
+                ...j,
+                phase: 'failed',
+                errorMessage: message,
+              }
+            : j,
+        ),
+      )
+      refreshIfWorkflowJobsList()
+      refreshIfContentBriefsList()
+    },
+    [refreshIfContentBriefsList, refreshIfWorkflowJobsList],
+  )
+
   const startBatchEnqueueJob = useCallback(
     ({ siteLabel }: { siteLabel?: string } = {}): string => {
       const id = newId()
@@ -809,6 +880,9 @@ export function AdminBackgroundActivityProvider({
       startKeywordBatchModePreviewJob,
       completeKeywordBatchModePreviewJob,
       failKeywordBatchModePreviewJob,
+      startContentBriefDraftSkeletonPreviewJob,
+      completeContentBriefDraftSkeletonPreviewJob,
+      failContentBriefDraftSkeletonPreviewJob,
       startBatchEnqueueJob,
       completeBatchEnqueueJob,
       failBatchEnqueueJob,
@@ -841,6 +915,9 @@ export function AdminBackgroundActivityProvider({
       startKeywordBatchModePreviewJob,
       completeKeywordBatchModePreviewJob,
       failKeywordBatchModePreviewJob,
+      startContentBriefDraftSkeletonPreviewJob,
+      completeContentBriefDraftSkeletonPreviewJob,
+      failContentBriefDraftSkeletonPreviewJob,
       startBatchEnqueueJob,
       completeBatchEnqueueJob,
       failBatchEnqueueJob,

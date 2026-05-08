@@ -12,6 +12,7 @@ export type BackgroundJobKind =
   | 'keywords-dfs-fetch-sync'
   | 'keyword-quick-win-preview-sync'
   | 'keyword-batch-mode-preview-sync'
+  | 'content-brief-draft-skeleton-preview-sync'
   | 'batch-enqueue-sync'
   | 'workflow-jobs-pipeline-sync'
 
@@ -146,6 +147,17 @@ export type BackgroundActivityJob = {
     /** 与真实入队相同字段，勿含 dryRun */
     enqueueReplay: Record<string, unknown>
   }
+  /** 内容大纲 Draft skeleton：站点 + limit 的 dryRun（顶栏「并入队 Draft skeleton」用 enqueueReplay） */
+  contentBriefDraftSkeletonPreviewSummary?: {
+    siteId: number
+    limit: number
+    queriedCount: number
+    wouldCreate: number
+    skipped: number
+    briefIdsPreview: number[]
+    skipSamples: Array<{ briefId: number; reason: string }>
+    enqueueReplay: { siteId: number; limit: number }
+  }
   /** 工作流任务列表 · Pipeline run-next（顶栏简述，非 DB） */
   workflowPipelineScopeHint?: string
   /** 进行中：已跑批次数与累计 tick */
@@ -205,6 +217,12 @@ export type AdminBackgroundActivityApi = {
     summary: NonNullable<BackgroundActivityJob['keywordBatchModePreviewSummary']>
   }) => void
   failKeywordBatchModePreviewJob: (args: { jobId: string; message: string }) => void
+  startContentBriefDraftSkeletonPreviewJob: (args?: { siteLabel?: string }) => string
+  completeContentBriefDraftSkeletonPreviewJob: (args: {
+    jobId: string
+    summary: NonNullable<BackgroundActivityJob['contentBriefDraftSkeletonPreviewSummary']>
+  }) => void
+  failContentBriefDraftSkeletonPreviewJob: (args: { jobId: string; message: string }) => void
   startBatchEnqueueJob: (args?: { siteLabel?: string }) => string
   completeBatchEnqueueJob: (args: {
     jobId: string

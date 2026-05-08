@@ -28,6 +28,7 @@ const LIST_BANNER_KINDS = [
   'keywords-dfs-fetch-sync',
   'keyword-quick-win-preview-sync',
   'keyword-batch-mode-preview-sync',
+  'content-brief-draft-skeleton-preview-sync',
   'batch-enqueue-sync',
   'workflow-jobs-pipeline-sync',
 ] as const
@@ -262,6 +263,8 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     id: string
     text: string
   } | null>(null)
+  const [dssEnqueueBusyId, setDssEnqueueBusyId] = useState<string | null>(null)
+  const [dssEnqueueError, setDssEnqueueError] = useState<{ id: string; text: string } | null>(null)
 
   const scoped = jobs.filter(inListBannerScope)
 
@@ -276,6 +279,9 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
   )
   const runningKeywordBatchModePreview = running.filter(
     (j) => j.kind === 'keyword-batch-mode-preview-sync',
+  )
+  const runningContentBriefDraftSkeletonPreview = running.filter(
+    (j) => j.kind === 'content-brief-draft-skeleton-preview-sync',
   )
   const runningBatchEnqueue = running.filter((j) => j.kind === 'batch-enqueue-sync')
   const runningWorkflowJobsPipeline = running.filter((j) => j.kind === 'workflow-jobs-pipeline-sync')
@@ -294,6 +300,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     | { tag: 'running-keywords-dfs'; batches: BackgroundActivityJob[] }
     | { tag: 'running-keywords-quick-win-preview'; batches: BackgroundActivityJob[] }
     | { tag: 'running-keyword-batch-mode-preview'; batches: BackgroundActivityJob[] }
+    | { tag: 'running-content-brief-draft-skeleton-preview'; batches: BackgroundActivityJob[] }
     | { tag: 'running-batch-enqueue'; batches: BackgroundActivityJob[] }
     | { tag: 'running-workflow-jobs-pipeline'; batches: BackgroundActivityJob[] }
     | { tag: 'terminal'; job: BackgroundActivityJob }
@@ -314,6 +321,11 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
     primary = { tag: 'running-keywords-quick-win-preview', batches: runningKeywordQuickWinPreview }
   } else if (runningKeywordBatchModePreview.length > 0) {
     primary = { tag: 'running-keyword-batch-mode-preview', batches: runningKeywordBatchModePreview }
+  } else if (runningContentBriefDraftSkeletonPreview.length > 0) {
+    primary = {
+      tag: 'running-content-brief-draft-skeleton-preview',
+      batches: runningContentBriefDraftSkeletonPreview,
+    }
   } else if (runningBatchEnqueue.length > 0) {
     primary = { tag: 'running-batch-enqueue', batches: runningBatchEnqueue }
   } else if (runningWorkflowJobsPipeline.length > 0) {
@@ -711,6 +723,43 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         <span style={{ flex: '1 1 12rem' }}>{line}</span>
         <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
           {openKeywordsListBtn}
+          <button
+            aria-label="关闭横幅（后台任务继续进行）"
+            style={closeIconBtnStyle}
+            type="button"
+            onClick={() => dismissRunningBatches(primary.batches)}
+          >
+            ×
+          </button>
+        </span>
+      </div>
+    )
+  }
+
+  if (primary.tag === 'running-content-brief-draft-skeleton-preview') {
+    const n = primary.batches.length
+    const siteHint =
+      n === 1 && primary.batches[0]?.siteLabel
+        ? `（站点：${primary.batches[0].siteLabel}）`
+        : ''
+    const line =
+      n === 1
+        ? `内容大纲 · Draft skeleton 预览候选进行中${siteHint} — enqueue-draft-skeleton dryRun；请在工作流任务与内容大纲列表查看`
+        : `内容大纲 · Draft skeleton 预览候选进行中（${n} 批）— dryRun`
+
+    return (
+      <div
+        aria-live="polite"
+        role="status"
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar('running'),
+        }}
+      >
+        <span style={{ flex: '1 1 12rem' }}>{line}</span>
+        <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
+          {openWorkflowJobsListBtn}
+          {openContentBriefsListBtn}
           <button
             aria-label="关闭横幅（后台任务继续进行）"
             style={closeIconBtnStyle}
@@ -1649,6 +1698,207 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
               </button>
             ) : null}
             {openKeywordsListBtn}
+            <button
+              aria-label="关闭横幅"
+              style={closeIconBtnStyle}
+              type="button"
+              onClick={() => dismissJob(job.id)}
+            >
+              ×
+            </button>
+          </span>
+          {enqueueErrThis ? (
+            <span
+              style={{
+                fontSize: '11px',
+                lineHeight: 1.35,
+                color: 'var(--theme-error-500)',
+                maxWidth: '18rem',
+                textAlign: 'right',
+                wordBreak: 'break-word',
+              }}
+            >
+              {enqueueErrThis}
+            </span>
+          ) : null}
+        </span>
+      </div>
+    )
+  }
+
+  if (job.kind === 'content-brief-draft-skeleton-preview-sync') {
+    if (job.phase === 'failed') {
+      const msg = `内容大纲 · Draft skeleton 预览失败：${job.errorMessage ?? '未知错误'}`
+      return (
+        <div
+          aria-live="assertive"
+          role="alert"
+          style={{
+            ...baseBar,
+            ...badgeStyleForBar('error'),
+          }}
+        >
+          <span style={{ flex: '1 1 12rem' }}>{msg}</span>
+          <span
+            style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}
+          >
+            {openWorkflowJobsListBtn}
+            {openContentBriefsListBtn}
+            <button
+              aria-label="关闭横幅"
+              style={closeIconBtnStyle}
+              type="button"
+              onClick={() => dismissJob(job.id)}
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )
+    }
+
+    if (job.phase !== 'succeeded' || !job.contentBriefDraftSkeletonPreviewSummary) {
+      return null
+    }
+
+    const s = job.contentBriefDraftSkeletonPreviewSummary
+    const siteBr = job.siteLabel?.trim() ? `（${job.siteLabel.trim()}）` : ''
+    const summaryLine = `内容大纲 · Draft skeleton 预览完成${siteBr}（dryRun）：将新建 ${s.wouldCreate} 条 · 查询 ${s.queriedCount} 条 · 跳过 ${s.skipped}。`
+    const idsLine =
+      s.briefIdsPreview.length > 0
+        ? `候选大纲 ID：${s.briefIdsPreview.join('、')}${s.wouldCreate > s.briefIdsPreview.length ? ' …' : ''}`
+        : s.queriedCount === 0
+          ? '该站点下暂无内容大纲。'
+          : '本批无可新建任务（可能均已 pending/running 或缺少租户）。'
+    const skipLines =
+      s.skipSamples.length > 0
+        ? s.skipSamples
+            .map((x) => clipText(`· 大纲 #${x.briefId}: ${x.reason}`, COVER_DETAIL_LINE_MAX))
+            .join('\n')
+        : ''
+    const titleAttr = clipText([summaryLine, idsLine, skipLines].filter(Boolean).join('\n'), 4000)
+
+    const replay = s.enqueueReplay
+    const replayOk =
+      typeof replay.siteId === 'number' &&
+      Number.isFinite(replay.siteId) &&
+      typeof replay.limit === 'number' &&
+      Number.isFinite(replay.limit)
+    const enqueueAvailable = replayOk && s.wouldCreate > 0
+    const enqueueBusy = dssEnqueueBusyId === job.id
+    const enqueueErrThis = dssEnqueueError?.id === job.id ? dssEnqueueError.text : null
+
+    return (
+      <div
+        aria-live="polite"
+        role="status"
+        style={{
+          ...baseBar,
+          ...badgeStyleForBar('done'),
+        }}
+        title={titleAttr}
+      >
+        <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+          <span style={{ display: 'block' }}>{summaryLine}</span>
+          <span
+            style={{
+              display: 'block',
+              marginTop: 6,
+              fontSize: '11px',
+              lineHeight: 1.45,
+              opacity: 0.95,
+              whiteSpace: 'pre-line',
+              wordBreak: 'break-word',
+            }}
+          >
+            {idsLine}
+          </span>
+          {skipLines ? (
+            <span
+              style={{
+                display: 'block',
+                marginTop: 6,
+                fontSize: '11px',
+                lineHeight: 1.45,
+                opacity: 0.95,
+                whiteSpace: 'pre-line',
+                wordBreak: 'break-word',
+              }}
+            >
+              {skipLines}
+            </span>
+          ) : null}
+        </div>
+        <span
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            gap: '6px',
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
+            {enqueueAvailable ? (
+              <button
+                aria-busy={enqueueBusy}
+                disabled={enqueueBusy}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 4,
+                  border: '1px solid var(--theme-elevation-150)',
+                  background: 'var(--theme-elevation-0)',
+                  cursor: enqueueBusy ? 'wait' : 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  opacity: enqueueBusy ? 0.75 : 1,
+                }}
+                type="button"
+                onClick={() => {
+                  if (!replayOk || !enqueueAvailable) return
+                  setDssEnqueueBusyId(job.id)
+                  setDssEnqueueError((prev) => (prev?.id === job.id ? null : prev))
+                  void (async () => {
+                    try {
+                      const res = await fetch('/api/admin/content-briefs/enqueue-draft-skeleton', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          siteId: replay.siteId,
+                          limit: Math.floor(replay.limit),
+                        }),
+                      })
+                      const data = (await res.json().catch(() => ({}))) as {
+                        ok?: boolean
+                        error?: string
+                      }
+                      if (!res.ok || data.ok !== true) {
+                        setDssEnqueueError({
+                          id: job.id,
+                          text:
+                            typeof data.error === 'string'
+                              ? data.error
+                              : `并入队失败（HTTP ${res.status}）`,
+                        })
+                        setDssEnqueueBusyId(null)
+                        return
+                      }
+                      setDssEnqueueBusyId(null)
+                      dismissJob(job.id)
+                      router.refresh()
+                    } catch {
+                      setDssEnqueueError({ id: job.id, text: '并入队请求失败' })
+                      setDssEnqueueBusyId(null)
+                    }
+                  })()
+                }}
+              >
+                {enqueueBusy ? '入队中…' : '并入队 Draft skeleton'}
+              </button>
+            ) : null}
+            {openWorkflowJobsListBtn}
+            {openContentBriefsListBtn}
             <button
               aria-label="关闭横幅"
               style={closeIconBtnStyle}

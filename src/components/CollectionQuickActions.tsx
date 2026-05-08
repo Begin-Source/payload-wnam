@@ -5,6 +5,7 @@ import { CategorySlotsQuickActionModal } from '@/components/CategorySlotsQuickAc
 import { OfferMerchantSlotQuickActionModal } from '@/components/OfferMerchantSlotQuickActionModal'
 import { OfferReviewMdxQuickActionModal } from '@/components/OfferReviewMdxQuickActionModal'
 import { ArticlePipelineCatchupDrawer } from '@/components/ArticlePipelineCatchupDrawer'
+import { ContentBriefDraftSkeletonDrawer } from '@/components/ContentBriefDraftSkeletonDrawer'
 import { MediaAiImageDrawer } from '@/components/MediaAiImageDrawer'
 import { KeywordDefaultBatchDrawer } from '@/components/KeywordDefaultBatchDrawer'
 import { KeywordGeoDrawer } from '@/components/KeywordGeoDrawer'
@@ -1217,6 +1218,7 @@ function AmzTemplateDesignQuickActionModal(): React.ReactElement {
 export function ArticleListQuickAction(): React.ReactElement {
   return (
     <>
+      <ContentBriefDraftSkeletonDrawer />
       <ArticlePipelineCatchupDrawer />
       <WorkflowQuickActionModal kind="articles" />
     </>

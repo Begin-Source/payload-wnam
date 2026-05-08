@@ -2,7 +2,7 @@
 
 Payload Admin 顶部 **`fixed`** 细条，用于「关了弹窗仍在跑」的长耗时前台操作的会话态摘要。**每条表格的真源仍以 Payload 字段为准**（Together 封面：[`CategoryCoverWorkflowStatusCell`](../src/components/CategoryCoverWorkflowStatusCell.tsx)；分类槽位：[`CategorySlotsWorkflowStatusCell`](../src/components/CategorySlotsWorkflowStatusCell.tsx)；Merchant 拉品类目侧：[`CategoryMerchantOfferFetchWorkflowCell`](../src/components/CategoryMerchantOfferFetchWorkflowCell.tsx)；信任页包 / 列表「信任页包」列：[`SitePagesBundleWorkflowStatusCell`](../src/components/SitePagesBundleWorkflowStatusCell.tsx)）；Banner 只是同一浏览器标签页的 UX。
 
-现阶段 **接入顶栏 Banner 的 `kind` 有八种**：`category-cover-sync`（Together · 分类封面）、`category-slots-sync`（快捷操作 · 生成分类槽位）、**`merchant-slot-dispatch-sync`**（快捷操作 · DataForSEO 分类槽位拉品／[`OfferMerchantSlotQuickActionModal`](../src/components/OfferMerchantSlotQuickActionModal.tsx)）、**`trust-pages-bundle-sync`**（快捷操作 · 生成信任页包／[`TrustPagesBundleQuickActionModal`](../src/components/TrustPagesBundleQuickActionModal.tsx)）、**`keywords-dfs-fetch-sync`**（同步拉取 · DataForSEO（关键词）／[`KeywordSyncFetchDrawer`](../src/components/KeywordSyncFetchDrawer.tsx)）、**`keyword-quick-win-preview-sync`**（精选 Quick-win → Brief **预览候选**，[`POST batch-enqueue`](../src/app/(payload)/api/admin/articles/batch-enqueue/route.ts) `dryRun`／[`KeywordQuickWinDrawer`](../src/components/KeywordQuickWinDrawer.tsx)）、**`batch-enqueue-sync`**（内容大纲 **批量排产**，[`POST batch-enqueue`](../src/app/(payload)/api/admin/articles/batch-enqueue/route.ts) 默认入队／[`CollectionQuickActions`](../src/components/CollectionQuickActions.tsx)）、**`workflow-jobs-pipeline-sync`**（工作流任务列表 · **`POST /admin/pipeline/run-next`**／[`PipelineRunNextDrawer`](../src/components/PipelineRunNextDrawer.tsx)）。封面 / 槽位 / 拉品在 **分类**（及部分 **Offer**）列表上通过 `router.refresh()` 与列徽章对齐；信任页包在 **`/collections/pages`**；**DataForSEO 关键词同步**与 **Quick-win 预览**（SERP 聚类可能写回 `keywords`）在 **`/collections/keywords`** 与列表数据对齐；**批量排产**在 **`/collections/workflow-jobs`** 与 **`/collections/content-briefs`** 上随轮询 **`router.refresh()`**；**Pipeline Tick** 在 **`/collections/workflow-jobs`** 上随轮询 **`router.refresh()`**。
+现阶段 **接入顶栏 Banner 的 `kind` 有十种**：`category-cover-sync`（Together · 分类封面）、`category-slots-sync`（快捷操作 · 生成分类槽位）、`merchant-slot-dispatch-sync`（DataForSEO 分类槽位拉品／[`OfferMerchantSlotQuickActionModal`](../src/components/OfferMerchantSlotQuickActionModal.tsx)）、`trust-pages-bundle-sync`（生成信任页包／[`TrustPagesBundleQuickActionModal`](../src/components/TrustPagesBundleQuickActionModal.tsx)）、`keywords-dfs-fetch-sync`（DataForSEO 关键词／[`KeywordSyncFetchDrawer`](../src/components/KeywordSyncFetchDrawer.tsx)）、`keyword-quick-win-preview-sync`（Quick-win → Brief 预览／[`POST batch-enqueue`](../src/app/(payload)/api/admin/articles/batch-enqueue/route.ts) `dryRun`／[`KeywordQuickWinDrawer`](../src/components/KeywordQuickWinDrawer.tsx)）、`keyword-batch-mode-preview-sync`（关键词排产 · 预览候选／同上 `batch-enqueue` `dryRun`）、`content-brief-draft-skeleton-preview-sync`（内容大纲 Draft skeleton 预览／[`POST enqueue-draft-skeleton`](../src/app/(payload)/api/admin/content-briefs/enqueue-draft-skeleton/route.ts) **`dryRun`（仅 `siteId`）**／[`ContentBriefDraftSkeletonDrawer`](../src/components/ContentBriefDraftSkeletonDrawer.tsx)）、`batch-enqueue-sync`（内容大纲批量排产／`batch-enqueue` 默认入队／[`CollectionQuickActions`](../src/components/CollectionQuickActions.tsx)）、`workflow-jobs-pipeline-sync`（`POST` Pipeline run-next／[`PipelineRunNextDrawer`](../src/components/PipelineRunNextDrawer.tsx)）。封面 / 槽位 / 拉品在 **分类**（及部分 **Offer**）列表上通过 `router.refresh()` 与列徽章对齐；信任页包在 **`/collections/pages`**；**关键词**相关（DFS、Quick-win、排产预览）在 **`/collections/keywords`**；**Draft skeleton 预览**、**批量排产**在 **`/collections/workflow-jobs`** 与 **`/collections/content-briefs`** 上随轮询 **`router.refresh()`**；**Pipeline Tick** 在 **`/collections/workflow-jobs`**。
 
 ---
 
@@ -107,6 +107,20 @@ Together 封面在 HTTP 成功后，服务端 [`generate-cover-sync`](../src/app
 | `phase === 'succeeded'` 且 **`notices` 含 SERP 聚类失败文** | **`error`**（红） |
 | `phase === 'succeeded'` 且无上述失败 | **`done`**（绿） |
 
+### 「关键词排产」预览候选（`keyword-batch-mode-preview-sync`）
+
+各排产模式抽屉内 **「预览候选」**：`startKeywordBatchModePreviewJob` → 关窗 → **`POST batch-enqueue`**（`dryRun: true`）→ `completeKeywordBatchModePreviewJob` / `fail`。终态绿条可 **并入队 Brief**（`enqueueReplay`，非 dryRun）。进行中顶栏指向 **关键词列表**。
+
+### 「内容大纲 · Draft skeleton」预览候选（`content-brief-draft-skeleton-preview-sync`）
+
+[`ContentBriefDraftSkeletonDrawer`](../src/components/ContentBriefDraftSkeletonDrawer.tsx) **「预览候选」**：`startContentBriefDraftSkeletonPreviewJob` → 关窗 → **`POST /api/admin/content-briefs/enqueue-draft-skeleton`**（**仅 `siteId` + `limit` + `dryRun: true`**；**`briefIds` 与 `dryRun` 同发会 400**）→ `completeContentBriefDraftSkeletonPreviewJob` / `fail`。**预览成功不弹 toast**（与 Quick-win 一致）。**进行中**：黄条 + 打开工作流任务 / 内容大纲列表；轮询 cap 与 **`batch-enqueue-sync` 长耗时档**相同（`POLL_CAP_MS_KEYWORDS_LONG`）。**终态绿条**汇总将新建条数、查询条数、跳过条数及候选大纲 ID 预览；**`wouldCreate > 0`** 时 Banner **并入队 Draft skeleton**（同 `siteId`/`limit`、**不写 `dryRun`**）。并入队成功后关闭横幅并 `router.refresh()`。
+
+| 场景 | Banner 色相 |
+|------|-------------|
+| 进行中 | **`running`**（黄） |
+| `phase === 'failed'` | **`error`**（红） |
+| `phase === 'succeeded'` | **`done`**（绿） |
+
 ### 无障碍
 
 红条：**`aria-live="assertive"`、`role="alert"`**；绿条与运行中：**`polite` / `status`**（槽位失败同封面）。
@@ -126,17 +140,20 @@ Together 封面在 HTTP 成功后，服务端 [`generate-cover-sync`](../src/app
 
 ### 多条任务时的展示优先级（单条 Banner）
 
-仅 **八类 `kind`** 可能 `running`，但顶栏只占一行：
+可能 **`running`** 的 `kind` 按下述 **抢占** 顶栏（仅一行）：
 
-1. **只要存在** `category-cover-sync` **`running`**：先展示封面进行中（可多批聚合）；  
-2. **否则**若有 `category-slots-sync` **`running`**：展示分类槽位进行中；  
-3. **否则**若有 `merchant-slot-dispatch-sync` **`running`**：展示 DataForSEO 拉品 **等待 Webhook 写入 Offer**（进行中）；  
-4. **否则**若有 `trust-pages-bundle-sync` **`running`**：展示信任页包（OpenRouter）生成进行中；  
-5. **否则**若有 **`keywords-dfs-fetch-sync`** **`running`**：展示 DataForSEO 关键词拉取进行中；  
-6. **否则**若有 **`keyword-quick-win-preview-sync`** **`running`**：展示 Quick-win · **预览候选**（dryRun + 聚类）进行中；  
-7. **否则**若有 **`batch-enqueue-sync`** **`running`**：展示 **批量排产**（`batch-enqueue` 入队）进行中；  
-8. **否则**若有 **`workflow-jobs-pipeline-sync`** **`running`**：展示工作流 **`run-next`/tick** 进行中（可多批勾选 drain）；  
-9. **皆无 running**：在所有已注册任务的 **terminal**（`succeeded` / `failed`）中取 **`startedAt` 最晚**一条。
+1. `category-cover-sync`  
+2. `category-slots-sync`  
+3. `merchant-slot-dispatch-sync`  
+4. `trust-pages-bundle-sync`  
+5. `keywords-dfs-fetch-sync`  
+6. `keyword-quick-win-preview-sync`  
+7. `keyword-batch-mode-preview-sync`  
+8. `content-brief-draft-skeleton-preview-sync`  
+9. `batch-enqueue-sync`  
+10. `workflow-jobs-pipeline-sync`  
+
+**皆无 `running`**：在所有已注册任务的 **terminal**（`succeeded` / `failed`）中取 **`startedAt` 最晚**一条。
 
 ---
 
@@ -155,6 +172,8 @@ Together 封面在 HTTP 成功后，服务端 [`generate-cover-sync`](../src/app
 - **信任页包（en）**：[`TrustPagesBundleQuickActionModal`](../src/components/TrustPagesBundleQuickActionModal.tsx) — **`startTrustPagesBundleJob` → 立刻 `close()`** → **`POST generate-trust-content`**（`prepare` / `afterPrepare`）→ `completeTrustPagesBundleJob` / `failTrustPagesBundleJob`。
 - **DataForSEO 关键词**：[`KeywordSyncFetchDrawer`](../src/components/KeywordSyncFetchDrawer.tsx) — **`startKeywordsDfsFetchJob` → 立刻 `close()`** → **`POST dfs-fetch`** → `completeKeywordsDfsFetchJob` / `failKeywordsDfsFetchJob`。
 - **Quick-win 预览候选**：[`KeywordQuickWinDrawer`](../src/components/KeywordQuickWinDrawer.tsx) — **「预览候选」**：**`startKeywordQuickWinPreviewJob` → 立刻 `close()`** → **`POST batch-enqueue`（`dryRun: true`）** → `completeKeywordQuickWinPreviewJob` / `failKeywordQuickWinPreviewJob`；预览绿条可再点 **`POST batch-enqueue`（`dryRun: false`）** **并入队**（见 Banner 按钮）。
+- **关键词排产 · 预览**：相关抽屉 — **`startKeywordBatchModePreviewJob` → `close()`** → **`POST batch-enqueue`（模式 + `dryRun: true`）** → `completeKeywordBatchModePreviewJob` / `fail`；绿条 **并入队** 复用 `enqueueReplay`。
+- **内容大纲 · Draft skeleton 预览**：[`ContentBriefDraftSkeletonDrawer`](../src/components/ContentBriefDraftSkeletonDrawer.tsx) — **「预览候选」**：**`startContentBriefDraftSkeletonPreviewJob` → `close()`** → **`POST enqueue-draft-skeleton`（`dryRun: true`，仅 `siteId`）** → `completeContentBriefDraftSkeletonPreviewJob` / `fail`；**成功不 toast**；绿条 **并入队 Draft skeleton** 为同参数非 dryRun。
 - **内容大纲 · 批量排产**：[`CollectionQuickActions`](../src/components/CollectionQuickActions.tsx) — **`startBatchEnqueueJob` → 立刻 `close()`** → **`POST batch-enqueue`**（默认非 dryRun）→ `completeBatchEnqueueJob` / `failBatchEnqueueJob`。
 - **工作流 · Pipeline**：[`PipelineRunNextDrawer`](../src/components/PipelineRunNextDrawer.tsx) — **`startWorkflowJobsPipelineJob` → 立刻 `close()`** → **`POST /api/admin/pipeline/run-next`**（可多轮勾选 drain）；`updateWorkflowJobsPipelineJobProgress` 更新横幅进度 → **`completeWorkflowJobsPipelineJob` / `failWorkflowJobsPipelineJob`**。不显式挂载 `AbortController`（与其它同步型 Banner 接线一致）。
 
@@ -162,11 +181,11 @@ Together 封面在 HTTP 成功后，服务端 [`generate-cover-sync`](../src/app
 
 ## 列表刷新（进行中）
 
-当 **`category-cover-sync`、`category-slots-sync`、`merchant-slot-dispatch-sync`、`trust-pages-bundle-sync`、`keywords-dfs-fetch-sync`、`keyword-quick-win-preview-sync`、`batch-enqueue-sync` 或 `workflow-jobs-pipeline-sync`** 存在 **`phase === 'running'`** 时：
+当 **`category-cover-sync`、`category-slots-sync`、`merchant-slot-dispatch-sync`、`trust-pages-bundle-sync`、`keywords-dfs-fetch-sync`、`keyword-quick-win-preview-sync`、`keyword-batch-mode-preview-sync`、`content-brief-draft-skeleton-preview-sync`、`batch-enqueue-sync` 或 `workflow-jobs-pipeline-sync`** 存在 **`phase === 'running'`** 时：
 
 - **`setInterval` 约 2000 ms**：当前路径含 **`/collections/categories`** 时 **`router.refresh()`**；含 **`/collections/pages`** 时 **`refresh()`**；含 **`/collections/keywords`** 时 **`refresh()`**；含 **`/collections/content-briefs`** 或 **`/collections/workflow-jobs`** 时 **`refresh()`**（同一次 tick 可依路径各刷一次）。
-- **停止上限**：基数 **120 s**；若含 **`merchant-slot-dispatch-sync`** 则提升至 **至多约 15 min**；若含 **`trust-pages-bundle-sync`**、**`keywords-dfs-fetch-sync`**、**`keyword-quick-win-preview-sync`**、**`batch-enqueue-sync`** 或 **`workflow-jobs-pipeline-sync`**（或多项同时）则提升至 **至多约 30 min**（取 `Math.max`；其中 **`workflow-jobs-pipeline-sync`** 与 drain 合用 **约 30 min**）。超时只停轮询。
-- **`merchant-slot-dispatch-sync` 结束**：路径含 **`/collections/categories`** 或 **`/collections/offers`** 时 **`router.refresh()`**。**`trust-pages-bundle-sync` 结束**：路径含 **`/collections/pages`** 时 **`router.refresh()`**。**`keywords-dfs-fetch-sync`** 或 **`keyword-quick-win-preview-sync` 结束**：路径含 **`/collections/keywords`** 时 **`router.refresh()`**。**`batch-enqueue-sync` 结束**：路径含 **`/collections/workflow-jobs`** 或 **`/collections/content-briefs`** 时 **`router.refresh()`**。**`workflow-jobs-pipeline-sync` 结束**：路径含 **`/collections/workflow-jobs`** 时 **`router.refresh()`**。
+- **停止上限**：基数 **120 s**；若含 **`merchant-slot-dispatch-sync`** 则提升至 **至多约 15 min**；若含 **`trust-pages-bundle-sync`**、**`keywords-dfs-fetch-sync`**、**`keyword-quick-win-preview-sync`**、**`keyword-batch-mode-preview-sync`**、**`content-brief-draft-skeleton-preview-sync`**、**`batch-enqueue-sync`** 或 **`workflow-jobs-pipeline-sync`**（或多项同时）则提升至 **至多约 6 min**（关键词/dryRun/批量排产/Draft 预览等，取 `POLL_CAP_MS_KEYWORDS_LONG`）或 **至多约 30 min**（**`workflow-jobs-pipeline-sync`** 与 drain），取 `Math.max`。超时只停轮询。
+- **`merchant-slot-dispatch-sync` 结束**：路径含 **`/collections/categories`** 或 **`/collections/offers`** 时 **`router.refresh()`**。**`trust-pages-bundle-sync` 结束**：路径含 **`/collections/pages`** 时 **`router.refresh()`**。**`keywords-dfs-fetch-sync`**、**`keyword-quick-win-preview-sync`** 或 **`keyword-batch-mode-preview-sync` 结束**：路径含 **`/collections/keywords`** 时 **`router.refresh()`**。**`content-brief-draft-skeleton-preview-sync`** 或 **`batch-enqueue-sync` 结束**：路径含 **`/collections/workflow-jobs`** 或 **`/collections/content-briefs`** 时 **`router.refresh()`**。**`workflow-jobs-pipeline-sync` 结束**：路径含 **`/collections/workflow-jobs`** 时 **`router.refresh()`**。
 
 ---
 
@@ -174,7 +193,7 @@ Together 封面在 HTTP 成功后，服务端 [`generate-cover-sync`](../src/app
 
 1. **封面**：分类列表触发 → 立即关弹窗 → 顶栏黄条；`failCount > 0` 红条；全成功绿条；终态可看 **逐条失败/成功摘要**（若有 `coverSyncResults`）。  
 2. **分类槽位**：触发 → **立即关弹窗** → 顶栏黄条（`running`）；`prepare` 或后续请求失败 → 红条；全槽成功绿条；终态可看 **逐槽摘要**（若有 `slotsSyncResults`）。  
-3. **`running` 抢显优先级**：封面 → 分类槽位 → **拉品派发** → **信任页包** → **关键词 DFS 拉取** → **Quick-win 预览候选** → **批量排产** → **Pipeline 工作流**；均无 `running` 时终态取 **最晚 `startedAt`**。  
+3. **`running` 抢显优先级**：封面 → 分类槽位 → 拉品 → 信任页包 → 关键词 DFS → Quick-win 预览 → **关键词排产预览** → **Draft skeleton 预览** → 批量排产 → Pipeline 工作流；均无 `running` 时终态取 **最晚 `startedAt`**。  
 4. Banner **不压住**快捷操作弹窗；无泄漏 `setInterval`。  
 5. **终态**绿/红条在任务结束后会一直保持，直到用户点 **`×`**；**进行中**黄条也可点 **`×`** 仅隐藏提示（不中断请求）。  
 6. **Merchant 拉品（槽位）**：触发 → **立即关弹窗** → **黄条直至 Webhook 写入完成或超时**；全类成功 **绿条**；任一类目失败/超时 **红条**；逐类摘要见 Banner（可与列表「Merchant 拉品」列对照）。  
@@ -183,6 +202,7 @@ Together 封面在 HTTP 成功后，服务端 [`generate-cover-sync`](../src/app
 9. **Quick-win 预览候选**：点 **预览候选** → **立即关弹窗** → 顶栏 **黄条** → 完成 **绿条**（或 SERP 聚类失败摘要 → **红条**，无并入队按钮）；绿条且有 pillar 时可点 Banner **并入队 Brief** → **`dryRun: false`** 入队成功后横幅关闭并刷新列表；**/并入队 Brief** 仍可只在抽屉内使用。
 10. **工作流 Pipeline**：点 **「执行下 N 条」** → **立即关弹窗** → 顶栏 **黄条**（多批时显示已累计批次数）；HTTP 或未捕获错误 → **红条**（`phase: failed`）；正常结束摘要 → **绿条**（或 **`tickFailures` / 分批上限 errorHint** → **红条**）；进行中及完成后 **`/collections/workflow-jobs`** 上随 **`router.refresh`** 更新列表。
 11. **内容大纲 · 批量排产**：点 **「执行批量排产」** → **立即关弹窗** → 顶栏 **黄条**；HTTP / 未捕获错误 → **红条**；成功 → **绿条**（已入队 / 跳过 / draft 关键词提示）；**入队 0 且有 `errorsSample`** → **红条**；进行中 / 完成后在 **`/collections/workflow-jobs`** 与 **`/collections/content-briefs`** 上随轮询 **`refresh`**。
+12. **内容大纲 · Draft skeleton 预览**：点 **「预览候选」** → **关窗** → 顶栏 **黄条** → 成功 **绿条**（含将新建数 / 候选 ID）；**`wouldCreate > 0`** 时可点 Banner **并入队 Draft skeleton**；**无成功 toast**；列表轮询同批量排产档。
 
 ---
 
