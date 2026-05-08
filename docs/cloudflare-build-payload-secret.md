@@ -1,4 +1,4 @@
-# Cloudflare 构建与 `PAYLOAD_SECRET`
+# Cloudflare 的构建与 `PAYLOAD_SECRET`
 
 在 Cloudflare 的 **Worker / Workers & Pages** 里，**生产环境（Runtime）的 Variables and Secrets** 与 **从 Git 触发的 `next build` 所在环境** 是两套：前者在请求处理时注入，后者执行 `npm run build` / `pnpm run build` 时读的是当次构建的 `process.env`。
 
