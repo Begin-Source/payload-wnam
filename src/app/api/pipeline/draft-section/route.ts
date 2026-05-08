@@ -21,6 +21,10 @@ import {
   extractTavilyUsageCredits,
   tavilyCreditsToUsd,
 } from '@/utilities/tavilyUsageCredits'
+import {
+  buildOriginalEvidenceContextAppendix,
+  loadOriginalEvidencePromptSlice,
+} from '@/services/evidence/formatOriginalEvidenceForPrompt'
 
 export const dynamic = 'force-dynamic'
 
@@ -228,6 +232,13 @@ export async function POST(request: Request): Promise<Response> {
     merged ? wordBudgetHintFromArticleStrategy(merged.articleStrategy, sectionType) : undefined
   if (wb?.trim()) {
     globalContext = globalContext ? `${globalContext}\n\n${wb}` : wb
+  }
+
+  if (Number.isFinite(aidResolved)) {
+    const evidenceSlice = await loadOriginalEvidencePromptSlice(payload, aidResolved)
+    if (evidenceSlice) {
+      globalContext = `${globalContext}${buildOriginalEvidenceContextAppendix(evidenceSlice)}`
+    }
   }
 
   let researchSlice: string | undefined

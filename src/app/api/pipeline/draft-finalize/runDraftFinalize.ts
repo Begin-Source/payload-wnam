@@ -34,6 +34,10 @@ import {
   extractTavilyUsageCredits,
   tavilyCreditsToUsd,
 } from '@/utilities/tavilyUsageCredits'
+import {
+  buildOriginalEvidenceContextAppendix,
+  loadOriginalEvidencePromptSlice,
+} from '@/services/evidence/formatOriginalEvidenceForPrompt'
 
 function siteIdFromArticle(doc: Article | Record<string, unknown>): number | null {
   const raw = (doc as { site?: number | { id: number } | null }).site
@@ -65,8 +69,10 @@ async function finalizePassesToMarkdown(args: {
   siteId: number | null
   tavSearchQuery: string
   pipelineProfileId?: number | null
+  /** When set and finalize uses EEAT pass, original-evidence context is prefixed into article_md. */
+  articleId?: number | null
 }): Promise<{ text: string; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number } }> {
-  const { payload, tenantId, model, merged, articlePlain, pipelineProfileId } = args
+  const { payload, tenantId, model, merged, articlePlain, pipelineProfileId, articleId } = args
   let md =
     finalizeArticleBodyText(articlePlain)
       .trim()
@@ -108,11 +114,18 @@ async function finalizePassesToMarkdown(args: {
   }
 
   if (merged.finalizeVariant === 'eeat_rewrite_pass') {
+    let articleMdForEeat = md.slice(0, 32000)
+    if (typeof articleId === 'number' && Number.isFinite(articleId)) {
+      const slice = await loadOriginalEvidencePromptSlice(payload, articleId)
+      if (slice) {
+        articleMdForEeat = `${buildOriginalEvidenceContextAppendix(slice).trim()}\n\n${articleMdForEeat}`.trim()
+      }
+    }
     md = await runTpl(
       FINALIZE_EEAT_SYSTEM,
       FINALIZE_EEAT_USER,
-      buildFinalizeEeatDefaults({ article_md: md.slice(0, 32000) }),
-      { article_md: md.slice(0, 32000) },
+      buildFinalizeEeatDefaults({ article_md: articleMdForEeat }),
+      { article_md: articleMdForEeat },
     )
   } else if (merged.finalizeVariant === 'fact_check_pass') {
     let tavSlice = '(tavily disabled)'
@@ -271,6 +284,7 @@ export async function runDraftFinalizeForArticle(
     siteId,
     tavSearchQuery,
     pipelineProfileId,
+    articleId: articleIdNum,
   })
 
   const nextLex = markdownToPageBodyLexical(polishedMd) as Article['body']
