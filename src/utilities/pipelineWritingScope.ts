@@ -49,7 +49,7 @@ export async function resolveWritingScope(
     return { ok: false, error: 'Provide articleId and/or briefId' }
   }
 
-  let articleId: number | null = rawArticle
+  const articleId: number | null = rawArticle
   let briefId: number | null = rawBrief
 
   if (rawArticle != null) {
