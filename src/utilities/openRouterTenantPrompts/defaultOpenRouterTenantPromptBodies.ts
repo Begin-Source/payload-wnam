@@ -29,8 +29,13 @@ import {
   type OpenRouterTenantPipelinePromptKey,
 } from '@/utilities/domainGeneration/promptKeys'
 import { substitutePromptPlaceholders } from '@/utilities/domainGeneration/substitutePromptPlaceholders'
-
+import {
+  FINALIZE_ARTICLE_BLOCK_BEGIN,
+  FINALIZE_ARTICLE_BLOCK_END,
+} from '@/utilities/openRouterTenantPrompts/finalizeArticleBlockDelimiters'
 import { SERP_BRIEF_SYSTEM_ADDON } from '@/utilities/openRouterTenantPrompts/serpBriefConstants'
+
+export { FINALIZE_ARTICLE_BLOCK_BEGIN, FINALIZE_ARTICLE_BLOCK_END }
 
 /** Matches `skillPrompts` SEED (migration + template default). Runtime may use `getSkillPrompt` which can diverge. */
 export const DEFAULT_SKILL_DOMAIN_AUTHORITY_AUDITOR_SYSTEM =
@@ -113,9 +118,6 @@ export function buildDraftSectionPromptDefaults(args: {
     user: substitutePromptPlaceholders(DEFAULT_DRAFT_SECTION_USER_TEMPLATE, vars),
   }
 }
-
-export const FINALIZE_ARTICLE_BLOCK_BEGIN = '<<<ARTICLE_BEGIN>>>'
-export const FINALIZE_ARTICLE_BLOCK_END = '<<<ARTICLE_END>>>'
 
 export const DEFAULT_FINALIZE_COHESION_SYSTEM =
   'You are an SEO editor merging parallel-written sections into one cohesive article. In the user message, the draft sits between literal lines `<<<ARTICLE_BEGIN>>>` and `<<<ARTICLE_END>>>`—those lines are transport delimiters only, not Markdown horizontal rules and not part of the article body. Between them you receive plain text extracted from our CMS Lexical rich-text field (not an uploaded .md file). Preserve facts; smooth transitions; remove duplicated H2 intros. If you see two FAQ or Q&A blocks (e.g. "## FAQ" and "## FAQ Block", or repeated PAA-style questions), merge into a single "## FAQ" with deduplicated questions—keep the clearest answer per topic, drop near-duplicate bullets. Output MARKDOWN ONLY for re-import into the CMS: ## for H2, ### for H3. English. No preamble or meta-commentary.'

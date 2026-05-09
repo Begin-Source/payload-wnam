@@ -1,8 +1,6 @@
 import {
   DRAFT_SECTION_SYSTEM,
   DRAFT_SECTION_USER,
-  FINALIZE_ARTICLE_BLOCK_BEGIN,
-  FINALIZE_ARTICLE_BLOCK_END,
   FINALIZE_COHESION_SYSTEM,
   FINALIZE_COHESION_USER,
   FINALIZE_EEAT_SYSTEM,
@@ -13,6 +11,10 @@ import {
   SERP_BRIEF_USER,
   type OpenRouterTenantPipelinePromptKey,
 } from '@/utilities/domainGeneration/promptKeys'
+import {
+  FINALIZE_ARTICLE_BLOCK_BEGIN,
+  FINALIZE_ARTICLE_BLOCK_END,
+} from '@/utilities/openRouterTenantPrompts/finalizeArticleBlockDelimiters'
 
 /**
  * Profile-scoped prompt bodies for pipeline profile slug `quality-constrained`
