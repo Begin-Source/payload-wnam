@@ -21,7 +21,26 @@ type FetchArgs = {
   isCli: boolean
 }
 
-const OPENROUTER_MODEL_LIST_TIMEOUT_MS = 8_000
+const DEFAULT_OPENROUTER_MODEL_LIST_TIMEOUT_MS = 8_000
+const MIN_OPENROUTER_MODEL_LIST_TIMEOUT_MS = 1_000
+const MAX_OPENROUTER_MODEL_LIST_TIMEOUT_MS = 120_000
+
+/**
+ * Milliseconds for `GET https://openrouter.ai/api/v1/models` during Payload init.
+ * Override with env `OPENROUTER_MODEL_LIST_TIMEOUT_MS` (1000–120000); invalid values use default 8000.
+ */
+export function parseOpenRouterModelListTimeoutMs(raw: string | undefined): number {
+  if (raw == null || !String(raw).trim()) return DEFAULT_OPENROUTER_MODEL_LIST_TIMEOUT_MS
+  const n = Number(String(raw).trim())
+  if (!Number.isFinite(n) || n < MIN_OPENROUTER_MODEL_LIST_TIMEOUT_MS) {
+    return DEFAULT_OPENROUTER_MODEL_LIST_TIMEOUT_MS
+  }
+  return Math.min(MAX_OPENROUTER_MODEL_LIST_TIMEOUT_MS, Math.floor(n))
+}
+
+function openRouterModelListTimeoutMs(): number {
+  return parseOpenRouterModelListTimeoutMs(process.env.OPENROUTER_MODEL_LIST_TIMEOUT_MS)
+}
 
 /**
  * When `OPENAI_BASE_URL` points at OpenRouter, fetches the public model list (same key as
@@ -45,7 +64,7 @@ export async function fetchOpenRouterModelOptions(
   try {
     const res = await fetch(OPENROUTER_MODELS_URL, {
       headers: { Authorization: `Bearer ${key}` },
-      signal: AbortSignal.timeout(OPENROUTER_MODEL_LIST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(openRouterModelListTimeoutMs()),
     })
     if (!res.ok) {
       console.warn(

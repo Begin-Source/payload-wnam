@@ -24,6 +24,10 @@ import {
   SECTION_VARIANTS,
   SKELETON_VARIANTS,
 } from '@/utilities/pipelineVariants'
+import {
+  PIPELINE_DEFAULT_OPENROUTER_LLM,
+  PIPELINE_FALLBACK_OPENROUTER_LLM,
+} from '@/constants/pipelineOpenRouterModels'
 
 export type PipelineSettingShape = {
   tavilyEnabled: boolean
@@ -252,7 +256,7 @@ export function isPipelineQuickDepth(merged: PipelineSettingShape): boolean {
 export function selectLlmModelForSection(
   merged: PipelineSettingShape,
   sectionType: string,
-  fallback = 'openai/gpt-4o-mini',
+  fallback = PIPELINE_DEFAULT_OPENROUTER_LLM,
 ): string {
   const list = merged.llmModelsBySection
   if (Array.isArray(list)) {
@@ -272,7 +276,7 @@ export function selectLlmModelForSection(
 
 /** Model for generic OpenRouter pipeline steps: frugal forces mini, else section-aware defaults. */
 export function pickPipelineOpenRouterModel(merged: PipelineSettingShape, sectionType = 'custom'): string {
-  if (merged.frugalMode) return 'openai/gpt-4o-mini'
+  if (merged.frugalMode) return PIPELINE_DEFAULT_OPENROUTER_LLM
   return selectLlmModelForSection(merged, sectionType)
 }
 

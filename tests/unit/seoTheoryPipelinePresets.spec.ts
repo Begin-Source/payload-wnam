@@ -45,6 +45,6 @@ describe('seo theory pipeline profile presets', () => {
       llmModelsBySection: Array<{ sectionType?: string; model?: string }>
     }
     const how = q.llmModelsBySection.find((r) => r.sectionType === 'how_to')
-    expect(how?.model).toBe('openai/gpt-4o')
+    expect(how?.model).toBe('deepseek/deepseek-v4-flash')
   })
 })

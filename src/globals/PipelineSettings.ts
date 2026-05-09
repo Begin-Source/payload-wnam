@@ -6,6 +6,10 @@ import { announcementsPortalBlocksGlobal } from '@/utilities/userAccessTiers'
 import { isSystemConfigNavVisible } from '@/utilities/isSuperAdminLikeUser'
 import { superAdminPasses } from '@/utilities/superAdminPasses'
 import {
+  PIPELINE_DEFAULT_OPENROUTER_LLM,
+  PIPELINE_FALLBACK_OPENROUTER_LLM,
+} from '@/constants/pipelineOpenRouterModels'
+import {
   DEFAULT_BRIEF_DEPTH,
   DEFAULT_BRIEF_VARIANT,
   DEFAULT_FINALIZE_VARIANT,
@@ -17,6 +21,9 @@ import {
   sectionVariantFieldOptions,
   skeletonVariantFieldOptions,
 } from '@/utilities/pipelineVariants'
+
+/** Re-export for seeds and docs that imported from globals. */
+export { PIPELINE_DEFAULT_OPENROUTER_LLM, PIPELINE_FALLBACK_OPENROUTER_LLM } from '@/constants/pipelineOpenRouterModels'
 
 /** Defaults mirrored by Admin global `pipeline-settings` JSON fields (used by SEO theory pipeline profile seeds). */
 export const pipelineSettingsDefaultEeatWeights = [
@@ -51,30 +58,60 @@ export const pipelineSettingsDefaultEeatWeights = [
 ]
 
 export const pipelineSettingsDefaultLlmBySection = [
-  { sectionType: 'intro', model: 'openai/gpt-4o-mini', fallbackModel: 'openai/gpt-4o', maxOutputTokens: 800 },
-  { sectionType: 'conclusion', model: 'openai/gpt-4o-mini', fallbackModel: 'openai/gpt-4o', maxOutputTokens: 500 },
-  { sectionType: 'faq', model: 'openai/gpt-4o-mini', fallbackModel: 'openai/gpt-4o', maxOutputTokens: 1200 },
-  { sectionType: 'pros_cons', model: 'openai/gpt-4o-mini', fallbackModel: 'openai/gpt-4o', maxOutputTokens: 800 },
-  { sectionType: 'topic_definition', model: 'openai/gpt-4o-mini', fallbackModel: 'openai/gpt-4o', maxOutputTokens: 1500 },
+  {
+    sectionType: 'intro',
+    model: PIPELINE_DEFAULT_OPENROUTER_LLM,
+    fallbackModel: PIPELINE_FALLBACK_OPENROUTER_LLM,
+    maxOutputTokens: 800,
+  },
+  {
+    sectionType: 'conclusion',
+    model: PIPELINE_DEFAULT_OPENROUTER_LLM,
+    fallbackModel: PIPELINE_FALLBACK_OPENROUTER_LLM,
+    maxOutputTokens: 500,
+  },
+  {
+    sectionType: 'faq',
+    model: PIPELINE_DEFAULT_OPENROUTER_LLM,
+    fallbackModel: PIPELINE_FALLBACK_OPENROUTER_LLM,
+    maxOutputTokens: 1200,
+  },
+  {
+    sectionType: 'pros_cons',
+    model: PIPELINE_DEFAULT_OPENROUTER_LLM,
+    fallbackModel: PIPELINE_FALLBACK_OPENROUTER_LLM,
+    maxOutputTokens: 800,
+  },
+  {
+    sectionType: 'topic_definition',
+    model: PIPELINE_DEFAULT_OPENROUTER_LLM,
+    fallbackModel: PIPELINE_FALLBACK_OPENROUTER_LLM,
+    maxOutputTokens: 1500,
+  },
   {
     sectionType: 'how_to',
-    model: 'anthropic/claude-3.5-sonnet',
-    fallbackModel: 'openai/gpt-4o',
+    model: PIPELINE_DEFAULT_OPENROUTER_LLM,
+    fallbackModel: PIPELINE_FALLBACK_OPENROUTER_LLM,
     maxOutputTokens: 2000,
   },
   {
     sectionType: 'comparison',
-    model: 'anthropic/claude-3.5-sonnet',
-    fallbackModel: 'openai/gpt-4o',
+    model: PIPELINE_DEFAULT_OPENROUTER_LLM,
+    fallbackModel: PIPELINE_FALLBACK_OPENROUTER_LLM,
     maxOutputTokens: 2000,
   },
   {
     sectionType: 'hands_on_test',
-    model: 'anthropic/claude-3.5-sonnet',
-    fallbackModel: 'openai/gpt-4o',
+    model: PIPELINE_DEFAULT_OPENROUTER_LLM,
+    fallbackModel: PIPELINE_FALLBACK_OPENROUTER_LLM,
     maxOutputTokens: 2000,
   },
-  { sectionType: 'custom', model: 'openai/gpt-4o', fallbackModel: 'openai/gpt-4o-mini', maxOutputTokens: 2000 },
+  {
+    sectionType: 'custom',
+    model: PIPELINE_DEFAULT_OPENROUTER_LLM,
+    fallbackModel: PIPELINE_FALLBACK_OPENROUTER_LLM,
+    maxOutputTokens: 2000,
+  },
 ]
 
 export const PipelineSettings: GlobalConfig = {
@@ -115,7 +152,7 @@ export const PipelineSettings: GlobalConfig = {
     {
       name: 'defaultLlmModel',
       type: 'text',
-      defaultValue: 'openai/gpt-4o',
+      defaultValue: PIPELINE_DEFAULT_OPENROUTER_LLM,
       admin: { description: 'OpenRouter model id' },
     },
     {
@@ -276,9 +313,9 @@ export const PipelineSettings: GlobalConfig = {
       name: 'sectionRetryStrategy',
       type: 'json',
       label: '章节重试策略',
-      defaultValue: { fallbackModel: 'openai/gpt-4o-mini' },
+      defaultValue: { fallbackModel: PIPELINE_FALLBACK_OPENROUTER_LLM },
       admin: {
-        description: '`{ "fallbackModel": "openai/gpt-4o-mini" }`，末次失败后切换模型。',
+        description: `\`{ "fallbackModel": "${PIPELINE_FALLBACK_OPENROUTER_LLM}" }\`，末次失败后切换模型。`,
       },
     },
   ],

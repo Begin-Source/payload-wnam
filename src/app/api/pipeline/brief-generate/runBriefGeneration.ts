@@ -1,5 +1,6 @@
 import type { Payload } from 'payload'
 
+import { PIPELINE_DEFAULT_OPENROUTER_LLM } from '@/constants/pipelineOpenRouterModels'
 import { AMZ_DEFAULT_DEVICE } from '@/services/integrations/dataforseo/amzDefaults'
 import { dataForSeoPost } from '@/services/integrations/dataforseo/client'
 import { extractDataForSeoCostUsd } from '@/services/integrations/dataforseo/extractDataForSeoCostUsd'
@@ -56,7 +57,7 @@ export async function runBriefGeneration(
   const depth = depthLabel(merged)
   const briefModel =
     quick || merged.frugalMode ?
-      'openai/gpt-4o-mini'
+      PIPELINE_DEFAULT_OPENROUTER_LLM
     : selectLlmModelForSection(merged, 'intro')
 
   const cfgExtras = parseBriefVariantConfig(merged.briefVariantConfig)

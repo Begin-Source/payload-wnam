@@ -794,17 +794,28 @@ export function AdminBackgroundActivityProvider({
       jobId,
       batches,
       totalTicks,
+      debugLinesAppend,
     }: {
       jobId: string
       batches: number
       totalTicks: number
+      debugLinesAppend?: string[]
     }): void => {
+      const MAX_PIPELINE_DEBUG_LINES = 30
       setJobs((prev) =>
         prev.map((j) =>
           j.id === jobId && j.phase === 'running' && j.kind === 'workflow-jobs-pipeline-sync'
             ? {
                 ...j,
                 workflowJobsPipelineProgress: { batches, totalTicks },
+                ...(debugLinesAppend != null && debugLinesAppend.length > 0
+                  ? {
+                      workflowJobsPipelineDebugLines: [
+                        ...(j.workflowJobsPipelineDebugLines ?? []),
+                        ...debugLinesAppend,
+                      ].slice(-MAX_PIPELINE_DEBUG_LINES),
+                    }
+                  : {}),
               }
             : j,
         ),
@@ -823,15 +834,23 @@ export function AdminBackgroundActivityProvider({
       summary: WorkflowJobsPipelineSummary
     }): void => {
       setJobs((prev) =>
-        prev.map((j) =>
-          j.id === jobId && j.phase === 'running' && j.kind === 'workflow-jobs-pipeline-sync'
-            ? {
-                ...j,
-                phase: 'succeeded',
-                workflowJobsPipelineSummary: summary,
-              }
-            : j,
-        ),
+        prev.map((j) => {
+          if (j.id !== jobId || j.phase !== 'running' || j.kind !== 'workflow-jobs-pipeline-sync') {
+            return j
+          }
+          const hintLines = j.workflowJobsPipelineDebugLines
+          return {
+            ...j,
+            phase: 'succeeded',
+            workflowJobsPipelineSummary: {
+              ...summary,
+              ...(hintLines != null && hintLines.length > 0 ?
+                { pipelineBannerHints: [...hintLines] }
+              : {}),
+            },
+            workflowJobsPipelineDebugLines: undefined,
+          }
+        }),
       )
       refreshIfWorkflowJobsList()
     },

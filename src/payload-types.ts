@@ -5080,7 +5080,7 @@ export interface PipelineSetting {
     | boolean
     | null;
   /**
-   * `{ "fallbackModel": "openai/gpt-4o-mini" }`，末次失败后切换模型。
+   * `{ "fallbackModel": "deepseek/deepseek-chat" }`，末次失败后切换模型。
    */
   sectionRetryStrategy?:
     | {

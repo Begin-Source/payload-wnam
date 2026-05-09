@@ -8,6 +8,7 @@ import {
   enqueueImageGenerateIfNeeded,
   enqueueMoreDraftSectionsAfterCompletion,
   markArticlePublishReady,
+  resolveTogetherImageEnabledForArticleJob,
 } from '@/app/api/pipeline/lib/articlePipelineChain'
 import { enqueueDraftSkeletonAfterBriefGenerate } from '@/app/api/pipeline/lib/enqueueDraftSkeletonAfterBrief'
 import { enqueueHandoffFollowUp } from '@/app/api/pipeline/lib/enqueueHandoffFollowUp'
@@ -24,6 +25,8 @@ import {
   normalizeConstrainedJobIds,
   parseConstrainedIdsFromCommaQuery,
 } from '@/utilities/workflowJobTickConstraints'
+import { pushPipelineBannerHint, wantsPipelineBannerHints } from '@/utilities/pipelineBannerHints'
+import { runWithSqliteBusyRetry } from '@/utilities/sqliteBusyRetry'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,6 +101,7 @@ export async function POST(request: Request): Promise<Response> {
   const constrainedIds = normalized.ids
 
   const execute = body.execute === true || url.searchParams.get('execute') === '1'
+  const collectHints = wantsPipelineBannerHints(request)
 
   if (!execute) {
     return peekPendingCore(constrainedIds, {
@@ -122,6 +126,7 @@ export async function POST(request: Request): Promise<Response> {
       message: 'No pending jobs',
       cronDispatch: '/api/pipeline/cron-dispatch',
       ...(normalized.truncated ? { constrainedJobIdsTruncated: true } : {}),
+      ...(collectHints ? { bannerHints: ['tick: no pending job in constraint set'] } : {}),
     })
   }
 
@@ -136,7 +141,94 @@ export async function POST(request: Request): Promise<Response> {
     },
   })
 
+  const pipelineBannerHints: string[] = []
+  const hint = (line: string) => {
+    if (!collectHints) return
+    pushPipelineBannerHint(pipelineBannerHints, line)
+  }
+
   try {
+    if (doc.jobType === 'image_generate') {
+      const togetherOn = await resolveTogetherImageEnabledForArticleJob(payload, doc)
+      if (!togetherOn) {
+        const skippedOutput: Record<string, unknown> = {
+          ok: true,
+          skipped: true,
+          reason: 'together_image_disabled',
+        }
+        await payload.update({
+          collection: 'workflow-jobs',
+          id: jobId,
+          data: {
+            status: 'completed',
+            completedAt: new Date().toISOString(),
+            output: skippedOutput,
+            errorMessage: '',
+          },
+        })
+        try {
+          await enqueueHandoffFollowUp(payload, {
+            completedJob: {
+              id: jobId,
+              site: doc.site,
+              article: doc.article,
+              handoff: (doc as { handoff?: unknown }).handoff,
+            },
+            output: skippedOutput,
+          })
+        } catch {
+          // follow-up enqueue is best-effort
+        }
+
+        const fromInput =
+          typeof doc.input === 'object' && doc.input && !Array.isArray(doc.input)
+            ? ((doc.input as { articleId?: unknown }).articleId as number | string | undefined)
+            : undefined
+        const fromInputNum =
+          typeof fromInput === 'number' && Number.isFinite(fromInput)
+            ? fromInput
+            : typeof fromInput === 'string' && /^\d+$/.test(fromInput)
+              ? Number(fromInput)
+              : null
+        const rel = articleIdFromJob(doc)
+        const relNum = rel != null && /^\d+$/.test(rel) ? Number(rel) : null
+        const oid = fromInputNum ?? relNum
+        if (typeof oid === 'number' && Number.isFinite(oid)) {
+          try {
+            await runWithSqliteBusyRetry(
+              () => markArticlePublishReady(payload, oid),
+              { logger: payload.logger, label: `${PATH} markArticlePublishReady skipped image` },
+            )
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e)
+            const stack = e instanceof Error ? e.stack : undefined
+            payload.logger.error(
+              {
+                err: msg,
+                stack: typeof stack === 'string' ? stack.slice(0, 2500) : undefined,
+                jobId,
+                jobType: doc.jobType,
+                chainStep: 'markArticlePublishReady skipped image',
+              },
+              '[pipeline/tick] chained pipeline enqueue failed',
+            )
+          }
+        }
+
+        hint(`tick done jobType=image_generate result=skipped reason=together_image_disabled jobId=${String(jobId)}`)
+        return Response.json({
+          ok: true,
+          executed: true,
+          jobId,
+          jobType: doc.jobType,
+          result: 'completed',
+          httpStatus: 200,
+          output: skippedOutput,
+          ...(collectHints && pipelineBannerHints.length > 0 ? { bannerHints: pipelineBannerHints } : {}),
+        })
+      }
+    }
+
     const inner = await dispatchWorkflowJob(request, doc, payload)
     const { success, body: output, httpStatus } = await interpretJobResponse(inner)
 
@@ -163,6 +255,10 @@ export async function POST(request: Request): Promise<Response> {
           errorMessage: errMsg,
         },
       })
+      const errShort = errMsg.replace(/\s+/g, ' ').trim().slice(0, 72)
+      hint(
+        `tick jobType=${doc.jobType ?? '?'} result=failed jobId=${String(jobId)} http=${httpStatus}${errShort ? ` err=${errShort}` : ''}`,
+      )
       return Response.json({
         ok: true,
         executed: true,
@@ -171,6 +267,7 @@ export async function POST(request: Request): Promise<Response> {
         result: 'failed',
         httpStatus,
         output,
+        ...(collectHints && pipelineBannerHints.length > 0 ? { bannerHints: pipelineBannerHints } : {}),
       })
     }
 
@@ -220,78 +317,156 @@ export async function POST(request: Request): Promise<Response> {
               : null
         const siteNumeric = siteNum != null && Number.isFinite(siteNum) ? siteNum : null
         try {
-          await enqueueDraftSkeletonAfterBriefGenerate(payload, {
-            completedBriefJobId: jobId,
-            briefId: typeof bid === 'string' || typeof bid === 'number' ? bid : String(bid),
-            siteNumeric,
-          })
-        } catch {
-          // chain enqueue is best-effort
+          await runWithSqliteBusyRetry(
+            () =>
+              enqueueDraftSkeletonAfterBriefGenerate(payload, {
+                completedBriefJobId: jobId,
+                briefId: typeof bid === 'string' || typeof bid === 'number' ? bid : String(bid),
+                siteNumeric,
+              }),
+            { logger: payload.logger, label: `${PATH} enqueueDraftSkeletonAfterBriefGenerate` },
+          )
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e)
+          const stack = e instanceof Error ? e.stack : undefined
+          payload.logger.error(
+            {
+              err: msg,
+              stack: typeof stack === 'string' ? stack.slice(0, 2500) : undefined,
+              jobId,
+              jobType: doc.jobType,
+              chainStep: 'enqueueDraftSkeletonAfterBriefGenerate',
+            },
+            '[pipeline/tick] brief_generate chain enqueue failed',
+          )
         }
       }
     }
 
-    try {
-      if (doc.jobType === 'draft_skeleton') {
-        const oid = outputDoc.articleId ?? outputDoc.id
-        const briefKey = briefIdFromJob(doc)
-        const s = doc.site
-        const siteNum =
-          typeof s === 'number' && Number.isFinite(s)
-            ? s
-            : typeof s === 'object' && s !== null && 'id' in s
-              ? Number((s as { id: unknown }).id)
-              : null
-        const siteParsed = siteIdFromJob(doc)
-        const siteNumeric =
-          siteNum != null && Number.isFinite(siteNum)
-            ? siteNum
-            : siteParsed && /^\d+$/.test(siteParsed)
-              ? Number(siteParsed)
-              : null
-        await enqueueDraftSectionsAfterSkeleton(payload, {
+    const runChainedEnqueue = async <T>(
+      label: string,
+      fn: () => Promise<T>,
+    ): Promise<{ ok: true; result: T } | { ok: false }> => {
+      try {
+        const result = await runWithSqliteBusyRetry(fn, {
+          logger: payload.logger,
+          label: `${PATH} ${label}`,
+        })
+        return { ok: true, result }
+      } catch (chainErr) {
+        const msg = chainErr instanceof Error ? chainErr.message : String(chainErr)
+        const stack = chainErr instanceof Error ? chainErr.stack : undefined
+        payload.logger.error(
+          {
+            err: msg,
+            stack: typeof stack === 'string' ? stack.slice(0, 2500) : undefined,
+            jobId,
+            jobType: doc.jobType,
+            chainStep: label,
+          },
+          '[pipeline/tick] chained pipeline enqueue failed',
+        )
+        return { ok: false }
+      }
+    }
+
+    if (doc.jobType === 'draft_skeleton') {
+      const oid = outputDoc.articleId ?? outputDoc.id
+      const briefKey = briefIdFromJob(doc)
+      const s = doc.site
+      const siteNum =
+        typeof s === 'number' && Number.isFinite(s)
+          ? s
+          : typeof s === 'object' && s !== null && 'id' in s
+            ? Number((s as { id: unknown }).id)
+            : null
+      const siteParsed = siteIdFromJob(doc)
+      const siteNumeric =
+        siteNum != null && Number.isFinite(siteNum)
+          ? siteNum
+          : siteParsed && /^\d+$/.test(siteParsed)
+            ? Number(siteParsed)
+            : null
+      const briefForChain =
+        briefKey != null ? briefKey : (doc.input as { briefId?: unknown } | undefined)?.briefId ?? null
+
+      payload.logger.info(
+        {
+          jobId,
+          articleIdFromOutput: oid,
+          briefForChain,
+          siteNumeric,
+          outputHasArticleId: typeof outputDoc.articleId === 'number',
+        },
+        '[pipeline/tick] draft_skeleton chain: enqueueDraftSectionsAfterSkeleton input',
+      )
+
+      hint(
+        `draft_skeleton pre articleId=${String(oid ?? '')} briefId=${String(briefForChain ?? '')} outNumArticleId=${typeof outputDoc.articleId === 'number'}`,
+      )
+
+      const chainSk = await runChainedEnqueue('enqueueDraftSectionsAfterSkeleton', () =>
+        enqueueDraftSectionsAfterSkeleton(payload, {
           completedSkeletonJobId: jobId,
           articleId: oid,
-          briefId:
-            briefKey != null ? briefKey : (doc.input as { briefId?: unknown } | undefined)?.briefId ?? null,
+          briefId: briefForChain,
           siteNumeric,
-        })
+        }),
+      )
+      if (chainSk.ok) {
+        const n =
+          typeof chainSk.result === 'number' && Number.isFinite(chainSk.result) ? chainSk.result : 0
+        hint(`draft_skeleton sectionsEnqueued=${n}`)
+        payload.logger.info(
+          {
+            jobId,
+            jobType: 'draft_skeleton',
+            articleId: oid,
+            briefId: briefForChain,
+          },
+          '[pipeline/tick] draft_skeleton chain: enqueueDraftSectionsAfterSkeleton completed (check workflow-jobs for draft_section)',
+        )
+      } else {
+        hint('draft_skeleton enqueue chain failed (see server chained pipeline log)')
       }
-      if (doc.jobType === 'draft_section') {
-        await enqueueMoreDraftSectionsAfterCompletion(payload, doc)
-        await enqueueDraftFinalizeIfSectionsDone(payload, doc)
-      }
-      if (doc.jobType === 'draft_finalize') {
-        await enqueueImageGenerateIfNeeded(payload, doc)
-      }
-      if (doc.jobType === 'image_generate' && outputDoc.ok === true) {
-        const fromOut = outputDoc.articleId
-        const fromOutNum =
-          typeof fromOut === 'number' && Number.isFinite(fromOut)
-            ? fromOut
-            : typeof fromOut === 'string' && /^\d+$/.test(fromOut)
-              ? Number(fromOut)
-              : null
-        const fromInput =
-          typeof doc.input === 'object' && doc.input && !Array.isArray(doc.input)
-            ? ((doc.input as { articleId?: unknown }).articleId as number | string | undefined)
-            : undefined
-        const fromInputNum =
-          typeof fromInput === 'number' && Number.isFinite(fromInput)
-            ? fromInput
-            : typeof fromInput === 'string' && /^\d+$/.test(fromInput)
-              ? Number(fromInput)
-              : null
-        const rel = articleIdFromJob(doc)
-        const relNum = rel != null && /^\d+$/.test(rel) ? Number(rel) : null
-        const oid = fromOutNum ?? fromInputNum ?? relNum
-        if (typeof oid === 'number' && Number.isFinite(oid)) {
-          await markArticlePublishReady(payload, oid)
-        }
-      }
-    } catch {
-      /* chained pipeline enqueue ignored */
     }
+    if (doc.jobType === 'draft_section') {
+      await runChainedEnqueue('enqueueMoreDraftSectionsAfterCompletion', () =>
+        enqueueMoreDraftSectionsAfterCompletion(payload, doc),
+      )
+      await runChainedEnqueue('enqueueDraftFinalizeIfSectionsDone', () =>
+        enqueueDraftFinalizeIfSectionsDone(payload, doc),
+      )
+    }
+    if (doc.jobType === 'draft_finalize') {
+      await runChainedEnqueue('enqueueImageGenerateIfNeeded', () => enqueueImageGenerateIfNeeded(payload, doc))
+    }
+    if (doc.jobType === 'image_generate' && outputDoc.ok === true) {
+      const fromOut = outputDoc.articleId
+      const fromOutNum =
+        typeof fromOut === 'number' && Number.isFinite(fromOut)
+          ? fromOut
+          : typeof fromOut === 'string' && /^\d+$/.test(fromOut)
+            ? Number(fromOut)
+            : null
+      const fromInput =
+        typeof doc.input === 'object' && doc.input && !Array.isArray(doc.input)
+          ? ((doc.input as { articleId?: unknown }).articleId as number | string | undefined)
+          : undefined
+      const fromInputNum =
+        typeof fromInput === 'number' && Number.isFinite(fromInput)
+          ? fromInput
+          : typeof fromInput === 'string' && /^\d+$/.test(fromInput)
+            ? Number(fromInput)
+            : null
+      const rel = articleIdFromJob(doc)
+      const relNum = rel != null && /^\d+$/.test(rel) ? Number(rel) : null
+      const oid = fromOutNum ?? fromInputNum ?? relNum
+      if (typeof oid === 'number' && Number.isFinite(oid)) {
+        await runChainedEnqueue('markArticlePublishReady', () => markArticlePublishReady(payload, oid))
+      }
+    }
+    hint(`tick done jobType=${doc.jobType ?? '?'} result=completed jobId=${String(jobId)}`)
     return Response.json({
       ok: true,
       executed: true,
@@ -300,6 +475,7 @@ export async function POST(request: Request): Promise<Response> {
       result: 'completed',
       httpStatus,
       output,
+      ...(collectHints && pipelineBannerHints.length > 0 ? { bannerHints: pipelineBannerHints } : {}),
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -312,6 +488,7 @@ export async function POST(request: Request): Promise<Response> {
         errorMessage: msg,
       },
     })
+    const errHints = collectHints ? [`tick exception jobId=${String(jobId)}: ${msg.slice(0, 160)}`] : []
     return Response.json({
       ok: true,
       executed: true,
@@ -319,6 +496,7 @@ export async function POST(request: Request): Promise<Response> {
       jobType: doc.jobType,
       result: 'failed',
       error: msg,
+      ...(errHints.length > 0 ? { bannerHints: errHints } : {}),
     })
   }
 }

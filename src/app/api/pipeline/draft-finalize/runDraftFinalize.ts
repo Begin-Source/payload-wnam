@@ -26,6 +26,7 @@ import {
   type PipelineSettingShape,
 } from '@/utilities/pipelineSettingShape'
 import { resolvePipelineConfigForArticle, type ResolvedPipelineConfig } from '@/utilities/resolvePipelineConfig'
+import { replaceRegionBlockedOpenRouterModel } from '@/constants/pipelineOpenRouterModels'
 import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
 import { markdownToPageBodyLexical } from '@/utilities/sitePagesBundleContent/markdownToPayloadLexical'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
@@ -237,12 +238,27 @@ export async function runDraftFinalizeForArticle(
   const tenantId = tenantIdFromRelation((doc as { tenant?: unknown }).tenant)
   const siteId = siteIdFromArticle(doc)
 
-  const model = pickPipelineOpenRouterModel(merged, 'conclusion')
+  const model = replaceRegionBlockedOpenRouterModel(
+    pickPipelineOpenRouterModel(merged, 'conclusion'),
+  )
 
   const title =
     typeof (doc as { title?: string }).title === 'string' ? (doc as { title: string }).title : ''
   const articlePlain =
     lexicalArticleBodyToPlainText((doc as { body?: Article['body'] }).body ?? null).slice(0, 120000)
+
+  if (!articlePlain.trim()) {
+    payload.logger.warn(
+      { articleId: articleIdNum },
+      '[draft_finalize] skipped: body has no extractable plain text',
+    )
+    return {
+      ok: false,
+      error:
+        'article body has no extractable text for finalize (empty Lexical body, or only unsupported / non-text blocks)',
+      status: 422,
+    }
+  }
 
   const tavSearchQuery =
     `${title.trim()}\n${articlePlain}`

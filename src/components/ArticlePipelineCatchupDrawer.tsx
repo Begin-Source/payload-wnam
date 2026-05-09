@@ -118,7 +118,10 @@ export function ArticlePipelineCatchupDrawer(): React.ReactElement {
               </h2>
               <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
                 仅限已关联「内容大纲 / sourceBrief」、且仍为草稿的文章。对已漏跑或失败的任务会按状态补入队列；发布仍需人工填写
-                Author。
+                Author。若 <code>Draft skeleton</code> 已 Completed 但工作流里没有{' '}
+                <code>draft_section</code>，请打开该 skeleton 的 <code>output</code> 查看{' '}
+                <code>articleId</code>，将数字填到下方并点「补缺并入队」（常见于本地 D1
+                短暂锁库导致链式入队未写入）。
               </p>
               <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: 6 }}>
                 文章 ID

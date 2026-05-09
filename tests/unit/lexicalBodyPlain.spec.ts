@@ -16,4 +16,14 @@ describe('lexicalBodyPlain', () => {
     const finalized = finalizeLexicalArticleBody(body)
     expect(finalized.root && typeof finalized.root === 'object').toBe(true)
   })
+
+  it('extracts text inside blockquote and bullet list', () => {
+    const md = ['# Title', '', '> Quote line here.', '', '- Item one', '- Item two'].join('\n')
+    const body = markdownToPageBodyLexical(md) as Article['body']
+    const plain = lexicalArticleBodyToPlainText(body)
+    expect(plain).toContain('Title')
+    expect(plain).toContain('Quote line here')
+    expect(plain).toMatch(/Item one/)
+    expect(plain).toMatch(/Item two/)
+  })
 })

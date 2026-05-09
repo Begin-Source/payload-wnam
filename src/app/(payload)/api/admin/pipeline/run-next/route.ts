@@ -2,16 +2,15 @@ import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
 import { runNextPendingJobs } from '@/utilities/pipelineRunNext'
-import { userHasPipelineRunNextAccess } from '@/utilities/userRoles'
+import { requirePipelineRunNextAccess } from '@/utilities/pipelineRunNextAccess'
+import { runNextPendingJobsWithExpandedConstraints } from '@/utilities/pipelineRunNextExpanded'
 import {
   buildPendingConstrainedWhere,
+  expandConstrainedWorkflowJobIdsForPipeline,
   MAX_CONSTRAINED_WORKFLOW_JOB_IDS,
   normalizeConstrainedJobIds,
   parseConstrainedIdsFromCommaQuery,
 } from '@/utilities/workflowJobTickConstraints'
-import { assertUsersCollection } from '@/utilities/workflowQuickCreate'
-
-import type { Config } from '@/payload-types'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,33 +18,6 @@ export const dynamic = 'force-dynamic'
  * Staff (any role beyond plain `user`) bridge to run `/api/pipeline/tick` in a loop.
  * Responses never echo `PAYLOAD_SECRET`.
  */
-
-async function requirePipelineRunNextAccess(request: Request): Promise<
-  | { ok: false; response: Response }
-  | {
-      ok: true
-      payload: Awaited<ReturnType<typeof getPayload>>
-      user: Config['user'] & { collection: 'users' }
-    }
-> {
-  const payload = await getPayload({ config: configPromise })
-  const { user } = await payload.auth({ headers: request.headers })
-  try {
-    assertUsersCollection(user)
-  } catch {
-    return {
-      ok: false,
-      response: Response.json({ error: 'Unauthorized' }, { status: 401 }),
-    }
-  }
-  if (!userHasPipelineRunNextAccess(user)) {
-    return {
-      ok: false,
-      response: Response.json({ error: 'Forbidden' }, { status: 403 }),
-    }
-  }
-  return { ok: true, payload, user }
-}
 
 export async function GET(request: Request): Promise<Response> {
   const g = await requirePipelineRunNextAccess(request)
@@ -91,9 +63,12 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ error: parsed.error }, { status: 400 })
   }
 
+  const expanded = await expandConstrainedWorkflowJobIdsForPipeline(payload, user, parsed.ids)
+  const idsTruncated = parsed.truncated || expanded.truncated
+
   const pendingRes = await payload.find({
     collection: 'workflow-jobs',
-    where: buildPendingConstrainedWhere(parsed.ids),
+    where: buildPendingConstrainedWhere(expanded.ids),
     limit: MAX_CONSTRAINED_WORKFLOW_JOB_IDS,
     sort: 'createdAt',
     depth: 0,
@@ -118,7 +93,9 @@ export async function GET(request: Request): Promise<Response> {
     byTypeTruncated: totalPending > pendingRes.docs.length,
     scope: 'selected',
     requestedJobIdsCount: parsed.ids.length,
-    ...(parsed.truncated ? { constrainedJobIdsTruncated: true } : {}),
+    expandedConstrainedJobIdsCount: expanded.ids.length,
+    ...(expanded.ids.length > parsed.ids.length ? { pipelineSelectionChainExpanded: true } : {}),
+    ...(idsTruncated ? { constrainedJobIdsTruncated: true } : {}),
   })
 }
 
@@ -157,14 +134,27 @@ export async function POST(request: Request): Promise<Response> {
   const stopOnFailure =
     typeof body.stopOnFailure === 'boolean' ? body.stopOnFailure : true
 
+  const debugBanner = body.debugBanner === true
+
   const jobNorm = normalizeConstrainedJobIds(body.jobIds)
   if (!jobNorm.ok) {
     return Response.json({ error: jobNorm.error }, { status: 400 })
   }
 
+  const { payload, user } = g
+
   try {
     const origin = new URL(request.url).origin
-    const { payload, user } = g
+
+    payload.logger.info(
+      {
+        maxRuns: maxRuns ?? 'default',
+        budgetMs: budgetMs ?? 'default',
+        stopOnFailure,
+        constrainedIdsCount: jobNorm.ids.length,
+      },
+      '[admin/pipeline/run-next] start',
+    )
 
     if (jobNorm.ids.length === 0) {
       const out = await runNextPendingJobs({
@@ -172,54 +162,66 @@ export async function POST(request: Request): Promise<Response> {
         maxRuns,
         budgetMs,
         stopOnFailure,
+        bannerHintsMode: debugBanner,
       })
+      if (!out.ok) {
+        payload.logger.warn(
+          {
+            stoppedReason: out.stoppedReason,
+            failureSummary: out.failureSummary,
+            totalRuns: out.totalRuns,
+          },
+          '[admin/pipeline/run-next] finished with ok=false',
+        )
+      }
       return Response.json(out)
     }
 
-    const pendingRes = await payload.find({
-      collection: 'workflow-jobs',
-      where: buildPendingConstrainedWhere(jobNorm.ids),
-      sort: 'createdAt',
-      limit: MAX_CONSTRAINED_WORKFLOW_JOB_IDS,
-      depth: 0,
-      overrideAccess: false,
+    const out = await runNextPendingJobsWithExpandedConstraints({
+      payload,
       user,
-    })
-
-    const allowedIds = pendingRes.docs.map((d) => d.id)
-
-    if (allowedIds.length === 0) {
-      return Response.json({
-        ok: true,
-        totalRuns: 0,
-        runs: [],
-        stoppedReason: 'no_pending',
-        message:
-          '所选任务中没有处于 pending 状态，或不在当前账号可见范围内（可能非 pending、无站点权限等）。',
-        requestedJobIdsCount: jobNorm.ids.length,
-        allowedJobIdsCount: 0,
-        ...(jobNorm.truncated ? { constrainedJobIdsTruncated: true } : {}),
-      })
-    }
-
-    const out = await runNextPendingJobs({
       origin,
+      jobNorm,
       maxRuns,
       budgetMs,
       stopOnFailure,
-      constrainedJobIds: allowedIds,
+      bannerHintsMode: debugBanner,
     })
-    return Response.json({
-      ...out,
-      requestedJobIdsCount: jobNorm.ids.length,
-      allowedJobIdsCount: allowedIds.length,
-      ...(jobNorm.truncated ? { constrainedJobIdsTruncated: true } : {}),
-    })
+    if (!out.ok) {
+      payload.logger.warn(
+        {
+          stoppedReason: out.stoppedReason,
+          failureSummary: out.failureSummary,
+          totalRuns: out.totalRuns,
+        },
+        '[admin/pipeline/run-next] finished with ok=false',
+      )
+    }
+    return Response.json(out)
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
+    const stack = e instanceof Error ? e.stack : undefined
     if (msg.includes('PAYLOAD_SECRET')) {
-      return Response.json({ error: 'Server misconfigured' }, { status: 500 })
+      return Response.json(
+        { error: 'Server misconfigured', errorCode: 'misconfigured' },
+        { status: 500 },
+      )
     }
-    throw e
+    payload.logger.error(
+      { err: msg, stack: typeof stack === 'string' ? stack.slice(0, 2500) : undefined },
+      '[admin/pipeline/run-next] unhandled error',
+    )
+    return Response.json(
+      {
+        ok: false,
+        error: 'Pipeline run-next 执行异常（见 errorDetail；服务端已记日志）',
+        errorCode: 'run_next_unhandled',
+        errorDetail: msg.slice(0, 500),
+        stoppedReason: 'failure',
+        totalRuns: 0,
+        runs: [],
+      },
+      { status: 500 },
+    )
   }
 }

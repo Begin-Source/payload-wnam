@@ -38,6 +38,10 @@ export type WorkflowJobsPipelineSummary = {
   tickFailures?: number
   /** e.g. max batches cap user message */
   errorHint?: string
+  /** 末批 run-next 返回的 tick 失败摘要（无密钥） */
+  failureSummary?: string
+  /** 脱敏排查行（`debugBanner` 开启时；终态保留便于截图） */
+  pipelineBannerHints?: string[]
 }
 
 /** Mirrors `merchant-slot-fetch` payload `results[]` (subset for Banner); writeback fields filled after Webhook poll. */
@@ -162,6 +166,8 @@ export type BackgroundActivityJob = {
   workflowPipelineScopeHint?: string
   /** 进行中：已跑批次数与累计 tick */
   workflowJobsPipelineProgress?: { batches: number; totalTicks: number }
+  /** 进行中：tick 返回的脱敏排查行（可截图） */
+  workflowJobsPipelineDebugLines?: string[]
   workflowJobsPipelineSummary?: WorkflowJobsPipelineSummary
 }
 
@@ -234,6 +240,7 @@ export type AdminBackgroundActivityApi = {
     jobId: string
     batches: number
     totalTicks: number
+    debugLinesAppend?: string[]
   }) => void
   completeWorkflowJobsPipelineJob: (args: { jobId: string; summary: WorkflowJobsPipelineSummary }) => void
   failWorkflowJobsPipelineJob: (args: { jobId: string; message: string }) => void

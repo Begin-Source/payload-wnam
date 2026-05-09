@@ -38,6 +38,8 @@ const PROMPT_PER_1K: Partial<Record<string, { in: number; out: number }>> = {
   'openai/gpt-4o-mini': { in: 0.00015, out: 0.0006 },
   'openai/gpt-4o': { in: 0.0025, out: 0.01 },
   'anthropic/claude-3.5-sonnet': { in: 0.003, out: 0.015 },
+  'deepseek/deepseek-v4-flash': { in: 0.0001, out: 0.0004 },
+  'deepseek/deepseek-chat': { in: 0.00014, out: 0.00028 },
 }
 
 function tokensPer1kForModel(model: string): { in: number; out: number } {
@@ -46,6 +48,7 @@ function tokensPer1kForModel(model: string): { in: number; out: number } {
   if (m.includes('gemini') && m.includes('flash-lite')) return { in: 0.00005, out: 0.0002 }
   if (m.includes('gemini') && m.includes('flash')) return { in: 0.0001, out: 0.0004 }
   if (m.includes('gpt-4o-mini')) return { in: 0.00015, out: 0.0006 }
+  if (m.includes('deepseek')) return { in: 0.00012, out: 0.00035 }
   if (m.includes('claude')) return { in: 0.003, out: 0.015 }
   return { in: 0.0002, out: 0.0008 }
 }

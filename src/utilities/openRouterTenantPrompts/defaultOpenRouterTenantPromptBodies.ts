@@ -114,20 +114,38 @@ export function buildDraftSectionPromptDefaults(args: {
   }
 }
 
+export const FINALIZE_ARTICLE_BLOCK_BEGIN = '<<<ARTICLE_BEGIN>>>'
+export const FINALIZE_ARTICLE_BLOCK_END = '<<<ARTICLE_END>>>'
+
 export const DEFAULT_FINALIZE_COHESION_SYSTEM =
-  'You are an SEO editor merging parallel-written sections into one cohesive article. Preserve facts; smooth transitions and remove duplicated H2 intros. Output MARKDOWN ONLY: ## for H2, ### for H3. English. No preamble or meta-commentary.'
-export const DEFAULT_FINALIZE_COHESION_USER_TEMPLATE =
-  'Current draft as plain text (may have rough jumps between sections):\n---\n{{article_plain}}\n---\nRewrite into cohesive markdown with consistent voice.'
+  'You are an SEO editor merging parallel-written sections into one cohesive article. In the user message, the draft sits between literal lines `<<<ARTICLE_BEGIN>>>` and `<<<ARTICLE_END>>>`—those lines are transport delimiters only, not Markdown horizontal rules and not part of the article body. Between them you receive plain text extracted from our CMS Lexical rich-text field (not an uploaded .md file). Preserve facts; smooth transitions; remove duplicated H2 intros. If you see two FAQ or Q&A blocks (e.g. "## FAQ" and "## FAQ Block", or repeated PAA-style questions), merge into a single "## FAQ" with deduplicated questions—keep the clearest answer per topic, drop near-duplicate bullets. Output MARKDOWN ONLY for re-import into the CMS: ## for H2, ### for H3. English. No preamble or meta-commentary.'
+export const DEFAULT_FINALIZE_COHESION_USER_TEMPLATE = [
+  'Current draft as plain text from the CMS Lexical body (paragraph breaks may show as blank lines; sections may still feel disjoint before you edit):',
+  FINALIZE_ARTICLE_BLOCK_BEGIN,
+  '{{article_plain}}',
+  FINALIZE_ARTICLE_BLOCK_END,
+  'Do not treat the marker lines as `---` rules or file boundaries. Rewrite into cohesive Markdown with a consistent voice.',
+].join('\n')
 
 export const DEFAULT_FINALIZE_EEAT_SYSTEM =
-  'Polish English article markdown for EEAT clarity: specificity, disclaimers where needed, tighten hedging vs overclaiming; keep headings. Output MARKDOWN only — no preamble.'
-export const DEFAULT_FINALIZE_EEAT_USER_TEMPLATE =
-  'Article markdown:\n---\n{{article_md}}\n---\nReturn improved markdown only.'
+  'Polish English article markdown for EEAT clarity: specificity, disclaimers where needed, tighten hedging vs overclaiming; keep headings. The user message wraps the article in the same literal `<<<ARTICLE_BEGIN>>>` / `<<<ARTICLE_END>>>` delimiter lines (Markdown from the prior cohesion step—not a user file path); ignore the delimiter lines as content. Output MARKDOWN only for CMS re-import — no preamble.'
+export const DEFAULT_FINALIZE_EEAT_USER_TEMPLATE = [
+  'Article markdown (after cohesion), between transport delimiters:',
+  FINALIZE_ARTICLE_BLOCK_BEGIN,
+  '{{article_md}}',
+  FINALIZE_ARTICLE_BLOCK_END,
+  'The marker lines are not horizontal rules. Return improved Markdown only.',
+].join('\n')
 
 export const DEFAULT_FINALIZE_FACT_SYSTEM =
-  'You verify web research vs an article excerpt. Produce a SHORT markdown appendix "## Verification snapshot" with up to 6 bullets: each bullet states claim + whether supported / uncertain based on Tavily JSON. Avoid inventing citations beyond the snippet. Output markdown only.'
-export const DEFAULT_FINALIZE_FACT_USER_TEMPLATE =
-  'Article excerpt:\n{{article_plain}}\n\nTavily research JSON (truncated):\n{{tavily_slice}}'
+  'You verify web research vs an article excerpt. The excerpt is plain text from our CMS Lexical body (not necessarily a polished Markdown file). Produce a SHORT markdown appendix "## Verification snapshot" with up to 6 bullets: each bullet states claim + whether supported / uncertain based on Tavily JSON. Avoid inventing citations beyond the snippet. Output markdown only.'
+export const DEFAULT_FINALIZE_FACT_USER_TEMPLATE = [
+  'Article excerpt (plain text from CMS Lexical, not a raw .md upload):',
+  '{{article_plain}}',
+  '',
+  'Tavily research JSON (truncated):',
+  '{{tavily_slice}}',
+].join('\n')
 
 export function buildFinalizeCohesionDefaults(vars: {
   article_plain: string

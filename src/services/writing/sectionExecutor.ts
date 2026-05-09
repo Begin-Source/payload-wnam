@@ -6,6 +6,7 @@ import {
   DRAFT_SECTION_SYSTEM,
   DRAFT_SECTION_USER,
 } from '@/utilities/domainGeneration/promptKeys'
+import { appendDraftSectionStructuralGuardrailUserBlock } from '@/services/writing/draftSectionStructuralGuardrail'
 import { buildDraftSectionPromptDefaults } from '@/utilities/openRouterTenantPrompts/defaultOpenRouterTenantPromptBodies'
 import { resolveTenantPromptPair } from '@/utilities/openRouterTenantPrompts/loadTenantPromptTemplateBody'
 
@@ -55,7 +56,7 @@ export async function runSectionPrompt(
         `\n\nper-section research (truncated):\n${input.researchSlice.trim()}`
       : '',
   }
-  const { system, user } = await resolveTenantPromptPair(
+  const { system, user: userResolved } = await resolveTenantPromptPair(
     payload,
     tenantId,
     DRAFT_SECTION_SYSTEM,
@@ -64,6 +65,7 @@ export async function runSectionPrompt(
     vars,
     input.pipelineProfileId,
   )
+  const user = `${userResolved}${appendDraftSectionStructuralGuardrailUserBlock(input.sectionType)}`
   const r = await openrouterChatWithMeta(input.model, [
     { role: 'system', content: system },
     { role: 'user', content: user },

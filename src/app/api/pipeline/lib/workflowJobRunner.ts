@@ -254,8 +254,23 @@ export async function dispatchWorkflowJob(
         return Response.json({ error: 'input.sectionId required' }, { status: 400 })
       }
       const aidRaw = articleIdFromJob(job)
+      const idFromInput =
+        typeof input.articleId === 'number' && Number.isFinite(input.articleId)
+          ? input.articleId
+          : typeof input.articleId === 'string' && /^\d+$/.test(String(input.articleId).trim())
+            ? Number(String(input.articleId).trim())
+            : NaN
+      const aidNum =
+        aidRaw != null && /^\d+$/.test(aidRaw) ? Number(aidRaw) : Number.isFinite(idFromInput) ? idFromInput : NaN
+      if (!Number.isFinite(aidNum)) {
+        return Response.json(
+          { error: 'draft_section workflow job requires article (relation or input.articleId)' },
+          { status: 400 },
+        )
+      }
       const bidRaw = briefIdFromJob(job)
       return forwardPipelinePost(request, '/api/pipeline/draft-section', {
+        workflowDispatch: true,
         model: typeof input.model === 'string' ? input.model : undefined,
         pipelineProfileId:
           typeof input.pipelineProfileId === 'number' && Number.isFinite(input.pipelineProfileId)
@@ -268,11 +283,7 @@ export async function dispatchWorkflowJob(
         previousSectionSummary:
           typeof input.previousSectionSummary === 'string' ? input.previousSectionSummary : undefined,
         globalContext: typeof input.globalContext === 'string' ? input.globalContext : undefined,
-        ...(aidRaw && /^\d+$/.test(aidRaw)
-          ? { articleId: numericIfDigits(aidRaw) ?? aidRaw }
-          : typeof input.articleId === 'string' || typeof input.articleId === 'number'
-            ? { articleId: Number.isFinite(Number(input.articleId)) ? Number(input.articleId) : input.articleId }
-            : {}),
+        articleId: aidNum,
         ...(bidRaw && /^\d+$/.test(bidRaw)
           ? { briefId: numericIfDigits(bidRaw) ?? bidRaw }
           : typeof input.briefId === 'string' || typeof input.briefId === 'number'

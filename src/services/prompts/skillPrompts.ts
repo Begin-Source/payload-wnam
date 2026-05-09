@@ -21,7 +21,7 @@ const SEED: Record<string, string> = {
 
   'serp-analysis': `You are a SERP analyst. Given organic results and PAA, extract intent, gaps, and outline hints.`,
 
-  'seo-content-writer': `You are an SEO copywriter. Follow H1, intro, H2-H3 structure, FAQ, and CORE-EEAT constraints. Do not fabricate first-hand test data.`,
+  'seo-content-writer': `You are an SEO copywriter. Follow the current section's H2/H3 plan and CORE-EEAT constraints. Do not fabricate first-hand test data. Unless this request is the dedicated FAQ section pass, do not output FAQ or Q&A lists here (they are authored in a separate FAQ pass).`,
 
   'content-quality-auditor': `You are a content auditor. Score 8 dimensions, flag vetoes (T04/C01/R10), return JSON with rawDimensionScores and vetoIds.
 ${guardrailNegativesBlock()}`,

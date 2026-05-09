@@ -5,6 +5,7 @@ import { CategorySlotsQuickActionModal } from '@/components/CategorySlotsQuickAc
 import { OfferMerchantSlotQuickActionModal } from '@/components/OfferMerchantSlotQuickActionModal'
 import { OfferReviewMdxQuickActionModal } from '@/components/OfferReviewMdxQuickActionModal'
 import { ArticlePipelineCatchupDrawer } from '@/components/ArticlePipelineCatchupDrawer'
+import { WritingScopeFullPipelineDrawer } from '@/components/WritingScopeFullPipelineDrawer'
 import { ContentBriefDraftSkeletonDrawer } from '@/components/ContentBriefDraftSkeletonDrawer'
 import { MediaAiImageDrawer } from '@/components/MediaAiImageDrawer'
 import { KeywordDefaultBatchDrawer } from '@/components/KeywordDefaultBatchDrawer'
@@ -209,6 +210,10 @@ function WorkflowQuickActionModal({ kind }: { kind: WorkflowQuickKind }): React.
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
+  const [quickMenuOpen, setQuickMenuOpen] = useState(false)
+  const [writingPipelineOpen, setWritingPipelineOpen] = useState(false)
+  const quickMenuRef = useRef<HTMLDivElement>(null)
+
   const loadSites = useCallback(async (q: string) => {
     setSitesLoading(true)
     setError(null)
@@ -305,8 +310,33 @@ function WorkflowQuickActionModal({ kind }: { kind: WorkflowQuickKind }): React.
     return () => window.removeEventListener('keydown', onKey, true)
   }, [siteMenuOpen])
 
+  useEffect(() => {
+    if (!isArticles || !quickMenuOpen) return
+    const onDocMouseDown = (e: MouseEvent): void => {
+      const root = quickMenuRef.current
+      if (root && !root.contains(e.target as Node)) {
+        setQuickMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [isArticles, quickMenuOpen])
+
+  useEffect(() => {
+    if (!isArticles || !quickMenuOpen) return
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setQuickMenuOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [isArticles, quickMenuOpen])
+
   const close = (): void => {
     setOpen(false)
+    setQuickMenuOpen(false)
     setSiteQuery('')
     setSites([])
     setSelectedSiteId(null)
@@ -436,11 +466,92 @@ function WorkflowQuickActionModal({ kind }: { kind: WorkflowQuickKind }): React.
 
   const titleId = `quick-action-title-${kind}`
 
+  const menuItemStyle: React.CSSProperties = {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    padding: '0.5rem 0.6rem',
+    border: 'none',
+    borderRadius: 4,
+    background: 'transparent',
+    color: 'inherit',
+    cursor: 'pointer',
+    fontSize: '0.8125rem',
+  }
+
   return (
     <>
-      <Button buttonStyle="secondary" onClick={() => setOpen(true)} size="small" type="button">
-        {ui.buttonText}
-      </Button>
+      {isArticles ? (
+        <div ref={quickMenuRef} style={{ position: 'relative', display: 'inline-block' }}>
+          <Button
+            aria-expanded={quickMenuOpen}
+            aria-haspopup="menu"
+            buttonStyle="secondary"
+            size="small"
+            type="button"
+            onClick={() => setQuickMenuOpen((v) => !v)}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {ui.buttonText}
+              <span aria-hidden style={{ opacity: 0.65, fontSize: '0.65rem' }}>
+                {quickMenuOpen ? '▲' : '▼'}
+              </span>
+            </span>
+          </Button>
+          {quickMenuOpen ? (
+            <div
+              role="menu"
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: '100%',
+                marginTop: 4,
+                zIndex: 20,
+                minWidth: 240,
+                borderRadius: 6,
+                border: '1px solid var(--theme-elevation-150)',
+                background: 'var(--theme-elevation-0)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                padding: '0.35rem',
+              }}
+            >
+              <button
+                role="menuitem"
+                style={menuItemStyle}
+                type="button"
+                onClick={() => {
+                  setQuickMenuOpen(false)
+                  setOpen(true)
+                }}
+              >
+                打开快捷操作（站点 / 排产…）
+              </button>
+              <button
+                role="menuitem"
+                style={menuItemStyle}
+                type="button"
+                onClick={() => {
+                  setQuickMenuOpen(false)
+                  setWritingPipelineOpen(true)
+                }}
+              >
+                一键跑通写作流水线
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <Button buttonStyle="secondary" onClick={() => setOpen(true)} size="small" type="button">
+          {ui.buttonText}
+        </Button>
+      )}
+
+      {isArticles ? (
+        <WritingScopeFullPipelineDrawer
+          open={writingPipelineOpen}
+          onClose={() => setWritingPipelineOpen(false)}
+        />
+      ) : null}
 
       {open ? (
         <div aria-modal aria-labelledby={titleId} role="dialog" style={backdropStyle}>

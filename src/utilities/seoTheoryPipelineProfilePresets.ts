@@ -2,6 +2,10 @@ import {
   pipelineSettingsDefaultEeatWeights,
   pipelineSettingsDefaultLlmBySection,
 } from '@/globals/PipelineSettings'
+import {
+  PIPELINE_DEFAULT_OPENROUTER_LLM,
+  PIPELINE_FALLBACK_OPENROUTER_LLM,
+} from '@/constants/pipelineOpenRouterModels'
 
 export const SEO_THEORY_GROWTH_SLUG = 'growth-commercial'
 export const SEO_THEORY_QUALITY_SLUG = 'quality-constrained'
@@ -39,8 +43,8 @@ function qualityLlmBySection(): typeof pipelineSettingsDefaultLlmBySection {
     ) {
       return {
         ...row,
-        model: 'openai/gpt-4o',
-        fallbackModel: 'anthropic/claude-3.5-sonnet',
+        model: PIPELINE_DEFAULT_OPENROUTER_LLM,
+        fallbackModel: PIPELINE_FALLBACK_OPENROUTER_LLM,
       }
     }
     return { ...row }
@@ -58,7 +62,7 @@ export function getSeoTheoryGrowthPipelineProfileFields(isDefault: boolean): Rec
     tavilyEnabled: true,
     dataForSeoEnabled: true,
     togetherImageEnabled: true,
-    defaultLlmModel: 'openai/gpt-4o-mini',
+    defaultLlmModel: PIPELINE_DEFAULT_OPENROUTER_LLM,
     amzKeywordEligibility: {
       intentWhitelist: ['commercial', 'transactional'],
       minVolume: 150,
@@ -76,7 +80,7 @@ export function getSeoTheoryQualityPipelineProfileFields(): Record<string, unkno
     name: 'SEO 预设 · 稳健（质量门槛）',
     slug: SEO_THEORY_QUALITY_SLUG,
     description:
-      'SEO skill 理论：收紧体量/KD/机会分；重章节用 GPT-4o 主模型；提高 section 重试；EEAT 抬高 review/comparison 的体验与专业度。',
+      'SEO skill 理论：收紧体量/KD/机会分；重章节与默认一致用 DeepSeek 主模型；提高 section 重试；EEAT 抬高 review/comparison 的体验与专业度。',
     isDefault: false,
     tavilyEnabled: true,
     dataForSeoEnabled: true,

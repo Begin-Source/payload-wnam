@@ -824,6 +824,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
       n === 1
         ? `工作流 · Pipeline（run-next / tick）进行中${scopeHint} — ${progLine}请在「工作流任务」列表查看 Status`
         : `工作流 · Pipeline 进行中（${n} 个并行任务）${scopeHint} — ${progLine}见工作流任务列表`
+    const debugLines = j0?.workflowJobsPipelineDebugLines
 
     return (
       <div
@@ -834,7 +835,27 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
           ...badgeStyleForBar('running'),
         }}
       >
-        <span style={{ flex: '1 1 12rem' }}>{line}</span>
+        <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
+          <span style={{ display: 'block' }}>{line}</span>
+          {debugLines != null && debugLines.length > 0 ? (
+            <pre
+              style={{
+                display: 'block',
+                margin: '6px 0 0',
+                maxHeight: '7.5rem',
+                overflow: 'auto',
+                fontSize: '10px',
+                lineHeight: 1.35,
+                opacity: 0.92,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                fontFamily: 'ui-monospace, monospace',
+              }}
+            >
+              {debugLines.join('\n')}
+            </pre>
+          ) : null}
+        </div>
         <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
           {openWorkflowJobsListBtn}
           <button
@@ -1339,7 +1360,8 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
 
   if (job.kind === 'workflow-jobs-pipeline-sync') {
     if (job.phase === 'failed') {
-      const msg = `工作流 · Pipeline 失败：${job.errorMessage ?? '未知错误'}`
+      const detail = job.errorMessage ?? '未知错误'
+      const msg = `工作流 · Pipeline 失败：${detail}`
       return (
         <div
           aria-live="assertive"
@@ -1348,8 +1370,9 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
             ...baseBar,
             ...badgeStyleForBar('error'),
           }}
+          title={clipText(msg, 4000)}
         >
-          <span style={{ flex: '1 1 12rem' }}>{msg}</span>
+          <span style={{ flex: '1 1 12rem', whiteSpace: 'pre-line', wordBreak: 'break-word' }}>{msg}</span>
           <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>
             {openWorkflowJobsListBtn}
             <button
@@ -1378,11 +1401,13 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
       !s.overallOk ||
       failures > 0 ||
       Boolean(s.cappedByMaxBatches) ||
-      Boolean(s.errorHint?.trim())
+      Boolean(s.errorHint?.trim()) ||
+      Boolean(s.failureSummary?.trim())
     const summaryLine = `Pipeline run-next 已完成${hintBr}（${scopeLine}${drainPart}）：${s.batches} 批 · 累计 ${s.totalTicks} 次 tick · 末次 stopped=${s.stoppedReason ?? '—'}${failures > 0 ? ` · tick 失败 ${failures}` : ''}`
     const extra = [
       s.cappedByMaxBatches ? '已触达分批上限，勾选范围内可能仍有 pending。' : '',
       s.errorHint?.trim() ?? '',
+      s.failureSummary?.trim() ? `末次 tick：${s.failureSummary.trim()}` : '',
     ]
       .filter(Boolean)
       .join(' ')
@@ -1414,6 +1439,24 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
             >
               {extra}
             </span>
+          ) : null}
+          {Array.isArray(s.pipelineBannerHints) && s.pipelineBannerHints.length > 0 ? (
+            <pre
+              style={{
+                display: 'block',
+                marginTop: 6,
+                maxHeight: '7.5rem',
+                overflow: 'auto',
+                fontSize: '10px',
+                lineHeight: 1.35,
+                opacity: 0.92,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                fontFamily: 'ui-monospace, monospace',
+              }}
+            >
+              {s.pipelineBannerHints.join('\n')}
+            </pre>
           ) : null}
         </div>
         <span style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexShrink: 0 }}>

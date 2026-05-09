@@ -14,6 +14,29 @@ describe('runNextPendingJobs', () => {
     process.env.PAYLOAD_SECRET = 'secret123'
   })
 
+  it('sends x-pipeline-banner-hints when bannerHintsMode and merges tick bannerHints', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        ok: true,
+        executed: false,
+        message: 'No pending jobs',
+        bannerHints: ['tick: no pending in constraint set'],
+      }),
+    )
+    const r = await runNextPendingJobs({
+      origin: 'http://localhost:3000',
+      maxRuns: 5,
+      bannerHintsMode: true,
+      fetchImpl,
+    })
+    expect(r.stoppedReason).toBe('no_pending')
+    expect(r.bannerHints).toEqual(['tick: no pending in constraint set'])
+    const init = fetchImpl.mock.calls[0][1] as RequestInit
+    const headers = init.headers as Record<string, string>
+    expect(headers['x-pipeline-banner-hints']).toBe('1')
+    expect(JSON.stringify(r)).not.toContain('secret123')
+  })
+
   it('stops with no_pending when tick returns executed false', async () => {
     const fetchImpl = vi.fn(async () =>
       jsonResponse({ ok: true, executed: false, message: 'No pending jobs' }),
@@ -85,6 +108,9 @@ describe('runNextPendingJobs', () => {
     expect(r.stoppedReason).toBe('failure')
     expect(r.totalRuns).toBe(3)
     expect(r.ok).toBe(false)
+    expect(typeof r.failureSummary).toBe('string')
+    expect(r.failureSummary).toContain('第 3 次 tick')
+    expect(r.failureSummary).toContain('boom')
     expect(fetchImpl).toHaveBeenCalledTimes(3)
   })
 
@@ -172,6 +198,7 @@ describe('runNextPendingJobs', () => {
     })
     expect(r.stoppedReason).toBe('failure')
     expect(r.ok).toBe(false)
+    expect(r.failureSummary).toContain('Unauthorized')
     expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,4 +1,4 @@
-# AMZ 视觉对齐：`amz-template-old` ↔ payload-wnam
+# AMZ 视觉 对齐：`amz-template-old` ↔ payload-wnam
 
 对照目录：`/Users/sunny/yourprojects/amz-template-old`。集成侧：
 

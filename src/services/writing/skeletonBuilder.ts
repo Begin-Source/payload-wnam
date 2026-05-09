@@ -54,3 +54,26 @@ export function buildLexicalSkeleton(sectionIds: string[]): Record<string, unkno
     },
   }
 }
+
+/**
+ * True when the Lexical body still has the skeleton paragraph for `sectionId`
+ * with placeholder text `<!-- section:${sectionId} -->` (merge never applied or body reverted).
+ */
+export function sectionSkeletonPlaceholderStillPresent(body: unknown, sectionId: string): boolean {
+  const placeholder = `<!-- section:${sectionId} -->`
+  const b = body && typeof body === 'object' ? (body as Record<string, unknown>) : null
+  const root = b?.root && typeof b.root === 'object' ? (b.root as Record<string, unknown>) : null
+  const rawChildren = root?.children
+  if (!Array.isArray(rawChildren)) return false
+  for (const n of rawChildren) {
+    if (!n || typeof n !== 'object') continue
+    const row = n as Record<string, unknown>
+    if (row.type === 'paragraph' && row.dataSectionId === sectionId) {
+      const ch = row.children
+      if (!Array.isArray(ch) || ch.length === 0) return false
+      const t = ch[0] as Record<string, unknown>
+      return t?.type === 'text' && typeof t.text === 'string' && t.text.includes(placeholder)
+    }
+  }
+  return false
+}

@@ -54,16 +54,24 @@ const inputStyle: React.CSSProperties = {
 type PeekResp = {
   ok?: boolean
   error?: string
+  errorCode?: string
+  errorDetail?: string
   pending?: number
   byType?: Record<string, number>
   byTypeTruncated?: boolean
   scope?: 'global' | 'selected'
   requestedJobIdsCount?: number
+  expandedConstrainedJobIdsCount?: number
+  pipelineSelectionChainExpanded?: boolean
   constrainedJobIdsTruncated?: boolean
 }
 
 type RunResp = {
   ok?: boolean
+  error?: string
+  errorCode?: string
+  errorDetail?: string
+  failureSummary?: string
   totalRuns?: number
   runs?: Array<{
     jobId?: string | number | null
@@ -76,8 +84,11 @@ type RunResp = {
   stoppedReason?: string
   message?: string
   requestedJobIdsCount?: number
+  expandedConstrainedJobIdsCount?: number
+  pipelineSelectionChainExpanded?: boolean
   allowedJobIdsCount?: number
   constrainedJobIdsTruncated?: boolean
+  bannerHints?: string[]
 }
 
 function formatByType(byType: Record<string, number> | undefined): string {
@@ -93,10 +104,69 @@ const MSG_PEEK_FORBIDDEN =
 
 const MSG_PEEK_UNAUTHORIZED = '未登录或会话已失效，请重新登录后台后再试。'
 
-function mapRunNextHttpError(res: Response, bodyError: string | undefined): string {
+async function readAdminJsonResponse<T extends Record<string, unknown>>(
+  res: Response,
+): Promise<
+  T & {
+    error?: string
+    errorCode?: string
+    errorDetail?: string
+    ok?: boolean
+  }
+> {
+  const text = await res.text()
+  if (!text.trim()) {
+    return {} as T & { error?: string; errorCode?: string; errorDetail?: string; ok?: boolean }
+  }
+  try {
+    return JSON.parse(text) as T & {
+      error?: string
+      errorCode?: string
+      errorDetail?: string
+      ok?: boolean
+    }
+  } catch {
+    return {
+      error: `响应非 JSON（HTTP ${res.status}）`,
+      errorCode: 'non_json_response',
+      errorDetail: text.slice(0, 280),
+    } as T & { error?: string; errorCode?: string; errorDetail?: string; ok?: boolean }
+  }
+}
+
+function formatPipelineHttpFailure(
+  res: Response,
+  data: { error?: string; errorCode?: string; errorDetail?: string },
+): string {
   if (res.status === 403) return MSG_PEEK_FORBIDDEN
   if (res.status === 401) return MSG_PEEK_UNAUTHORIZED
-  return typeof bodyError === 'string' ? bodyError : `请求失败（HTTP ${res.status}）`
+
+  const cfRay = res.headers.get('cf-ray')
+  const raySuffix = cfRay ? ` · cf-ray: ${cfRay}` : ''
+
+  const base =
+    typeof data.error === 'string' && data.error.trim()
+      ? data.error.trim()
+      : res.status === 503 || res.status === 502 || res.status === 504
+        ? `网关或边缘不可用（HTTP ${res.status}）`
+        : `请求失败（HTTP ${res.status}）`
+
+  const code =
+    typeof data.errorCode === 'string' && data.errorCode.trim()
+      ? ` [${data.errorCode.trim()}]`
+      : ''
+
+  const detail =
+    typeof data.errorDetail === 'string' && data.errorDetail.trim()
+      ? ` — ${data.errorDetail.trim().slice(0, 450)}`
+      : ''
+
+  const edgeHint =
+    res.status === 503 || res.status === 504
+      ? '。若在 Cloudflare：大模型类步骤较慢时，请将「本次最多执行几条」设为 1，并勾选「持续执行直至勾选范围内无 pending」分多轮短请求。'
+      : ''
+
+  return `${base}${code}${detail}${raySuffix}${edgeHint}`
 }
 
 function sortJobIdsCsv(ids: (string | number)[]): string {
@@ -176,7 +246,7 @@ export function PipelineRunNextDrawer(): React.ReactElement {
       const res = await fetch(`/api/admin/pipeline/run-next${qs ? `?${qs}` : ''}`, {
         credentials: 'include',
       })
-      const data = (await res.json().catch(() => ({}))) as PeekResp
+      const data = await readAdminJsonResponse<PeekResp>(res)
 
       if (res.status === 403) {
         setPeek(null)
@@ -190,9 +260,7 @@ export function PipelineRunNextDrawer(): React.ReactElement {
       }
       if (!res.ok || data.ok === false) {
         setPeek(null)
-        setError(
-          typeof data.error === 'string' ? data.error : `加载队列失败（HTTP ${res.status}）`,
-        )
+        setError(formatPipelineHttpFailure(res, data))
         return
       }
       setPeek(data)
@@ -264,6 +332,7 @@ export function PipelineRunNextDrawer(): React.ReactElement {
       maxRuns: mr,
       budgetMs: Math.round(bs * 1000),
       stopOnFailure,
+      debugBanner: true,
     }
 
     async function postRunNext(
@@ -278,7 +347,7 @@ export function PipelineRunNextDrawer(): React.ReactElement {
           ...(jobIds != null && jobIds.length > 0 ? { jobIds } : {}),
         }),
       })
-      const data = (await res.json().catch(() => ({}))) as RunResp
+      const data = await readAdminJsonResponse<RunResp>(res)
       return { res, data }
     }
 
@@ -302,15 +371,24 @@ export function PipelineRunNextDrawer(): React.ReactElement {
             lastData = data
 
             if (!res.ok) {
-              const errBody = data as unknown as { error?: string }
-              throw new Error(mapRunNextHttpError(res, errBody.error))
+              throw new Error(formatPipelineHttpFailure(res, data))
             }
 
             tickFailures += countTickRowFailures(data)
             if (data.ok === false) allBatchesOk = false
 
             totalTicks += data.totalRuns ?? data.runs?.length ?? 0
-            updateWorkflowJobsPipelineJobProgress({ jobId, batches, totalTicks })
+            const hintRaw = Array.isArray(data.bannerHints) ? data.bannerHints : []
+            updateWorkflowJobsPipelineJobProgress({
+              jobId,
+              batches,
+              totalTicks,
+              ...(hintRaw.length > 0
+                ? {
+                    debugLinesAppend: hintRaw.map((h) => `[批 ${batches}] ${h}`),
+                  }
+                : {}),
+            })
 
             const action = nextPipelineDrainBatchAction({
               httpOk: true,
@@ -326,6 +404,10 @@ export function PipelineRunNextDrawer(): React.ReactElement {
               const cappedHit =
                 batches >= MAX_PIPELINE_DRAIN_BATCHES &&
                 (data.stoppedReason === 'budget' || data.stoppedReason === 'max_runs')
+              const failureLine =
+                typeof data.failureSummary === 'string' && data.failureSummary.trim()
+                  ? data.failureSummary.trim()
+                  : ''
               const hint =
                 cappedHit
                   ? `已达分批上限 ${MAX_PIPELINE_DRAIN_BATCHES} 轮，勾选范围内可能仍有 pending。`
@@ -343,7 +425,8 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                   overallOk: false,
                   cappedByMaxBatches: cappedHit,
                   tickFailures,
-                  errorHint: hint,
+                  errorHint: [hint, failureLine].filter(Boolean).join(' '),
+                  ...(failureLine ? { failureSummary: failureLine } : {}),
                 },
               })
               return
@@ -355,17 +438,31 @@ export function PipelineRunNextDrawer(): React.ReactElement {
           lastData = data
 
           if (!res.ok) {
-            const errBody = data as unknown as { error?: string }
-            throw new Error(mapRunNextHttpError(res, errBody.error))
+            throw new Error(formatPipelineHttpFailure(res, data))
           }
           tickFailures = countTickRowFailures(data)
           if (data.ok === false) allBatchesOk = false
           totalTicks += data.totalRuns ?? data.runs?.length ?? 0
-          updateWorkflowJobsPipelineJobProgress({ jobId, batches, totalTicks })
+          const hintRawSingle = Array.isArray(data.bannerHints) ? data.bannerHints : []
+          updateWorkflowJobsPipelineJobProgress({
+            jobId,
+            batches,
+            totalTicks,
+            ...(hintRawSingle.length > 0
+              ? {
+                  debugLinesAppend: hintRawSingle.map((h) => `[批 ${batches}] ${h}`),
+                }
+              : {}),
+          })
         }
 
         const final = lastData
         const scope: 'global' | 'selected' = jobIdsPayload != null ? 'selected' : 'global'
+        const failSummary =
+          typeof final?.failureSummary === 'string' && final.failureSummary.trim()
+            ? final.failureSummary.trim()
+            : ''
+
         completeWorkflowJobsPipelineJob({
           jobId,
           summary: {
@@ -376,6 +473,7 @@ export function PipelineRunNextDrawer(): React.ReactElement {
             drainMode: useDrainBatching,
             overallOk: allBatchesOk && tickFailures === 0,
             tickFailures,
+            ...(failSummary ? { failureSummary: failSummary } : {}),
           },
         })
       } catch (e) {
@@ -428,10 +526,11 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                 执行下 N 条工作流 · Tick
               </h2>
               <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
-                按创建时间从早到晚依次执行 <code>pending</code> 任务（仅勾选模式下：仅在你勾选且<strong>仍可访问</strong>的
-                ID 中取最早创建的一条）。勾选顺序不参与排序。点击「执行下 N 条」后将<strong>立即关闭此窗</strong>；进度与摘要在
-                Admin 顶栏 Banner，工作流任务列表会周期性刷新。<code>brief_generate</code> 成功后会自动入队{' '}
-                <code>draft_skeleton</code>，因此 N=5 大约覆盖 2–3 组「Brief + 骨架」链路。
+                按创建时间从早到晚依次执行 <code>pending</code> 任务（仅勾选模式下：在你勾选且<strong>仍可访问</strong>的 job
+                范围内取最早一条；服务端会将链式入队的子任务算入同一范围，见下方说明）。勾选顺序不参与排序。点击「执行下 N
+                条」后将<strong>立即关闭此窗</strong>；进度与摘要在 Admin 顶栏 Banner，工作流任务列表会周期性刷新。
+                <code>brief_generate</code> 成功后会自动入队 <code>draft_skeleton</code>，因此 N=5 大约覆盖 2–3
+                组「Brief + 骨架」链路。
               </p>
 
               {selectAllBlocksSelection ? (
@@ -500,7 +599,11 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                     lineHeight: 1.45,
                   }}
                 >
-                  说明：使用开始执行时的勾选 id 快照；链路新产生的任务若不在这些 id 内，不会被本模式自动跑。
+                  说明：API 仍只收到你勾选的 id；服务端会按权限把链式任务并入同一 tick
+                  范围——包括 `parentJob` 落在该范围内的 pending 子任务，以及与范围内任务指向同一{' '}
+                  <code>article</code> 的 pending <code>draft_section</code> / <code>draft_finalize</code> /{' '}
+                  <code>image_generate</code>（避免骨架跑完后新入队的小节 id 不在快照里、顶栏却显示已全部跑完，而正文仍为{' '}
+                  <code>{'<!-- section:… -->'}</code> 占位）。若仍异常，请在工作流列表按 jobType / 文章自查，或改用全局队列。
                 </p>
               ) : null}
 
@@ -516,7 +619,9 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
                   <strong>待执行队列</strong>
                   {effectiveSelectedOnly ? (
-                    <span style={{ fontSize: '0.75rem', opacity: 0.85 }}>（仅已勾选 ID 范围）</span>
+                    <span style={{ fontSize: '0.75rem', opacity: 0.85 }}>
+                      （勾选 id + 服务端链式扩展）
+                    </span>
                   ) : null}
                   {peekLoading ? (
                     <span style={{ opacity: 0.8 }}>加载中…</span>
@@ -553,8 +658,15 @@ export function PipelineRunNextDrawer(): React.ReactElement {
                 </div>
                 {!peekLoading && peek != null && effectiveSelectedOnly && peek.requestedJobIdsCount != null ? (
                   <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', opacity: 0.88 }}>
-                    已选 <code>{peek.requestedJobIdsCount}</code> 个 id；其中当前为 pending 且可见约{' '}
-                    <code>{peek.pending ?? 0}</code> 条
+                    列表勾选 <code>{peek.requestedJobIdsCount}</code> 个 id
+                    {typeof peek.expandedConstrainedJobIdsCount === 'number' &&
+                    peek.expandedConstrainedJobIdsCount > peek.requestedJobIdsCount ? (
+                      <>
+                        ；约束范围含链式任务后共约 <code>{peek.expandedConstrainedJobIdsCount}</code> 个 job id
+                      </>
+                    ) : null}
+                    ；其中当前为 pending 且可见约 <code>{peek.pending ?? 0}</code> 条
+                    {peek.pipelineSelectionChainExpanded ? '（已应用链式扩展）' : ''}
                     {peek.constrainedJobIdsTruncated ? '（id 列表已截断至多 500 条）' : ''}
                   </div>
                 ) : null}

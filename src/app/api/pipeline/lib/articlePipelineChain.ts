@@ -15,8 +15,24 @@ import {
 import { compactPipelineWorkflowTags, pipelineWorkflowVariantTags } from '@/utilities/pipelineJobTags'
 import type { ResolvedPipelineConfig } from '@/utilities/resolvePipelineConfig'
 import { resolvePipelineConfigForArticle } from '@/utilities/resolvePipelineConfig'
+import { lexicalArticleBodyToPlainText } from '@/services/writing/lexicalBodyPlain'
 import { buildArticleFeaturedTogetherPromptText } from '@/utilities/togetherTenantPrompts/togetherImagePromptTemplates'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
+
+async function articleHasExtractableFinalizePlain(payload: Payload, articleIdNum: number): Promise<boolean> {
+  try {
+    const articleDoc = await payload.findByID({
+      collection: 'articles',
+      id: String(articleIdNum),
+      depth: 0,
+      overrideAccess: true,
+    })
+    const body = (articleDoc as { body?: unknown } | null)?.body ?? null
+    return lexicalArticleBodyToPlainText(body).trim().length > 0
+  } catch {
+    return false
+  }
+}
 
 export function makeFeaturedImagePrompt(args: {
   title: string
@@ -24,6 +40,54 @@ export function makeFeaturedImagePrompt(args: {
   keywordTerm?: string | null
 }): string {
   return buildArticleFeaturedTogetherPromptText(args)
+}
+
+/** Standard commercial-article chain: briefs that only list intro+faq still need body + conclusion. */
+const CANONICAL_SECTION_IDS = ['intro', 'body', 'faq', 'conclusion'] as const
+const CANONICAL_ID_SET = new Set<string>(CANONICAL_SECTION_IDS)
+
+export type BriefSectionSpecRow = { id: string; sectionType: string; wordBudget?: number }
+
+function defaultSectionTypeForCanonicalId(id: string): string {
+  if (id === 'intro') return 'intro'
+  if (id === 'faq') return 'faq'
+  if (id === 'conclusion') return 'conclusion'
+  return 'custom'
+}
+
+/**
+ * When every outline id ∈ {intro, body, faq, conclusion}, expand to the full ordered quad,
+ * preserving existing rows and inserting defaults for missing ids.
+ * Cluster / custom-slug outlines stay unchanged.
+ */
+export function mergeCanonicalBriefSectionRows(rows: BriefSectionSpecRow[]): BriefSectionSpecRow[] {
+  if (rows.length === 0) {
+    return CANONICAL_SECTION_IDS.map((id) => ({
+      id,
+      sectionType: defaultSectionTypeForCanonicalId(id),
+    }))
+  }
+  const allCanonical = rows.every((r) => CANONICAL_ID_SET.has(r.id))
+  if (!allCanonical) {
+    return rows
+  }
+  const byId = new Map(rows.map((r) => [r.id, r]))
+  return CANONICAL_SECTION_IDS.map((id) => {
+    const existing = byId.get(id)
+    if (existing) return existing
+    return { id, sectionType: defaultSectionTypeForCanonicalId(id) }
+  })
+}
+
+function briefOutlineSectionsNeedPersist(before: BriefSectionSpecRow[], after: BriefSectionSpecRow[]): boolean {
+  if (before.length !== after.length) return true
+  for (let i = 0; i < before.length; i += 1) {
+    const a = before[i]
+    const b = after[i]
+    if (!a || !b || a.id !== b.id || a.sectionType !== b.sectionType) return true
+    if ((a.wordBudget ?? null) !== (b.wordBudget ?? null)) return true
+  }
+  return false
 }
 
 export async function loadBriefSectionSpecs(
@@ -36,19 +100,64 @@ export async function loadBriefSectionSpecs(
     depth: 0,
     overrideAccess: true,
   })
-  type Sec = { id: string; type?: string }
-  const outline = (brief as { outline?: { sections?: Sec[] } } | null)?.outline
+  type Sec = { id: string; type?: string; wordBudget?: number }
+  const outline = (brief as { outline?: { sections?: Sec[]; globalContext?: unknown } } | null)?.outline
   const sections = outline?.sections
+
+  let rows: BriefSectionSpecRow[]
   if (Array.isArray(sections) && sections.length > 0) {
-    return sections.map((s) => ({
-      id: typeof s.id === 'string' ? s.id : String(s.id),
-      sectionType: typeof s.type === 'string' && s.type.trim() ? s.type : 'custom',
-    }))
+    rows = sections.map((s) => {
+      const id = typeof s.id === 'string' ? s.id : String(s.id)
+      const rawType = typeof s.type === 'string' && s.type.trim() ? s.type.trim() : ''
+      return {
+        id,
+        sectionType: rawType || defaultSectionTypeForCanonicalId(id),
+        ...(typeof s.wordBudget === 'number' && Number.isFinite(s.wordBudget) ? { wordBudget: s.wordBudget } : {}),
+      }
+    })
+  } else {
+    rows = []
   }
-  return ['intro', 'body', 'faq', 'conclusion'].map((id) => ({
+
+  const merged = mergeCanonicalBriefSectionRows(rows)
+  const specsOut: Array<{ id: string; sectionType: string }> = merged.map(({ id, sectionType }) => ({
     id,
-    sectionType: id === 'faq' ? 'faq' : 'custom',
+    sectionType,
   }))
+
+  if (
+    brief &&
+    outline &&
+    typeof outline === 'object' &&
+    Array.isArray(sections) &&
+    sections.length > 0 &&
+    briefOutlineSectionsNeedPersist(rows, merged)
+  ) {
+    try {
+      await payload.update({
+        collection: 'content-briefs',
+        id: String(briefIdNum),
+        data: {
+          outline: {
+            ...outline,
+            sections: merged.map((r) => ({
+              id: r.id,
+              type: r.sectionType,
+              ...(typeof r.wordBudget === 'number' ? { wordBudget: r.wordBudget } : {}),
+            })),
+          },
+        },
+        overrideAccess: true,
+      })
+    } catch (e) {
+      payload.logger.warn(
+        { briefIdNum, err: e instanceof Error ? e.message : String(e) },
+        '[outline] mergeCanonicalBriefSectionRows: persist skipped',
+      )
+    }
+  }
+
+  return specsOut
 }
 
 async function tenantIdFromSite(payload: Payload, siteId: number | null): Promise<number | null> {
@@ -103,10 +212,44 @@ async function pendingOrRunningDraftSectionFor(
   return false
 }
 
+/** True when merge into the article is reflected: sectionSummaries row or job output `written` (never infer from placeholder disappearance alone). */
+function draftSectionMergeReflectedOnArticle(
+  article: { body?: unknown; sectionSummaries?: unknown } | null,
+  sectionId: string,
+  out: Record<string, unknown> | undefined,
+): boolean {
+  if (out?.written === false) return false
+  if (out?.written === true) return true
+  const summaries = article?.sectionSummaries
+  if (summaries && typeof summaries === 'object' && !Array.isArray(summaries)) {
+    const row = (summaries as Record<string, unknown>)[sectionId]
+    if (row && typeof row === 'object' && !Array.isArray(row)) {
+      const rec = row as Record<string, unknown>
+      if (typeof rec.writtenAt === 'string' && rec.writtenAt.trim()) {
+        const excerpt = typeof rec.excerpt === 'string' ? rec.excerpt.trim() : ''
+        if (excerpt.length > 0) return true
+      }
+    }
+  }
+  return false
+}
+
 export async function successfulDraftSectionIds(
   payload: Payload,
   articleIdNum: number,
 ): Promise<Set<string>> {
+  let article: { body?: unknown; sectionSummaries?: unknown } | null = null
+  try {
+    article = (await payload.findByID({
+      collection: 'articles',
+      id: String(articleIdNum),
+      depth: 0,
+      overrideAccess: true,
+    })) as { body?: unknown; sectionSummaries?: unknown } | null
+  } catch {
+    article = null
+  }
+
   const r = await payload.find({
     collection: 'workflow-jobs',
     where: {
@@ -126,7 +269,9 @@ export async function successfulDraftSectionIds(
     if (out?.ok === false) continue
     const input = parseJsonInput(d as WorkflowJobDoc)
     const sid = input.sectionId
-    if (typeof sid === 'string' && sid) set.add(sid)
+    if (typeof sid !== 'string' || !sid) continue
+    if (!draftSectionMergeReflectedOnArticle(article, sid, out)) continue
+    set.add(sid)
   }
   return set
 }
@@ -245,11 +390,12 @@ export type DraftSectionEnqueueCtx = {
 
 /**
  * Enqueues draft_section jobs up to `merged.sectionParallelism` / whitelist rules.
+ * @returns Number of new `draft_section` jobs created.
  */
 export async function enqueueAvailableDraftSectionJobs(
   payload: Payload,
   ctx: DraftSectionEnqueueCtx,
-): Promise<void> {
+): Promise<number> {
   let pipelineProfileId = ctx.pipelineProfileId
   if (pipelineProfileId == null) {
     try {
@@ -296,13 +442,47 @@ export async function enqueueAvailableDraftSectionJobs(
   const done = await successfulDraftSectionIds(payload, ctx.articleNum)
   let active = await countActiveDraftSectionForArticle(payload, ctx.articleNum)
 
+  payload.logger.info(
+    {
+      articleNum: ctx.articleNum,
+      briefNum: ctx.briefNum,
+      pipelineProfileId: pipelineProfileId ?? null,
+      sectionParallelism: merged.sectionParallelism,
+      sectionVariant: merged.sectionVariant,
+      whitelist: merged.sectionParallelWhitelist,
+      specsCount: specs.length,
+      doneCount: done.size,
+      activeBefore: active,
+    },
+    '[chain] enqueueAvailableDraftSectionJobs start',
+  )
+
   const parentId = ctx.parentJobId != null ? Number(ctx.parentJobId) : NaN
+  let enqueuedCount = 0
 
   for (const row of specs) {
     const { id: sid, sectionType } = row
-    if (done.has(sid)) continue
-    if (await pendingOrRunningDraftSectionFor(payload, ctx.articleNum, sid)) continue
-    if (!canEnqueueDraftSection(merged, active, sectionType)) break
+    if (done.has(sid)) {
+      payload.logger.info(
+        { sectionId: sid, sectionType, decision: 'done' as const, activeAfter: active },
+        '[chain] draft_section enqueue decision',
+      )
+      continue
+    }
+    if (await pendingOrRunningDraftSectionFor(payload, ctx.articleNum, sid)) {
+      payload.logger.info(
+        { sectionId: sid, sectionType, decision: 'pending_or_running' as const, activeAfter: active },
+        '[chain] draft_section enqueue decision',
+      )
+      continue
+    }
+    if (!canEnqueueDraftSection(merged, active, sectionType)) {
+      payload.logger.info(
+        { sectionId: sid, sectionType, decision: 'gated' as const, activeAfter: active },
+        '[chain] draft_section enqueue decision',
+      )
+      continue
+    }
 
     await payload.create({
       collection: 'workflow-jobs',
@@ -329,7 +509,18 @@ export async function enqueueAvailableDraftSectionJobs(
       overrideAccess: true,
     })
     active += 1
+    enqueuedCount += 1
+    payload.logger.info(
+      { sectionId: sid, sectionType, decision: 'enqueued' as const, activeAfter: active },
+      '[chain] draft_section enqueue decision',
+    )
   }
+
+  payload.logger.info(
+    { articleNum: ctx.articleNum, briefNum: ctx.briefNum, enqueuedCount },
+    '[chain] enqueueAvailableDraftSectionJobs complete',
+  )
+  return enqueuedCount
 }
 
 /**
@@ -387,6 +578,7 @@ export async function enqueueMoreDraftSectionsAfterCompletion(
 
 /**
  * After draft_skeleton succeeds: enqueue draft_section jobs (respects parallelism / whitelist).
+ * @returns Number of `draft_section` jobs created; 0 if ids invalid or nothing enqueued.
  */
 export async function enqueueDraftSectionsAfterSkeleton(
   payload: Payload,
@@ -398,7 +590,17 @@ export async function enqueueDraftSectionsAfterSkeleton(
     tenantNumeric?: number | null
     globalContextFallback?: string
   },
-): Promise<void> {
+): Promise<number> {
+  payload.logger.info(
+    {
+      rawArticleId: args.articleId,
+      rawBriefId: args.briefId,
+      completedSkeletonJobId: args.completedSkeletonJobId,
+      siteNumeric: args.siteNumeric,
+    },
+    '[chain] enqueueDraftSectionsAfterSkeleton input',
+  )
+
   const articleNum =
     typeof args.articleId === 'number'
       ? args.articleId
@@ -411,7 +613,13 @@ export async function enqueueDraftSectionsAfterSkeleton(
       : typeof args.briefId === 'string' && /^\d+$/.test(args.briefId)
         ? Number(args.briefId)
         : Number.NaN
-  if (!Number.isFinite(articleNum) || !Number.isFinite(briefNum)) return
+  if (!Number.isFinite(articleNum) || !Number.isFinite(briefNum)) {
+    payload.logger.warn(
+      { articleNum, briefNum, rawArticleId: args.articleId, rawBriefId: args.briefId },
+      '[chain] enqueueDraftSectionsAfterSkeleton skipped: article/brief id non-numeric',
+    )
+    return 0
+  }
 
   const siteId = args.siteNumeric ?? null
   let tenantNum = args.tenantNumeric ?? null
@@ -459,7 +667,7 @@ export async function enqueueDraftSectionsAfterSkeleton(
 
   const parentId = Number(args.completedSkeletonJobId)
 
-  await enqueueAvailableDraftSectionJobs(payload, {
+  return await enqueueAvailableDraftSectionJobs(payload, {
     articleNum,
     briefNum,
     siteId,
@@ -490,6 +698,14 @@ export async function enqueueDraftFinalizeIfSectionsDone(
 
   if (await hasPendingOrRunningFinalize(payload, articleNum)) return
   if (await hasSuccessfulFinalize(payload, articleNum)) return
+
+  if (!(await articleHasExtractableFinalizePlain(payload, articleNum))) {
+    payload.logger.warn(
+      { articleNum, briefNum },
+      '[pipeline] skip draft_finalize enqueue: article body has no extractable plain text (would 422)',
+    )
+    return
+  }
 
   const siteNum = parseSiteNumeric(doc.site)
   const tenantNum = await tenantIdFromSite(payload, siteNum)
@@ -525,6 +741,26 @@ export async function enqueueDraftFinalizeIfSectionsDone(
 }
 
 /**
+ * Effective `togetherImageEnabled` for an article-scoped workflow job (e.g. `image_generate`, `draft_finalize`).
+ * When the article id cannot be resolved, returns true so dispatch can still run (route enforces the flag).
+ */
+export async function resolveTogetherImageEnabledForArticleJob(
+  payload: Payload,
+  doc: WorkflowJobDoc,
+): Promise<boolean> {
+  const aid = articleIdFromJob(doc)
+  const articleNum = aid != null && /^\d+$/.test(aid) ? Number(aid) : NaN
+  if (!Number.isFinite(articleNum)) return true
+  const ppExplicit = explicitProfileIdFromInput(parseJsonInput(doc))
+  const cfg = await resolvePipelineConfigForArticle(payload, articleNum, ppExplicit)
+  if ('ok' in cfg && cfg.ok === false) {
+    const g = await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })
+    return normalizeGlobalPipelineDoc(g as Record<string, unknown>).togetherImageEnabled
+  }
+  return (cfg as ResolvedPipelineConfig).merged.togetherImageEnabled
+}
+
+/**
  * After draft_finalize completes: enqueue image_generate if article has no featured image yet.
  */
 export async function enqueueImageGenerateIfNeeded(
@@ -534,6 +770,8 @@ export async function enqueueImageGenerateIfNeeded(
   const aid = articleIdFromJob(doc)
   const articleNum = aid != null && /^\d+$/.test(aid) ? Number(aid) : NaN
   if (!Number.isFinite(articleNum)) return
+
+  if (!(await resolveTogetherImageEnabledForArticleJob(payload, doc))) return
 
   if (await hasPendingRunningImageGenerate(payload, articleNum)) return
 
@@ -694,38 +932,45 @@ export async function enqueueArticlePipelineCatchup(
     !(await hasSuccessfulFinalize(payload, articleIdNum)) &&
     !(await hasPendingOrRunningFinalize(payload, articleIdNum))
   ) {
-    const cfgCu = await resolvePipelineConfigForArticle(payload, articleIdNum, null)
-    const wfCu =
-      'ok' in cfgCu && cfgCu.ok === false ?
-        {}
-      : compactPipelineWorkflowTags(
-          pipelineWorkflowVariantTags({
-            merged: (cfgCu as ResolvedPipelineConfig).merged,
-            profileSlug: (cfgCu as ResolvedPipelineConfig).profileSlug,
-            source: (cfgCu as ResolvedPipelineConfig).source,
-          }),
-        )
+    if (!(await articleHasExtractableFinalizePlain(payload, articleIdNum))) {
+      payload.logger.warn(
+        { articleIdNum, briefNum },
+        '[pipeline] catchup skip draft_finalize: article body has no extractable plain text (would 422)',
+      )
+    } else {
+      const cfgCu = await resolvePipelineConfigForArticle(payload, articleIdNum, null)
+      const wfCu =
+        'ok' in cfgCu && cfgCu.ok === false ?
+          {}
+        : compactPipelineWorkflowTags(
+            pipelineWorkflowVariantTags({
+              merged: (cfgCu as ResolvedPipelineConfig).merged,
+              profileSlug: (cfgCu as ResolvedPipelineConfig).profileSlug,
+              source: (cfgCu as ResolvedPipelineConfig).source,
+            }),
+          )
 
-    await payload.create({
-      collection: 'workflow-jobs',
-      data: {
-        label: `[catchup] draft_finalize → article #${articleIdNum}`,
-        jobType: 'draft_finalize',
-        status: 'pending',
-        article: articleIdNum,
-        contentBrief: briefNum,
-        ...(siteNum != null ? { site: siteNum } : {}),
-        ...(tenantNum != null ? { tenant: tenantNum } : {}),
-        input: {
-          articleId: articleIdNum,
-          briefId: briefNum,
-          quickWinCatchup: true,
-          ...wfCu,
+      await payload.create({
+        collection: 'workflow-jobs',
+        data: {
+          label: `[catchup] draft_finalize → article #${articleIdNum}`,
+          jobType: 'draft_finalize',
+          status: 'pending',
+          article: articleIdNum,
+          contentBrief: briefNum,
+          ...(siteNum != null ? { site: siteNum } : {}),
+          ...(tenantNum != null ? { tenant: tenantNum } : {}),
+          input: {
+            articleId: articleIdNum,
+            briefId: briefNum,
+            quickWinCatchup: true,
+            ...wfCu,
+          },
         },
-      },
-      overrideAccess: true,
-    })
-    messages.push('入队 draft_finalize × 1')
+        overrideAccess: true,
+      })
+      messages.push('入队 draft_finalize × 1')
+    }
   }
 
   const fiReload = await payload.findByID({

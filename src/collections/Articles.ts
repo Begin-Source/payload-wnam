@@ -25,6 +25,11 @@ export const Articles: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'site', 'status', 'lifecycleStage', 'updatedAt'],
     components: {
+      views: {
+        list: {
+          actions: ['./components/CollectionQuickActions#ArticleListQuickAction'],
+        },
+      },
       beforeListTable: [
         './components/ArticleFindReplacePanel#FindReplacePanel',
         './components/ArticleCsvImportExport#CsvImportExportPanel',

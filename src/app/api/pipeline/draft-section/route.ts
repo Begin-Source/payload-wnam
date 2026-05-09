@@ -1,6 +1,7 @@
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
+import { PIPELINE_DEFAULT_OPENROUTER_LLM } from '@/constants/pipelineOpenRouterModels'
 import { loadBriefSectionSpecs } from '@/app/api/pipeline/lib/articlePipelineChain'
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
 import { runSectionPrompt } from '@/services/writing/sectionExecutor'
@@ -69,6 +70,8 @@ export async function POST(request: Request): Promise<Response> {
     tenantId?: string | number
     siteId?: string | number
     pipelineProfileId?: string | number
+    /** Set by workflow runner — response must persist to article or fail. */
+    workflowDispatch?: boolean
   }
   if (!body.sectionId) {
     return Response.json({ error: 'sectionId required' }, { status: 400 })
@@ -192,7 +195,7 @@ export async function POST(request: Request): Promise<Response> {
     model = pickPipelineOpenRouterModel(merged, sectionType)
   }
   if (!model) {
-    model = 'openai/gpt-4o-mini'
+    model = PIPELINE_DEFAULT_OPENROUTER_LLM
   }
   const fbModel = merged ? pickFallbackModelFromSectionRetry(merged, sectionType) : null
 
@@ -348,6 +351,11 @@ export async function POST(request: Request): Promise<Response> {
       articleId: aid,
       sectionId: body.sectionId,
       sectionMarkdown: text,
+      ...(typeof body.briefId === 'number' && Number.isFinite(body.briefId) ?
+        { briefId: Math.floor(body.briefId) }
+      : typeof body.briefId === 'string' && /^\d+$/.test(body.briefId.trim()) ?
+        { briefId: Number(body.briefId.trim()) }
+      : {}),
     })
     if (!w.ok) {
       return Response.json(
@@ -401,6 +409,29 @@ export async function POST(request: Request): Promise<Response> {
     } catch {
       /* optional quota */
     }
+  }
+
+  if (body.workflowDispatch === true && !written) {
+    return Response.json(
+      {
+        ok: false,
+        error:
+          'workflow draft_section expected article persist but written=false (missing articleId in request or internal error)',
+        sectionId: body.sectionId,
+        text,
+        articleId:
+          body.articleId != null ?
+            typeof body.articleId === 'number'
+              ? body.articleId
+              : Number(body.articleId)
+          : null,
+        written: false,
+        elapsedMs: Date.now() - started,
+        ...(usageOut ? { usage: usageOut } : {}),
+        model: modelUsed,
+      },
+      { status: 422 },
+    )
   }
 
   return Response.json({

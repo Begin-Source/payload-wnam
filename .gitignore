@@ -62,3 +62,7 @@ node_modules/
 /Guides _ Generate Featured Image (Together + R2).json
 /Products _ Executor _ Generate Review MDX.json
 /Sites _ Executor _ Generate  Template Design (1).json
+
+# Local pipeline / admin debug captures (may contain secrets; do not commit)
+docs/pipeline-debug.local.log
+docs/pipeline-debug.local.txt
