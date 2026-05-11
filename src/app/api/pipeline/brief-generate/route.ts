@@ -17,7 +17,11 @@ export async function POST(request: Request): Promise<Response> {
   if (isPipelineUnauthorized(g)) {
     return g.response
   }
-  const body = (await request.json().catch(() => ({}))) as { keywordId?: string | number; siteId?: number }
+  const body = (await request.json().catch(() => ({}))) as {
+    keywordId?: string | number
+    siteId?: number
+    pipelineProfileId?: string | number
+  }
   const payload = await getPayload({ config: configPromise })
   if (!body.keywordId) {
     return Response.json({ error: 'keywordId required' }, { status: 400 })
@@ -71,10 +75,19 @@ export async function POST(request: Request): Promise<Response> {
     )
   }
 
+  const rawPp = body.pipelineProfileId
+  let explicitPipelineProfileId: number | undefined
+  if (typeof rawPp === 'number' && Number.isFinite(rawPp)) {
+    explicitPipelineProfileId = Math.floor(rawPp)
+  } else if (typeof rawPp === 'string' && /^\d+$/.test(rawPp.trim())) {
+    explicitPipelineProfileId = Number(rawPp.trim())
+  }
+
   const pipelineCfg = await resolvePipelineConfig({
     payload,
     tenantId,
     siteId: typeof siteId === 'number' && Number.isFinite(siteId) ? siteId : undefined,
+    explicitProfileId: explicitPipelineProfileId,
   })
   const merged = pipelineCfg.merged
   const briefVariant = normalizeBriefVariant(merged.briefVariant)

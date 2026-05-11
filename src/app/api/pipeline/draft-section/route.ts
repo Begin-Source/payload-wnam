@@ -22,6 +22,7 @@ import {
   extractTavilyUsageCredits,
   tavilyCreditsToUsd,
 } from '@/utilities/tavilyUsageCredits'
+import { formatSeoWorkflowPromptBlock } from '@/utilities/seoWorkflowPromptBlock'
 import {
   buildOriginalEvidenceContextAppendix,
   loadOriginalEvidencePromptSlice,
@@ -290,6 +291,7 @@ export async function POST(request: Request): Promise<Response> {
       const trialModel =
         attempt > 0 && fbModel ? fbModel : model
       modelUsed = trialModel
+      const wfRaw = merged ? formatSeoWorkflowPromptBlock(merged).trim() : ''
       const { text: tOut, usage, raw } = await runSectionPrompt(payload, tenantId, {
         model: trialModel,
         sectionId: body.sectionId,
@@ -299,6 +301,7 @@ export async function POST(request: Request): Promise<Response> {
         ...(eeatWeights ? { eeatWeights } : {}),
         ...(researchSlice ? { researchSlice } : {}),
         pipelineProfileId: pipelineProfileIdForPrompts,
+        extraPromptVars: { seo_workflow_block: wfRaw ? `${wfRaw}\n\n` : '' },
       })
       text = tOut
       rawOut = raw

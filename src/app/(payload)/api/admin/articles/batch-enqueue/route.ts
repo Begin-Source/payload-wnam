@@ -388,6 +388,11 @@ export async function POST(request: Request): Promise<Response> {
             siteId: siteIdNum,
             ...(loaded.briefQuickWins ? { quickWins: true } : {}),
             ...(row.seasonalScore != null ? { seasonalScore: row.seasonalScore } : {}),
+            ...(typeof body.pipelineProfileId === 'number' && Number.isFinite(body.pipelineProfileId)
+              ? { pipelineProfileId: Math.floor(body.pipelineProfileId) }
+              : typeof body.pipelineProfileId === 'string' && /^\d+$/.test(String(body.pipelineProfileId).trim())
+                ? { pipelineProfileId: Number(String(body.pipelineProfileId).trim()) }
+                : {}),
           }
 
     await payload.create({

@@ -3,7 +3,9 @@
 import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
 import type { BatchEnqueueOkJson } from '@/utilities/keywordBatchEnqueuePreview'
 import { Button } from '@payloadcms/ui'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+
+import type { KeywordDrawerRef } from '@/components/keywordListDrawerRef'
 
 type SiteOption = { id: number; name: string; slug: string; primaryDomain: string }
 
@@ -66,7 +68,7 @@ function clampSeasonalMin(raw: string): number {
 }
 
 /** 季节 / trend 峰值向 brief_generate */
-export function KeywordSeasonalDrawer(): React.ReactElement {
+export const KeywordSeasonalDrawer = forwardRef<KeywordDrawerRef>(function KeywordSeasonalDrawer(_props, ref) {
   const {
     startBatchEnqueueJob,
     completeBatchEnqueueJob,
@@ -77,6 +79,11 @@ export function KeywordSeasonalDrawer(): React.ReactElement {
   } = useAdminBackgroundActivity()
 
   const [open, setOpen] = useState(false)
+  useImperativeHandle(ref, () => ({
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+  }))
+
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
   const [sitesLoading, setSitesLoading] = useState(false)
@@ -318,9 +325,6 @@ export function KeywordSeasonalDrawer(): React.ReactElement {
 
   return (
     <>
-      <Button buttonStyle="secondary" onClick={() => setOpen(true)} type="button">
-        季节峰值 · Brief
-      </Button>
       {open ? (
         <>
           <button
@@ -452,4 +456,4 @@ export function KeywordSeasonalDrawer(): React.ReactElement {
       ) : null}
     </>
   )
-}
+})

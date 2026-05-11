@@ -40,6 +40,14 @@ describe('seo theory pipeline profile presets', () => {
     expect(t.maxKd).toBe(65)
   })
 
+  it('quality preset seeds articleStrategy.seoWorkflow for one-click workflow', () => {
+    const q = getSeoTheoryQualityPipelineProfileFields() as {
+      articleStrategy: { seoWorkflow?: { workflowMode?: string }; wordCountTarget?: Record<string, unknown> }
+    }
+    expect(q.articleStrategy?.seoWorkflow?.workflowMode).toBe('one_click_publish_grade')
+    expect(q.articleStrategy?.wordCountTarget?.intro).toEqual({ min: 140, max: 240 })
+  })
+
   it('quality LLM preset swaps primary model for heavy sections', () => {
     const q = getSeoTheoryQualityPipelineProfileFields() as {
       llmModelsBySection: Array<{ sectionType?: string; model?: string }>

@@ -25,6 +25,8 @@ export async function runSectionPrompt(
     researchSlice?: string
     /** When set, prefer `tenant-prompt-templates` scoped to this pipeline profile. */
     pipelineProfileId?: number | null
+    /** Extra `{{key}}` substitutions for tenant prompt templates (e.g. `seo_workflow_block`). */
+    extraPromptVars?: Record<string, string>
   },
 ): Promise<{
   text: string
@@ -44,6 +46,7 @@ export async function runSectionPrompt(
     researchSlice: input.researchSlice,
   })
   const vars = {
+    ...(input.extraPromptVars ?? {}),
     section_id: input.sectionId,
     section_type: input.sectionType,
     previous_section_block:

@@ -16,12 +16,25 @@ Current year for freshness heuristics: ${y}.
 </guardrail_negatives>`
 }
 
+/** Pipeline `draft_section` default system (kept in sync with `DEFAULT_SKILL_SEO_CONTENT_WRITER_SYSTEM`). */
+export const SEO_CONTENT_WRITER_PIPELINE_SYSTEM = `You are an SEO copywriter writing ONE parallel section of a longer article. Follow CORE-EEAT; do not fabricate first-hand test data.
+
+Scope (strict): Expand only what belongs to the current sectionId / sectionType and the outline slice in the user "context". Do not restate or duplicate beats that belong in other parts of the article (e.g. if intro will cover the hook and primary keyword, do not rewrite a full intro inside body; if FAQ is a separate pass, do not add FAQ or PAA-style Q&A here unless sectionType is faq).
+
+Headings: Use Markdown only (## H2, ### H3). For sectionType other than body, prefer a single ## unless the brief clearly needs more. For body, you may use multiple ##, but do not use two ## headings that serve the same reader intent (e.g. two "how to choose" clusters)—merge into one ## and use ### for sub-parts.
+
+Intro section (sectionType intro): Include the primary keyword naturally within the first ~100 words and deliver a direct answer early (C02).
+
+Unless sectionType is faq, do not output FAQ or Q&A lists (authored in the dedicated FAQ pass).
+
+Output Markdown only—no HTML, no outer code fence, no preamble or meta-commentary, no <bos>/<eos>/<|...|> control tokens.`
+
 const SEED: Record<string, string> = {
   'keyword-research': `You are a keyword research specialist. Return structured JSON with opportunity scores and a content calendar. Follow volume, KD, and intent.`,
 
   'serp-analysis': `You are a SERP analyst. Given organic results and PAA, extract intent, gaps, and outline hints.`,
 
-  'seo-content-writer': `You are an SEO copywriter. Follow the current section's H2/H3 plan and CORE-EEAT constraints. Do not fabricate first-hand test data. Unless this request is the dedicated FAQ section pass, do not output FAQ or Q&A lists here (they are authored in a separate FAQ pass).`,
+  'seo-content-writer': SEO_CONTENT_WRITER_PIPELINE_SYSTEM,
 
   'content-quality-auditor': `You are a content auditor. Score 8 dimensions, flag vetoes (T04/C01/R10), return JSON with rawDimensionScores and vetoIds.
 ${guardrailNegativesBlock()}`,

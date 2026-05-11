@@ -10,6 +10,7 @@ import { ContentBriefDraftSkeletonDrawer } from '@/components/ContentBriefDraftS
 import { MediaAiImageDrawer } from '@/components/MediaAiImageDrawer'
 import { KeywordDefaultBatchDrawer } from '@/components/KeywordDefaultBatchDrawer'
 import { KeywordGeoDrawer } from '@/components/KeywordGeoDrawer'
+import { KeywordListGroupedToolbar } from '@/components/KeywordListGroupedToolbar'
 import { KeywordPillarSprintDrawer } from '@/components/KeywordPillarSprintDrawer'
 import { KeywordQuickWinDrawer } from '@/components/KeywordQuickWinDrawer'
 import { KeywordRefreshDecayDrawer } from '@/components/KeywordRefreshDecayDrawer'
@@ -23,6 +24,7 @@ import { useRouter } from 'next/navigation'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 import { showEphemeralAdminToast } from '@/utilities/adminEphemeralToast'
+import type { KeywordDrawerRef } from '@/components/keywordListDrawerRef'
 import type { WorkflowQuickKind } from '@/utilities/workflowQuickCreate'
 
 type SiteOption = {
@@ -1357,20 +1359,41 @@ export function CategoryListQuickAction(): React.ReactElement {
 }
 
 export function KeywordListQuickAction(): React.ReactElement {
+  const quickWinRef = useRef<KeywordDrawerRef>(null)
+  const defaultBatchRef = useRef<KeywordDrawerRef>(null)
+  const geoRef = useRef<KeywordDrawerRef>(null)
+  const pillarRef = useRef<KeywordDrawerRef>(null)
+  const seasonalRef = useRef<KeywordDrawerRef>(null)
+  const refreshDecayRef = useRef<KeywordDrawerRef>(null)
+  const syncDfsRef = useRef<KeywordDrawerRef>(null)
+
   return (
     <>
-      <KeywordQuickWinDrawer />
-      <KeywordDefaultBatchDrawer />
-      <KeywordGeoDrawer />
-      <KeywordPillarSprintDrawer />
-      <KeywordSeasonalDrawer />
-      <KeywordRefreshDecayDrawer />
+      <KeywordListGroupedToolbar
+        openers={{
+          quickWin: () => quickWinRef.current?.open(),
+          defaultBatch: () => defaultBatchRef.current?.open(),
+          geo: () => geoRef.current?.open(),
+          pillar: () => pillarRef.current?.open(),
+          seasonal: () => seasonalRef.current?.open(),
+          refreshDecay: () => refreshDecayRef.current?.open(),
+          syncDfs: () => syncDfsRef.current?.open(),
+        }}
+      />
+      <KeywordQuickWinDrawer ref={quickWinRef} />
+      <KeywordDefaultBatchDrawer ref={defaultBatchRef} />
+      <KeywordGeoDrawer ref={geoRef} />
+      <KeywordPillarSprintDrawer ref={pillarRef} />
+      <KeywordSeasonalDrawer ref={seasonalRef} />
+      <KeywordRefreshDecayDrawer ref={refreshDecayRef} />
+      <KeywordSyncFetchDrawer ref={syncDfsRef} />
     </>
   )
 }
 
+/** @deprecated DFS 同步已并入关键词列表分组工具栏；保留导出以免旧 import map 报错。 */
 export function KeywordSyncFetchListAction(): React.ReactElement {
-  return <KeywordSyncFetchDrawer />
+  return <></>
 }
 
 export function OfferListQuickAction(): React.ReactElement {

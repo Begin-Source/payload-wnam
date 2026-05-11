@@ -4,7 +4,9 @@ import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity
 
 import type { BatchEnqueueOkJson } from '@/utilities/keywordBatchEnqueuePreview'
 import { Button } from '@payloadcms/ui'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+
+import type { KeywordDrawerRef } from '@/components/keywordListDrawerRef'
 
 type SiteOption = {
   id: number
@@ -77,7 +79,10 @@ function parseLimitOverride(batchLimitInput: string): number | undefined {
 }
 
 /** Keywords list: default opportunity-sorted keywords → `brief_generate` batch (same API as Articles batch). */
-export function KeywordDefaultBatchDrawer(): React.ReactElement {
+export const KeywordDefaultBatchDrawer = forwardRef<KeywordDrawerRef>(function KeywordDefaultBatchDrawer(
+  _props,
+  ref,
+) {
   const {
     startBatchEnqueueJob,
     completeBatchEnqueueJob,
@@ -88,6 +93,11 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
   } = useAdminBackgroundActivity()
 
   const [open, setOpen] = useState(false)
+  useImperativeHandle(ref, () => ({
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+  }))
+
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
   const [sitesLoading, setSitesLoading] = useState(false)
@@ -414,9 +424,6 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
 
   return (
     <>
-      <Button buttonStyle="secondary" onClick={() => setOpen(true)} type="button">
-        默认排产 · Brief
-      </Button>
       {open ? (
         <>
           <button
@@ -674,4 +681,4 @@ export function KeywordDefaultBatchDrawer(): React.ReactElement {
       ) : null}
     </>
   )
-}
+})

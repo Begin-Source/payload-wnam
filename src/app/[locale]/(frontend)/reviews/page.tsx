@@ -6,7 +6,10 @@ import { AmzReviewsPage as Amz1ReviewsPage } from '@/site-layouts/amz-template-1
 import { AmzReviewsPage as Amz2ReviewsPage } from '@/site-layouts/amz-template-2/pages/AmzReviewsPage'
 import { isAppLocale } from '@/i18n/config'
 import { getPublicSiteContext, isAmzSiteLayout, isAmzTemplate2Layout } from '@/utilities/publicLandingTheme'
-import { getNavCategoriesForSite, getPublishedArticlesForReviewsListing } from '@/utilities/publicSiteQueries'
+import {
+  getPublishedArticlesForReviewsListing,
+  getReviewCategoriesForSite,
+} from '@/utilities/publicSiteQueries'
 
 type Props = {
   params: Promise<{ locale: string }>
@@ -31,7 +34,7 @@ export default async function ReviewsPage(props: Props) {
   const t2 = isAmzTemplate2Layout(theme.siteLayout)
   const [articles, categories] = await Promise.all([
     getPublishedArticlesForReviewsListing(site.id, locale, 96),
-    getNavCategoriesForSite(site.id, locale, 48),
+    getReviewCategoriesForSite(site.id, locale, 48),
   ])
 
   const shared = {

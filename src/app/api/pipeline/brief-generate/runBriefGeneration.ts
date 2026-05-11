@@ -21,6 +21,7 @@ import type { ResolvedPipelineConfig } from '@/utilities/resolvePipelineConfig'
 import type { BriefVariantId } from '@/utilities/pipelineVariants'
 import { buildSerpBriefPromptDefaults } from '@/utilities/openRouterTenantPrompts/defaultOpenRouterTenantPromptBodies'
 import { resolveTenantPromptPair } from '@/utilities/openRouterTenantPrompts/loadTenantPromptTemplateBody'
+import { formatSeoWorkflowPromptBlock } from '@/utilities/seoWorkflowPromptBlock'
 import { SERP_BRIEF_SYSTEM_ADDON } from '@/utilities/openRouterTenantPrompts/serpBriefConstants'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import {
@@ -29,6 +30,10 @@ import {
 } from '@/utilities/tavilyUsageCredits'
 import { extractSerpBriefContext } from '@/utilities/serpBriefExtract'
 import { appendSerpSnapshot } from '@/utilities/serpSnapshotPersist'
+import {
+  mergeCanonicalBriefSectionRows,
+  type BriefSectionSpecRow,
+} from '@/app/api/pipeline/lib/articlePipelineChain'
 
 export type BriefGenArgs = {
   payload: Payload
@@ -206,18 +211,22 @@ export async function runBriefGeneration(
   })
   const memory_block = appendMemoryBlock('serp-analysis', memoryRows)
   const serp_brief_addon = SERP_BRIEF_SYSTEM_ADDON
+  const wfRaw = formatSeoWorkflowPromptBlock(merged).trim()
+  const seo_workflow_block = wfRaw ? `${wfRaw}\n\n` : ''
   const briefVars = {
     memory_block,
     serp_brief_addon,
     term,
     serp_user_block: serpUserBlock,
     tavily_slice: tavSlice,
+    seo_workflow_block,
   }
   const briefDefaults = buildSerpBriefPromptDefaults({
     memory_block,
     serp_user_block: serpUserBlock,
     tavily_slice: tavSlice,
     term,
+    seo_workflow_block: wfRaw,
   })
   const { system: briefSystem, user: userPrompt } = await resolveTenantPromptPair(
     payload,
@@ -234,11 +243,19 @@ export async function runBriefGeneration(
     { role: 'user', content: userPrompt },
   ])
   const text = chat.text
+  const baseBriefSections: BriefSectionSpecRow[] = [
+    { id: 'intro', sectionType: 'intro', wordBudget: 150 },
+    { id: 'faq', sectionType: 'faq', wordBudget: 300 },
+  ]
+  const mergedBriefSections = mergeCanonicalBriefSectionRows(baseBriefSections)
   const outline = {
-    sections: [
-      { id: 'intro', type: 'intro' as const, wordBudget: 150, inject: { hook: true, valuePromise: true } },
-      { id: 'faq', type: 'faq' as const, wordBudget: 300, inject: { parallel: true } },
-    ],
+    sections: mergedBriefSections.map((r) => ({
+      id: r.id,
+      type: r.sectionType as 'intro' | 'faq' | 'conclusion' | 'custom',
+      ...(typeof r.wordBudget === 'number' && Number.isFinite(r.wordBudget) ? { wordBudget: r.wordBudget } : {}),
+      ...(r.id === 'intro' ? { inject: { hook: true, valuePromise: true } as const } : {}),
+      ...(r.id === 'faq' ? { inject: { parallel: true } as const } : {}),
+    })),
     globalContext: { targetKeyword: term, delegateOutline: text.slice(0, 3500) },
   }
 

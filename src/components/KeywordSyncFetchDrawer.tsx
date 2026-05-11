@@ -3,7 +3,9 @@
 import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
 
 import { Button } from '@payloadcms/ui'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+
+import type { KeywordDrawerRef } from '@/components/keywordListDrawerRef'
 
 type SiteOption = {
   id: number
@@ -99,10 +101,15 @@ function buildSeedsFromCategories(
   return mp
 }
 
-export function KeywordSyncFetchDrawer(): React.ReactElement {
+export const KeywordSyncFetchDrawer = forwardRef<KeywordDrawerRef>(function KeywordSyncFetchDrawer(_props, ref) {
   const { startKeywordsDfsFetchJob, completeKeywordsDfsFetchJob, failKeywordsDfsFetchJob } =
     useAdminBackgroundActivity()
   const [open, setOpen] = useState(false)
+  useImperativeHandle(ref, () => ({
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+  }))
+
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
   const [sitesLoading, setSitesLoading] = useState(false)
@@ -412,10 +419,6 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
 
   return (
     <>
-      <Button buttonStyle="secondary" onClick={() => setOpen(true)} size="small" type="button">
-        同步拉取 · DFS
-      </Button>
-
       {open ? (
         <div aria-labelledby={titleId} aria-modal role="dialog" style={backdropStyle}>
           <button
@@ -721,4 +724,4 @@ export function KeywordSyncFetchDrawer(): React.ReactElement {
       ) : null}
     </>
   )
-}
+})

@@ -3,7 +3,9 @@
 import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
 import type { BatchEnqueueOkJson } from '@/utilities/keywordBatchEnqueuePreview'
 import { Button } from '@payloadcms/ui'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+
+import type { KeywordDrawerRef } from '@/components/keywordListDrawerRef'
 
 type SiteOption = { id: number; name: string; slug: string; primaryDomain: string }
 
@@ -76,7 +78,10 @@ function clampDecayThreshold(raw: string): number {
 }
 
 /** 衰减队列 → content_refresh（worker 仍为占位） */
-export function KeywordRefreshDecayDrawer(): React.ReactElement {
+export const KeywordRefreshDecayDrawer = forwardRef<KeywordDrawerRef>(function KeywordRefreshDecayDrawer(
+  _props,
+  ref,
+) {
   const {
     startBatchEnqueueJob,
     completeBatchEnqueueJob,
@@ -87,6 +92,11 @@ export function KeywordRefreshDecayDrawer(): React.ReactElement {
   } = useAdminBackgroundActivity()
 
   const [open, setOpen] = useState(false)
+  useImperativeHandle(ref, () => ({
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+  }))
+
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
   const [sitesLoading, setSitesLoading] = useState(false)
@@ -330,9 +340,6 @@ export function KeywordRefreshDecayDrawer(): React.ReactElement {
 
   return (
     <>
-      <Button buttonStyle="secondary" onClick={() => setOpen(true)} type="button">
-        衰减刷新 · 任务
-      </Button>
       {open ? (
         <>
           <button
@@ -468,4 +475,4 @@ export function KeywordRefreshDecayDrawer(): React.ReactElement {
       ) : null}
     </>
   )
-}
+})

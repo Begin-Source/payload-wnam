@@ -236,6 +236,11 @@ export async function dispatchWorkflowJob(
       return forwardPipelinePost(request, '/api/pipeline/brief-generate', {
         keywordId: numericIfDigits(kid) ?? kid,
         ...(typeof siteNum === 'number' ? { siteId: siteNum } : {}),
+        ...(typeof input.pipelineProfileId === 'number' && Number.isFinite(input.pipelineProfileId)
+          ? { pipelineProfileId: Math.floor(input.pipelineProfileId) }
+          : typeof input.pipelineProfileId === 'string' && /^\d+$/.test(String(input.pipelineProfileId).trim())
+            ? { pipelineProfileId: Number(String(input.pipelineProfileId).trim()) }
+            : {}),
       })
     }
     case 'draft_skeleton': {

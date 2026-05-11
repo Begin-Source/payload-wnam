@@ -3,7 +3,9 @@
 import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
 import type { BatchEnqueueOkJson } from '@/utilities/keywordBatchEnqueuePreview'
 import { Button } from '@payloadcms/ui'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+
+import type { KeywordDrawerRef } from '@/components/keywordListDrawerRef'
 
 type SiteOption = {
   id: number
@@ -75,7 +77,7 @@ function parseLimitOverride(batchLimitInput: string): number | undefined {
 }
 
 /** GEO / AI 引用向 → brief_generate */
-export function KeywordGeoDrawer(): React.ReactElement {
+export const KeywordGeoDrawer = forwardRef<KeywordDrawerRef>(function KeywordGeoDrawer(_props, ref) {
   const {
     startBatchEnqueueJob,
     completeBatchEnqueueJob,
@@ -86,6 +88,11 @@ export function KeywordGeoDrawer(): React.ReactElement {
   } = useAdminBackgroundActivity()
 
   const [open, setOpen] = useState(false)
+  useImperativeHandle(ref, () => ({
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+  }))
+
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
   const [sitesLoading, setSitesLoading] = useState(false)
@@ -412,9 +419,6 @@ export function KeywordGeoDrawer(): React.ReactElement {
 
   return (
     <>
-      <Button buttonStyle="secondary" onClick={() => setOpen(true)} type="button">
-        GEO 向 · Brief
-      </Button>
       {open ? (
         <>
           <button
@@ -601,4 +605,4 @@ export function KeywordGeoDrawer(): React.ReactElement {
       ) : null}
     </>
   )
-}
+})

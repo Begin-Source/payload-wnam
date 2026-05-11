@@ -31,6 +31,7 @@
     "seed:website-social-manual": "cross-env NODE_OPTIONS=--no-deprecation --import=tsx/esm tsx scripts/seed-website-social-manual.ts",
     "seed:role-operation-playbooks": "cross-env NODE_OPTIONS=--no-deprecation --import=tsx/esm tsx scripts/seed-role-operation-playbooks.ts",
     "seed:linkgraph": "cross-env NODE_OPTIONS=--no-deprecation --import=tsx/esm tsx scripts/seed-linkgraph.ts",
+    "pipeline:smoke-article": "cross-env NODE_OPTIONS=--no-deprecation --import=tsx/esm tsx scripts/pipeline-article-quality-smoke.ts",
     "prune:related-offers": "cross-env NODE_OPTIONS=--no-deprecation --import=tsx/esm tsx scripts/prune-invalid-article-related-offers.ts"
   },
   "dependencies": {

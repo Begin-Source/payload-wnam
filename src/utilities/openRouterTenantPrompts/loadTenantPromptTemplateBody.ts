@@ -53,8 +53,8 @@ export function pickTenantPromptPart(
   defaultText: string,
   vars: Record<string, string>,
 ): string {
-  if (!custom) return defaultText
-  return substitutePromptPlaceholders(custom, vars)
+  const base = custom && String(custom).trim().length > 0 ? custom : defaultText
+  return substitutePromptPlaceholders(base, vars)
 }
 
 export async function resolveTenantPromptPair(

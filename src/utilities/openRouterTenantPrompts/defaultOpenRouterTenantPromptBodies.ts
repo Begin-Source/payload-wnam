@@ -29,6 +29,7 @@ import {
   type OpenRouterTenantPipelinePromptKey,
 } from '@/utilities/domainGeneration/promptKeys'
 import { substitutePromptPlaceholders } from '@/utilities/domainGeneration/substitutePromptPlaceholders'
+import { SEO_CONTENT_WRITER_PIPELINE_SYSTEM } from '@/services/prompts/skillPrompts'
 import {
   FINALIZE_ARTICLE_BLOCK_BEGIN,
   FINALIZE_ARTICLE_BLOCK_END,
@@ -37,7 +38,7 @@ import { SERP_BRIEF_SYSTEM_ADDON } from '@/utilities/openRouterTenantPrompts/ser
 
 export { FINALIZE_ARTICLE_BLOCK_BEGIN, FINALIZE_ARTICLE_BLOCK_END }
 
-/** Matches `skillPrompts` SEED (migration + template default). Runtime may use `getSkillPrompt` which can diverge. */
+/** Tenant seed default; runtime `draft_section` uses `getSkillPrompt('seo-content-writer')` → same string as {@link SEO_CONTENT_WRITER_PIPELINE_SYSTEM}. */
 export const DEFAULT_SKILL_DOMAIN_AUTHORITY_AUDITOR_SYSTEM =
   'You score CITE 40 and vetoes T03/T05/T09.'
 
@@ -45,11 +46,11 @@ export const DEFAULT_SKILL_ALERT_MANAGER_SYSTEM = 'You turn metric deltas into a
 
 export const DEFAULT_SKILL_COMPETITOR_ANALYSIS_SYSTEM = 'You compare competitor H2 structure and list gaps.'
 
-export const DEFAULT_SKILL_SEO_CONTENT_WRITER_SYSTEM =
-  'You are an SEO copywriter. Follow H1, intro, H2-H3 structure, FAQ, and CORE-EEAT constraints. Do not fabricate first-hand test data.'
+export const DEFAULT_SKILL_SEO_CONTENT_WRITER_SYSTEM = SEO_CONTENT_WRITER_PIPELINE_SYSTEM
 
 /** System = memory block + addon; `memory_block` is runtime `appendMemoryBlock('serp-analysis', rows)`. */
-export const DEFAULT_SERP_BRIEF_SYSTEM_TEMPLATE = '{{memory_block}}\n\n{{serp_brief_addon}}'
+export const DEFAULT_SERP_BRIEF_SYSTEM_TEMPLATE =
+  '{{memory_block}}\n\n{{seo_workflow_block}}{{serp_brief_addon}}'
 
 export const DEFAULT_SERP_BRIEF_USER_TEMPLATE = [
   'Target keyword: {{term}}',
@@ -66,9 +67,14 @@ export function buildSerpBriefPromptDefaults(vars: {
   serp_user_block: string
   tavily_slice: string
   term: string
+  /** Injected pipeline + `articleStrategy.seoWorkflow` block (trimmed); empty omits spacing. */
+  seo_workflow_block?: string
 }): { system: string; user: string } {
+  const wf = (vars.seo_workflow_block ?? '').trim()
+  const wfBlock = wf ? `${wf}\n\n` : ''
   const v = {
     ...vars,
+    seo_workflow_block: wfBlock,
     serp_brief_addon: SERP_BRIEF_SYSTEM_ADDON,
   }
   return {
@@ -88,6 +94,8 @@ export const DEFAULT_DRAFT_SECTION_USER_TEMPLATE = [
   '',
   'context:',
   '{{global_context}}{{research_slice_block}}',
+  '',
+  'Write only this section\'s slice: other H2s in context belong to other sectionIds—do not repeat or preempt them.',
 ].join('\n')
 
 export function buildDraftSectionPromptDefaults(args: {
@@ -120,13 +128,13 @@ export function buildDraftSectionPromptDefaults(args: {
 }
 
 export const DEFAULT_FINALIZE_COHESION_SYSTEM =
-  'You are an SEO editor merging parallel-written sections into one cohesive article. In the user message, the draft sits between literal lines `<<<ARTICLE_BEGIN>>>` and `<<<ARTICLE_END>>>`—those lines are transport delimiters only, not Markdown horizontal rules and not part of the article body. Between them you receive plain text extracted from our CMS Lexical rich-text field (not an uploaded .md file). Preserve facts; smooth transitions; remove duplicated H2 intros. If you see two FAQ or Q&A blocks (e.g. "## FAQ" and "## FAQ Block", or repeated PAA-style questions), merge into a single "## FAQ" with deduplicated questions—keep the clearest answer per topic, drop near-duplicate bullets. Output MARKDOWN ONLY for re-import into the CMS: ## for H2, ### for H3. English. No preamble or meta-commentary.'
+  'You are an SEO editor merging parallel-written sections into one cohesive article. In the user message, the draft sits between literal lines `<<<ARTICLE_BEGIN>>>` and `<<<ARTICLE_END>>>`—those lines are transport delimiters only, not Markdown horizontal rules and not part of the article body. Between them you receive plain text extracted from our CMS Lexical rich-text field (not an uploaded .md file). Preserve facts; smooth transitions; remove duplicated H2 intros. If two or more `##` headings address the same reader intent (e.g. two "how to choose" or two "key features" blocks with overlapping advice), merge them into a single `##` with deduplicated bullets and one coherent narrative—do not leave side-by-side duplicate H2s that differ only in wording. If you see two FAQ or Q&A blocks (e.g. "## FAQ" and "## FAQ Block", or repeated PAA-style questions), merge into a single "## FAQ" with deduplicated questions—keep the clearest answer per topic, drop near-duplicate bullets. Output MARKDOWN ONLY for re-import into the CMS: ## for H2, ### for H3. English. No preamble or meta-commentary.'
 export const DEFAULT_FINALIZE_COHESION_USER_TEMPLATE = [
   'Current draft as plain text from the CMS Lexical body (paragraph breaks may show as blank lines; sections may still feel disjoint before you edit):',
   FINALIZE_ARTICLE_BLOCK_BEGIN,
   '{{article_plain}}',
   FINALIZE_ARTICLE_BLOCK_END,
-  'Do not treat the marker lines as `---` rules or file boundaries. Rewrite into cohesive Markdown with a consistent voice.',
+  'Do not treat the marker lines as `---` rules or file boundaries. Rewrite into cohesive Markdown with a consistent voice. Merge any near-duplicate H2 topics into one heading before finalizing.',
 ].join('\n')
 
 export const DEFAULT_FINALIZE_EEAT_SYSTEM =

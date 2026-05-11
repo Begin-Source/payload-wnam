@@ -32,10 +32,7 @@ export const Keywords: CollectionConfig = {
       ],
       views: {
         list: {
-          actions: [
-            './components/CollectionQuickActions#KeywordListQuickAction',
-            './components/CollectionQuickActions#KeywordSyncFetchListAction',
-          ],
+          actions: ['./components/CollectionQuickActions#KeywordListQuickAction'],
         },
       },
     },

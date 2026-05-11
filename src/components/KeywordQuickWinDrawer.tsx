@@ -3,7 +3,9 @@
 import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
 
 import { Button } from '@payloadcms/ui'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+
+import type { KeywordDrawerRef } from '@/components/keywordListDrawerRef'
 
 import { DEFAULT_QUICK_WIN_FILTER } from '@/utilities/quickWinFilter'
 
@@ -85,13 +87,18 @@ function formatSiteLine(s: SiteOption): string {
 }
 
 /** Keywords list: quick-win filter → `brief_generate` jobs (SERP-aware brief at tick). */
-export function KeywordQuickWinDrawer(): React.ReactElement {
+export const KeywordQuickWinDrawer = forwardRef<KeywordDrawerRef>(function KeywordQuickWinDrawer(_props, ref) {
   const {
     startKeywordQuickWinPreviewJob,
     completeKeywordQuickWinPreviewJob,
     failKeywordQuickWinPreviewJob,
   } = useAdminBackgroundActivity()
   const [open, setOpen] = useState(false)
+  useImperativeHandle(ref, () => ({
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+  }))
+
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
   const [sitesLoading, setSitesLoading] = useState(false)
@@ -475,9 +482,6 @@ export function KeywordQuickWinDrawer(): React.ReactElement {
 
   return (
     <>
-      <Button buttonStyle="secondary" onClick={() => setOpen(true)} type="button">
-        精选 Quick-win 入队 · Brief
-      </Button>
       {open ? (
         <>
           <button
@@ -794,4 +798,4 @@ export function KeywordQuickWinDrawer(): React.ReactElement {
       ) : null}
     </>
   )
-}
+})

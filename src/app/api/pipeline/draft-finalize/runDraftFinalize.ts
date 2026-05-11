@@ -25,6 +25,7 @@ import {
   pickPipelineOpenRouterModel,
   type PipelineSettingShape,
 } from '@/utilities/pipelineSettingShape'
+import { formatSeoWorkflowPromptBlock } from '@/utilities/seoWorkflowPromptBlock'
 import { resolvePipelineConfigForArticle, type ResolvedPipelineConfig } from '@/utilities/resolvePipelineConfig'
 import { replaceRegionBlockedOpenRouterModel } from '@/constants/pipelineOpenRouterModels'
 import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
@@ -82,6 +83,9 @@ async function finalizePassesToMarkdown(args: {
 
   const usageAcc: Record<string, number> = {}
 
+  const wfRaw = formatSeoWorkflowPromptBlock(merged).trim()
+  const seo_workflow_block = wfRaw ? `${wfRaw}\n\n` : ''
+
   const runTpl = async (
     systemKey: TenantPromptTemplateKey,
     userKey: TenantPromptTemplateKey,
@@ -110,7 +114,7 @@ async function finalizePassesToMarkdown(args: {
       FINALIZE_COHESION_SYSTEM,
       FINALIZE_COHESION_USER,
       buildFinalizeCohesionDefaults({ article_plain: md.slice(0, 32000) }),
-      { article_plain: md.slice(0, 32000) },
+      { seo_workflow_block, article_plain: md.slice(0, 32000) },
     )
   }
 
@@ -126,7 +130,7 @@ async function finalizePassesToMarkdown(args: {
       FINALIZE_EEAT_SYSTEM,
       FINALIZE_EEAT_USER,
       buildFinalizeEeatDefaults({ article_md: articleMdForEeat }),
-      { article_md: articleMdForEeat },
+      { seo_workflow_block, article_md: articleMdForEeat },
     )
   } else if (merged.finalizeVariant === 'fact_check_pass') {
     let tavSlice = '(tavily disabled)'
@@ -172,6 +176,7 @@ async function finalizePassesToMarkdown(args: {
         tavily_slice: tavSlice,
       }),
       {
+        seo_workflow_block,
         article_plain: md.slice(0, 14000),
         tavily_slice: tavSlice,
       },

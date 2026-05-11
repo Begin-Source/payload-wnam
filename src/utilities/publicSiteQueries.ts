@@ -167,6 +167,29 @@ export const getGuideCategoriesForSite = cache(
   },
 )
 
+/** Reviews page chips: Payload categories with kind=review for this site */
+export const getReviewCategoriesForSite = cache(
+  async (siteId: number, locale: string, limit = 24): Promise<Category[]> => {
+    const payload = await getPayload({ config: await config })
+    const res = await payload.find({
+      collection: 'categories',
+      where: {
+        and: [
+          { site: { equals: siteId } },
+          { locale: { equals: locale } },
+          { kind: { equals: 'review' } },
+        ],
+      },
+      limit,
+      sort: 'name',
+      depth: 0,
+      select: categoryPublicSelect,
+      overrideAccess: true,
+    })
+    return res.docs as Category[]
+  },
+)
+
 export const getNavCategoriesForSite = cache(
   async (siteId: number, locale: string, limit = 8): Promise<Category[]> => {
     const payload = await getPayload({ config: await config })

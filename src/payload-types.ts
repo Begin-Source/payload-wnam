@@ -957,7 +957,7 @@ export interface Category {
     | 'uk'
     | 'ru';
   /**
-   * Guides：`kind=指南` 仅用于 Guides 顶部 chip；Reviews 列表会自动排除只属于指南分类的文章。`kind=评测` 与一般文章一样参与 Reviews，仅作语义区分。
+   * 前台分流：`kind=指南` 仅出现在 /guides 列表与 chips；`kind=评测` 仅出现在 /reviews 列表与顶部 chips。同一篇文章若同时关联指南与评测分类，则两个频道列表都不会展示（需只保留一侧）。通用分类不参与这两页的频道筛选。
    */
   kind?: ('article' | 'guide' | 'review') | null;
   /**
@@ -5068,7 +5068,7 @@ export interface PipelineSetting {
    */
   briefDepth?: ('quick' | 'standard' | 'deep') | null;
   /**
-   * 例如：`{ "tocEnabled": true, "maxWordsPerSection": 900, "wordCountTarget": { "intro": { "min": 120, "max": 220 } } }`
+   * 例如：`{ "tocEnabled": true, "seoWorkflow": { "workflowMode": "one_click_publish_grade", "qualityTier": "publish_grade", "targetTotalWords": 2200, "editorNotes": "…" }, "wordCountTarget": { "intro": { "min": 120, "max": 220 } } }`
    */
   articleStrategy?:
     | {

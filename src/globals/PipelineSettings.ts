@@ -306,7 +306,7 @@ export const PipelineSettings: GlobalConfig = {
       },
       admin: {
         description:
-          '例如：`{ "tocEnabled": true, "maxWordsPerSection": 900, "wordCountTarget": { "intro": { "min": 120, "max": 220 } } }`',
+          '例如：`{ "tocEnabled": true, "seoWorkflow": { "workflowMode": "one_click_publish_grade", "qualityTier": "publish_grade", "targetTotalWords": 2200, "editorNotes": "…" }, "wordCountTarget": { "intro": { "min": 120, "max": 220 } } }`',
       },
     },
     {

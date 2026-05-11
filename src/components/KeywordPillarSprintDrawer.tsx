@@ -3,7 +3,9 @@
 import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
 import type { BatchEnqueueOkJson } from '@/utilities/keywordBatchEnqueuePreview'
 import { Button } from '@payloadcms/ui'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+
+import type { KeywordDrawerRef } from '@/components/keywordListDrawerRef'
 
 type SiteOption = { id: number; name: string; slug: string; primaryDomain: string }
 type PillarRow = { id: number; term: string; spokeCount: number }
@@ -61,7 +63,10 @@ function parseLimitOverride(batchLimitInput: string): number | undefined {
 }
 
 /** Pillar + 簇内词一同入队 brief_generate */
-export function KeywordPillarSprintDrawer(): React.ReactElement {
+export const KeywordPillarSprintDrawer = forwardRef<KeywordDrawerRef>(function KeywordPillarSprintDrawer(
+  _props,
+  ref,
+) {
   const {
     startBatchEnqueueJob,
     completeBatchEnqueueJob,
@@ -72,6 +77,11 @@ export function KeywordPillarSprintDrawer(): React.ReactElement {
   } = useAdminBackgroundActivity()
 
   const [open, setOpen] = useState(false)
+  useImperativeHandle(ref, () => ({
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+  }))
+
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
   const [sitesLoading, setSitesLoading] = useState(false)
@@ -343,9 +353,6 @@ export function KeywordPillarSprintDrawer(): React.ReactElement {
 
   return (
     <>
-      <Button buttonStyle="secondary" onClick={() => setOpen(true)} type="button">
-        Pillar 冲刺 · Brief
-      </Button>
       {open ? (
         <>
           <button
@@ -513,4 +520,4 @@ export function KeywordPillarSprintDrawer(): React.ReactElement {
       ) : null}
     </>
   )
-}
+})

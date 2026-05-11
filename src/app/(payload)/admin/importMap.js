@@ -51,7 +51,6 @@ import { OfferReviewDraftWorkflowCell as OfferReviewDraftWorkflowCell_38cb95f393
 import { OfferListQuickAction as OfferListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3 } from '../../../components/CollectionQuickActions'
 import { MediaListQuickAction as MediaListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3 } from '../../../components/CollectionQuickActions'
 import { KeywordListQuickAction as KeywordListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3 } from '../../../components/CollectionQuickActions'
-import { KeywordSyncFetchListAction as KeywordSyncFetchListAction_175e6fb4b4770cdb50ab070ca3750cb3 } from '../../../components/CollectionQuickActions'
 import { ArticleListQuickAction as ArticleListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3 } from '../../../components/CollectionQuickActions'
 import { PipelineRunNextDrawer as PipelineRunNextDrawer_07859e8b503a7687d3e47116994e494e } from '../../../components/PipelineRunNextDrawer'
 import { AffiliateEarningsImportListMenuItem as AffiliateEarningsImportListMenuItem_61dd445dc19d866487d7eb4f519f1ff7 } from '../../../components/AffiliateEarningsImportPanel'
@@ -136,7 +135,6 @@ export const importMap = {
   "./components/CollectionQuickActions#OfferListQuickAction": OfferListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3,
   "./components/CollectionQuickActions#MediaListQuickAction": MediaListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3,
   "./components/CollectionQuickActions#KeywordListQuickAction": KeywordListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3,
-  "./components/CollectionQuickActions#KeywordSyncFetchListAction": KeywordSyncFetchListAction_175e6fb4b4770cdb50ab070ca3750cb3,
   "./components/CollectionQuickActions#ArticleListQuickAction": ArticleListQuickAction_175e6fb4b4770cdb50ab070ca3750cb3,
   "./components/PipelineRunNextDrawer#PipelineRunNextDrawer": PipelineRunNextDrawer_07859e8b503a7687d3e47116994e494e,
   "./components/AffiliateEarningsImportPanel#AffiliateEarningsImportListMenuItem": AffiliateEarningsImportListMenuItem_61dd445dc19d866487d7eb4f519f1ff7,
