@@ -21,6 +21,8 @@ type TogetherSiteOption = {
   siteLayout?: string | null
 }
 
+type QuickSiteOption = DomainSiteOption
+
 function formatDomainSiteLine(s: DomainSiteOption): string {
   return `${s.name} (${s.slug}) ${s.primaryDomain}`
 }
@@ -80,7 +82,7 @@ const inputStyle: React.CSSProperties = {
 
 const siteDomainTitleId = 'quick-action-title-site-domain-drawer'
 
-type TabId = 'domain' | 'hero' | 'logo'
+type TabId = 'domain' | 'publish' | 'hero' | 'logo'
 
 function TogetherSiteJobsSection(props: {
   kind: 'hero' | 'logo'
@@ -231,6 +233,330 @@ function TogetherSiteJobsSection(props: {
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
         <Button disabled={submitting || amzSites.length === 0} onClick={() => void submit()} size="small">
           {submitting ? '提交中…' : '加入队列'}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function SitePicker(props: {
+  labelId: string
+  selectedSiteId: number | null
+  selectedSiteLabel: string
+  onPick: (site: QuickSiteOption) => void
+  onClear: () => void
+}): React.ReactElement {
+  const { labelId, selectedSiteId, selectedSiteLabel, onPick, onClear } = props
+  const [siteQuery, setSiteQuery] = useState('')
+  const [sites, setSites] = useState<QuickSiteOption[]>([])
+  const [sitesLoading, setSitesLoading] = useState(false)
+  const [siteMenuOpen, setSiteMenuOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const siteComboboxRef = useRef<HTMLDivElement>(null)
+
+  const loadSites = useCallback(async (q: string) => {
+    setSitesLoading(true)
+    setError(null)
+    try {
+      const params = new URLSearchParams()
+      if (q.trim()) params.set('q', q.trim())
+      const res = await fetch(`/api/admin/article-quick-action/options?${params}`, {
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: unknown }
+        throw new Error(typeof err.error === 'string' ? err.error : '加载站点失败')
+      }
+      const data = (await res.json()) as { sites: QuickSiteOption[] }
+      setSites(data.sites ?? [])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '加载站点失败')
+      setSites([])
+    } finally {
+      setSitesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!siteMenuOpen) return
+    const t = window.setTimeout(() => {
+      void loadSites(siteQuery)
+    }, 300)
+    return () => window.clearTimeout(t)
+  }, [siteMenuOpen, siteQuery, loadSites])
+
+  useEffect(() => {
+    if (!siteMenuOpen) return
+    const onDocMouseDown = (e: MouseEvent): void => {
+      const root = siteComboboxRef.current
+      if (root && !root.contains(e.target as Node)) setSiteMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [siteMenuOpen])
+
+  return (
+    <div ref={siteComboboxRef} style={{ marginBottom: '1rem', position: 'relative' }}>
+      <span style={fieldLabel} id={labelId}>站点</span>
+      <button
+        aria-expanded={siteMenuOpen}
+        aria-haspopup="listbox"
+        aria-labelledby={labelId}
+        style={{
+          ...inputStyle,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.5rem',
+          width: '100%',
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+        type="button"
+        onClick={() => {
+          setSiteMenuOpen((prev) => {
+            const next = !prev
+            if (next) void loadSites(siteQuery)
+            return next
+          })
+        }}
+      >
+        <span
+          style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            flex: 1,
+            opacity: selectedSiteId == null ? 0.55 : 1,
+          }}
+        >
+          {selectedSiteId == null ? '请选择站点' : selectedSiteLabel}
+        </span>
+        <span aria-hidden style={{ flexShrink: 0, opacity: 0.65, fontSize: '0.65rem' }}>
+          {siteMenuOpen ? '▲' : '▼'}
+        </span>
+      </button>
+      {error ? <p style={{ color: 'var(--theme-error-500)', fontSize: '0.75rem' }}>{error}</p> : null}
+      {siteMenuOpen ? (
+        <div
+          role="listbox"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: '100%',
+            marginTop: 4,
+            zIndex: 5,
+            borderRadius: 6,
+            border: '1px solid var(--theme-elevation-150)',
+            background: 'var(--theme-elevation-50)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+            padding: '0.5rem',
+            maxHeight: 280,
+          }}
+        >
+          <input
+            aria-label="筛选站点"
+            autoComplete="off"
+            placeholder="输入名称、slug 或域名筛选…"
+            style={inputStyle}
+            type="search"
+            value={siteQuery}
+            onChange={(e) => setSiteQuery(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div style={{ maxHeight: 200, overflow: 'auto', marginTop: '0.5rem' }}>
+            <button
+              aria-selected={false}
+              role="option"
+              style={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                padding: '0.45rem 0.5rem',
+                border: 'none',
+                borderRadius: 4,
+                background: 'transparent',
+                color: 'inherit',
+                cursor: 'pointer',
+                fontSize: '0.8125rem',
+                opacity: 0.9,
+              }}
+              type="button"
+              onClick={() => {
+                onClear()
+                setSiteQuery('')
+                void loadSites('')
+              }}
+            >
+              清空选择
+            </button>
+            {sitesLoading ? (
+              <span style={{ fontSize: '0.75rem', opacity: 0.7, padding: '0.25rem 0.5rem' }}>加载中…</span>
+            ) : (
+              sites.map((s) => (
+                <button
+                  key={s.id}
+                  aria-selected={selectedSiteId === s.id}
+                  role="option"
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '0.45rem 0.5rem',
+                    border: 'none',
+                    borderRadius: 4,
+                    background: selectedSiteId === s.id ? 'var(--theme-elevation-100)' : 'transparent',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    fontSize: '0.8125rem',
+                  }}
+                  type="button"
+                  onClick={() => {
+                    onPick(s)
+                    setSiteQuery('')
+                    setSiteMenuOpen(false)
+                  }}
+                >
+                  {formatDomainSiteLine(s)}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function AutoPublishSection(): React.ReactElement {
+  const router = useRouter()
+  const [selectedSiteId, setSelectedSiteId] = useState<number | null>(null)
+  const [selectedSiteLabel, setSelectedSiteLabel] = useState('')
+  const [limit, setLimit] = useState('30')
+  const [minQualityScore, setMinQualityScore] = useState('80')
+  const [busy, setBusy] = useState<'queue' | 'publish' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<string | null>(null)
+
+  const pickSite = (site: QuickSiteOption): void => {
+    setSelectedSiteId(site.id)
+    setSelectedSiteLabel(formatDomainSiteLine(site))
+  }
+
+  const clearSite = (): void => {
+    setSelectedSiteId(null)
+    setSelectedSiteLabel('')
+  }
+
+  const schedule = async (): Promise<void> => {
+    if (selectedSiteId == null) {
+      setError('请选择站点')
+      return
+    }
+    setBusy('queue')
+    setError(null)
+    setResult(null)
+    try {
+      const res = await fetch('/api/admin/site-launch/schedule-publish', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          siteId: selectedSiteId,
+          limit: Number(limit),
+          minQualityScore: Number(minQualityScore),
+        }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        queued?: number
+        blocked?: number
+        scanned?: number
+        dailyPostCap?: number
+      }
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+      setResult(`已检查 ${data.scanned ?? 0} 篇：排期 ${data.queued ?? 0} 篇，阻塞 ${data.blocked ?? 0} 篇。站点每日上限：${data.dailyPostCap ?? '—'}。`)
+      router.refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '加入发布队列失败')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const publishOnce = async (): Promise<void> => {
+    if (selectedSiteId == null) {
+      setError('请选择站点')
+      return
+    }
+    setBusy('publish')
+    setError(null)
+    setResult(null)
+    try {
+      const res = await fetch('/api/admin/site-launch/run-scheduled-publish', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          siteId: selectedSiteId,
+          minQualityScore: Number(minQualityScore),
+          limit: 20,
+        }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        published?: number
+        blocked?: number
+        skipped?: number
+        scanned?: number
+      }
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+      setResult(`定时发布执行完成：扫描 ${data.scanned ?? 0} 篇，发布 ${data.published ?? 0} 篇，阻塞 ${data.blocked ?? 0} 篇，跳过 ${data.skipped ?? 0} 篇。`)
+      router.refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '执行定时发布失败')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div>
+      <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600 }}>自动发布队列</h3>
+      <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
+        先把通过检查的草稿加入发布队列，再由定时发布按站点每日上限上线。money page 必须有作者、80+ 分数、affiliate 披露和关联商品。
+      </p>
+      <SitePicker
+        labelId="site-auto-publish-label"
+        selectedSiteId={selectedSiteId}
+        selectedSiteLabel={selectedSiteLabel}
+        onPick={pickSite}
+        onClear={clearSite}
+      />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+        <label>
+          <span style={fieldLabel}>本次最多排期</span>
+          <input style={inputStyle} value={limit} onChange={(e) => setLimit(e.target.value)} />
+        </label>
+        <label>
+          <span style={fieldLabel}>最低质量分</span>
+          <input style={inputStyle} value={minQualityScore} onChange={(e) => setMinQualityScore(e.target.value)} />
+        </label>
+      </div>
+      {error ? <p style={{ color: 'var(--theme-error-500)', fontSize: '0.8125rem' }}>{error}</p> : null}
+      {result ? <p style={{ fontSize: '0.8125rem', lineHeight: 1.5 }}>{result}</p> : null}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+        <Button
+          buttonStyle="secondary"
+          disabled={busy != null || selectedSiteId == null}
+          onClick={() => void publishOnce()}
+          size="small"
+        >
+          {busy === 'publish' ? '执行中…' : '执行一次定时发布'}
+        </Button>
+        <Button disabled={busy != null || selectedSiteId == null} onClick={() => void schedule()} size="small">
+          {busy === 'queue' ? '排队中…' : '加入发布队列'}
         </Button>
       </div>
     </div>
@@ -756,6 +1082,7 @@ export function SiteQuickActionsDrawer(): React.ReactElement {
               role="tablist"
             >
               {tabButton('domain', '生成域名')}
+              {tabButton('publish', '自动发布')}
               {tabButton('hero', 'Together · 横幅')}
               {tabButton('logo', 'Together · Logo')}
             </div>
@@ -764,6 +1091,7 @@ export function SiteQuickActionsDrawer(): React.ReactElement {
               {tab === 'domain' ? (
                 <SiteDomainSection onSuccessCloseDrawer={() => setDrawerOpen(false)} />
               ) : null}
+              {tab === 'publish' ? <AutoPublishSection /> : null}
               {tab === 'hero' ? (
                 <TogetherSiteJobsSection
                   key="together-hero"

@@ -326,6 +326,48 @@ async function hasPendingRunningImageGenerate(payload: Payload, articleIdNum: nu
   return r.totalDocs > 0
 }
 
+async function hasPendingRunningContentAudit(payload: Payload, articleIdNum: number): Promise<boolean> {
+  const r = await payload.count({
+    collection: 'workflow-jobs',
+    where: {
+      and: [
+        { jobType: { equals: 'content_audit' } },
+        { article: { equals: articleIdNum } },
+        { status: { in: ['pending', 'running'] } },
+      ],
+    },
+  })
+  return r.totalDocs > 0
+}
+
+function contentAuditOutputPasses(doc: { output?: unknown }): boolean {
+  const out = doc.output as Record<string, unknown> | undefined
+  if (!out || out.ok === false) return false
+  const verdict = typeof out.verdict === 'string' ? out.verdict : ''
+  if (verdict === 'SHIP') return true
+  const score = typeof out.finalOverallScore === 'number' ? out.finalOverallScore : Number(out.finalOverallScore)
+  const threshold = typeof out.threshold === 'number' ? out.threshold : Number(out.threshold) || 80
+  const hard = Array.isArray(out.hardVetoIds) ? out.hardVetoIds.length : 0
+  return Number.isFinite(score) && score >= threshold && hard === 0
+}
+
+async function hasSuccessfulContentAudit(payload: Payload, articleIdNum: number): Promise<boolean> {
+  const r = await payload.find({
+    collection: 'workflow-jobs',
+    where: {
+      and: [
+        { jobType: { equals: 'content_audit' } },
+        { article: { equals: articleIdNum } },
+        { status: { equals: 'completed' } },
+      ],
+    },
+    limit: 50,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return r.docs.some((d) => contentAuditOutputPasses(d))
+}
+
 function parseSiteNumeric(jobOrSite: WorkflowJobDoc['site']): number | null {
   const s = siteIdFromJob({ site: jobOrSite } as WorkflowJobDoc)
   if (!s || !/^\d+$/.test(s)) return null
@@ -761,6 +803,68 @@ export async function resolveTogetherImageEnabledForArticleJob(
 }
 
 /**
+ * After draft_finalize completes: run the 80+ quality gate before downstream image/publish-ready steps.
+ */
+export async function enqueueContentAuditIfNeeded(
+  payload: Payload,
+  doc: WorkflowJobDoc,
+): Promise<void> {
+  const aid = articleIdFromJob(doc)
+  const articleNum = aid != null && /^\d+$/.test(aid) ? Number(aid) : NaN
+  if (!Number.isFinite(articleNum)) return
+
+  if (await hasPendingRunningContentAudit(payload, articleNum)) return
+  if (await hasSuccessfulContentAudit(payload, articleNum)) return
+
+  const article = await payload.findByID({
+    collection: 'articles',
+    id: String(articleNum),
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (!article) return
+
+  const siteRaw = (article as { site?: number | { id: number } | null }).site
+  const siteNum =
+    typeof siteRaw === 'object' && siteRaw?.id != null ? siteRaw.id : typeof siteRaw === 'number' ? siteRaw : null
+  const tenantNum =
+    tenantIdFromRelation((article as { tenant?: number | { id: number } | null }).tenant) ??
+    (await tenantIdFromSite(payload, siteNum ?? null))
+
+  const input = parseJsonInput(doc)
+  const ppExplicit = explicitProfileIdFromInput(input)
+  const cfgAudit = await resolvePipelineConfigForArticle(payload, articleNum, ppExplicit)
+  const wfAudit =
+    'ok' in cfgAudit && cfgAudit.ok === false ?
+      {}
+    : compactPipelineWorkflowTags(
+        pipelineWorkflowVariantTags({
+          merged: (cfgAudit as ResolvedPipelineConfig).merged,
+          profileSlug: (cfgAudit as ResolvedPipelineConfig).profileSlug,
+          source: (cfgAudit as ResolvedPipelineConfig).source,
+        }),
+      )
+
+  await payload.create({
+    collection: 'workflow-jobs',
+    data: {
+      label: `Content audit 80+ → article #${articleNum}`.slice(0, 120),
+      jobType: 'content_audit',
+      status: 'pending',
+      article: articleNum,
+      ...(siteNum != null && Number.isFinite(siteNum) ? { site: siteNum } : {}),
+      ...(tenantNum != null ? { tenant: tenantNum } : {}),
+      input: {
+        articleId: articleNum,
+        quickWinChain: true,
+        ...wfAudit,
+      },
+    },
+    overrideAccess: true,
+  })
+}
+
+/**
  * After draft_finalize completes: enqueue image_generate if article has no featured image yet.
  */
 export async function enqueueImageGenerateIfNeeded(
@@ -998,10 +1102,29 @@ export async function enqueueArticlePipelineCatchup(
   const hasGoodFinalize =
     finalizedJobs.docs.some((d) => finalizeJobOutputOk(d as { output?: unknown }))
 
-  if (featuredMissing && hasGoodFinalize && !(await hasPendingRunningImageGenerate(payload, articleIdNum))) {
-    await enqueueImageGenerateIfNeeded(payload, {
+  if (
+    hasGoodFinalize &&
+    !(await hasSuccessfulContentAudit(payload, articleIdNum)) &&
+    !(await hasPendingRunningContentAudit(payload, articleIdNum))
+  ) {
+    await enqueueContentAuditIfNeeded(payload, {
       id: 0,
       jobType: 'draft_finalize',
+      site: siteNum != null ? siteNum : undefined,
+      article: articleIdNum,
+      input: {},
+    } as WorkflowJobDoc)
+    messages.push('入队 content_audit × 1')
+  }
+
+  if (
+    featuredMissing &&
+    (await hasSuccessfulContentAudit(payload, articleIdNum)) &&
+    !(await hasPendingRunningImageGenerate(payload, articleIdNum))
+  ) {
+    await enqueueImageGenerateIfNeeded(payload, {
+      id: 0,
+      jobType: 'content_audit',
       site: siteNum != null ? siteNum : undefined,
       article: articleIdNum,
       input: {},

@@ -1,0 +1,765 @@
+
+┌─────────────────────────────┐
+│ OpenNext — Cloudflare build │
+└─────────────────────────────┘
+
+App directory: /Users/sunny/yourprojects/payload-wnam
+Next.js version : 15.4.11
+@opennextjs/cloudflare version: 1.19.1
+@opennextjs/aws version: 3.10.1
+
+┌─────────────────────────────────┐
+│ OpenNext — Building Next.js app │
+└─────────────────────────────────┘
+
+
+> payload-wnam@1.0.0 build /Users/sunny/yourprojects/payload-wnam
+> cross-env NEXT_PRIVATE_WORKER_THREADS=false NODE_OPTIONS="--no-deprecation --max-old-space-size=8000" next build
+
+   ▲ Next.js 15.4.11
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · staticGenerationMaxConcurrency: 1
+
+   Creating an optimized production build ...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+[Error: read ECONNRESET] {
+  errno: -54,
+  code: 'ECONNRESET',
+  syscall: 'read'
+}
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+[Error: read ECONNRESET] {
+  errno: -54,
+  code: 'ECONNRESET',
+  syscall: 'read'
+}
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+[Error: read ECONNRESET] {
+  errno: -54,
+  code: 'ECONNRESET',
+  syscall: 'read'
+}
+[Error: read ECONNRESET] {
+  errno: -54,
+  code: 'ECONNRESET',
+  syscall: 'read'
+}
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+read ECONNRESET
+
+Retrying 3/3...
+[Error: read ECONNRESET] {
+  errno: -54,
+  code: 'ECONNRESET',
+  syscall: 'read'
+}
+[Error: read ECONNRESET] {
+  errno: -54,
+  code: 'ECONNRESET',
+  syscall: 'read'
+}
+[Error: read ECONNRESET] {
+  errno: -54,
+  code: 'ECONNRESET',
+  syscall: 'read'
+}
+[Error: read ECONNRESET] {
+  errno: -54,
+  code: 'ECONNRESET',
+  syscall: 'read'
+}
+Failed to compile.
+
+src/app/[locale]/(frontend)/layout.tsx
+`next/font` error:
+Failed to fetch `Inter` from Google Fonts.
+
+src/app/[locale]/(frontend)/layout.tsx
+`next/font` error:
+Failed to fetch `Merriweather` from Google Fonts.
+
+src/app/[locale]/(frontend)/layout.tsx
+`next/font` error:
+Failed to fetch `Noto Sans SC` from Google Fonts.
+
+
+> Build failed because of webpack errors
+ ELIFECYCLE  Command failed with exit code 1.
+node:internal/errors:998
+  const err = new Error(message);
+              ^
+
+Error: Command failed: pnpm build
+    at genericNodeError (node:internal/errors:998:15)
+    at wrappedFn (node:internal/errors:543:14)
+    at checkExecSyncError (node:child_process:925:11)
+    at Object.execSync (node:child_process:997:15)
+    at buildNextjsApp (file:///Users/sunny/yourprojects/payload-wnam/node_modules/.pnpm/@opennextjs+aws@3.10.1_next@15.4.11_@babel+core@7.29.0_@opentelemetry+api@1.9.0_@playwr_beb934bee8adc50adb55a1257f9200e6/node_modules/@opennextjs/aws/dist/build/buildNextApp.js:15:8)
+    at build (file:///Users/sunny/yourprojects/payload-wnam/node_modules/.pnpm/@opennextjs+cloudflare@1.19.1_next@15.4.11_@babel+core@7.29.0_@opentelemetry+api@1.9.0__5b4e17fac55616304561e353875214e1/node_modules/@opennextjs/cloudflare/dist/cli/build/build.js:50:9)
+    at async buildCommand (file:///Users/sunny/yourprojects/payload-wnam/node_modules/.pnpm/@opennextjs+cloudflare@1.19.1_next@15.4.11_@babel+core@7.29.0_@opentelemetry+api@1.9.0__5b4e17fac55616304561e353875214e1/node_modules/@opennextjs/cloudflare/dist/cli/commands/build.js:33:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 23261,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v25.9.0

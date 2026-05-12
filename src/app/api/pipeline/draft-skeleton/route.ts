@@ -6,6 +6,7 @@ import { runDraftSkeletonFromBrief } from '@/app/api/pipeline/draft-skeleton/run
 import { normalizeGlobalPipelineDoc } from '@/utilities/pipelineSettingShape'
 import { resolvePipelineConfig } from '@/utilities/resolvePipelineConfig'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
+import { isAffiliateArticleLayout } from '@/utilities/affiliateSeoFlow'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,13 @@ export async function POST(request: Request): Promise<Response> {
   if (isPipelineUnauthorized(g)) {
     return g.response
   }
-  const body = (await request.json().catch(() => ({}))) as { briefId?: string | number; siteId?: number }
+  const body = (await request.json().catch(() => ({}))) as {
+    briefId?: string | number
+    siteId?: number
+    keywordStrategyMode?: string
+    affiliateContentRole?: string
+    affiliatePageLayout?: string
+  }
   const payload = await getPayload({ config: configPromise })
   if (!body.briefId) {
     return Response.json({ error: 'briefId required' }, { status: 400 })
@@ -56,7 +63,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   let merged = normalizeGlobalPipelineDoc(
-    (await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })) as Record<string, unknown>,
+    (await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })) as unknown as Record<string, unknown>,
   )
   if (tenantId != null && typeof siteId === 'number' && Number.isFinite(siteId)) {
     merged = (
@@ -72,9 +79,12 @@ export async function POST(request: Request): Promise<Response> {
     briefId: body.briefId,
     ...(typeof body.siteId === 'number' && Number.isFinite(body.siteId) ? { siteIdOverride: body.siteId } : {}),
     merged,
+    ...(typeof body.keywordStrategyMode === 'string' ? { keywordStrategyMode: body.keywordStrategyMode } : {}),
+    ...(typeof body.affiliateContentRole === 'string' ? { affiliateContentRole: body.affiliateContentRole } : {}),
+    ...(isAffiliateArticleLayout(body.affiliatePageLayout) ? { affiliatePageLayout: body.affiliatePageLayout } : {}),
   })
 
-  if (!run.ok) {
+  if ('error' in run) {
     return Response.json({ ok: false, error: run.error }, { status: run.status ?? 500 })
   }
   return Response.json({ ok: true, articleId: run.articleId })

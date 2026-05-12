@@ -110,6 +110,54 @@ export const Articles: CollectionConfig = {
     ...articleSeoFields,
     {
       type: 'collapsible',
+      label: '自动发布队列',
+      admin: {
+        position: 'sidebar',
+        initCollapsed: true,
+      },
+      fields: [
+        {
+          name: 'publishQueueStatus',
+          type: 'select',
+          defaultValue: 'none',
+          label: '发布队列状态',
+          options: [
+            { label: '未入队', value: 'none' },
+            { label: '已排期', value: 'queued' },
+            { label: '阻塞', value: 'blocked' },
+            { label: '已发布', value: 'published' },
+          ],
+          admin: {
+            readOnly: true,
+            description: '由站点启动/定时发布流程维护；文章仍保持 draft，直到定时器正式发布。',
+          },
+        },
+        {
+          name: 'scheduledPublishAt',
+          type: 'date',
+          label: '计划发布时间',
+          admin: {
+            readOnly: true,
+            date: { pickerAppearance: 'dayAndTime' },
+          },
+        },
+        {
+          name: 'publishEligible',
+          type: 'checkbox',
+          label: '发布检查通过',
+          defaultValue: false,
+          admin: { readOnly: true },
+        },
+        {
+          name: 'publishBlockedReason',
+          type: 'textarea',
+          label: '阻塞原因',
+          admin: { readOnly: true },
+        },
+      ],
+    },
+    {
+      type: 'collapsible',
       label: '成本与归属',
       admin: {
         position: 'sidebar',

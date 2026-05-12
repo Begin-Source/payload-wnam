@@ -73,7 +73,7 @@ export async function GET(request: Request): Promise<Response> {
 
   let presetDoc: Record<string, unknown> | null = null
   if (typeof raw === 'object' && raw !== null && 'batchMode' in raw) {
-    presetDoc = raw as Record<string, unknown>
+    presetDoc = raw as unknown as Record<string, unknown>
   } else {
     presetDoc = (await payload.findByID({
       collection: 'keyword-batch-presets',

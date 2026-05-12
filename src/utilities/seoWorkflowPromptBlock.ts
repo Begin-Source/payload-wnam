@@ -9,6 +9,14 @@ export type SeoWorkflowParams = {
   qualityTier?: string
   contentArchetypes?: string[]
   targetTotalWords?: number
+  minQualityScore?: number
+  hardVetoCodes?: string[]
+  minOnPageWords?: number
+  minH2Count?: number
+  minH3Count?: number
+  requireFaqSection?: boolean
+  requireChecklistSection?: boolean
+  disallowBodyH1?: boolean
   minSpecificityAnchorsPerSection?: number
   directAnswerLeadWords?: number
   requireMethodSection?: boolean
@@ -73,6 +81,39 @@ export function formatSeoWorkflowPromptBlock(merged: PipelineSettingShape, maxLe
   if (typeof sw?.targetTotalWords === 'number' && Number.isFinite(sw.targetTotalWords)) {
     lines.push(`- targetTotalWords: ~${Math.floor(sw.targetTotalWords)}`)
   }
+  if (typeof sw?.minQualityScore === 'number' && Number.isFinite(sw.minQualityScore)) {
+    lines.push(`- minQualityScore: ${Math.floor(sw.minQualityScore)}`)
+  }
+  if (Array.isArray(sw?.hardVetoCodes) && sw.hardVetoCodes.length) {
+    lines.push(`- hardVetoCodes: ${sw.hardVetoCodes.join(', ')}`)
+  }
+  const targetWords =
+    typeof sw?.targetTotalWords === 'number' && Number.isFinite(sw.targetTotalWords) ?
+      Math.floor(sw.targetTotalWords)
+    : 0
+  const minOnPageWords =
+    typeof sw?.minOnPageWords === 'number' && Number.isFinite(sw.minOnPageWords) ?
+      Math.floor(sw.minOnPageWords)
+    : targetWords >= 2000 ? 2000
+    : 0
+  const minH2Count =
+    typeof sw?.minH2Count === 'number' && Number.isFinite(sw.minH2Count) ?
+      Math.floor(sw.minH2Count)
+    : minOnPageWords >= 2000 ? 8
+    : 0
+  const minH3Count =
+    typeof sw?.minH3Count === 'number' && Number.isFinite(sw.minH3Count) ?
+      Math.floor(sw.minH3Count)
+    : minOnPageWords >= 2000 ? 4
+    : 0
+  if (minOnPageWords > 0 || minH2Count > 0 || minH3Count > 0) {
+    lines.push(
+      `- onPageSeoFormat: body Markdown must use no # H1 (page title is the only H1), at least ${minOnPageWords || 1200} body words, ${minH2Count || 3}+ ## H2, ${minH3Count || 1}+ ### H3, scannable bullets, a ## FAQ section, a checklist section, and a final recommendation/conclusion.`,
+    )
+  }
+  if (sw?.requireFaqSection === true) lines.push('- requireFaqSection: true')
+  if (sw?.requireChecklistSection === true) lines.push('- requireChecklistSection: true')
+  if (sw?.disallowBodyH1 === true) lines.push('- disallowBodyH1: true')
   if (typeof sw?.minSpecificityAnchorsPerSection === 'number' && Number.isFinite(sw.minSpecificityAnchorsPerSection)) {
     lines.push(`- minSpecificityAnchorsPerSection: ${Math.floor(sw.minSpecificityAnchorsPerSection)}`)
   }

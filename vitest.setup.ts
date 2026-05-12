@@ -2,3 +2,5 @@
 
 // Load .env files
 import 'dotenv/config'
+
+process.env.PAYLOAD_SECRET ||= 'vitest-payload-secret'

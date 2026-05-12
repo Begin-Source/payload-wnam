@@ -19,6 +19,8 @@ export type BackgroundJobKind =
 /** Strategies that use `POST /api/admin/articles/batch-enqueue` preview + replay (non–Quick-win). */
 export type KeywordBatchModePreviewMode =
   | 'default'
+  | 'high_commission_affiliate'
+  | 'comparison_decision'
   | 'geo_friendly'
   | 'pillar_sprint'
   | 'seasonal'
@@ -138,7 +140,7 @@ export type BackgroundActivityJob = {
       }
     }
   }
-  /** default / geo / pillar / seasonal / refresh_decay：dryRun 预览（顶栏并入队复用 enqueueReplay） */
+  /** default / affiliate / comparison / geo / pillar / seasonal / refresh_decay：dryRun 预览（顶栏并入队复用 enqueueReplay） */
   keywordBatchModePreviewSummary?: {
     mode: KeywordBatchModePreviewMode
     titleLabel: string

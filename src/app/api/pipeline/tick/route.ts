@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
 import {
+  enqueueContentAuditIfNeeded,
   enqueueDraftFinalizeIfSectionsDone,
   enqueueDraftSectionsAfterSkeleton,
   enqueueImageGenerateIfNeeded,
@@ -439,6 +440,9 @@ export async function POST(request: Request): Promise<Response> {
       )
     }
     if (doc.jobType === 'draft_finalize') {
+      await runChainedEnqueue('enqueueContentAuditIfNeeded', () => enqueueContentAuditIfNeeded(payload, doc))
+    }
+    if (doc.jobType === 'content_audit' && outputDoc.verdict === 'SHIP') {
       await runChainedEnqueue('enqueueImageGenerateIfNeeded', () => enqueueImageGenerateIfNeeded(payload, doc))
     }
     if (doc.jobType === 'image_generate' && outputDoc.ok === true) {

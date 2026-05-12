@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 import { loadBriefSectionSpecs } from '@/app/api/pipeline/lib/articlePipelineChain'
 import type { Article } from '@/payload-types'
 import { lexicalArticleBodyToPlainText } from '@/services/writing/lexicalBodyPlain'
+import { d1NarrowUpdateArticle } from '@/utilities/d1NarrowUpdate'
 import { markdownToPageBodyLexical } from '@/utilities/sitePagesBundleContent/markdownToPayloadLexical'
 
 export type WriteSectionIntoArticleBodyResult =
@@ -236,15 +237,21 @@ export async function writeSectionIntoArticleBody(
     }
 
     try {
-      await payload.update({
-        collection: 'articles',
-        id: String(articleId),
-        data: {
-          body: nextBody,
-          sectionSummaries: summaries,
-        },
-        overrideAccess: true,
+      const narrowOk = await d1NarrowUpdateArticle(payload, articleId, {
+        body: nextBody,
+        sectionSummaries: summaries,
       })
+      if (!narrowOk) {
+        await payload.update({
+          collection: 'articles',
+          id: String(articleId),
+          data: {
+            body: nextBody,
+            sectionSummaries: summaries,
+          },
+          overrideAccess: true,
+        })
+      }
       return { ok: true }
     } catch (e) {
       if (attempt === 1) {

@@ -43,6 +43,11 @@ import {
   type ResolvedPipelineConfig,
 } from '../src/utilities/resolvePipelineConfig'
 import { scoreArticleBodyPublishHeuristic } from '../src/utilities/articleMarkdownPublishHeuristic'
+import { d1NarrowUpdate } from '../src/utilities/d1NarrowUpdate'
+import {
+  auditOnPageSeoFormat,
+  onPageSeoFormatRequirements,
+} from '../src/utilities/onPageSeoFormatAudit'
 import { formatSeoWorkflowPromptBlock } from '../src/utilities/seoWorkflowPromptBlock'
 import { extractTavilyUsageCredits, tavilyCreditsToUsd } from '../src/utilities/tavilyUsageCredits'
 import { incrementSiteQuotaUsage } from '../src/utilities/siteQuotaCheck'
@@ -177,7 +182,7 @@ async function main(): Promise<void> {
     term,
     variant,
   })
-  if (!bg.ok) {
+  if ('error' in bg) {
     console.error('brief_generate failed:', bg.error)
     process.exitCode = 1
     return
@@ -187,7 +192,7 @@ async function main(): Promise<void> {
   await loadBriefSectionSpecs(payload, briefId)
 
   const sk = await runDraftSkeletonFromBrief(payload, { briefId, merged })
-  if (!sk.ok) {
+  if ('error' in sk) {
     console.error('draft_skeleton failed:', sk.error)
     process.exitCode = 1
     return
@@ -195,12 +200,17 @@ async function main(): Promise<void> {
   const articleId = sk.articleId
 
   if (explicitProfileId != null) {
-    await payload.update({
-      collection: 'articles',
-      id: String(articleId),
-      data: { pipelineProfile: explicitProfileId },
-      overrideAccess: true,
-    })
+    const narrowOk = await d1NarrowUpdate(payload, 'articles', articleId, [
+      ['pipeline_profile_id', explicitProfileId],
+    ])
+    if (!narrowOk) {
+      await payload.update({
+        collection: 'articles',
+        id: String(articleId),
+        data: { pipelineProfile: explicitProfileId },
+        overrideAccess: true,
+      })
+    }
   }
 
   const specs = await loadBriefSectionSpecs(payload, briefId)
@@ -311,7 +321,7 @@ async function main(): Promise<void> {
       sectionMarkdown: text,
       briefId,
     })
-    if (!w.ok) {
+    if ('reason' in w) {
       console.error(`writeSection failed section=${spec.id}:`, w.reason)
       process.exitCode = 1
       return
@@ -333,13 +343,29 @@ async function main(): Promise<void> {
     depth: 0,
     overrideAccess: true,
   })
-  const score = scoreArticleBodyPublishHeuristic((article as { body?: unknown }).body)
+  const body = (article as { body?: unknown }).body
+  const heuristicScore = scoreArticleBodyPublishHeuristic(body)
+  const onPageAudit = auditOnPageSeoFormat(
+    body,
+    onPageSeoFormatRequirements(merged.articleStrategy),
+  )
+  const score = Math.max(heuristicScore, onPageAudit.score)
 
-  const out = { ok: score >= MIN_SCORE, articleId, briefId, score, minScore: MIN_SCORE }
+  const out = {
+    ok: score >= MIN_SCORE && onPageAudit.missing.length === 0,
+    articleId,
+    briefId,
+    score,
+    heuristicScore,
+    onPageScore: onPageAudit.score,
+    minScore: MIN_SCORE,
+    onPageMetrics: onPageAudit.metrics,
+    onPageMissing: onPageAudit.missing,
+  }
   console.log(JSON.stringify(out, null, 2))
-  if (score < MIN_SCORE) {
+  if (!out.ok) {
     console.error(
-      `Score ${score} < ${MIN_SCORE}. Heuristic is in src/utilities/articleMarkdownPublishHeuristic.ts (not full CORE-EEAT).`,
+      `Score ${score} < ${MIN_SCORE} or on-page gate missing requirements. See src/utilities/onPageSeoFormatAudit.ts.`,
     )
     process.exitCode = 1
   }

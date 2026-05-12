@@ -16,6 +16,9 @@ export const SEO_PIPELINE_AUTHORITY_FIRST_SLUG = 'publish-authority-eeat-v1'
 /** 方案 B：时效 + 并行章节 + 事实核对 — 适合 list / how-to 规模化更新。 */
 export const SEO_PIPELINE_SCALE_FRESH_SLUG = 'scale-freshness-parallel-v1'
 
+/** 方案 C：显式发布门槛 80+，用于把 CORE-EEAT 质检固定进流水线方案。 */
+export const SEO_PIPELINE_PUBLISH_QUALITY_80_SLUG = 'publish-quality-80-v1'
+
 function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
 }
@@ -169,6 +172,72 @@ export function getSeoPublishAuthorityFirstProfileFields(isDefault: boolean): Re
         minSpecificityAnchorsPerSection: 4,
         editorNotes:
           'Prioritize demonstrable expertise: primary sources, spec tables, limitation callouts, and one consolidated disclosure block; avoid thin roundup blurbs.',
+      },
+    },
+  }
+}
+
+/** 显式 80 分发布线：权威优先策略 + 可机读质量门槛。 */
+export function getSeoPublishQuality80ProfileFields(isDefault: boolean): Record<string, unknown> {
+  const baseStrategy = qualityPresetDefaultArticleStrategy()
+  return {
+    name: 'SEO 方案 · 发布质量 80+（推荐关键词：Quick-win 商业词）',
+    slug: SEO_PIPELINE_PUBLISH_QUALITY_80_SLUG,
+    description:
+      '推荐关键词策略：Quick-win 商业词（quickwin）。商业/交易意图优先，适合转化型 review / comparison / how-to；DFS SERP + Tavily 深检索，逐章调研，EEAT finalize；content-audit >=80 且无硬 veto 才发布。',
+    isDefault,
+    tavilyEnabled: true,
+    dataForSeoEnabled: true,
+    togetherImageEnabled: true,
+    defaultLlmModel: PIPELINE_DEFAULT_OPENROUTER_LLM,
+    briefDepth: 'deep',
+    briefVariant: 'dfs_serp_first',
+    briefVariantConfig: { serpDepth: 10 },
+    skeletonVariant: 'top10_blend',
+    sectionVariant: 'research_per_section',
+    finalizeVariant: 'eeat_rewrite_pass',
+    sectionParallelism: 1,
+    sectionParallelWhitelist: ['faq', 'pros_cons'],
+    sectionMaxRetry: 4,
+    sectionRetryStrategy: { fallbackModel: PIPELINE_FALLBACK_OPENROUTER_LLM },
+    amzKeywordEligibility: {
+      intentWhitelist: ['commercial', 'transactional'],
+      minVolume: 400,
+      maxKd: 38,
+      minOpportunityScore: 42,
+      pullLimit: 100,
+    },
+    llmModelsBySection: qualityLlmBySection(),
+    eeatWeights: qualityEeatWeights(),
+    articleStrategy: {
+      ...baseStrategy,
+      seoWorkflow: {
+        ...(baseStrategy.seoWorkflow as Record<string, unknown>),
+        workflowMode: 'publish_quality_80_gate',
+        targetTotalWords: 2600,
+        minOnPageWords: 2000,
+        minH2Count: 8,
+        minH3Count: 4,
+        requireFaqSection: true,
+        requireChecklistSection: true,
+        disallowBodyH1: true,
+        minSpecificityAnchorsPerSection: 4,
+        minQualityScore: 80,
+        hardVetoCodes: ['T04', 'C01', 'R10'],
+        editorNotes:
+          'No publish unless CORE-EEAT audit target is >=80, no hard veto, sources/spec claims are explicit, and the final CMS body is a 2000+ word SEO article with H2/H3 hierarchy, checklist, FAQ, and no duplicate body H1.',
+      },
+      contentQualityGate: {
+        minOverallScore: 80,
+        minWords: 2000,
+        minH2Count: 8,
+        minH3Count: 4,
+        requireFaqSection: true,
+        requireChecklistSection: true,
+        disallowBodyH1: true,
+        publishIfPass: true,
+        hardVetoCodes: ['T04', 'C01', 'R10'],
+        onFail: 'keep_draft',
       },
     },
   }

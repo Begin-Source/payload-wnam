@@ -231,6 +231,7 @@ export default buildConfig({
     components: {
       providers: ['./components/AdminBrandingProvider#AdminBrandingProvider'],
       beforeNavLinks: [
+        './components/SiteLaunchPanelNavLink#SiteLaunchPanelNavLink',
         './components/StrategyPanelNavLink#StrategyPanelNavLink',
         './components/PipelineProfilesCompareNavLink#PipelineProfilesCompareNavLink',
         './components/KnowledgeReadNavLink#KnowledgeReadNavLink',
@@ -248,6 +249,10 @@ export default buildConfig({
         StrategyPanel: {
           Component: './components/StrategyPanelView#StrategyPanelView',
           path: '/strategy',
+        },
+        SiteLaunchPanel: {
+          Component: './components/SiteLaunchPanelView#SiteLaunchPanelView',
+          path: '/site-launch',
         },
         PipelineProfilesCompare: {
           Component: './components/PipelineProfilesCompareView#PipelineProfilesCompareView',

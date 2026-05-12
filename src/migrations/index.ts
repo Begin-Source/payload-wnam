@@ -33,9 +33,14 @@ import * as migration_20260511_120000_keywords_data_for_seo_seeds from './202605
 import * as migration_20260820_120000_rankings_ranking_source from './20260820_120000_rankings_ranking_source';
 import * as migration_20260821_120000_tenant_prompt_templates_pipeline_profile from './20260821_120000_tenant_prompt_templates_pipeline_profile';
 import * as migration_20260822_120000_seed_quality_constrained_tenant_prompts from './20260822_120000_seed_quality_constrained_tenant_prompts';
+import * as migration_20260823_120000_seed_publish_quality_80_pipeline_profile from './20260823_120000_seed_publish_quality_80_pipeline_profile';
 import * as migration_20260510_140000_quality_constrained_seo_workflow_sync from './20260510_140000_quality_constrained_seo_workflow_sync';
 import * as migration_20260512_120000_keyword_batch_presets_strategy_fields from './20260512_120000_keyword_batch_presets_strategy_fields';
 import * as migration_20260513_120000_seed_jiyuan_keji_advanced_pipeline_profiles from './20260513_120000_seed_jiyuan_keji_advanced_pipeline_profiles';
+import * as migration_20260514_120000_seed_geo_citation_quality_80_pipeline_profile from './20260514_120000_seed_geo_citation_quality_80_pipeline_profile';
+import * as migration_20260515_120000_seed_default_opportunity_brief_pipeline_profile from './20260515_120000_seed_default_opportunity_brief_pipeline_profile';
+import * as migration_20260516_120000_seed_affiliate_keyword_batch_presets from './20260516_120000_seed_affiliate_keyword_batch_presets';
+import * as migration_20260517_120000_article_publish_queue from './20260517_120000_article_publish_queue';
 import * as migration_20260601_100000_articles_affiliate_page_layout from './20260601_100000_articles_affiliate_page_layout';
 import * as migration_20260602_120000_sites_site_layout from './20260602_120000_sites_site_layout';
 import * as migration_20260603_120000_sites_review_hub_v1 from './20260603_120000_sites_review_hub_v1';
@@ -574,6 +579,11 @@ export const migrations = [
     name: '20260822_120000_seed_quality_constrained_tenant_prompts',
   },
   {
+    up: migration_20260823_120000_seed_publish_quality_80_pipeline_profile.up,
+    down: migration_20260823_120000_seed_publish_quality_80_pipeline_profile.down,
+    name: '20260823_120000_seed_publish_quality_80_pipeline_profile',
+  },
+  {
     up: migration_20260510_140000_quality_constrained_seo_workflow_sync.up,
     down: migration_20260510_140000_quality_constrained_seo_workflow_sync.down,
     name: '20260510_140000_quality_constrained_seo_workflow_sync',
@@ -587,5 +597,25 @@ export const migrations = [
     up: migration_20260513_120000_seed_jiyuan_keji_advanced_pipeline_profiles.up,
     down: migration_20260513_120000_seed_jiyuan_keji_advanced_pipeline_profiles.down,
     name: '20260513_120000_seed_jiyuan_keji_advanced_pipeline_profiles',
+  },
+  {
+    up: migration_20260514_120000_seed_geo_citation_quality_80_pipeline_profile.up,
+    down: migration_20260514_120000_seed_geo_citation_quality_80_pipeline_profile.down,
+    name: '20260514_120000_seed_geo_citation_quality_80_pipeline_profile',
+  },
+  {
+    up: migration_20260515_120000_seed_default_opportunity_brief_pipeline_profile.up,
+    down: migration_20260515_120000_seed_default_opportunity_brief_pipeline_profile.down,
+    name: '20260515_120000_seed_default_opportunity_brief_pipeline_profile',
+  },
+  {
+    up: migration_20260516_120000_seed_affiliate_keyword_batch_presets.up,
+    down: migration_20260516_120000_seed_affiliate_keyword_batch_presets.down,
+    name: '20260516_120000_seed_affiliate_keyword_batch_presets',
+  },
+  {
+    up: migration_20260517_120000_article_publish_queue.up,
+    down: migration_20260517_120000_article_publish_queue.down,
+    name: '20260517_120000_article_publish_queue',
   },
 ];

@@ -2,6 +2,7 @@ import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
+import { pickSeoTitle, writeSeoTitleCandidates } from '@/utilities/seoTitleWriter'
 
 export const dynamic = 'force-dynamic'
 const PATH = '/api/pipeline/meta-ab-optimize'
@@ -17,6 +18,8 @@ export async function POST(request: Request): Promise<Response> {
   const body = (await request.json().catch(() => ({}))) as {
     articleId?: string | number
     title?: string
+    keyword?: string
+    applyBest?: boolean
   }
   if (body.articleId == null) {
     return Response.json({ error: 'articleId required' }, { status: 400 })
@@ -28,27 +31,52 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   let baseTitle = typeof body.title === 'string' ? body.title.trim() : ''
+  let keyword = typeof body.keyword === 'string' ? body.keyword.trim() : ''
+  let article: Record<string, unknown> | null = null
   if (!baseTitle) {
     try {
-      const art = await payload.findByID({ collection: 'articles', id: String(id), depth: 0 })
-      baseTitle = (art as { title?: string }).title?.trim() || 'Page'
+      article = (await payload.findByID({ collection: 'articles', id: String(id), depth: 1 })) as Record<
+        string,
+        unknown
+      >
+      baseTitle = (article as { title?: string }).title?.trim() || 'Page'
+      const primaryKeyword = article.primaryKeyword
+      if (!keyword && primaryKeyword && typeof primaryKeyword === 'object') {
+        const term = (primaryKeyword as { term?: unknown }).term
+        const slug = (primaryKeyword as { slug?: unknown }).slug
+        keyword =
+          typeof term === 'string' && term.trim() ? term.trim()
+          : typeof slug === 'string' && slug.trim() ? slug.trim()
+          : ''
+      }
     } catch {
       baseTitle = 'Page'
     }
   }
 
   const startedAt = new Date().toISOString()
-  const variants = [
-    { id: 'a', title: `${baseTitle} — A`, description: 'Variant A meta description.' },
-    { id: 'b', title: `${baseTitle} — B`, description: 'Variant B meta description.' },
-    { id: 'c', title: `${baseTitle} — C`, description: 'Variant C meta description.' },
-  ]
-  const metaVariants = { startedAt, variants, experimentDays: 14 }
+  const variants = writeSeoTitleCandidates({ keyword, fallbackTitle: baseTitle })
+  const best = pickSeoTitle({ keyword, fallbackTitle: baseTitle })
+  const metaVariants = {
+    startedAt,
+    variants,
+    experimentDays: 14,
+    championVariantId: best.id,
+    pickReason: 'seo_title_writer_deterministic',
+  }
+
+  const updateData: Record<string, unknown> = {
+    metaVariants: metaVariants as Record<string, unknown>,
+  }
+  if (body.applyBest === true) {
+    updateData.title = best.title
+    updateData.meta = { title: best.title, description: best.description }
+  }
 
   await payload.update({
     collection: 'articles',
     id,
-    data: { metaVariants: metaVariants as Record<string, unknown> },
+    data: updateData,
     overrideAccess: true,
   })
 
@@ -56,9 +84,10 @@ export async function POST(request: Request): Promise<Response> {
     ok: true,
     articleId: id,
     metaVariants,
+    applied: body.applyBest === true,
     handoff: {
       status: 'DONE',
-      objective: 'Meta A/B candidates stored on article',
+      objective: 'SEO title/meta candidates stored on article',
       recommendedNextSkill: 'performance-reporter',
     },
   })

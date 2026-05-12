@@ -7,6 +7,8 @@ import type { PipelineSettingShape } from '@/utilities/pipelineSettingShape'
 import { normalizeSkeletonVariant } from '@/utilities/pipelineVariants'
 import type { SkeletonVariantId } from '@/utilities/pipelineVariants'
 import type { SerpOrganicBriefLine } from '@/utilities/serpBriefExtract'
+import { pickSeoTitle } from '@/utilities/seoTitleWriter'
+import { affiliateSeoFlowForMode, isAffiliateArticleLayout } from '@/utilities/affiliateSeoFlow'
 
 function slugSectionId(term: string, idx: number): string {
   const raw = term
@@ -16,6 +18,170 @@ function slugSectionId(term: string, idx: number): string {
     .slice(0, 48)
     .trim()
   return raw || `section_${idx}`
+}
+
+function slugifyArticleTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/^brief:\s*/i, '')
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 72)
+    .replace(/-+$/g, '')
+}
+
+function categoryMatchTokens(value: string): string[] {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, ' ')
+    .split(/\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+function scoreCategoryForKeyword(args: {
+  keywordTerm: string
+  keywordSlug: string
+  categoryName: string
+  categorySlug: string
+  categoryKind?: string | null
+}): number {
+  const kwSlug = args.keywordSlug.trim().toLowerCase()
+  const kwTerm = args.keywordTerm.trim().toLowerCase()
+  const catSlug = args.categorySlug.trim().toLowerCase()
+  const catName = args.categoryName.trim().toLowerCase()
+  let score = 0
+  if (kwSlug && catSlug === kwSlug) score += 100
+  if (kwSlug && catSlug.includes(kwSlug)) score += 45
+  if (kwTerm && catName.includes(kwTerm)) score += 45
+  if (kwTerm && catSlug.includes(kwTerm.replace(/\s+/g, '-'))) score += 35
+  const kwTokens = new Set(categoryMatchTokens(`${kwTerm} ${kwSlug}`))
+  const catTokens = new Set(categoryMatchTokens(`${catName} ${catSlug}`))
+  for (const token of kwTokens) {
+    if (catTokens.has(token)) score += 12
+  }
+  if (args.categoryKind === 'guide') score += 4
+  return score
+}
+
+async function uniqueArticleSlug(
+  payload: Payload,
+  args: { siteId?: number; locale: string; title: string },
+): Promise<string> {
+  const base = slugifyArticleTitle(args.title) || 'article'
+  const clauses = (slug: string) => [
+    { slug: { equals: slug } },
+    { locale: { equals: args.locale } },
+    ...(typeof args.siteId === 'number' && Number.isFinite(args.siteId) ?
+      [{ site: { equals: args.siteId } }]
+    : []),
+  ]
+  for (let i = 0; i < 20; i += 1) {
+    const slug = i === 0 ? base : `${base}-${i + 1}`
+    const found = await payload.find({
+      collection: 'articles',
+      where: { and: clauses(slug) },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (found.totalDocs === 0) return slug
+  }
+  return `${base}-${Date.now().toString(36)}`
+}
+
+async function firstAuthorForSite(payload: Payload, siteId?: number): Promise<number | undefined> {
+  if (typeof siteId !== 'number' || !Number.isFinite(siteId)) return undefined
+  try {
+    const r = await payload.find({
+      collection: 'authors',
+      where: { sites: { contains: siteId } },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const id = (r.docs[0] as { id?: unknown } | undefined)?.id
+    return typeof id === 'number' && Number.isFinite(id) ? id : undefined
+  } catch {
+    return undefined
+  }
+}
+
+async function bestCategoryForKeyword(payload: Payload, args: {
+  siteId?: number
+  locale: string
+  primaryKeywordId?: number
+  title: string
+}): Promise<number | undefined> {
+  if (typeof args.siteId !== 'number' || !Number.isFinite(args.siteId)) return undefined
+  let keywordTerm = args.title
+  let keywordSlug = slugifyArticleTitle(args.title)
+  if (typeof args.primaryKeywordId === 'number' && Number.isFinite(args.primaryKeywordId)) {
+    try {
+      const kw = await payload.findByID({
+        collection: 'keywords',
+        id: String(args.primaryKeywordId),
+        depth: 0,
+        overrideAccess: true,
+      })
+      const term = (kw as { term?: unknown }).term
+      const slug = (kw as { slug?: unknown }).slug
+      if (typeof term === 'string' && term.trim()) keywordTerm = term.trim()
+      if (typeof slug === 'string' && slug.trim()) keywordSlug = slug.trim()
+    } catch {
+      /* fallback to title */
+    }
+  }
+
+  const categories = await payload.find({
+    collection: 'categories',
+    where: {
+      and: [
+        { site: { equals: args.siteId } },
+        { locale: { equals: args.locale } },
+      ],
+    },
+    limit: 100,
+    depth: 0,
+    overrideAccess: true,
+  })
+  let best: { id: number; score: number } | null = null
+  for (const cat of categories.docs) {
+    const id = typeof (cat as { id?: unknown }).id === 'number' ? (cat as { id: number }).id : null
+    if (id == null) continue
+    const score = scoreCategoryForKeyword({
+      keywordTerm,
+      keywordSlug,
+      categoryName: String((cat as { name?: unknown }).name ?? ''),
+      categorySlug: String((cat as { slug?: unknown }).slug ?? ''),
+      categoryKind: typeof (cat as { kind?: unknown }).kind === 'string' ? (cat as { kind: string }).kind : null,
+    })
+    if (score > 0 && (!best || score > best.score)) best = { id, score }
+  }
+  return best?.id
+}
+
+async function loadPrimaryKeywordInfo(
+  payload: Payload,
+  primaryKeywordId?: number,
+): Promise<{ term: string; slug: string }> {
+  if (typeof primaryKeywordId !== 'number' || !Number.isFinite(primaryKeywordId)) {
+    return { term: '', slug: '' }
+  }
+  try {
+    const kw = await payload.findByID({
+      collection: 'keywords',
+      id: String(primaryKeywordId),
+      depth: 0,
+      overrideAccess: true,
+    })
+    return {
+      term: typeof (kw as { term?: unknown }).term === 'string' ? (kw as { term: string }).term.trim() : '',
+      slug: typeof (kw as { slug?: unknown }).slug === 'string' ? (kw as { slug: string }).slug.trim() : '',
+    }
+  } catch {
+    return { term: '', slug: '' }
+  }
 }
 
 async function loadClusterSectionRows(
@@ -86,6 +252,9 @@ export async function runDraftSkeletonFromBrief(
     briefId: string | number
     siteIdOverride?: number | null
     merged: PipelineSettingShape
+    keywordStrategyMode?: string
+    affiliateContentRole?: string
+    affiliatePageLayout?: string
   },
 ): Promise<DraftSkeletonResult> {
   const merged = args.merged
@@ -102,7 +271,22 @@ export async function runDraftSkeletonFromBrief(
   const briefNum =
     typeof args.briefId === 'number' && Number.isFinite(args.briefId) ? args.briefId : Number(args.briefId)
   const outline = (brief as { outline?: { sections?: { id: string }[]; globalContext?: unknown } }).outline
-  const gc = outline?.globalContext as { delegateOutline?: string; targetKeyword?: string } | undefined
+  const gc = outline?.globalContext as
+    | { delegateOutline?: string; targetKeyword?: string; affiliateSeoFlow?: unknown }
+    | undefined
+  const briefFlow =
+    gc?.affiliateSeoFlow && typeof gc.affiliateSeoFlow === 'object' && !Array.isArray(gc.affiliateSeoFlow)
+      ? (gc.affiliateSeoFlow as Record<string, unknown>)
+      : null
+  const affiliateFlow = affiliateSeoFlowForMode(
+    args.keywordStrategyMode ?? (typeof briefFlow?.keywordStrategyMode === 'string' ? briefFlow.keywordStrategyMode : undefined),
+  )
+  const affiliatePageLayout =
+    isAffiliateArticleLayout(args.affiliatePageLayout)
+      ? args.affiliatePageLayout
+      : isAffiliateArticleLayout(briefFlow?.articleLayout)
+        ? briefFlow.articleLayout
+        : affiliateFlow.articleLayout
   let delegateOutline =
     typeof gc?.delegateOutline === 'string' && gc.delegateOutline.trim()
       ? gc.delegateOutline.trim().slice(0, 12000)
@@ -217,7 +401,28 @@ export async function runDraftSkeletonFromBrief(
   }
 
   const lexical = buildLexicalSkeleton(ids)
-  const title = (brief as { title?: string }).title || 'Article'
+  const briefTitle = (brief as { title?: string }).title || 'Article'
+  const locale = 'en'
+  const keywordInfo = await loadPrimaryKeywordInfo(payload, pk)
+  const seoTitle = pickSeoTitle({
+    keyword: keywordInfo.term || keywordInfo.slug,
+    fallbackTitle: briefTitle.replace(/^Brief:\s*/i, ''),
+  })
+  const articleSlug = await uniqueArticleSlug(payload, {
+    siteId: typeof siteId === 'number' && Number.isFinite(siteId) ? siteId : undefined,
+    locale,
+    title: keywordInfo.slug || keywordInfo.term || briefTitle,
+  })
+  const authorId = await firstAuthorForSite(
+    payload,
+    typeof siteId === 'number' && Number.isFinite(siteId) ? siteId : undefined,
+  )
+  const categoryId = await bestCategoryForKeyword(payload, {
+    siteId: typeof siteId === 'number' && Number.isFinite(siteId) ? siteId : undefined,
+    locale,
+    primaryKeywordId: pk,
+    title: keywordInfo.term || briefTitle,
+  })
   const sectionSummaries: Record<string, unknown> =
     delegateOutline.length > 0 ? { globalContext: delegateOutline } : {}
 
@@ -225,14 +430,28 @@ export async function runDraftSkeletonFromBrief(
     collection: 'articles',
     draft: false,
     data: {
-      title: title.replace(/^Brief:\s*/i, ''),
-      locale: 'en',
+      title: seoTitle.title,
+      slug: articleSlug,
+      locale,
       tenant: tenantId,
       ...(typeof siteId === 'number' && Number.isFinite(siteId) ? { site: siteId } : {}),
+      ...(authorId != null ? { author: authorId } : {}),
+      ...(categoryId != null ? { categories: [categoryId] } : {}),
       ...(Number.isFinite(briefNum) ? { sourceBrief: briefNum } : {}),
       ...(pk != null ? { primaryKeyword: pk } : {}),
+      affiliatePageLayout,
       ...(pipelineProfileId != null ? { pipelineProfile: pipelineProfileId } : {}),
       ...(Object.keys(sectionSummaries).length > 0 ? { sectionSummaries } : {}),
+      meta: {
+        title: seoTitle.title,
+        description: seoTitle.description,
+      },
+      metaVariants: {
+        startedAt: new Date().toISOString(),
+        source: 'draft_skeleton_title_writer',
+        championVariantId: seoTitle.id,
+        variants: [seoTitle],
+      },
       body: lexical as Article['body'],
       status: 'draft',
     },

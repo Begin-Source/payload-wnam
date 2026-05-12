@@ -17,6 +17,8 @@ const TASK_ROUTES = {
   domain_audit: '/api/pipeline/domain-audit',
   amazon_sync: '/api/pipeline/amazon-sync',
   meta_ab_pick: '/api/pipeline/meta-ab-pick',
+  /** Publishes queued draft articles that passed the publish gate and are due. */
+  scheduled_publish: '/api/pipeline/scheduled-publish',
   /** SEO matrix: active sites × keywords → rank-track (DataForSEO). */
   seo_matrix_rank_sync: '/api/seo-matrix/rank-sync',
 } as const
@@ -25,7 +27,9 @@ export type CronDispatchTaskId = keyof typeof TASK_ROUTES
 
 const PRESETS: Record<string, CronDispatchTaskId[]> = {
   /** Daily 03:00 lifecycle + money-page pass (see triage route). */
-  daily_lifecycle: ['triage'],
+  daily_lifecycle: ['triage', 'scheduled_publish'],
+  /** Frequent lightweight publisher for queued articles. */
+  publish_tick: ['scheduled_publish'],
   /** Weekly link hygiene placeholders (anchor / cluster / monthly internal audit). */
   weekly_link_audits: ['anchor_audit', 'topic_cluster_audit', 'internal_link_audit'],
   /** Optional LLM digest over metrics JSON (caller may extend body via per-task override later). */
@@ -77,7 +81,7 @@ export async function POST(request: Request): Promise<Response> {
       {
         error: 'No tasks',
         detail:
-          'Provide preset (daily_lifecycle | weekly_link_audits | alert_digest | monthly_ops_placeholder | weekly_meta_champion | seo_matrix_rank_pulse) or tasks array',
+          'Provide preset (daily_lifecycle | publish_tick | weekly_link_audits | alert_digest | monthly_ops_placeholder | weekly_meta_champion | seo_matrix_rank_pulse) or tasks array',
       },
       { status: 400 },
     )

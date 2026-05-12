@@ -681,9 +681,17 @@ export interface KeywordBatchPreset {
    */
   description?: string | null;
   /**
-   * 用于关键词列表预填：与各排产抽屉对应；default / quick_wins 与原名一致。
+   * 用于关键词列表预填：default / high_commission_affiliate / comparison_decision 可由默认排产弹窗执行；其他模式有专属弹窗。
    */
-  batchMode: 'default' | 'quick_wins' | 'geo_friendly' | 'pillar_sprint' | 'seasonal' | 'refresh_decay';
+  batchMode:
+    | 'default'
+    | 'quick_wins'
+    | 'high_commission_affiliate'
+    | 'comparison_decision'
+    | 'geo_friendly'
+    | 'pillar_sprint'
+    | 'seasonal'
+    | 'refresh_decay';
   /**
    * 可选。留空表示弹窗不预填上限，仍由服务端 defaultLimit / Quick-win 推导。1–100。
    */
@@ -1620,6 +1628,13 @@ export interface Article {
     | boolean
     | null;
   skipLinkBudgetCheck?: boolean | null;
+  /**
+   * 由站点启动/定时发布流程维护；文章仍保持 draft，直到定时器正式发布。
+   */
+  publishQueueStatus?: ('none' | 'queued' | 'blocked' | 'published') | null;
+  scheduledPublishAt?: string | null;
+  publishEligible?: boolean | null;
+  publishBlockedReason?: string | null;
   /**
    * 用于 AI 成本归属与分成；创建时自动写入，之后不可改。
    */
@@ -3955,6 +3970,10 @@ export interface ArticlesSelect<T extends boolean = true> {
   optimizationHistory?: T;
   linkBudgetWarnings?: T;
   skipLinkBudgetCheck?: T;
+  publishQueueStatus?: T;
+  scheduledPublishAt?: T;
+  publishEligible?: T;
+  publishBlockedReason?: T;
   createdBy?: T;
   aiCostUsd?: T;
   aiCostBreakdown?: T;

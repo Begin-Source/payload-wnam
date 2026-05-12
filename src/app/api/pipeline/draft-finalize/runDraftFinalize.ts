@@ -26,12 +26,21 @@ import {
   type PipelineSettingShape,
 } from '@/utilities/pipelineSettingShape'
 import { formatSeoWorkflowPromptBlock } from '@/utilities/seoWorkflowPromptBlock'
+import {
+  auditOnPageSeoFormat,
+  onPageSeoFormatRequirements,
+} from '@/utilities/onPageSeoFormatAudit'
 import { resolvePipelineConfigForArticle, type ResolvedPipelineConfig } from '@/utilities/resolvePipelineConfig'
 import { replaceRegionBlockedOpenRouterModel } from '@/constants/pipelineOpenRouterModels'
 import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
+import { d1NarrowUpdateArticle } from '@/utilities/d1NarrowUpdate'
 import { markdownToPageBodyLexical } from '@/utilities/sitePagesBundleContent/markdownToPayloadLexical'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
+import {
+  FINALIZE_ARTICLE_BLOCK_BEGIN,
+  FINALIZE_ARTICLE_BLOCK_END,
+} from '@/utilities/openRouterTenantPrompts/finalizeArticleBlockDelimiters'
 import {
   extractTavilyUsageCredits,
   tavilyCreditsToUsd,
@@ -60,6 +69,41 @@ function addTokenUsage(
     acc.completion_tokens = (acc.completion_tokens ?? 0) + usage.completion_tokens
   if (typeof usage.total_tokens === 'number')
     acc.total_tokens = (acc.total_tokens ?? 0) + usage.total_tokens
+}
+
+function prependSeoWorkflowBlock(system: string, rawBlock: string): string {
+  const block = rawBlock.trim()
+  if (!block || system.includes('Parameterized SEO workflow')) return system
+  return `${block}\n\n${system}`
+}
+
+function buildOnPageSeoRepairPrompt(args: {
+  markdown: string
+  missing: string[]
+  requirementsSummary: string
+}): string {
+  return [
+    'Repair this article Markdown so it satisfies the on-page SEO publishing gate.',
+    '',
+    'Hard requirements:',
+    args.requirementsSummary,
+    '',
+    'Currently missing:',
+    ...args.missing.map((m) => `- ${m}`),
+    '',
+    'Editing rules:',
+    '- Keep the same search intent and factual claims.',
+    '- Add useful substance; do not pad with filler.',
+    '- Use Markdown only.',
+    '- Do not include a # H1; the CMS page title is the only H1.',
+    '- Use ## for H2 and ### for H3.',
+    '- Include a buyer-facing checklist section and a final recommendation/conclusion.',
+    '- Output the complete repaired article Markdown only, no preamble.',
+    '',
+    FINALIZE_ARTICLE_BLOCK_BEGIN,
+    args.markdown.slice(0, 42000),
+    FINALIZE_ARTICLE_BLOCK_END,
+  ].join('\n')
 }
 
 async function finalizePassesToMarkdown(args: {
@@ -101,8 +145,9 @@ async function finalizePassesToMarkdown(args: {
       vars,
       pipelineProfileId,
     )
+    const systemWithWorkflow = prependSeoWorkflowBlock(system, seo_workflow_block)
     const r = await openrouterChatWithMeta(model, [
-      { role: 'system', content: system },
+      { role: 'system', content: systemWithWorkflow },
       { role: 'user', content: user },
     ])
     addTokenUsage(usageAcc, r.usage)
@@ -182,6 +227,43 @@ async function finalizePassesToMarkdown(args: {
       },
     )
     md = `${md.trim()}\n\n${appendix.trim()}`
+  }
+
+  const onPageReq = onPageSeoFormatRequirements(merged.articleStrategy)
+  if (onPageReq) {
+    for (let repairAttempt = 0; repairAttempt < 2; repairAttempt += 1) {
+      const audit = auditOnPageSeoFormat(markdownToPageBodyLexical(md), onPageReq)
+      if (audit.missing.length === 0) break
+      const requirementsSummary = [
+        `- at least ${onPageReq.minWords} body words`,
+        `- at least ${onPageReq.minH2Count} ## H2 sections`,
+        `- at least ${onPageReq.minH3Count} ### H3 sections`,
+        onPageReq.disallowBodyH1 ? '- no # H1 inside the CMS body' : '',
+        onPageReq.requireFaqSection ? '- include a ## FAQ section' : '',
+        onPageReq.requireChecklistSection ? '- include a checklist section' : '',
+      ]
+        .filter(Boolean)
+        .join('\n')
+      const repaired = await openrouterChatWithMeta(model, [
+        {
+          role: 'system',
+          content: prependSeoWorkflowBlock(
+            'You are a strict SEO final editor. Repair article Markdown to pass the publishing gate. Output Markdown only.',
+            seo_workflow_block,
+          ),
+        },
+        {
+          role: 'user',
+          content: buildOnPageSeoRepairPrompt({
+            markdown: md,
+            missing: audit.missing,
+            requirementsSummary,
+          }),
+        },
+      ])
+      addTokenUsage(usageAcc, repaired.usage)
+      md = repaired.text.trim()
+    }
   }
 
   const keys =
@@ -278,15 +360,21 @@ export async function runDraftFinalizeForArticle(
     const nextBody = markdownToPageBodyLexical(finalizeArticleBodyText(articlePlain)) as Article['body']
     const plainFirst = lexicalArticleBodyToPlainText(nextBody).split(/\n\n/)[0] ?? ''
     const excerptSlice = plainFirst.replace(/\s+/g, ' ').trim().slice(0, 200)
-    await payload.update({
-      collection: 'articles',
-      id: String(articleIdNum),
-      data: {
-        body: nextBody,
-        ...(excerptSlice ? { excerpt: excerptSlice } : {}),
-      },
-      overrideAccess: true,
+    const narrowOk = await d1NarrowUpdateArticle(payload, articleIdNum, {
+      body: nextBody,
+      ...(excerptSlice ? { excerpt: excerptSlice } : {}),
     })
+    if (!narrowOk) {
+      await payload.update({
+        collection: 'articles',
+        id: String(articleIdNum),
+        data: {
+          body: nextBody,
+          ...(excerptSlice ? { excerpt: excerptSlice } : {}),
+        },
+        overrideAccess: true,
+      })
+    }
     return {
       ok: true,
       articleId: articleIdNum,
@@ -312,15 +400,21 @@ export async function runDraftFinalizeForArticle(
   const plain = lexicalArticleBodyToPlainText(nextLex).split(/\n\n/)[0] ?? ''
   const excerptSlice = plain.replace(/\s+/g, ' ').trim().slice(0, 200)
 
-  await payload.update({
-    collection: 'articles',
-    id: String(articleIdNum),
-    data: {
-      body: nextLex,
-      ...(excerptSlice ? { excerpt: excerptSlice } : {}),
-    },
-    overrideAccess: true,
+  const narrowOk = await d1NarrowUpdateArticle(payload, articleIdNum, {
+    body: nextLex,
+    ...(excerptSlice ? { excerpt: excerptSlice } : {}),
   })
+  if (!narrowOk) {
+    await payload.update({
+      collection: 'articles',
+      id: String(articleIdNum),
+      data: {
+        body: nextLex,
+        ...(excerptSlice ? { excerpt: excerptSlice } : {}),
+      },
+      overrideAccess: true,
+    })
+  }
 
   try {
     await recordOpenRouterAiCost({

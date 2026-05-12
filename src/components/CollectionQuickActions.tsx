@@ -1373,6 +1373,8 @@ export function KeywordListQuickAction(): React.ReactElement {
         openers={{
           quickWin: () => quickWinRef.current?.open(),
           defaultBatch: () => defaultBatchRef.current?.open(),
+          highCommission: () => defaultBatchRef.current?.open('high_commission_affiliate'),
+          comparisonDecision: () => defaultBatchRef.current?.open('comparison_decision'),
           geo: () => geoRef.current?.open(),
           pillar: () => pillarRef.current?.open(),
           seasonal: () => seasonalRef.current?.open(),

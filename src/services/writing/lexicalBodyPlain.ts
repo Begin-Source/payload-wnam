@@ -42,6 +42,12 @@ function walkBlock(node: unknown, lines: string[], depth: number): void {
     return
   }
 
+  if (t === 'code') {
+    const inner = collectTextChildren(node).replace(/\u200b/g, '').replace(/\r/g, '')
+    if (inner.trim()) lines.push(inner.trimEnd())
+    return
+  }
+
   if (t === 'horizontalrule') {
     return
   }

@@ -1,5 +1,6 @@
 import type { Payload } from 'payload'
 
+import { isAffiliateArticleLayout } from '@/utilities/affiliateSeoFlow'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
 export type TryEnqueueDraftSkeletonResult =
@@ -103,11 +104,22 @@ export async function tryEnqueueDraftSkeletonJob(
     siteNumeric: number | null
     /** When set (e.g. completed `brief_generate` job id), links `parentJob` and `input.chainedFrom`. */
     chainFromJobId?: string | number | null
+    keywordStrategyMode?: string
+    affiliateContentRole?: string
+    affiliatePageLayout?: string
     /** When set, skips DB lookup. Otherwise tenant is read from the brief, then from the site. */
     tenantNumeric?: number | null
   },
 ): Promise<TryEnqueueDraftSkeletonResult> {
-  const { briefId, siteNumeric, chainFromJobId, tenantNumeric: tenantArg } = args
+  const {
+    briefId,
+    siteNumeric,
+    chainFromJobId,
+    keywordStrategyMode,
+    affiliateContentRole,
+    affiliatePageLayout,
+    tenantNumeric: tenantArg,
+  } = args
   const briefNum =
     typeof briefId === 'number' && Number.isFinite(briefId) ? briefId : Number(briefId)
   if (!Number.isFinite(briefNum)) {
@@ -142,6 +154,15 @@ export async function tryEnqueueDraftSkeletonJob(
     chainFromJobId != null
       ? { briefId: briefNum, chainedFrom: String(chainFromJobId) }
       : { briefId: briefNum, source: 'manual_enqueue' }
+  if (typeof keywordStrategyMode === 'string' && keywordStrategyMode.trim()) {
+    input.keywordStrategyMode = keywordStrategyMode.trim()
+  }
+  if (typeof affiliateContentRole === 'string' && affiliateContentRole.trim()) {
+    input.affiliateContentRole = affiliateContentRole.trim()
+  }
+  if (isAffiliateArticleLayout(affiliatePageLayout)) {
+    input.affiliatePageLayout = affiliatePageLayout
+  }
 
   let tenantId: number | null =
     tenantArg != null && Number.isFinite(tenantArg) ? Math.floor(Number(tenantArg)) : null
@@ -181,9 +202,51 @@ export async function enqueueDraftSkeletonAfterBriefGenerate(
   },
 ): Promise<TryEnqueueDraftSkeletonResult> {
   const { completedBriefJobId, briefId, siteNumeric } = args
+  const briefNum =
+    typeof briefId === 'number' && Number.isFinite(briefId) ? briefId : Number(briefId)
+  if (!Number.isFinite(briefNum)) {
+    return { created: false, reason: 'invalid_brief_id' }
+  }
+
+  const dup = await payload.count({
+    collection: 'workflow-jobs',
+    where: {
+      and: [
+        { jobType: { equals: 'draft_skeleton' } },
+        { status: { in: ['pending', 'running'] } },
+        { contentBrief: { equals: briefNum } },
+      ],
+    },
+  })
+  if (dup.totalDocs > 0) {
+    return { created: false, reason: 'draft_skeleton_already_pending' }
+  }
+
+  let sourceInput: Record<string, unknown> = {}
+  try {
+    const sourceJob = await payload.findByID({
+      collection: 'workflow-jobs',
+      id: String(completedBriefJobId),
+      depth: 0,
+      overrideAccess: true,
+    })
+    const raw = (sourceJob as { input?: unknown } | null)?.input
+    sourceInput = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  } catch {
+    sourceInput = {}
+  }
   return tryEnqueueDraftSkeletonJob(payload, {
-    briefId,
+    briefId: briefNum,
     siteNumeric,
     chainFromJobId: completedBriefJobId,
+    ...(typeof sourceInput.keywordStrategyMode === 'string'
+      ? { keywordStrategyMode: sourceInput.keywordStrategyMode }
+      : {}),
+    ...(typeof sourceInput.affiliateContentRole === 'string'
+      ? { affiliateContentRole: sourceInput.affiliateContentRole }
+      : {}),
+    ...(isAffiliateArticleLayout(sourceInput.affiliatePageLayout)
+      ? { affiliatePageLayout: sourceInput.affiliatePageLayout }
+      : {}),
   })
 }

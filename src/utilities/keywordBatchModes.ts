@@ -10,6 +10,8 @@ import { RankingSource } from '@/utilities/seoMatrixPipeline'
 export type KeywordBatchMode =
   | 'default'
   | 'quick_wins'
+  | 'high_commission_affiliate'
+  | 'comparison_decision'
   | 'geo_friendly'
   | 'pillar_sprint'
   | 'seasonal'
@@ -39,6 +41,8 @@ export type KeywordBatchLoadResult = {
 const ALLOWED_MODES: KeywordBatchMode[] = [
   'default',
   'quick_wins',
+  'high_commission_affiliate',
+  'comparison_decision',
   'geo_friendly',
   'pillar_sprint',
   'seasonal',
@@ -88,6 +92,105 @@ async function loadQuickWinKeywordRows(
   })
   const raw = res.docs as unknown as KeywordBatchRow[]
   return sortKeywordDocsByOpportunity(raw)
+}
+
+const AFFILIATE_MONEY_INTENTS = ['commercial', 'transactional'] as const
+const HIGH_COMMISSION_CATEGORY =
+  /\b(appliance|appliances|automotive|baby|beauty|camera|cameras|car|cars|coffee|cookware|desk|dog|cat|electronics|exercise|fitness|furniture|garage|garden|gear|grill|headphone|headphones|home|kitchen|knife|knives|laptop|mattress|monitor|office|outdoor|patio|pet|power tool|power tools|printer|robot vacuum|security camera|sports|tool|tools|vacuum|watch)\b/i
+const COMPARISON_DECISION =
+  /\b(vs|versus|compare|comparison|alternative|alternatives|review|reviews|worth it|best .+ for|best .+ under|top .+ for|which .+ is best|should i buy)\b/i
+
+type AffiliateKeywordDoc = KeywordBatchRow & {
+  keywordDifficulty?: number | null
+  volume?: number | null
+  intent?: string | null
+}
+
+export function isHighCommissionAffiliateTerm(term: string): boolean {
+  return HIGH_COMMISSION_CATEGORY.test(term)
+}
+
+export function isComparisonDecisionTerm(term: string): boolean {
+  return COMPARISON_DECISION.test(term)
+}
+
+function opportunityValue(doc: AffiliateKeywordDoc): number {
+  return typeof doc.opportunityScore === 'number' && Number.isFinite(doc.opportunityScore)
+    ? doc.opportunityScore
+    : 0
+}
+
+function loadAffiliateMoneyWhere(
+  siteId: number,
+  opts: {
+    eligibleOnly: boolean
+    minVolume: number
+    maxKd: number
+  },
+): Where {
+  const and: Where[] = [
+    { site: { equals: siteId } },
+    { status: { in: ['active', 'draft'] } },
+    { intent: { in: [...AFFILIATE_MONEY_INTENTS] } },
+    { volume: { greater_than_equal: opts.minVolume } },
+    { keywordDifficulty: { less_than_equal: opts.maxKd } },
+  ]
+  if (opts.eligibleOnly) {
+    and.push({ eligible: { equals: true } })
+  }
+  return { and }
+}
+
+async function loadHighCommissionAffiliateRows(
+  payload: Payload,
+  siteId: number,
+): Promise<{ rows: KeywordBatchRow[]; applied: Record<string, unknown> }> {
+  const res = await payload.find({
+    collection: 'keywords',
+    where: loadAffiliateMoneyWhere(siteId, { eligibleOnly: true, minVolume: 150, maxKd: 45 }),
+    limit: 500,
+    depth: 0,
+  })
+  const raw = (res.docs as unknown as AffiliateKeywordDoc[]).filter((k) =>
+    isHighCommissionAffiliateTerm(k.term ?? ''),
+  )
+  raw.sort((a, b) => opportunityValue(b) - opportunityValue(a))
+  return {
+    rows: raw,
+    applied: {
+      eligibleOnly: true,
+      intentWhitelist: [...AFFILIATE_MONEY_INTENTS],
+      minVolume: 150,
+      maxKd: 45,
+      termPattern: 'high-commission Amazon affiliate categories',
+    },
+  }
+}
+
+async function loadComparisonDecisionRows(
+  payload: Payload,
+  siteId: number,
+): Promise<{ rows: KeywordBatchRow[]; applied: Record<string, unknown> }> {
+  const res = await payload.find({
+    collection: 'keywords',
+    where: loadAffiliateMoneyWhere(siteId, { eligibleOnly: false, minVolume: 50, maxKd: 55 }),
+    limit: 500,
+    depth: 0,
+  })
+  const raw = (res.docs as unknown as AffiliateKeywordDoc[]).filter((k) =>
+    isComparisonDecisionTerm(k.term ?? ''),
+  )
+  raw.sort((a, b) => opportunityValue(b) - opportunityValue(a))
+  return {
+    rows: raw,
+    applied: {
+      eligibleOnly: false,
+      intentWhitelist: [...AFFILIATE_MONEY_INTENTS],
+      minVolume: 50,
+      maxKd: 55,
+      termPattern: 'vs / review / alternatives / worth-it decision modifiers',
+    },
+  }
 }
 
 const GEO_INTENTS = new Set(['informational', 'navigational', 'commercial', 'transactional'])
@@ -341,6 +444,28 @@ export async function loadKeywordBatchCandidates(
       jobType: 'brief_generate',
       briefQuickWins: false,
       usedKeywordFallback: ufb,
+    }
+  }
+
+  if (mode === 'high_commission_affiliate') {
+    const { rows, applied } = await loadHighCommissionAffiliateRows(payload, siteId)
+    return {
+      rows,
+      jobType: 'brief_generate',
+      briefQuickWins: false,
+      usedKeywordFallback: false,
+      appliedFilter: applied,
+    }
+  }
+
+  if (mode === 'comparison_decision') {
+    const { rows, applied } = await loadComparisonDecisionRows(payload, siteId)
+    return {
+      rows,
+      jobType: 'brief_generate',
+      briefQuickWins: false,
+      usedKeywordFallback: false,
+      appliedFilter: applied,
     }
   }
 

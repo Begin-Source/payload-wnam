@@ -2,6 +2,7 @@ import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
 import { defaultBatchLimitFromDailyCap } from '@/utilities/briefBatchDefaults'
+import { affiliateSeoFlowForMode } from '@/utilities/affiliateSeoFlow'
 import {
   loadKeywordBatchCandidates,
   parseKeywordBatchMode,
@@ -136,6 +137,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const mode = parseKeywordBatchMode(typeof body.mode === 'string' ? body.mode : 'default')
+  const affiliateFlow = affiliateSeoFlowForMode(mode)
   const dryRun = body.dryRun === true
   const filterMerged = mergeQuickWinFilter(body.filter as Partial<Record<string, unknown>> | undefined)
 
@@ -234,6 +236,10 @@ export async function POST(request: Request): Promise<Response> {
     const msg =
       mode === 'geo_friendly'
         ? '没有 geoFriendly=true 且符合意图筛选的关键词（可先运行「回填 geo」或 DFS 同步）。'
+        : mode === 'high_commission_affiliate'
+          ? '没有符合高价值 affiliate 类目规则的关键词（eligible / 商业意图 / volume / KD / 类目词）。'
+          : mode === 'comparison_decision'
+            ? '没有符合对比决策规则的关键词（商业意图 / volume / KD / vs-review-alternative 等修饰词）。'
         : mode === 'seasonal'
           ? '没有带 trend 或季节分未达阈值的关键词。'
           : mode === 'refresh_decay'
@@ -270,7 +276,7 @@ export async function POST(request: Request): Promise<Response> {
       minOverlap: clusterMinOverlap,
       refresh: body.refreshCluster === true,
     })
-    if (!cr.ok) {
+    if ('error' in cr) {
       poolIds = null
       if (errorsSample.length < 5) {
         errorsSample.push(`SERP 聚类失败：${cr.error}`)
@@ -386,6 +392,11 @@ export async function POST(request: Request): Promise<Response> {
             keywordId: row.id,
             batch: true,
             siteId: siteIdNum,
+            keywordStrategyMode: affiliateFlow.mode,
+            affiliateContentRole: affiliateFlow.contentRole,
+            affiliatePageLayout: affiliateFlow.articleLayout,
+            recommendedPipelineSlug: affiliateFlow.recommendedPipeline,
+            operatorHint: affiliateFlow.operatorHint,
             ...(loaded.briefQuickWins ? { quickWins: true } : {}),
             ...(row.seasonalScore != null ? { seasonalScore: row.seasonalScore } : {}),
             ...(typeof body.pipelineProfileId === 'number' && Number.isFinite(body.pipelineProfileId)

@@ -10,6 +10,12 @@ import { appendDraftSectionStructuralGuardrailUserBlock } from '@/services/writi
 import { buildDraftSectionPromptDefaults } from '@/utilities/openRouterTenantPrompts/defaultOpenRouterTenantPromptBodies'
 import { resolveTenantPromptPair } from '@/utilities/openRouterTenantPrompts/loadTenantPromptTemplateBody'
 
+function prependSeoWorkflowBlock(system: string, rawBlock: string | undefined): string {
+  const block = rawBlock?.trim()
+  if (!block || system.includes('Parameterized SEO workflow')) return system
+  return `${block}\n\n${system}`
+}
+
 export async function runSectionPrompt(
   payload: Payload,
   tenantId: number | null,
@@ -68,9 +74,13 @@ export async function runSectionPrompt(
     vars,
     input.pipelineProfileId,
   )
+  const systemWithWorkflow = prependSeoWorkflowBlock(
+    system,
+    input.extraPromptVars?.seo_workflow_block,
+  )
   const user = `${userResolved}${appendDraftSectionStructuralGuardrailUserBlock(input.sectionType)}`
   const r = await openrouterChatWithMeta(input.model, [
-    { role: 'system', content: system },
+    { role: 'system', content: systemWithWorkflow },
     { role: 'user', content: user },
   ])
   return { text: r.text, usage: r.usage, raw: r.raw }

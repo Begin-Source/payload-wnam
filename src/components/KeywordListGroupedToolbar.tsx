@@ -6,6 +6,8 @@ import React, { useEffect, useRef, useState } from 'react'
 export type KeywordListDrawerOpeners = {
   quickWin: () => void
   defaultBatch: () => void
+  highCommission: () => void
+  comparisonDecision: () => void
   geo: () => void
   pillar: () => void
   seasonal: () => void
@@ -113,6 +115,12 @@ export function KeywordListGroupedToolbar(props: { openers: KeywordListDrawerOpe
               </button>
               <button type="button" role="menuitem" style={menuItemStyle} onClick={() => run(openers.defaultBatch)}>
                 默认排产 · Brief
+              </button>
+              <button type="button" role="menuitem" style={menuItemStyle} onClick={() => run(openers.highCommission)}>
+                高价值类目词 · Brief
+              </button>
+              <button type="button" role="menuitem" style={menuItemStyle} onClick={() => run(openers.comparisonDecision)}>
+                对比决策词 · Brief
               </button>
               <button type="button" role="menuitem" style={menuItemStyle} onClick={() => run(openers.geo)}>
                 GEO / AI 引用向 · Brief

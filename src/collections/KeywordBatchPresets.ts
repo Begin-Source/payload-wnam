@@ -104,6 +104,8 @@ export const KeywordBatchPresets: CollectionConfig = {
       options: [
         { label: '默认（active→机会分）', value: 'default' },
         { label: 'Quick-win（过滤 + 可选聚类）', value: 'quick_wins' },
+        { label: '高价值类目（佣金 × 客单价）', value: 'high_commission_affiliate' },
+        { label: '对比决策（vs / review / alternatives）', value: 'comparison_decision' },
         { label: 'GEO / AI 引用向', value: 'geo_friendly' },
         { label: 'Pillar 冲刺（pillar + 簇内词）', value: 'pillar_sprint' },
         { label: '季节 / trend 峰值向', value: 'seasonal' },
@@ -111,7 +113,7 @@ export const KeywordBatchPresets: CollectionConfig = {
       ],
       admin: {
         description:
-          '用于关键词列表预填：与各排产抽屉对应；default / quick_wins 与原名一致。',
+          '用于关键词列表预填：default / high_commission_affiliate / comparison_decision 可由默认排产弹窗执行；其他模式有专属弹窗。',
       },
     },
     {

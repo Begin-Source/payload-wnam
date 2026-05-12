@@ -56,6 +56,25 @@ const inputStyle: React.CSSProperties = {
   fontSize: '0.875rem',
 }
 
+export type PresetDrivenMode = 'default' | 'high_commission_affiliate' | 'comparison_decision'
+
+const presetDrivenModeLabels: Record<PresetDrivenMode, string> = {
+  default: '默认排产',
+  high_commission_affiliate: '高价值类目词',
+  comparison_decision: '对比决策词',
+}
+
+const presetDrivenModeDescriptions: Record<PresetDrivenMode, string> = {
+  default: '机会分排序；无 Quick-win / SERP 聚类',
+  high_commission_affiliate: 'eligible + 商业意图 + 类目价值词；无 SERP 聚类',
+  comparison_decision: '商业意图 + vs/review/alternative 决策修饰词；无 SERP 聚类',
+}
+
+function parsePresetDrivenMode(raw: unknown): PresetDrivenMode {
+  if (raw === 'high_commission_affiliate' || raw === 'comparison_decision') return raw
+  return 'default'
+}
+
 function formatSiteLine(s: SiteOption): string {
   return `${s.name} (${s.slug}) ${s.primaryDomain}`
 }
@@ -93,11 +112,6 @@ export const KeywordDefaultBatchDrawer = forwardRef<KeywordDrawerRef>(function K
   } = useAdminBackgroundActivity()
 
   const [open, setOpen] = useState(false)
-  useImperativeHandle(ref, () => ({
-    open: () => setOpen(true),
-    close: () => setOpen(false),
-  }))
-
   const [siteQuery, setSiteQuery] = useState('')
   const [sites, setSites] = useState<SiteOption[]>([])
   const [sitesLoading, setSitesLoading] = useState(false)
@@ -107,6 +121,8 @@ export const KeywordDefaultBatchDrawer = forwardRef<KeywordDrawerRef>(function K
   const siteComboboxRef = useRef<HTMLDivElement>(null)
 
   const [batchLimitInput, setBatchLimitInput] = useState('')
+  const [presetMode, setPresetMode] = useState<PresetDrivenMode>('default')
+  const [forcedMode, setForcedMode] = useState<PresetDrivenMode | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const [dryRunPreview, setDryRunPreview] = useState<DryRunPreview | null>(null)
@@ -182,14 +198,16 @@ export const KeywordDefaultBatchDrawer = forwardRef<KeywordDrawerRef>(function K
         )
         if (!res.ok || cancelled) return
         const data = (await res.json()) as {
-          preset?: { defaultBatchLimit?: number | null } | null
+          preset?: { batchMode?: string | null; defaultBatchLimit?: number | null } | null
         }
         if (cancelled) return
         const p = data.preset
         if (!p) {
+          setPresetMode(forcedMode ?? 'default')
           setBatchLimitInput('')
           return
         }
+        setPresetMode(forcedMode ?? parsePresetDrivenMode(p.batchMode))
         const lim = p.defaultBatchLimit
         if (typeof lim === 'number' && Number.isFinite(lim) && lim >= 1) {
           setBatchLimitInput(String(Math.min(100, Math.floor(lim))))
@@ -197,20 +215,23 @@ export const KeywordDefaultBatchDrawer = forwardRef<KeywordDrawerRef>(function K
           setBatchLimitInput('')
         }
       } catch {
-        if (!cancelled) setBatchLimitInput('')
+        if (!cancelled) {
+          setPresetMode(forcedMode ?? 'default')
+          setBatchLimitInput('')
+        }
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [open, selectedSiteId])
+  }, [forcedMode, open, selectedSiteId])
 
-  const fetchDryRunPreview = useCallback(async (siteId: number, limit?: number) => {
+  const fetchDryRunPreview = useCallback(async (siteId: number, mode: PresetDrivenMode, limit?: number) => {
     const seq = ++previewRequestSeqRef.current
     setPreviewLoading(true)
     setPreviewError(null)
     try {
-      const body: Record<string, unknown> = { siteId, dryRun: true }
+      const body: Record<string, unknown> = { siteId, dryRun: true, mode }
       if (limit != null) body.limit = limit
       const res = await fetch('/api/admin/articles/batch-enqueue', {
         method: 'POST',
@@ -279,19 +300,30 @@ export const KeywordDefaultBatchDrawer = forwardRef<KeywordDrawerRef>(function K
     const limitArg = parseLimitOverride(batchLimitInput)
 
     const t = window.setTimeout(() => {
-      void fetchDryRunPreview(siteIdSnap, limitArg)
+      void fetchDryRunPreview(siteIdSnap, presetMode, limitArg)
     }, delay)
     return () => window.clearTimeout(t)
-  }, [open, selectedSiteId, batchLimitInput, fetchDryRunPreview])
+  }, [open, selectedSiteId, batchLimitInput, presetMode, fetchDryRunPreview])
 
   const close = (): void => {
     setOpen(false)
     setError(null)
   }
 
+  useImperativeHandle(ref, () => ({
+    open: (mode?: string) => {
+      const parsed = mode == null ? null : parsePresetDrivenMode(mode)
+      setForcedMode(parsed)
+      setPresetMode(parsed ?? 'default')
+      setOpen(true)
+    },
+    close,
+  }))
+
   const pickSite = (s: SiteOption): void => {
     setSelectedSiteId(s.id)
     setSelectedSiteLabel(formatSiteLine(s))
+    setPresetMode(forcedMode ?? 'default')
     setSiteQuery('')
     setSiteMenuOpen(false)
   }
@@ -324,6 +356,7 @@ export const KeywordDefaultBatchDrawer = forwardRef<KeywordDrawerRef>(function K
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             siteId: siteIdSnap,
+            mode: presetMode,
             ...(limit != null ? { limit } : {}),
           }),
         })
@@ -376,7 +409,7 @@ export const KeywordDefaultBatchDrawer = forwardRef<KeywordDrawerRef>(function K
     if (lim !== '') {
       limit = Math.min(100, Math.floor(Number(lim)))
     }
-    const enqueueReplay: Record<string, unknown> = { siteId: siteIdSnap }
+    const enqueueReplay: Record<string, unknown> = { siteId: siteIdSnap, mode: presetMode }
     if (limit != null) enqueueReplay.limit = limit
     const jobId = startKeywordBatchModePreviewJob(siteLabelSnap ? { siteLabel: siteLabelSnap } : {})
     close()
@@ -401,8 +434,8 @@ export const KeywordDefaultBatchDrawer = forwardRef<KeywordDrawerRef>(function K
         completeKeywordBatchModePreviewJob({
           jobId,
           summary: {
-            mode: 'default',
-            titleLabel: '默认排产',
+            mode: presetMode,
+            titleLabel: presetDrivenModeLabels[presetMode],
             pickedTotal: typeof data.enqueued === 'number' ? data.enqueued : pickedTerms.length,
             skipped: typeof data.skipped === 'number' ? data.skipped : 0,
             ...(typeof data.limit === 'number' ? { limit: data.limit } : {}),
@@ -448,10 +481,11 @@ export const KeywordDefaultBatchDrawer = forwardRef<KeywordDrawerRef>(function K
               }}
             >
               <h2 id={titleId} style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>
-                默认批量排产 → Brief
+                默认/策略批量排产 → Brief
               </h2>
               <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', opacity: 0.85, lineHeight: 1.5 }}>
-                按站点机会分排序的 <code>active</code>（若无则 <code>draft</code>）关键词入队{' '}
+                若站点关联了「高价值类目词」或「对比决策词」预设，会按对应策略筛选；否则按机会分排序的{' '}
+                <code>active</code>（若无则 <code>draft</code>）关键词入队{' '}
                 <code>brief_generate</code>，与「快捷操作 · 文章」中的批量排产相同。「预览候选」会关窗并在顶栏
                 Banner 展示 dry-run 结果，可一键并入队；提交「并入队 Brief」同样会关窗并走批量入队 Banner。
               </p>
@@ -569,7 +603,7 @@ export const KeywordDefaultBatchDrawer = forwardRef<KeywordDrawerRef>(function K
                     <>
                       <ul style={{ margin: '0.35rem 0 0.5rem', paddingLeft: '1.1rem' }}>
                         <li>
-                          <strong>模式</strong>：<code>default</code>（机会分排序；无 Quick-win / SERP 聚类）
+                          <strong>模式</strong>：<code>{presetMode}</code>（{presetDrivenModeDescriptions[presetMode]}）
                         </li>
                         <li>
                           <strong>关键词状态</strong>：优先 <code>active</code>
@@ -641,7 +675,7 @@ export const KeywordDefaultBatchDrawer = forwardRef<KeywordDrawerRef>(function K
                       disabled={previewLoading || selectedSiteId == null}
                       onClick={() => {
                         if (selectedSiteId == null) return
-                        void fetchDryRunPreview(selectedSiteId, parseLimitOverride(batchLimitInput))
+                        void fetchDryRunPreview(selectedSiteId, presetMode, parseLimitOverride(batchLimitInput))
                       }}
                     >
                       立即刷新预览

@@ -21,6 +21,11 @@ export async function POST(request: Request): Promise<Response> {
     keywordId?: string | number
     siteId?: number
     pipelineProfileId?: string | number
+    keywordStrategyMode?: string
+    affiliateContentRole?: string
+    affiliatePageLayout?: string
+    recommendedPipelineSlug?: string
+    operatorHint?: string
   }
   const payload = await getPayload({ config: configPromise })
   if (!body.keywordId) {
@@ -101,9 +106,14 @@ export async function POST(request: Request): Promise<Response> {
     keywordId: kid,
     term,
     variant: briefVariant,
+    keywordStrategyMode: body.keywordStrategyMode,
+    affiliateContentRole: body.affiliateContentRole,
+    affiliatePageLayout: body.affiliatePageLayout,
+    recommendedPipelineSlug: body.recommendedPipelineSlug,
+    operatorHint: body.operatorHint,
   })
 
-  if (!run.ok) {
+  if ('error' in run) {
     return Response.json({ error: run.error }, { status: 502 })
   }
   return Response.json({ ok: true, id: run.id })

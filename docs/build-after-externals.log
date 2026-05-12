@@ -1,0 +1,292 @@
+
+┌─────────────────────────────┐
+│ OpenNext — Cloudflare build │
+└─────────────────────────────┘
+
+App directory: /Users/sunny/yourprojects/payload-wnam
+Next.js version : 15.4.11
+@opennextjs/cloudflare version: 1.19.1
+@opennextjs/aws version: 3.10.1
+
+┌─────────────────────────────────┐
+│ OpenNext — Building Next.js app │
+└─────────────────────────────────┘
+
+
+> payload-wnam@1.0.0 build /Users/sunny/yourprojects/payload-wnam
+> cross-env NEXT_PRIVATE_WORKER_THREADS=false NODE_OPTIONS="--no-deprecation --max-old-space-size=8000" next build
+
+   ▲ Next.js 15.4.11
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · staticGenerationMaxConcurrency: 1
+
+   Creating an optimized production build ...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 1/3...
+read ECONNRESET
+
+Retrying 2/3...
+read ECONNRESET
+
+Retrying 2/3...
+ ✓ Compiled successfully in 51s
+   Skipping validation of types
+   Linting ...
+
+./src/app/(payload)/api/admin/pipeline/run-next/route.ts
+1:8  Warning: 'configPromise' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+2:10  Warning: 'getPayload' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/app/api/pipeline/draft-finalize/runDraftFinalize.ts
+144:9  Warning: 'didTavily' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/components/ContentBriefDraftSkeletonDrawer.tsx
+342:19  Warning: The attribute aria-expanded is not supported by the role textbox. This role is implicit on the element input.  jsx-a11y/role-supports-aria-props
+
+./src/components/KeywordGeoDrawer.tsx
+227:6  Warning: React Hook useCallback has a missing dependency: 'geoIntentsArray'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/components/KeywordPillarSprintDrawer.tsx
+216:6  Warning: React Hook useCallback has a missing dependency: 'effectivePillarId'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/components/KeywordSeasonalDrawer.tsx
+82:10  Warning: 'sitesLoading' is assigned a value but never used. Allowed unused elements of array destructuring must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/components/WritingScopeFullPipelineDrawer.tsx
+204:6  Warning: React Hook useMemo has an unnecessary dependency: 'selectAll'. Either exclude it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/migrations/20260420_151119.ts
+3:32  Warning: 'payload' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+3:41  Warning: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+84:34  Warning: 'payload' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+84:43  Warning: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/migrations/20260420_213352_phase_c_affiliate_globals.ts
+3:32  Warning: 'payload' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+3:41  Warning: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+136:34  Warning: 'payload' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+136:43  Warning: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/migrations/20260420_214651_phase_d_content_automation.ts
+3:32  Warning: 'payload' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+3:41  Warning: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+168:34  Warning: 'payload' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+168:43  Warning: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/migrations/20260420_224925_product_ia_extensions.ts
+3:32  Warning: 'payload' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+3:41  Warning: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+150:34  Warning: 'payload' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+150:43  Warning: 'req' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/site-layouts/amz-template-1/pages/AmzTemplateHomeHero.tsx
+59:11  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/site-layouts/amz-template-2/pages/AmzTemplateHomeHero.tsx
+59:11  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./src/utilities/keywordBatchModes.ts
+202:9  Warning: 'rows' is assigned a value but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/utilities/pipelineSettingShape.ts
+6:3  Warning: 'DEFAULT_BRIEF_DEPTH' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+7:3  Warning: 'DEFAULT_BRIEF_VARIANT' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+8:3  Warning: 'DEFAULT_FINALIZE_VARIANT' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+9:3  Warning: 'DEFAULT_SECTION_VARIANT' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+10:3  Warning: 'DEFAULT_SKELETON_VARIANT' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+29:3  Warning: 'PIPELINE_FALLBACK_OPENROUTER_LLM' is defined but never used. Allowed unused vars must match /^_/u.  @typescript-eslint/no-unused-vars
+347:3  Warning: 'sectionType' is defined but never used. Allowed unused args must match /^_/u.  @typescript-eslint/no-unused-vars
+
+./src/utilities/stubs/redis-stub.cjs
+16:3  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-empty-function').
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+   Collecting page data ...
+Using secrets defined in .dev.vars
+Using secrets defined in .dev.vars
+Using secrets defined in .dev.vars
+Using secrets defined in .dev.vars
+Using secrets defined in .dev.vars
+Using secrets defined in .dev.vars
+Using secrets defined in .dev.vars
+   Generating static pages (0/9) ...
+   Generating static pages (2/9) 
+Using secrets defined in .dev.vars
+   Generating static pages (4/9) 
+   Generating static pages (6/9) 
+ ✓ Generating static pages (9/9)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                                     Size  First Load JS
+┌ ○ /                                                          166 B         105 kB
+├ ○ /_not-found                                                999 B         103 kB
+├ ƒ /[locale]                                                 1.9 kB         125 kB
+├ ƒ /[locale]/about                                            394 B         102 kB
+├ ƒ /[locale]/categories/[slug]                              1.34 kB         107 kB
+├ ƒ /[locale]/contact                                          394 B         102 kB
+├ ƒ /[locale]/guides                                         3.05 kB         132 kB
+├ ƒ /[locale]/pages/[slug]                                     394 B         102 kB
+├ ƒ /[locale]/posts/[slug]                                    1.9 kB         122 kB
+├ ƒ /[locale]/privacy                                          394 B         102 kB
+├ ƒ /[locale]/product/[asin]                                  1.3 kB         107 kB
+├ ƒ /[locale]/products                                       2.77 kB         136 kB
+├ ƒ /[locale]/reviews                                        2.95 kB         136 kB
+├ ƒ /[locale]/search                                           207 B         119 kB
+├ ƒ /admin/[[...segments]]                                     154 B         968 kB
+├ ƒ /api/[...slug]                                             176 B         102 kB
+├ ƒ /api/admin/affiliate-earnings-imports/csv-import           394 B         102 kB
+├ ƒ /api/admin/affiliate-earnings-imports/import-options       394 B         102 kB
+├ ƒ /api/admin/article-quick-action/options                    394 B         102 kB
+├ ƒ /api/admin/articles/[id]/pipeline-catchup                  394 B         102 kB
+├ ƒ /api/admin/articles/batch-enqueue                          394 B         102 kB
+├ ƒ /api/admin/articles/csv-export                             394 B         102 kB
+├ ƒ /api/admin/articles/csv-import                             394 B         102 kB
+├ ƒ /api/admin/branding                                        394 B         102 kB
+├ ƒ /api/admin/calendar-schedule-brief                         394 B         102 kB
+├ ƒ /api/admin/categories/csv-export                           394 B         102 kB
+├ ƒ /api/admin/categories/csv-import                           394 B         102 kB
+├ ƒ /api/admin/categories/generate-cover-sync                  394 B         102 kB
+├ ƒ /api/admin/categories/generate-slots                       394 B         102 kB
+├ ƒ /api/admin/categories/queue-ai-cover                       394 B         102 kB
+├ ƒ /api/admin/collections/find-replace                        394 B         102 kB
+├ ƒ /api/admin/content-briefs/enqueue-draft-skeleton           394 B         102 kB
+├ ƒ /api/admin/dashboard-stats                                 394 B         102 kB
+├ ƒ /api/admin/keyword-batch-presets/for-site                  394 B         102 kB
+├ ƒ /api/admin/keywords/backfill-geo-friendly                  394 B         102 kB
+├ ƒ /api/admin/keywords/csv-export                             394 B         102 kB
+├ ƒ /api/admin/keywords/csv-import                             394 B         102 kB
+├ ƒ /api/admin/keywords/dfs-fetch                              394 B         102 kB
+├ ƒ /api/admin/keywords/pillar-options                         394 B         102 kB
+├ ƒ /api/admin/knowledge-base/csv-export                       394 B         102 kB
+├ ƒ /api/admin/knowledge-base/csv-import                       394 B         102 kB
+├ ƒ /api/admin/media/ai-image-picker-docs                      394 B         102 kB
+├ ƒ /api/admin/media/csv-export                                394 B         102 kB
+├ ƒ /api/admin/media/csv-import                                394 B         102 kB
+├ ƒ /api/admin/media/queue-ai-image                            394 B         102 kB
+├ ƒ /api/admin/offers/generate-review-mdx                      394 B         102 kB
+├ ƒ /api/admin/offers/merchant-slot-dispatch-status            394 B         102 kB
+├ ƒ /api/admin/offers/merchant-slot-fetch                      394 B         102 kB
+├ ƒ /api/admin/offers/review-quick-action-options              394 B         102 kB
+├ ƒ /api/admin/operation-manuals/csv-export                    394 B         102 kB
+├ ƒ /api/admin/operation-manuals/csv-import                    394 B         102 kB
+├ ƒ /api/admin/pages/csv-export                                394 B         102 kB
+├ ƒ /api/admin/pages/csv-import                                394 B         102 kB
+├ ƒ /api/admin/pages/generate-trust-content                    394 B         102 kB
+├ ƒ /api/admin/pipeline-profiles/[id]/clone                    394 B         102 kB
+├ ƒ /api/admin/pipeline-profiles/[id]/report                   394 B         102 kB
+├ ƒ /api/admin/pipeline-profiles/bulk-assign                   394 B         102 kB
+├ ƒ /api/admin/pipeline-profiles/compare                       394 B         102 kB
+├ ƒ /api/admin/pipeline-profiles/list                          394 B         102 kB
+├ ƒ /api/admin/pipeline-profiles/options                       394 B         102 kB
+├ ƒ /api/admin/pipeline/run-next                               394 B         102 kB
+├ ƒ /api/admin/pipeline/run-scoped-batch                       394 B         102 kB
+├ ƒ /api/admin/pipeline/writing-scope-labels                   394 B         102 kB
+├ ƒ /api/admin/seo-dashboard                                   394 B         102 kB
+├ ƒ /api/admin/site-blueprints/csv-export                      394 B         102 kB
+├ ƒ /api/admin/site-blueprints/csv-import                      394 B         102 kB
+├ ƒ /api/admin/site-blueprints/generate-amz-template-design    394 B         102 kB
+├ ƒ /api/admin/site-blueprints/options                         394 B         102 kB
+├ ƒ /api/admin/sites/generate-domain                           394 B         102 kB
+├ ƒ /api/admin/sites/queue-hero-banner                         394 B         102 kB
+├ ƒ /api/admin/sites/queue-site-logo                           394 B         102 kB
+├ ƒ /api/admin/strategy/summary                                394 B         102 kB
+├ ƒ /api/admin/teams/[id]/stats                                394 B         102 kB
+├ ƒ /api/admin/teams/stats-summary                             394 B         102 kB
+├ ƒ /api/admin/workflow-quick-action                           394 B         102 kB
+├ ƒ /api/graphql                                               394 B         102 kB
+├ ƒ /api/graphql-playground                                    176 B         102 kB
+├ ƒ /api/pipeline/alert-eval                                   394 B         102 kB
+├ ƒ /api/pipeline/amazon-sync                                  394 B         102 kB
+├ ƒ /api/pipeline/anchor-audit                                 394 B         102 kB
+├ ƒ /api/pipeline/backlink-scan                                394 B         102 kB
+├ ƒ /api/pipeline/brief-generate                               394 B         102 kB
+├ ƒ /api/pipeline/category-cover-generate                      394 B         102 kB
+├ ƒ /api/pipeline/competitor-gap                               394 B         102 kB
+├ ƒ /api/pipeline/content-archive                              394 B         102 kB
+├ ƒ /api/pipeline/content-audit                                394 B         102 kB
+├ ƒ /api/pipeline/content-merge                                394 B         102 kB
+├ ƒ /api/pipeline/content-refresh                              394 B         102 kB
+├ ƒ /api/pipeline/cron-dispatch                                394 B         102 kB
+├ ƒ /api/pipeline/domain-audit                                 394 B         102 kB
+├ ƒ /api/pipeline/domain-ranked-keywords                       394 B         102 kB
+├ ƒ /api/pipeline/draft-finalize                               394 B         102 kB
+├ ƒ /api/pipeline/draft-section                                394 B         102 kB
+├ ƒ /api/pipeline/draft-skeleton                               394 B         102 kB
+├ ƒ /api/pipeline/image-generate                               394 B         102 kB
+├ ƒ /api/pipeline/internal-link-audit                          394 B         102 kB
+├ ƒ /api/pipeline/internal-link-inject                         394 B         102 kB
+├ ƒ /api/pipeline/internal-link-reinforce                      394 B         102 kB
+├ ƒ /api/pipeline/internal-link-rewrite                        394 B         102 kB
+├ ƒ /api/pipeline/keyword-cluster                              394 B         102 kB
+├ ƒ /api/pipeline/keyword-discover                             394 B         102 kB
+├ ƒ /api/pipeline/media-image-generate                         394 B         102 kB
+├ ƒ /api/pipeline/meta-ab-optimize                             394 B         102 kB
+├ ƒ /api/pipeline/meta-ab-pick                                 394 B         102 kB
+├ ƒ /api/pipeline/rank-track                                   394 B         102 kB
+├ ƒ /api/pipeline/serp-audit                                   394 B         102 kB
+├ ƒ /api/pipeline/site-hero-banner-generate                    394 B         102 kB
+├ ƒ /api/pipeline/site-logo-generate                           394 B         102 kB
+├ ƒ /api/pipeline/tick                                         394 B         102 kB
+├ ƒ /api/pipeline/topic-cluster-audit                          394 B         102 kB
+├ ƒ /api/pipeline/triage                                       394 B         102 kB
+├ ƒ /api/public/site-brand-icon                                941 B         103 kB
+├ ƒ /api/redirect-lookup                                       394 B         102 kB
+├ ƒ /api/seo-matrix/rank-sync                                  394 B         102 kB
+├ ƒ /api/site-locale-meta                                      394 B         102 kB
+├ ƒ /api/sites/generate-domain                                 394 B         102 kB
+├ ƒ /api/webhooks/dataforseo-merchant-offers                   394 B         102 kB
+├ ƒ /my-route                                                  394 B         102 kB
+├ ƒ /portal/knowledge                                          394 B         102 kB
+├ ƒ /portal/knowledge/kb/[slug]                                394 B         102 kB
+├ ƒ /portal/knowledge/manuals/[slug]                           394 B         102 kB
+├ ƒ /robots.txt                                                394 B         102 kB
+└ ƒ /sitemap.xml                                               394 B         102 kB
++ First Load JS shared by all                                 102 kB
+  ├ chunks/4930-496e29c9d7be60a6.js                          44.5 kB
+  ├ chunks/f2967083-347497a58d4db595.js                      54.1 kB
+  └ other shared chunks (total)                              3.34 kB
+
+
+ƒ Middleware                                                 33.6 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+┌──────────────────────────────┐
+│ OpenNext — Generating bundle │
+└──────────────────────────────┘
+
+Bundling middleware function...
+Bundling static assets...
+Bundling cache assets...
+Building server function: default...
+Applying code patches: 3.665s
+# copyPackageTemplateFiles
+[35m⚙️ Bundling the OpenNext server...
+[0m
+▲ [WARNING] The "typeof" operator will never evaluate to "null" [impossible-typeof]
+
+    .open-next/server-functions/default/.next/server/app/(payload)/admin/[[...segments]]/page.js:205:226018:
+      205 │ ...e"number":case"boolean":case"null":return String(D);case"objec...
+          ╵                                ~~~~~~
+
+  The expression "typeof x" actually evaluates to "object" in JavaScript, not "null". You need to use "x === null" to test for null.
+
+▲ [WARNING] Comparison with -0 using the "===" operator will also match 0 [equals-negative-zero]
+
+    .open-next/server-functions/default/.next/server/chunks/44769.js:972:28644:
+      972 │ ...unsigned){if(j<0)j+=g;else if(-0===j)return 0}return j}}a.expo...
+          ╵                                  ~~
+
+  Floating-point equality is defined such that 0 and -0 are equal, so "x === -0" returns true for both 0 and -0. You need to use "Object.is(x, -0)" instead to test for -0.
+
+[35mWorker saved in `.open-next/worker.js` 🚀
+[0m
+OpenNext build complete.

@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { loadAmzEligibilityThresholdsFromMerged } from '@/utilities/keywordEligibility'
 import { mergePipelineProfileOntoGlobal, normalizeGlobalPipelineDoc } from '@/utilities/pipelineSettingShape'
 import {
+  getSeoPublishQuality80ProfileFields,
   getSeoTheoryGrowthPipelineProfileFields,
   getSeoTheoryQualityPipelineProfileFields,
+  SEO_PIPELINE_PUBLISH_QUALITY_80_SLUG,
   SEO_THEORY_GROWTH_SLUG,
   SEO_THEORY_QUALITY_SLUG,
 } from '@/utilities/seoTheoryPipelineProfilePresets'
@@ -13,6 +15,7 @@ describe('seo theory pipeline profile presets', () => {
   it('exposes stable slugs', () => {
     expect(SEO_THEORY_GROWTH_SLUG).toBe('growth-commercial')
     expect(SEO_THEORY_QUALITY_SLUG).toBe('quality-constrained')
+    expect(SEO_PIPELINE_PUBLISH_QUALITY_80_SLUG).toBe('publish-quality-80-v1')
   })
 
   it('growth preset widens AMZ thresholds vs tight quality preset', () => {
@@ -55,4 +58,44 @@ describe('seo theory pipeline profile presets', () => {
     const how = q.llmModelsBySection.find((r) => r.sectionType === 'how_to')
     expect(how?.model).toBe('deepseek/deepseek-v4-flash')
   })
+
+  it('publish-quality-80 preset records an explicit content quality gate', () => {
+    const q = getSeoPublishQuality80ProfileFields(false) as {
+      articleStrategy: {
+        seoWorkflow?: {
+          minQualityScore?: number
+          workflowMode?: string
+          minOnPageWords?: number
+          minH2Count?: number
+          minH3Count?: number
+          requireFaqSection?: boolean
+          requireChecklistSection?: boolean
+          disallowBodyH1?: boolean
+        }
+        contentQualityGate?: {
+          minOverallScore?: number
+          minWords?: number
+          minH2Count?: number
+          minH3Count?: number
+          publishIfPass?: boolean
+          hardVetoCodes?: string[]
+        }
+      }
+    }
+    expect(q.articleStrategy?.seoWorkflow?.workflowMode).toBe('publish_quality_80_gate')
+    expect(q.articleStrategy?.seoWorkflow?.minQualityScore).toBe(80)
+    expect(q.articleStrategy?.seoWorkflow?.minOnPageWords).toBe(2000)
+    expect(q.articleStrategy?.seoWorkflow?.minH2Count).toBe(8)
+    expect(q.articleStrategy?.seoWorkflow?.minH3Count).toBe(4)
+    expect(q.articleStrategy?.seoWorkflow?.requireFaqSection).toBe(true)
+    expect(q.articleStrategy?.seoWorkflow?.requireChecklistSection).toBe(true)
+    expect(q.articleStrategy?.seoWorkflow?.disallowBodyH1).toBe(true)
+    expect(q.articleStrategy?.contentQualityGate?.minOverallScore).toBe(80)
+    expect(q.articleStrategy?.contentQualityGate?.minWords).toBe(2000)
+    expect(q.articleStrategy?.contentQualityGate?.minH2Count).toBe(8)
+    expect(q.articleStrategy?.contentQualityGate?.minH3Count).toBe(4)
+    expect(q.articleStrategy?.contentQualityGate?.publishIfPass).toBe(true)
+    expect(q.articleStrategy?.contentQualityGate?.hardVetoCodes).toEqual(['T04', 'C01', 'R10'])
+  })
+
 })

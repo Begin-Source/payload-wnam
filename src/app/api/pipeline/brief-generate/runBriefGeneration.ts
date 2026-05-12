@@ -34,6 +34,7 @@ import {
   mergeCanonicalBriefSectionRows,
   type BriefSectionSpecRow,
 } from '@/app/api/pipeline/lib/articlePipelineChain'
+import { affiliateSeoFlowForMode, isAffiliateArticleLayout } from '@/utilities/affiliateSeoFlow'
 
 export type BriefGenArgs = {
   payload: Payload
@@ -44,6 +45,11 @@ export type BriefGenArgs = {
   siteId?: number | null
   keywordId: number
   term: string
+  keywordStrategyMode?: string
+  affiliateContentRole?: string
+  affiliatePageLayout?: string
+  recommendedPipelineSlug?: string
+  operatorHint?: string
 }
 
 function depthLabel(merged: PipelineSettingShape): 'quick' | 'standard' | 'deep' {
@@ -56,6 +62,17 @@ export async function runBriefGeneration(
 ): Promise<{ ok: true; id: number } | { ok: false; error: string }> {
   const { payload, merged, tenantId, siteId, keywordId: kid, term } = args
   const variant = args.variant
+  const affiliateFlow = affiliateSeoFlowForMode(args.keywordStrategyMode)
+  const affiliatePageLayout =
+    isAffiliateArticleLayout(args.affiliatePageLayout) ? args.affiliatePageLayout : affiliateFlow.articleLayout
+  const affiliateContentRole =
+    typeof args.affiliateContentRole === 'string' && args.affiliateContentRole.trim()
+      ? args.affiliateContentRole.trim()
+      : affiliateFlow.contentRole
+  const operatorHint =
+    typeof args.operatorHint === 'string' && args.operatorHint.trim()
+      ? args.operatorHint.trim()
+      : affiliateFlow.operatorHint
 
   const quick = isPipelineQuickDepth(merged)
   const dfsLoc = resolveDfsLocationLanguageFromMerged(merged)
@@ -256,7 +273,17 @@ export async function runBriefGeneration(
       ...(r.id === 'intro' ? { inject: { hook: true, valuePromise: true } as const } : {}),
       ...(r.id === 'faq' ? { inject: { parallel: true } as const } : {}),
     })),
-    globalContext: { targetKeyword: term, delegateOutline: text.slice(0, 3500) },
+    globalContext: {
+      targetKeyword: term,
+      delegateOutline: text.slice(0, 3500),
+      affiliateSeoFlow: {
+        keywordStrategyMode: affiliateFlow.mode,
+        contentRole: affiliateContentRole,
+        articleLayout: affiliatePageLayout,
+        recommendedPipelineSlug: args.recommendedPipelineSlug ?? affiliateFlow.recommendedPipeline,
+        operatorHint,
+      },
+    },
   }
 
   const sources: Record<string, unknown> = {}
@@ -274,6 +301,14 @@ export async function runBriefGeneration(
       featureTypes: serpCtx.featureTypes,
     }
   }
+  sources.affiliateSeoFlow = {
+    keywordStrategyMode: affiliateFlow.mode,
+    label: affiliateFlow.label,
+    contentRole: affiliateContentRole,
+    articleLayout: affiliatePageLayout,
+    recommendedPipelineSlug: args.recommendedPipelineSlug ?? affiliateFlow.recommendedPipeline,
+    operatorHint,
+  }
 
   const brief = await payload.create({
     collection: 'content-briefs',
@@ -283,9 +318,16 @@ export async function runBriefGeneration(
       tenant: tenantId,
       ...(typeof siteId === 'number' && Number.isFinite(siteId) ? { site: siteId } : {}),
       outline,
-      intentSummary: text.slice(0, 2000),
+      intentSummary: [
+        `Affiliate SEO flow: ${affiliateFlow.label}`,
+        `Role: ${affiliateContentRole}; layout: ${affiliatePageLayout}; pipeline: ${args.recommendedPipelineSlug ?? affiliateFlow.recommendedPipeline}.`,
+        operatorHint,
+        '',
+        text,
+      ].join('\n').slice(0, 2000),
       sources: Object.keys(sources).length > 0 ? sources : null,
       status: 'draft',
+      skillId: affiliateContentRole === 'money_page' ? 'affiliate-money-page' : 'affiliate-support-page',
     },
   })
 

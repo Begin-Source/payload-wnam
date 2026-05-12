@@ -49,6 +49,7 @@ function scoreKeywordGate(raw: unknown): number {
 function scoreSeoWorkflow(articleStrategy: unknown): number {
   const root = asRecord(articleStrategy)
   const sw = root ? asRecord(root.seoWorkflow) : null
+  const gate = root ? asRecord(root.contentQualityGate) : null
   if (!sw) return 0
   let s = 0
   if (typeof sw.workflowMode === 'string' && sw.workflowMode.trim()) s += 2
@@ -59,6 +60,8 @@ function scoreSeoWorkflow(articleStrategy: unknown): number {
   else if (tw >= 1400) s += 1
   const anchors = num(sw.minSpecificityAnchorsPerSection)
   if (anchors >= 3) s += 1
+  const minQuality = Math.max(num(sw.minQualityScore), num(gate?.minOverallScore))
+  if (minQuality >= 80) s += 1
   return Math.min(10, s)
 }
 

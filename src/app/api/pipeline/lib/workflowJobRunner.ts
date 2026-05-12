@@ -236,6 +236,13 @@ export async function dispatchWorkflowJob(
       return forwardPipelinePost(request, '/api/pipeline/brief-generate', {
         keywordId: numericIfDigits(kid) ?? kid,
         ...(typeof siteNum === 'number' ? { siteId: siteNum } : {}),
+        ...(typeof input.keywordStrategyMode === 'string' ? { keywordStrategyMode: input.keywordStrategyMode } : {}),
+        ...(typeof input.affiliateContentRole === 'string' ? { affiliateContentRole: input.affiliateContentRole } : {}),
+        ...(typeof input.affiliatePageLayout === 'string' ? { affiliatePageLayout: input.affiliatePageLayout } : {}),
+        ...(typeof input.recommendedPipelineSlug === 'string'
+          ? { recommendedPipelineSlug: input.recommendedPipelineSlug }
+          : {}),
+        ...(typeof input.operatorHint === 'string' ? { operatorHint: input.operatorHint } : {}),
         ...(typeof input.pipelineProfileId === 'number' && Number.isFinite(input.pipelineProfileId)
           ? { pipelineProfileId: Math.floor(input.pipelineProfileId) }
           : typeof input.pipelineProfileId === 'string' && /^\d+$/.test(String(input.pipelineProfileId).trim())
@@ -252,6 +259,9 @@ export async function dispatchWorkflowJob(
       return forwardPipelinePost(request, '/api/pipeline/draft-skeleton', {
         briefId: numericIfDigits(bid) ?? bid,
         ...(typeof siteNum === 'number' ? { siteId: siteNum } : {}),
+        ...(typeof input.keywordStrategyMode === 'string' ? { keywordStrategyMode: input.keywordStrategyMode } : {}),
+        ...(typeof input.affiliateContentRole === 'string' ? { affiliateContentRole: input.affiliateContentRole } : {}),
+        ...(typeof input.affiliatePageLayout === 'string' ? { affiliatePageLayout: input.affiliatePageLayout } : {}),
       })
     }
     case 'draft_section': {
