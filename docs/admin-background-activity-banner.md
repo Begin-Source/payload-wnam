@@ -158,6 +158,8 @@ Together 封面在 HTTP 成功后，服务端 [`generate-cover-sync`](<../src/ap
 
 `contentManagementActionSummary` 至少写入 `label`、`siteId`、`siteLabel` 与 `targetCollection`。右侧 **打开相关表格** 要按 `targetCollection` 跳转到对应 Payload 集合，并自动带站点过滤：大多数站点字段使用 `?where[site][equals]=<siteId>`；`offers` 是多站点关系字段，必须使用 `?where[sites][contains]=<siteId>`。若没有 `siteId`，才退回未过滤集合链接。
 
+长耗时内容管理动作必须在 `running` 期间持续更新 `detail`，并显示在顶栏第二行。尤其是 **Offer 拉品**：要写明正在处理哪个分类、请求是否已发送、等待 DataForSEO 回调、已写回 / 失败 / 剩余数量，避免员工误以为页面卡死。
+
 站点启动面板内的普通表格链接也遵守同一规则，员工从内容管理区进入集合时应默认只看到当前执行站点的数据，不再让他们手动筛选站点。
 
 ### 多条任务时的展示优先级（单条 Banner）

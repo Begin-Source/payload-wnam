@@ -91,6 +91,8 @@ type ContentActionTarget = NonNullable<
   NonNullable<BackgroundActivityJob['contentManagementActionSummary']>['targetCollection']
 >
 
+type ContentActionProgress = (detail: string) => void
+
 type LaunchStepId = 'domain' | 'design' | 'trust'
 type LaunchStepStatus = 'idle' | 'running' | 'done' | 'failed'
 
@@ -301,6 +303,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
     completeTrustPagesBundleJob,
     failTrustPagesBundleJob,
     startContentManagementActionJob,
+    updateContentManagementActionJobProgress,
     completeContentManagementActionJob,
     failContentManagementActionJob,
   } = useAdminBackgroundActivity()
@@ -451,7 +454,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
   const runContentActionWithBanner = async (
     label: string,
     targetCollection: ContentActionTarget,
-    fn: (site: SiteSummary) => Promise<string | void>,
+    fn: (site: SiteSummary, progress: ContentActionProgress) => Promise<string | void>,
   ): Promise<void> => {
     const site = await resolveOperationSite()
     const jobId = startContentManagementActionJob({
@@ -460,8 +463,12 @@ export function SiteLaunchPanelView(): React.ReactElement {
       siteLabel: site.name || site.slug,
       targetCollection,
     })
+    const progress: ContentActionProgress = (detail) => {
+      updateContentManagementActionJobProgress({ jobId, detail })
+    }
     try {
-      const detail = await fn(site)
+      progress('已接收操作，准备执行')
+      const detail = await fn(site, progress)
       const detailText = typeof detail === 'string' ? detail.trim() : ''
       completeContentManagementActionJob({
         jobId,
@@ -729,13 +736,25 @@ export function SiteLaunchPanelView(): React.ReactElement {
     return data.categories ?? []
   }
 
-  const fetchOffersForSite = async (siteOverride?: SiteSummary): Promise<string> => {
+  const fetchOffersForSite = async (
+    siteOverride?: SiteSummary,
+    progress?: ContentActionProgress,
+  ): Promise<string> => {
     const savedSite = siteOverride ?? (await resolveOperationSite())
+    progress?.('正在读取当前站点分类')
     const categories = await loadCategoriesForSite(savedSite.id)
     const slotted = categories.filter((cat) => cat.slotIndex != null && cat.slotIndex >= 1)
     const picked = (slotted.length > 0 ? slotted : categories).slice(0, 5)
     if (picked.length === 0) throw new Error('当前站点没有可拉品的分类')
     const categoryIds = picked.map((cat) => cat.id)
+    const categoryById = new Map(picked.map((cat) => [cat.id, cat]))
+    const categoryLabel = (cat: CategoryOption): string => cat.name || cat.slug || `分类 #${cat.id}`
+    const categoryLabelById = (categoryId: number): string => {
+      const cat = categoryById.get(categoryId)
+      return cat ? categoryLabel(cat) : `分类 #${categoryId}`
+    }
+    const categoryListPreview = picked.map(categoryLabel).join('、')
+    progress?.(`准备拉取 ${picked.length} 个分类：${categoryListPreview}`)
     const data = await postJson<{ batchId?: string; results?: unknown }>(
       '/api/admin/offers/merchant-slot-fetch',
       {
@@ -748,8 +767,12 @@ export function SiteLaunchPanelView(): React.ReactElement {
     const rows = Array.isArray(data.results) ? data.results : []
     const okCount = rows.filter((row) => (row as { ok?: unknown })?.ok === true).length
     const failCount = rows.length - okCount
+    progress?.(
+      `请求已发送：分类 ${picked.length} 个，派发成功 ${okCount}，失败 ${failCount}；等待 DataForSEO 返回`,
+    )
     if (!data.batchId) {
       const detail = `分类 ${picked.length} 个，派发成功 ${okCount}，失败 ${failCount}；未返回 batchId，无法等待 DataForSEO 回调`
+      progress?.(detail)
       addLog(`Offer 拉品已派发：${detail}`)
       return detail
     }
@@ -770,6 +793,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
       })
       const statusData = (await statusRes.json().catch(() => ({}))) as {
         categories?: Array<{
+          categoryId?: number
           batchMatches?: boolean
           merchantOfferFetchWorkflowStatus?: string | null
           logSnippet?: string
@@ -782,14 +806,38 @@ export function SiteLaunchPanelView(): React.ReactElement {
       const done = matched.filter((row) => row.merchantOfferFetchWorkflowStatus === 'done')
       const errored = matched.filter((row) => row.merchantOfferFetchWorkflowStatus === 'error')
       const pending = Math.max(0, picked.length - done.length - errored.length)
-      lastDetail = `分类 ${picked.length} 个，已写回 ${done.length}，失败 ${errored.length}，等待 ${pending}`
+      const doneIds = new Set(
+        done
+          .map((row) => row.categoryId)
+          .filter((id): id is number => typeof id === 'number' && Number.isFinite(id)),
+      )
+      const erroredIds = new Set(
+        errored
+          .map((row) => row.categoryId)
+          .filter((id): id is number => typeof id === 'number' && Number.isFinite(id)),
+      )
+      const pendingNames = picked
+        .filter((cat) => !doneIds.has(cat.id) && !erroredIds.has(cat.id))
+        .map(categoryLabel)
+      const currentPending = pendingNames[0]
+      lastDetail = `等待结果：已写回 ${done.length}/${picked.length}，失败 ${errored.length}，剩余 ${pending}${
+        currentPending ? `；当前等待：${currentPending}` : ''
+      }`
+      progress?.(lastDetail)
       if (errored.length > 0) {
         const sample = errored.find((row) => row.logSnippet?.trim())?.logSnippet?.trim()
-        throw new Error(sample ? `${lastDetail}；${sample}` : lastDetail)
+        const failedCategoryId = errored.find(
+          (row) => typeof row.categoryId === 'number',
+        )?.categoryId
+        const failedCategory =
+          typeof failedCategoryId === 'number' ? categoryLabelById(failedCategoryId) : '分类'
+        throw new Error(sample ? `${lastDetail}；${failedCategory}：${sample}` : lastDetail)
       }
       if (done.length >= picked.length) {
-        addLog(`Offer 拉品完成：${lastDetail}`)
-        return lastDetail
+        const detail = `完成：已写回 ${done.length}/${picked.length}，失败 ${errored.length}，剩余 0`
+        progress?.(detail)
+        addLog(`Offer 拉品完成：${detail}`)
+        return detail
       }
     }
 

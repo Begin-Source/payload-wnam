@@ -285,6 +285,7 @@ export type AdminBackgroundActivityApi = {
       BackgroundActivityJob['contentManagementActionSummary']
     >['targetCollection']
   }) => string
+  updateContentManagementActionJobProgress: (args: { jobId: string; detail?: string }) => void
   completeContentManagementActionJob: (args: {
     jobId: string
     detail?: string

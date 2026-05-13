@@ -1003,6 +1003,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         ? `（${summary?.siteLabel ?? first?.siteLabel}）`
         : ''
     const line = n === 1 ? `${label}执行中${siteHint}` : `内容管理操作执行中（${n} 批）`
+    const detail = summary?.detail?.trim()
     const target = summary?.targetCollection
 
     return (
@@ -1014,7 +1015,23 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
           ...badgeStyleForBar('running'),
         }}
       >
-        <span style={{ flex: '1 1 12rem' }}>{line}</span>
+        <span style={{ flex: '1 1 12rem', minWidth: 0 }}>
+          <span style={{ display: 'block' }}>{line}</span>
+          {detail ? (
+            <span
+              style={{
+                display: 'block',
+                fontSize: '11px',
+                marginTop: '4px',
+                opacity: 0.95,
+                whiteSpace: 'pre-line',
+                wordBreak: 'break-word',
+              }}
+            >
+              {detail}
+            </span>
+          ) : null}
+        </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           {returnSiteLaunchPanelBtn(summary?.siteId)}
           {target ? openContentActionTargetBtn(target, summary?.siteId) : null}

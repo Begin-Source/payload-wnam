@@ -1021,6 +1021,36 @@ export function AdminBackgroundActivityProvider({
     [refreshIfContentManagementTargetList],
   )
 
+  const updateContentManagementActionJobProgress = useCallback(
+    ({ jobId, detail }: { jobId: string; detail?: string }): void => {
+      const detailText = detail?.trim()
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'content-management-action-sync'
+            ? {
+                ...j,
+                contentManagementActionSummary: {
+                  label: j.contentManagementActionSummary?.label ?? '内容管理操作',
+                  ...(typeof j.contentManagementActionSummary?.siteId === 'number' &&
+                  Number.isFinite(j.contentManagementActionSummary.siteId)
+                    ? { siteId: j.contentManagementActionSummary.siteId }
+                    : {}),
+                  ...(j.contentManagementActionSummary?.siteLabel
+                    ? { siteLabel: j.contentManagementActionSummary.siteLabel }
+                    : {}),
+                  ...(detailText ? { detail: detailText } : {}),
+                  ...(j.contentManagementActionSummary?.targetCollection
+                    ? { targetCollection: j.contentManagementActionSummary.targetCollection }
+                    : {}),
+                },
+              }
+            : j,
+        ),
+      )
+    },
+    [],
+  )
+
   const completeContentManagementActionJob = useCallback(
     ({
       jobId,
@@ -1121,6 +1151,7 @@ export function AdminBackgroundActivityProvider({
       completeSiteRecordSaveJob,
       failSiteRecordSaveJob,
       startContentManagementActionJob,
+      updateContentManagementActionJobProgress,
       completeContentManagementActionJob,
       failContentManagementActionJob,
       dismissJob,
@@ -1162,6 +1193,7 @@ export function AdminBackgroundActivityProvider({
       completeSiteRecordSaveJob,
       failSiteRecordSaveJob,
       startContentManagementActionJob,
+      updateContentManagementActionJobProgress,
       completeContentManagementActionJob,
       failContentManagementActionJob,
       dismissJob,
