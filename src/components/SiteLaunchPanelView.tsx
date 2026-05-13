@@ -249,6 +249,14 @@ function siteOptionFromSummary(site: SiteSummary): SiteOption {
   }
 }
 
+function siteProductPrompt(site: Pick<SiteSummary, 'mainProduct' | 'name' | 'slug'>): string {
+  return (
+    (typeof site.mainProduct === 'string' ? site.mainProduct.trim() : '') ||
+    site.name.trim() ||
+    site.slug.trim()
+  )
+}
+
 async function postJson<T>(url: string, body: Record<string, unknown>): Promise<T> {
   const res = await fetch(url, {
     method: 'POST',
@@ -533,12 +541,13 @@ export function SiteLaunchPanelView(): React.ReactElement {
   const generateDomain = async (siteOverride?: SiteSummary): Promise<void> => {
     const savedSite = siteOverride ?? (await resolveOperationSite())
     const siteId = savedSite.id
+    const mainProduct = siteProductPrompt(savedSite)
     await postJson('/api/admin/sites/generate-domain', { siteId, prepare: true })
     addLog('域名流程已标记运行中')
     await postJson('/api/admin/sites/generate-domain', {
       siteId,
       force: false,
-      ...(savedSite?.mainProduct ? { mainProduct: savedSite.mainProduct } : {}),
+      ...(mainProduct ? { mainProduct } : {}),
     })
     addLog('域名建议生成完成')
     await loadSummaryValue(siteId).catch((): null => null)
@@ -547,8 +556,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
   const generateDesign = async (siteOverride?: SiteSummary): Promise<void> => {
     const savedSite = siteOverride ?? (await resolveOperationSite())
     const siteId = savedSite.id
-    const mainProduct = savedSite.mainProduct?.trim() || siteRecord.mainProduct.trim()
-    if (!mainProduct) throw new Error('请先填写主产品，设计生成需要主产品作为提示词')
+    const mainProduct = siteProductPrompt(savedSite) || siteRecord.mainProduct.trim()
     await postJson('/api/admin/site-blueprints/generate-amz-template-design', {
       siteId,
       mainProduct,
@@ -689,16 +697,17 @@ export function SiteLaunchPanelView(): React.ReactElement {
 
   const generateCategorySlots = async (siteOverride?: SiteSummary): Promise<string> => {
     const savedSite = siteOverride ?? (await resolveOperationSite())
+    const mainProduct = siteProductPrompt(savedSite)
     await postJson('/api/admin/categories/generate-slots', {
       siteId: savedSite.id,
-      ...(savedSite.mainProduct?.trim() ? { mainProduct: savedSite.mainProduct.trim() } : {}),
+      ...(mainProduct ? { mainProduct } : {}),
       prepare: true,
     })
     const data = await postJson<{ okCount?: number; failCount?: number }>(
       '/api/admin/categories/generate-slots',
       {
         siteId: savedSite.id,
-        ...(savedSite.mainProduct?.trim() ? { mainProduct: savedSite.mainProduct.trim() } : {}),
+        ...(mainProduct ? { mainProduct } : {}),
         afterPrepare: true,
       },
     )
