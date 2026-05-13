@@ -714,6 +714,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
       }
       runnerJobId?: string | number
       runnerReused?: boolean
+      runnerRestarted?: boolean
       scheduled?: boolean
       message?: string
     }>('/api/admin/site-launch/content-runner/start', {
@@ -736,7 +737,9 @@ export function SiteLaunchPanelView(): React.ReactElement {
         : ''
     const detail = `后台 Runner 已启动：入队 ${enqueue.enqueued ?? 0}，跳过 ${enqueue.skipped ?? 0}${terms}${errors}；Runner #${String(
       data.runnerJobId ?? '—',
-    )}${data.runnerReused ? '（复用运行中）' : ''}`
+    )}${data.runnerRestarted ? '（重新接管旧 Runner）' : data.runnerReused ? '（复用运行中）' : ''}${
+      data.message ? ` · ${data.message}` : ''
+    }`
     addLog(`内容生成：${detail}`)
     await loadSummaryValue(savedSite.id).catch((): null => null)
     return detail
