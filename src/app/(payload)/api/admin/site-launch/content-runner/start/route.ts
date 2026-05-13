@@ -13,6 +13,8 @@ import { getTenantScopeForStats, type TenantScope } from '@/utilities/tenantScop
 
 export const dynamic = 'force-dynamic'
 
+const RUNNER_STALE_MS = 5 * 60 * 1000
+
 function tenantIdFromRelation(tenant: number | { id: number } | null | undefined): number | null {
   if (tenant == null || tenant === undefined) return null
   if (typeof tenant === 'number') return tenant
@@ -62,6 +64,23 @@ function numberField(raw: unknown): number | undefined {
 
 function booleanField(raw: unknown): boolean | undefined {
   return typeof raw === 'boolean' ? raw : undefined
+}
+
+function timestampMs(raw: unknown): number | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null
+  const ms = Date.parse(raw)
+  return Number.isFinite(ms) ? ms : null
+}
+
+function runnerIsStale(doc: {
+  status?: string | null
+  updatedAt?: string | null
+  createdAt?: string | null
+}): boolean {
+  if (doc.status !== 'running') return false
+  const lastTouch = timestampMs(doc.updatedAt) ?? timestampMs(doc.createdAt)
+  if (lastTouch == null) return true
+  return Date.now() - lastTouch > RUNNER_STALE_MS
 }
 
 function presetDocFromRelation(raw: unknown): Record<string, unknown> | null {
@@ -224,15 +243,24 @@ export async function POST(request: Request): Promise<Response> {
     overrideAccess: false,
   })
 
-  const activeDoc = active.docs[0] as { id: string | number; status?: string | null } | undefined
+  const activeDoc = active.docs[0] as
+    | {
+        id: string | number
+        status?: string | null
+        updatedAt?: string | null
+        createdAt?: string | null
+      }
+    | undefined
   let runnerJobId: string | number
   let runnerReused = false
+  let runnerRestarted = false
   let scheduled = false
 
   if (activeDoc) {
     runnerJobId = activeDoc.id
     runnerReused = true
-    if (activeDoc.status !== 'running') {
+    runnerRestarted = runnerIsStale(activeDoc)
+    if (activeDoc.status !== 'running' || runnerRestarted) {
       scheduled = true
       void scheduleBackgroundRunner(
         runSiteContentRunner({
@@ -274,9 +302,12 @@ export async function POST(request: Request): Promise<Response> {
     enqueue: enqueueBody,
     runnerJobId,
     runnerReused,
+    runnerRestarted,
     scheduled,
     message: scheduled
-      ? '内容 Runner 已在后端启动；页面关闭后仍可在工作流任务表查看状态。'
+      ? runnerRestarted
+        ? '检测到旧内容 Runner 已长时间无进展，已在后端重新接管 pending 任务。'
+        : '内容 Runner 已在后端启动；页面关闭后仍可在工作流任务表查看状态。'
       : '已有内容 Runner 正在运行；新排产任务会由该 Runner 继续处理。',
   })
 }
