@@ -154,7 +154,7 @@ Together 封面在 HTTP 成功后，服务端 [`generate-cover-sync`](<../src/ap
 
 ### 「站点启动 · 内容管理通用操作」（`content-management-action-sync`）
 
-[`SiteLaunchPanelView`](../src/components/SiteLaunchPanelView.tsx) 内容管理区内各按钮（分类、Offer、关键词、内容生成、待处理任务、文章内链、发布与刷新）统一使用此 `kind`。它必须与关键词列表横幅同款：**进行中黄条、成功绿条、失败红条；终态不自动关闭，只能点右侧 `×` 关闭**。
+[`SiteLaunchPanelView`](../src/components/SiteLaunchPanelView.tsx) 内容管理区内各按钮（分类、Offer、Review 文章、关键词、内容生成、待处理任务、文章内链、发布与刷新）统一使用此 `kind`。它必须与关键词列表横幅同款：**进行中黄条、成功绿条、失败红条；终态不自动关闭，只能点右侧 `×` 关闭**。
 
 `contentManagementActionSummary` 至少写入 `label`、`siteId`、`siteLabel` 与 `targetCollection`。右侧 **打开相关表格** 要按 `targetCollection` 跳转到对应 Payload 集合，并自动带站点过滤：大多数站点字段使用 `?where[site][equals]=<siteId>`；`offers` 是多站点关系字段，必须使用 `?where[sites][contains]=<siteId>`。若没有 `siteId`，才退回未过滤集合链接。
 

@@ -87,6 +87,13 @@ type CategoryOption = {
   kind?: 'article' | 'guide' | 'review' | null
 }
 
+type OfferReviewOption = {
+  id: number
+  title: string
+  asin?: string | null
+  reviewStatus?: string | null
+}
+
 type ContentActionTarget = NonNullable<
   NonNullable<BackgroundActivityJob['contentManagementActionSummary']>['targetCollection']
 >
@@ -844,6 +851,82 @@ export function SiteLaunchPanelView(): React.ReactElement {
     throw new Error(`${lastDetail}；等待 DataForSEO 回调超时，请确认 postback URL 外网可访问`)
   }
 
+  const loadOfferReviewOptionsForSite = async (siteId: number): Promise<OfferReviewOption[]> => {
+    const res = await fetch(
+      `/api/admin/offers/review-quick-action-options?siteId=${encodeURIComponent(String(siteId))}`,
+      { credentials: 'include' },
+    )
+    const data = (await res.json().catch(() => ({}))) as {
+      offers?: OfferReviewOption[]
+      error?: string
+    }
+    if (!res.ok) throw new Error(data.error ?? '加载 Offer 失败')
+    return Array.isArray(data.offers) ? data.offers : []
+  }
+
+  const generateOfferReviewsForSite = async (
+    siteOverride?: SiteSummary,
+    progress?: ContentActionProgress,
+  ): Promise<string> => {
+    const savedSite = siteOverride ?? (await resolveOperationSite())
+    progress?.('正在读取当前站点 Offer')
+    const offers = await loadOfferReviewOptionsForSite(savedSite.id)
+    const pendingOffers = offers.filter((offer) => offer.reviewStatus !== 'done')
+    const picked = (pendingOffers.length > 0 ? pendingOffers : offers).slice(0, 40)
+    if (picked.length === 0) throw new Error('当前站点没有可生成 Review 的 Offer')
+
+    const batchSize = 5
+    const batches: OfferReviewOption[][] = []
+    for (let i = 0; i < picked.length; i += batchSize) {
+      batches.push(picked.slice(i, i + batchSize))
+    }
+
+    let okTotal = 0
+    let failTotal = 0
+    let articleTotal = 0
+    progress?.(
+      `准备生成 Review：可用 Offer ${offers.length} 个，本次执行 ${picked.length} 个，分 ${batches.length} 批`,
+    )
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i] ?? []
+      const batchNo = i + 1
+      const names = batch
+        .map((offer) => offer.title || offer.asin || `Offer #${offer.id}`)
+        .join('、')
+      progress?.(
+        `第 ${batchNo}/${batches.length} 批请求已发送：${names}；累计成功 ${okTotal}，失败 ${failTotal}，剩余 ${
+          picked.length - okTotal - failTotal
+        }`,
+      )
+      const data = await postJson<{
+        okCount?: number
+        total?: number
+        results?: Array<{ offerId: number; ok: boolean; error?: string; articleId?: number }>
+      }>('/api/admin/offers/generate-review-mdx', {
+        offerIds: batch.map((offer) => offer.id),
+        createArticle: true,
+        locale: 'en',
+      })
+      const results = Array.isArray(data.results) ? data.results : []
+      const batchOk = data.okCount ?? results.filter((row) => row.ok).length
+      const batchTotal = data.total ?? results.length
+      const batchFail = Math.max(0, batchTotal - batchOk)
+      okTotal += batchOk
+      failTotal += batchFail
+      articleTotal += results.filter((row) => row.ok && row.articleId != null).length
+      progress?.(
+        `第 ${batchNo}/${batches.length} 批完成：本批成功 ${batchOk}，失败 ${batchFail}；累计成功 ${okTotal}，失败 ${failTotal}，剩余 ${
+          picked.length - okTotal - failTotal
+        }`,
+      )
+    }
+
+    const detail = `Review 生成完成：执行 ${picked.length}，成功 ${okTotal}，失败 ${failTotal}，写入文章 ${articleTotal}`
+    addLog(detail)
+    return detail
+  }
+
   const runInternalLinkTasks = async (siteOverride?: SiteSummary): Promise<string> => {
     const detail = await runSiteJobs(null, siteOverride)
     return `内链相关 pending 任务已纳入执行；${detail}`
@@ -1253,7 +1336,8 @@ export function SiteLaunchPanelView(): React.ReactElement {
         <div style={cardStyle}>
           <h2 style={{ fontSize: '1.05rem', marginTop: 0 }}>内容管理</h2>
           <p style={{ fontSize: '0.8125rem', opacity: 0.82, lineHeight: 1.55 }}>
-            按内容生产顺序操作：先生成分类，再按分类拉商品与关键词，然后生成文章、补内链并发布。
+            按内容生产顺序操作：先生成分类，再按分类拉商品、生成 Review
+            与拉关键词，然后生成文章、补内链并发布。
           </p>
           {operationSiteSelect('内容管理站点')}
           <div
@@ -1322,7 +1406,45 @@ export function SiteLaunchPanelView(): React.ReactElement {
             </div>
 
             <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>3. 关键词</h3>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>3. Review 文章</h3>
+              <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
+                根据商品素材生成 Review 文章，承接 Amazon 商品测评与 money page 内链。
+              </p>
+              <div style={actionRowStyle}>
+                <Button
+                  buttonStyle="secondary"
+                  disabled={busy != null}
+                  onClick={() =>
+                    void runAction('offer-review', async () => {
+                      await runContentActionWithBanner(
+                        '生成 Review',
+                        'articles',
+                        generateOfferReviewsForSite,
+                      )
+                    })
+                  }
+                >
+                  生成 Review
+                </Button>
+                <Link
+                  href={siteScopedCollectionHref('articles')}
+                  prefetch={false}
+                  style={contentLinkStyle}
+                >
+                  查看文章
+                </Link>
+                <Link
+                  href={siteScopedCollectionHref('offers')}
+                  prefetch={false}
+                  style={contentLinkStyle}
+                >
+                  打开 Offer
+                </Link>
+              </div>
+            </div>
+
+            <div style={metricStyle}>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>4. 关键词</h3>
               <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
                 根据分类名称拉词，筛选 eligible / opportunity，确定可排产关键词。
               </p>
@@ -1349,7 +1471,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
             </div>
 
             <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>4. 内容生成</h3>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>5. 内容生成</h3>
               <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
                 按推荐关键词策略创建 Brief，并立即运行本站待处理内容工作流。
               </p>
@@ -1390,7 +1512,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
             </div>
 
             <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>5. 待处理任务</h3>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>6. 待处理任务</h3>
               <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
                 生成内容中断或失败后，用这里继续执行本站 pending 工作流任务。
               </p>
@@ -1456,7 +1578,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
             </div>
 
             <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>6. 文章内链</h3>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>7. 文章内链</h3>
               <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
                 查看 PageLinkGraph、内链注入 / 强化任务和 money page 内链健康。
               </p>
@@ -1497,7 +1619,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
             </div>
 
             <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>7. 发布与刷新</h3>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>8. 发布与刷新</h3>
               <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
                 按质量分门槛加入发布队列，或执行一次本站排期发布。
               </p>

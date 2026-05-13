@@ -10,11 +10,10 @@ type OfferRow = {
   id: number
   title: string
   asin: string | null
+  reviewStatus?: string | null
 }
 
-function tenantIdFromRelation(
-  tenant: number | { id: number } | null | undefined,
-): number | null {
+function tenantIdFromRelation(tenant: number | { id: number } | null | undefined): number | null {
   if (tenant == null || tenant === undefined) return null
   if (typeof tenant === 'number') return tenant
   if (typeof tenant === 'object' && typeof tenant.id === 'number') return tenant.id
@@ -81,6 +80,7 @@ export async function GET(request: Request): Promise<Response> {
       title: true,
       slug: true,
       amazon: true,
+      reviewDraft: true,
     },
     ...(where ? { where } : {}),
   })
@@ -88,11 +88,14 @@ export async function GET(request: Request): Promise<Response> {
   const offers: OfferRow[] = result.docs.map((doc) => {
     const row = doc as typeof doc & {
       amazon?: { asin?: string | null } | null
+      reviewDraft?: { workflowStatus?: string | null } | null
     }
     return {
       id: doc.id,
       title: typeof row.title === 'string' ? row.title : String(row.title ?? ''),
       asin: row.amazon?.asin != null ? String(row.amazon.asin) : null,
+      reviewStatus:
+        typeof row.reviewDraft?.workflowStatus === 'string' ? row.reviewDraft.workflowStatus : null,
     }
   })
 
