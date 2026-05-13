@@ -306,7 +306,14 @@ export async function POST(request: Request): Promise<Response> {
     } catch {
       // follow-up enqueue is best-effort
     }
-    if (doc.jobType === 'brief_generate') {
+    const jobInput =
+      doc.input && typeof doc.input === 'object'
+        ? (doc.input as Record<string, unknown>)
+        : {}
+    const shouldChainBriefToArticle =
+      jobInput.chainAfterBrief !== false && jobInput.outlineOnly !== true
+
+    if (doc.jobType === 'brief_generate' && shouldChainBriefToArticle) {
       const bid = outputDoc.id
       if (bid != null) {
         const s = doc.site

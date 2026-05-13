@@ -677,19 +677,53 @@ export function SiteLaunchPanelView(): React.ReactElement {
     return detail
   }
 
-  const enqueueBriefs = async (siteOverride?: SiteSummary): Promise<string> => {
+  const generateOutlines = async (
+    siteOverride?: SiteSummary,
+    progress?: ContentActionProgress,
+  ): Promise<string> => {
     const savedSite = siteOverride ?? (await resolveOperationSite())
     const siteId = savedSite.id
+    progress?.('按站点表格里的关键词预设和流水线排产大纲任务')
     const data = await postJson<{
+      jobType?: string
       enqueued?: number
       skipped?: number
       pickedTerms?: string[]
+      jobIds?: Array<string | number>
       errorsSample?: string[]
     }>('/api/admin/articles/batch-enqueue', {
       siteId,
+      useSitePreset: true,
       mode: batchMode,
       limit: numberOr(briefLimit, 10),
+      chainAfterBrief: false,
     })
+    if (data.jobType && data.jobType !== 'brief_generate') {
+      throw new Error('当前关键词预设不是大纲生成模式，请在站点表格选择 Brief / 文章类关键词预设')
+    }
+    const jobIds = Array.isArray(data.jobIds) ? data.jobIds : []
+    let runDetail = ''
+    if (jobIds.length > 0) {
+      progress?.(`大纲任务入队 ${jobIds.length} 个，开始生成 Brief`)
+      const run = await postJson<{
+        ok?: boolean
+        totalRuns?: number
+        stoppedReason?: string
+        failureSummary?: string
+      }>('/api/admin/pipeline/run-next', {
+        jobIds,
+        maxRuns: Math.min(20, Math.max(1, jobIds.length)),
+        budgetMs: 55000,
+        stopOnFailure: true,
+      })
+      const stopped = describePipelineStoppedReason(run.stoppedReason)
+      if (run.ok === false && run.stoppedReason === 'failure') {
+        throw new Error(run.failureSummary || '大纲生成失败')
+      }
+      runDetail = `，本轮执行 ${run.totalRuns ?? 0}，状态 ${stopped}`
+    } else {
+      progress?.('没有新的大纲任务需要执行')
+    }
     const terms =
       Array.isArray(data.pickedTerms) && data.pickedTerms.length > 0
         ? ` · ${data.pickedTerms.slice(0, 3).join(', ')}`
@@ -698,15 +732,33 @@ export function SiteLaunchPanelView(): React.ReactElement {
       Array.isArray(data.errorsSample) && data.errorsSample.length > 0
         ? ` · 提示：${data.errorsSample[0]}`
         : ''
-    const detail = `入队 ${data.enqueued ?? 0}，跳过 ${data.skipped ?? 0}${terms}${errors}`
-    addLog(`Brief 排产完成：${detail}`)
+    const detail = `大纲任务入队 ${data.enqueued ?? 0}，跳过 ${data.skipped ?? 0}${runDetail}${terms}${errors}`
+    addLog(`内容大纲生成：${detail}`)
+    await loadSummaryValue(savedSite.id).catch((): null => null)
     return detail
   }
 
-  const generateContent = async (siteOverride?: SiteSummary): Promise<string> => {
+  const generateArticleDrafts = async (
+    siteOverride?: SiteSummary,
+    progress?: ContentActionProgress,
+  ): Promise<string> => {
     const savedSite = siteOverride ?? (await resolveOperationSite())
+    progress?.('从已有大纲排产文章草稿任务')
+    const draft = await postJson<{
+      queriedCount?: number
+      results?: Array<{ created?: boolean; jobId?: number | string; reason?: string }>
+    }>('/api/admin/content-briefs/enqueue-draft-skeleton', {
+      siteId: savedSite.id,
+      limit: numberOr(briefLimit, 10),
+    })
+    const results = Array.isArray(draft.results) ? draft.results : []
+    const created = results.filter((r) => r.created).length
+    const skipped = results.length - created
+    const firstReason = results.find((r) => !r.created && r.reason)?.reason
+    progress?.(`文章草稿任务入队 ${created}，跳过 ${skipped}，交给后台 Runner 继续生成正文`)
     const data = await postJson<{
       enqueue?: {
+        skippedEnqueue?: boolean
         enqueued?: number
         skipped?: number
         pickedTerms?: string[]
@@ -719,28 +771,21 @@ export function SiteLaunchPanelView(): React.ReactElement {
       message?: string
     }>('/api/admin/site-launch/content-runner/start', {
       siteId: savedSite.id,
-      mode: batchMode,
-      limit: numberOr(briefLimit, 10),
+      enqueueBriefs: false,
       batchMaxRuns: 20,
       batchBudgetMs: 55000,
       maxBatches: 80,
       stopOnFailure: true,
     })
-    const enqueue = data.enqueue ?? {}
-    const terms =
-      Array.isArray(enqueue.pickedTerms) && enqueue.pickedTerms.length > 0
-        ? ` · ${enqueue.pickedTerms.slice(0, 3).join(', ')}`
-        : ''
-    const errors =
-      Array.isArray(enqueue.errorsSample) && enqueue.errorsSample.length > 0
-        ? ` · 提示：${enqueue.errorsSample[0]}`
-        : ''
-    const detail = `后台 Runner 已启动：入队 ${enqueue.enqueued ?? 0}，跳过 ${enqueue.skipped ?? 0}${terms}${errors}；Runner #${String(
+    const reason = firstReason ? ` · 提示：${firstReason}` : ''
+    const detail = `文章草稿任务入队 ${created}，跳过 ${skipped}，查询大纲 ${
+      draft.queriedCount ?? results.length
+    }${reason}；后台 Runner #${String(
       data.runnerJobId ?? '—',
     )}${data.runnerRestarted ? '（重新接管旧 Runner）' : data.runnerReused ? '（复用运行中）' : ''}${
       data.message ? ` · ${data.message}` : ''
     }`
-    addLog(`内容生成：${detail}`)
+    addLog(`文章草稿生成：${detail}`)
     await loadSummaryValue(savedSite.id).catch((): null => null)
     return detail
   }
@@ -1548,35 +1593,24 @@ export function SiteLaunchPanelView(): React.ReactElement {
             </div>
 
             <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>5. 内容生成</h3>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>5. 内容大纲</h3>
               <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
-                按推荐关键词策略创建 Brief，并交给后端 Runner 持续生成文章。
+                按站点表格里的关键词预设和流水线创建 Brief，只生成大纲，不接文章草稿。
               </p>
               <div style={actionRowStyle}>
                 <Button
                   disabled={busy != null}
                   onClick={() =>
-                    void runAction('generate-content', async () => {
-                      await runContentActionWithBanner('生成内容', 'workflow-jobs', generateContent)
-                    })
-                  }
-                >
-                  后台生成内容
-                </Button>
-                <Button
-                  buttonStyle="secondary"
-                  disabled={busy != null}
-                  onClick={() =>
-                    void runAction('briefs', async () => {
+                    void runAction('generate-outlines', async () => {
                       await runContentActionWithBanner(
-                        '仅排产 Brief',
+                        '生成内容大纲',
                         'content-briefs',
-                        enqueueBriefs,
+                        generateOutlines,
                       )
                     })
                   }
                 >
-                  仅排产 Brief
+                  生成内容大纲
                 </Button>
                 <Link
                   href={siteScopedCollectionHref('content-briefs')}
@@ -1589,7 +1623,44 @@ export function SiteLaunchPanelView(): React.ReactElement {
             </div>
 
             <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>6. 待处理任务</h3>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>6. 文章草稿</h3>
+              <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
+                从已有 Brief 排产草稿，并交给后端 Runner 继续生成正文、收尾任务。
+              </p>
+              <div style={actionRowStyle}>
+                <Button
+                  disabled={busy != null}
+                  onClick={() =>
+                    void runAction('generate-article-drafts', async () => {
+                      await runContentActionWithBanner(
+                        '生成文章草稿',
+                        'workflow-jobs',
+                        generateArticleDrafts,
+                      )
+                    })
+                  }
+                >
+                  生成文章草稿
+                </Button>
+                <Link
+                  href={siteScopedCollectionHref('articles')}
+                  prefetch={false}
+                  style={contentLinkStyle}
+                >
+                  查看文章
+                </Link>
+                <Link
+                  href={siteScopedCollectionHref('workflow-jobs')}
+                  prefetch={false}
+                  style={contentLinkStyle}
+                >
+                  查看工作流
+                </Link>
+              </div>
+            </div>
+
+            <div style={metricStyle}>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>7. 待处理任务</h3>
               <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
                 生成内容中断或失败后，用这里继续执行本站 pending 工作流任务。
               </p>
@@ -1655,7 +1726,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
             </div>
 
             <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>7. 文章内链</h3>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>8. 文章内链</h3>
               <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
                 查看 PageLinkGraph、内链注入 / 强化任务和 money page 内链健康。
               </p>
@@ -1696,7 +1767,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
             </div>
 
             <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>8. 发布与刷新</h3>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>9. 发布与刷新</h3>
               <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
                 按质量分门槛加入发布队列，或执行一次本站排期发布。
               </p>

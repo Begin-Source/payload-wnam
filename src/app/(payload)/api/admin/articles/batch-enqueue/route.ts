@@ -33,6 +33,121 @@ function siteAccessible(scope: TenantScope, siteTenantId: number | null): boolea
   return scope.tenantIds.includes(siteTenantId)
 }
 
+function relationIdFromUnknown(raw: unknown): number | null {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return Math.floor(raw)
+  if (typeof raw === 'string' && /^\d+$/.test(raw.trim())) return Number(raw.trim())
+  if (raw && typeof raw === 'object' && 'id' in raw) {
+    return relationIdFromUnknown((raw as { id?: unknown }).id)
+  }
+  return null
+}
+
+function csvToList(raw: unknown): string[] | undefined {
+  if (Array.isArray(raw) && raw.every((x) => typeof x === 'string')) {
+    const cleaned = raw.map((x) => x.trim()).filter(Boolean)
+    return cleaned.length > 0 ? cleaned : undefined
+  }
+  if (typeof raw !== 'string') return undefined
+  const cleaned = raw
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean)
+  return cleaned.length > 0 ? cleaned : undefined
+}
+
+function numberField(raw: unknown): number | undefined {
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : Number.NaN
+  return Number.isFinite(n) ? n : undefined
+}
+
+function booleanField(raw: unknown): boolean | undefined {
+  return typeof raw === 'boolean' ? raw : undefined
+}
+
+function presetDocFromRelation(raw: unknown): Record<string, unknown> | null {
+  return raw && typeof raw === 'object' && 'batchMode' in raw
+    ? (raw as Record<string, unknown>)
+    : null
+}
+
+function bodyWithSitePreset(
+  site: Record<string, unknown>,
+  requestBody: Record<string, unknown>,
+  siteId: number,
+): Record<string, unknown> {
+  if (requestBody.useSitePreset !== true) return requestBody
+
+  const preset = presetDocFromRelation(site.keywordBatchPreset)
+  const presetMode =
+    typeof preset?.batchMode === 'string' && preset.batchMode.trim()
+      ? preset.batchMode.trim()
+      : undefined
+  const mode = presetMode ?? (typeof requestBody.mode === 'string' ? requestBody.mode : 'default')
+  const requestedLimit =
+    typeof requestBody.limit === 'number'
+      ? requestBody.limit
+      : typeof requestBody.limit === 'string'
+        ? Number(requestBody.limit)
+        : undefined
+
+  const next: Record<string, unknown> = {
+    ...requestBody,
+    siteId,
+    mode,
+    pipelineProfileId: relationIdFromUnknown(site.pipelineProfile) ?? requestBody.pipelineProfileId,
+  }
+
+  const presetLimit = numberField(preset?.defaultBatchLimit) ?? numberField(preset?.maxPick)
+  if (!Number.isFinite(requestedLimit) && presetLimit !== undefined) {
+    next.limit = presetLimit
+  }
+
+  if (preset && mode === 'quick_wins') {
+    const filter: Record<string, unknown> = {}
+    const eligibleOnly = booleanField(preset.eligibleOnly)
+    const intentWhitelist = csvToList(preset.intentWhitelist)
+    const minVolume = numberField(preset.minVolume)
+    const maxVolume = numberField(preset.maxVolume)
+    const maxKd = numberField(preset.maxKd)
+    const maxPick = numberField(preset.maxPick)
+    if (eligibleOnly !== undefined) filter.eligibleOnly = eligibleOnly
+    if (intentWhitelist) filter.intentWhitelist = intentWhitelist
+    if (minVolume !== undefined) filter.minVolume = minVolume
+    if (maxVolume !== undefined) filter.maxVolume = maxVolume
+    if (maxKd !== undefined) filter.maxKd = maxKd
+    if (maxPick !== undefined) filter.maxPick = maxPick
+    if (Object.keys(filter).length > 0) next.filter = filter
+    const clusterBeforeEnqueue = booleanField(preset.clusterBeforeEnqueue)
+    const clusterMinOverlap = numberField(preset.clusterMinOverlap)
+    if (clusterBeforeEnqueue !== undefined) next.clusterBeforeEnqueue = clusterBeforeEnqueue
+    if (clusterMinOverlap !== undefined) next.clusterMinOverlap = clusterMinOverlap
+  }
+
+  if (preset && mode === 'geo_friendly') {
+    const geoIntentWhitelist = csvToList(preset.geoIntentWhitelist)
+    const geoQuestionOnly = booleanField(preset.geoQuestionOnly)
+    if (geoIntentWhitelist) next.geoIntentWhitelist = geoIntentWhitelist
+    if (geoQuestionOnly !== undefined) next.geoQuestionOnly = geoQuestionOnly
+  }
+
+  if (preset && mode === 'pillar_sprint') {
+    const pillarId = numberField(preset.pillarKeywordId)
+    if (pillarId !== undefined) next.pillarId = Math.floor(pillarId)
+  }
+
+  if (preset && mode === 'seasonal') {
+    const minSeasonalScore = numberField(preset.minSeasonalScore)
+    if (minSeasonalScore !== undefined) next.minSeasonalScore = minSeasonalScore
+  }
+
+  if (preset && mode === 'refresh_decay') {
+    const decayThreshold = numberField(preset.decayThreshold)
+    if (decayThreshold !== undefined) next.decayThreshold = decayThreshold
+  }
+
+  return next
+}
+
 async function fetchDailyPostCap(
   payload: Awaited<ReturnType<typeof getPayload>>,
   siteId: number,
@@ -93,6 +208,7 @@ export type BatchEnqueueResult = {
   errorsSample: string[]
   pickedTerms?: string[]
   pickedIds?: number[]
+  jobIds?: Array<string | number>
   pickedArticleIds?: number[]
   appliedFilter?: QuickWinFilter | Record<string, unknown>
   clusters?: KeywordClusterOutputCluster[]
@@ -111,7 +227,7 @@ export type BatchEnqueueResult = {
 
 /**
  * POST { siteId, limit?, mode?, dryRun?, filter?, clusterBeforeEnqueue?, clusterMinOverlap?, refreshCluster?,
- *        pillarId?, minSeasonalScore?, decayThreshold?, geoIntentWhitelist?, geoQuestionOnly? }
+ *        pillarId?, minSeasonalScore?, decayThreshold?, geoIntentWhitelist?, geoQuestionOnly?, chainAfterBrief? }
  * Tenant-scoped; enqueues `brief_generate` or `content_refresh` per mode.
  */
 export async function POST(request: Request): Promise<Response> {
@@ -136,13 +252,10 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'siteId is required' }, { status: 400 })
   }
 
-  const mode = parseKeywordBatchMode(typeof body.mode === 'string' ? body.mode : 'default')
-  const affiliateFlow = affiliateSeoFlowForMode(mode)
   const dryRun = body.dryRun === true
-  const filterMerged = mergeQuickWinFilter(body.filter as Partial<Record<string, unknown>> | undefined)
 
   const scope = getTenantScopeForStats(user)
-  const site = await payload.findByID({ collection: 'sites', id: siteId, depth: 0 })
+  const site = await payload.findByID({ collection: 'sites', id: siteId, depth: 1 })
   if (!site) {
     return Response.json({ error: 'Site not found' }, { status: 404 })
   }
@@ -155,12 +268,20 @@ export async function POST(request: Request): Promise<Response> {
 
   const dpc = await fetchDailyPostCap(payload, siteId)
   const defaultLimit = defaultBatchLimitFromDailyCap(dpc)
+  const effectiveBody = bodyWithSitePreset(site as unknown as Record<string, unknown>, body, siteId)
+  const mode = parseKeywordBatchMode(
+    typeof effectiveBody.mode === 'string' ? effectiveBody.mode : 'default',
+  )
+  const affiliateFlow = affiliateSeoFlowForMode(mode)
+  const filterMerged = mergeQuickWinFilter(
+    effectiveBody.filter as Partial<Record<string, unknown>> | undefined,
+  )
 
   const loaded = await loadKeywordBatchCandidates(
     payload,
     siteId,
     mode,
-    body,
+    effectiveBody,
     defaultLimit,
   )
 
@@ -201,10 +322,10 @@ export async function POST(request: Request): Promise<Response> {
   const limitQuickDefault =
     loaded.limitQuickDefault ?? quickWinDefaultLimit(filterMerged, defaultLimit)
   const limitRaw =
-    typeof body.limit === 'number'
-      ? body.limit
-      : typeof body.limit === 'string'
-        ? Number(body.limit)
+    typeof effectiveBody.limit === 'number'
+      ? effectiveBody.limit
+      : typeof effectiveBody.limit === 'string'
+        ? Number(effectiveBody.limit)
         : Number.NaN
   const fallbackLimit = mode === 'quick_wins' ? limitQuickDefault : defaultLimit
   const parsedLimit =
@@ -215,13 +336,13 @@ export async function POST(request: Request): Promise<Response> {
   const limit = Math.min(Math.max(1, parsedLimit), 100)
 
   const clusterBeforeEnqueue =
-    mode === 'quick_wins' && body.clusterBeforeEnqueue !== false
+    mode === 'quick_wins' && effectiveBody.clusterBeforeEnqueue !== false
 
   const clusterOverlapRaw =
-    typeof body.clusterMinOverlap === 'number'
-      ? body.clusterMinOverlap
-      : typeof body.clusterMinOverlap === 'string'
-        ? Number(body.clusterMinOverlap)
+    typeof effectiveBody.clusterMinOverlap === 'number'
+      ? effectiveBody.clusterMinOverlap
+      : typeof effectiveBody.clusterMinOverlap === 'string'
+        ? Number(effectiveBody.clusterMinOverlap)
         : Number.NaN
   const clusterMinOverlap = Number.isFinite(clusterOverlapRaw)
     ? Math.min(6, Math.max(2, Math.floor(clusterOverlapRaw)))
@@ -274,7 +395,7 @@ export async function POST(request: Request): Promise<Response> {
       siteId,
       keywordIds: pool.map((k) => k.id),
       minOverlap: clusterMinOverlap,
-      refresh: body.refreshCluster === true,
+      refresh: effectiveBody.refreshCluster === true,
     })
     if ('error' in cr) {
       poolIds = null
@@ -292,6 +413,7 @@ export async function POST(request: Request): Promise<Response> {
   let skipped = 0
   const pickedTerms: string[] = []
   const pickedIds: number[] = []
+  const jobIds: Array<string | number> = []
   const pickedArticleIds: number[] = []
   const pickedRefreshMeta: Array<{
     keywordId: number
@@ -399,14 +521,19 @@ export async function POST(request: Request): Promise<Response> {
             operatorHint: affiliateFlow.operatorHint,
             ...(loaded.briefQuickWins ? { quickWins: true } : {}),
             ...(row.seasonalScore != null ? { seasonalScore: row.seasonalScore } : {}),
-            ...(typeof body.pipelineProfileId === 'number' && Number.isFinite(body.pipelineProfileId)
-              ? { pipelineProfileId: Math.floor(body.pipelineProfileId) }
-              : typeof body.pipelineProfileId === 'string' && /^\d+$/.test(String(body.pipelineProfileId).trim())
-                ? { pipelineProfileId: Number(String(body.pipelineProfileId).trim()) }
+            ...(effectiveBody.chainAfterBrief === false
+              ? { chainAfterBrief: false, outlineOnly: true }
+              : {}),
+            ...(typeof effectiveBody.pipelineProfileId === 'number' &&
+            Number.isFinite(effectiveBody.pipelineProfileId)
+              ? { pipelineProfileId: Math.floor(effectiveBody.pipelineProfileId) }
+              : typeof effectiveBody.pipelineProfileId === 'string' &&
+                  /^\d+$/.test(String(effectiveBody.pipelineProfileId).trim())
+                ? { pipelineProfileId: Number(String(effectiveBody.pipelineProfileId).trim()) }
                 : {}),
           }
 
-    await payload.create({
+    const createdJob = await payload.create({
       collection: 'workflow-jobs',
       data: {
         label: labelBase,
@@ -421,6 +548,10 @@ export async function POST(request: Request): Promise<Response> {
         ...(siteTenantId != null ? { tenant: siteTenantId } : {}),
       },
     })
+    const createdJobId = (createdJob as { id?: unknown }).id
+    if (typeof createdJobId === 'string' || typeof createdJobId === 'number') {
+      jobIds.push(createdJobId)
+    }
     enqueued += 1
   }
 
@@ -437,6 +568,7 @@ export async function POST(request: Request): Promise<Response> {
     errorsSample,
     pickedTerms,
     pickedIds,
+    ...(jobIds.length > 0 ? { jobIds } : {}),
     ...(pickedArticleIds.length > 0 ? { pickedArticleIds } : {}),
     ...(pickedRefreshMeta.length > 0 ? { pickedRefreshMeta } : {}),
     ...(pickedSeasonalMeta.length > 0 ? { pickedSeasonalMeta } : {}),

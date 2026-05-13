@@ -202,21 +202,32 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: '所选站点未关联租户，无法启动内容 Runner' }, { status: 400 })
   }
 
-  const enqueueHeaders = new Headers(request.headers)
-  enqueueHeaders.set('content-type', 'application/json')
-  enqueueHeaders.delete('content-length')
-  const enqueueRes = await enqueueArticleBatch(
-    new Request(new URL('/api/admin/articles/batch-enqueue', request.url), {
-      method: 'POST',
-      headers: enqueueHeaders,
-      body: JSON.stringify(
-        enqueueBodyFromSitePreset(site as Record<string, unknown>, { ...body, siteId }),
-      ),
-    }),
-  )
-  const enqueueBody = (await enqueueRes.json().catch(() => ({}))) as Record<string, unknown>
-  if (!enqueueRes.ok || enqueueBody.ok === false) {
-    return Response.json(enqueueBody, { status: enqueueRes.status })
+  let enqueueBody: Record<string, unknown> = {
+    ok: true,
+    skippedEnqueue: true,
+    enqueued: 0,
+    skipped: 0,
+    pickedTerms: [],
+    errorsSample: [],
+  }
+
+  if (body.enqueueBriefs !== false) {
+    const enqueueHeaders = new Headers(request.headers)
+    enqueueHeaders.set('content-type', 'application/json')
+    enqueueHeaders.delete('content-length')
+    const enqueueRes = await enqueueArticleBatch(
+      new Request(new URL('/api/admin/articles/batch-enqueue', request.url), {
+        method: 'POST',
+        headers: enqueueHeaders,
+        body: JSON.stringify(
+          enqueueBodyFromSitePreset(site as unknown as Record<string, unknown>, { ...body, siteId }),
+        ),
+      }),
+    )
+    enqueueBody = (await enqueueRes.json().catch(() => ({}))) as Record<string, unknown>
+    if (!enqueueRes.ok || enqueueBody.ok === false) {
+      return Response.json(enqueueBody, { status: enqueueRes.status })
+    }
   }
 
   const runnerInput: SiteContentRunnerInput = {
