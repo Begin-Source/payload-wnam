@@ -1,106 +1,107 @@
-import * as migration_20250929_111647 from './20250929_111647';
-import * as migration_20260420_084024_mcp_plugin from './20260420_084024_mcp_plugin';
-import * as migration_20260420_093625 from './20260420_093625';
-import * as migration_20260420_093949 from './20260420_093949';
-import * as migration_20260420_103719 from './20260420_103719';
-import * as migration_20260420_151119 from './20260420_151119';
-import * as migration_20260420_213352_phase_c_affiliate_globals from './20260420_213352_phase_c_affiliate_globals';
-import * as migration_20260420_214651_phase_d_content_automation from './20260420_214651_phase_d_content_automation';
-import * as migration_20260420_224925_product_ia_extensions from './20260420_224925_product_ia_extensions';
-import * as migration_20260421_120000_articles_pages_split from './20260421_120000_articles_pages_split';
-import * as migration_20260421_150000_announcements_collection from './20260421_150000_announcements_collection';
-import * as migration_20260421_210000_site_scope_categories_media_blueprints from './20260421_210000_site_scope_categories_media_blueprints';
-import * as migration_20260422_120000_public_landing_and_sites_landing from './20260422_120000_public_landing_and_sites_landing';
-import * as migration_20260423_120000_landing_templates from './20260423_120000_landing_templates';
-import * as migration_20260424_120000_blog_public_theme from './20260424_120000_blog_public_theme';
-import * as migration_20260425_120000_seo_plugin_meta from './20260425_120000_seo_plugin_meta';
-import * as migration_20260426_100000_locale_and_redirects from './20260426_100000_locale_and_redirects';
-import * as migration_20260427_120000_landing_template_preview_url from './20260427_120000_landing_template_preview_url';
-import * as migration_20260428_120000_plugin_ai_instructions from './20260428_120000_plugin_ai_instructions';
-import * as migration_20260429_120000_payload_automation from './20260429_120000_payload_automation';
-import * as migration_20260430_120000_seo_pipeline_foundation from './20260430_120000_seo_pipeline_foundation';
-import * as migration_20260430_130000_fix_locked_docs_rels from './20260430_130000_fix_locked_docs_rels';
-import * as migration_20260430_140000_article_link_budget_warnings from './20260430_140000_article_link_budget_warnings';
-import * as migration_20260501_120000_team_home_global from './20260501_120000_team_home_global';
-import * as migration_20260501_130000_teams_collection from './20260501_130000_teams_collection';
-import * as migration_20260502_120000_operation_manuals from './20260502_120000_operation_manuals';
-import * as migration_20260506_120000_sites_created_by_id from './20260506_120000_sites_created_by_id';
-import * as migration_20260507_120000_affiliate_finance from './20260507_120000_affiliate_finance';
-import * as migration_20260508_120000_sites_ai_cost_ledger from './20260508_120000_sites_ai_cost_ledger';
-import * as migration_20260509_120000_site_quotas_dfs_usd_vendor_billing from './20260509_120000_site_quotas_dfs_usd_vendor_billing';
-import * as migration_20260510_120000_categories_category_cover_workflow_status from './20260510_120000_categories_category_cover_workflow_status';
-import * as migration_20260511_120000_keywords_data_for_seo_seeds from './20260511_120000_keywords_data_for_seo_seeds';
-import * as migration_20260820_120000_rankings_ranking_source from './20260820_120000_rankings_ranking_source';
-import * as migration_20260821_120000_tenant_prompt_templates_pipeline_profile from './20260821_120000_tenant_prompt_templates_pipeline_profile';
-import * as migration_20260822_120000_seed_quality_constrained_tenant_prompts from './20260822_120000_seed_quality_constrained_tenant_prompts';
-import * as migration_20260823_120000_seed_publish_quality_80_pipeline_profile from './20260823_120000_seed_publish_quality_80_pipeline_profile';
-import * as migration_20260510_140000_quality_constrained_seo_workflow_sync from './20260510_140000_quality_constrained_seo_workflow_sync';
-import * as migration_20260512_120000_keyword_batch_presets_strategy_fields from './20260512_120000_keyword_batch_presets_strategy_fields';
-import * as migration_20260513_120000_seed_jiyuan_keji_advanced_pipeline_profiles from './20260513_120000_seed_jiyuan_keji_advanced_pipeline_profiles';
-import * as migration_20260514_120000_seed_geo_citation_quality_80_pipeline_profile from './20260514_120000_seed_geo_citation_quality_80_pipeline_profile';
-import * as migration_20260515_120000_seed_default_opportunity_brief_pipeline_profile from './20260515_120000_seed_default_opportunity_brief_pipeline_profile';
-import * as migration_20260516_120000_seed_affiliate_keyword_batch_presets from './20260516_120000_seed_affiliate_keyword_batch_presets';
-import * as migration_20260517_120000_article_publish_queue from './20260517_120000_article_publish_queue';
-import * as migration_20260601_100000_articles_affiliate_page_layout from './20260601_100000_articles_affiliate_page_layout';
-import * as migration_20260602_120000_sites_site_layout from './20260602_120000_sites_site_layout';
-import * as migration_20260603_120000_sites_review_hub_v1 from './20260603_120000_sites_review_hub_v1';
-import * as migration_20260604_120000_sites_template1_copy from './20260604_120000_sites_template1_copy';
-import * as migration_20260605_120000_landing_templates_full_site_theme from './20260605_120000_landing_templates_full_site_theme';
-import * as migration_20260624_120000_remove_landing_templates_and_site_t1 from './20260624_120000_remove_landing_templates_and_site_t1';
-import * as migration_20260626_120000_site_blueprints_affiliate_design from './20260626_120000_site_blueprints_affiliate_design';
-import * as migration_20260627_120000_sites_drop_landing_overrides from './20260627_120000_sites_drop_landing_overrides';
-import * as migration_20260628_120000_site_layouts_catalog from './20260628_120000_site_layouts_catalog';
-import * as migration_20260629_120000_site_blueprints_t2_locale_json from './20260629_120000_site_blueprints_t2_locale_json';
-import * as migration_20260629_130000_site_layouts_template2_row from './20260629_130000_site_layouts_template2_row';
-import * as migration_20260629_140000_repair_locked_docs_drop_site_t1_locales_id from './20260629_140000_repair_locked_docs_drop_site_t1_locales_id';
-import * as migration_20260629_150000_repair_sites_drop_landing_template_id_and_t1_columns from './20260629_150000_repair_sites_drop_landing_template_id_and_t1_columns';
-import * as migration_20260630_120000_site_portfolios_seo_matrix from './20260630_120000_site_portfolios_seo_matrix';
-import * as migration_20260630_200000_sites_domain_ai_fields from './20260630_200000_sites_domain_ai_fields';
-import * as migration_20260701_120000_site_layout_only_template1_template2 from './20260701_120000_site_layout_only_template1_template2';
-import * as migration_20260701_130000_site_blueprints_mirrored_site_layout from './20260701_130000_site_blueprints_mirrored_site_layout';
-import * as migration_20260702_140000_site_blueprints_amz_site_config_json from './20260702_140000_site_blueprints_amz_site_config_json';
-import * as migration_20260703_120000_repair_site_blueprints_site_id_fk_sites from './20260703_120000_repair_site_blueprints_site_id_fk_sites';
-import * as migration_20260704_120000_drop_sites_blueprint_relation from './20260704_120000_drop_sites_blueprint_relation';
-import * as migration_20260705_120000_site_blueprints_design_workflow_status from './20260705_120000_site_blueprints_design_workflow_status';
-import * as migration_20260706_120000_category_slots_workflow from './20260706_120000_category_slots_workflow';
-import * as migration_20260707_120000_drop_sites_category_slots_workflow_status from './20260707_120000_drop_sites_category_slots_workflow_status';
-import * as migration_20260708_120000_repair_site_id_fk_to_sites from './20260708_120000_repair_site_id_fk_to_sites';
-import * as migration_20260709_120000_site_blueprints_design_workflow_error_log from './20260709_120000_site_blueprints_design_workflow_error_log';
-import * as migration_20260710_120000_site_blueprints_design_workflow_log from './20260710_120000_site_blueprints_design_workflow_log';
-import * as migration_20260711_120000_pages_site_pages_bundle_workflow from './20260711_120000_pages_site_pages_bundle_workflow';
-import * as migration_20260712_120000_pages_sanitize_empty_date_text from './20260712_120000_pages_sanitize_empty_date_text';
-import * as migration_20260712_130000_repair_pages_articles_site_id_fk_to_sites from './20260712_130000_repair_pages_articles_site_id_fk_to_sites';
-import * as migration_20260712_141000_categories_kind from './20260712_141000_categories_kind';
-import * as migration_20260712_150000_offers_rels_categories_and_featured_home from './20260712_150000_offers_rels_categories_and_featured_home';
-import * as migration_20260713_120000_offers_categories_merchant_slot_workflow from './20260713_120000_offers_categories_merchant_slot_workflow';
-import * as migration_20260714_120000_sanitize_invalid_merchant_json_text from './20260714_120000_sanitize_invalid_merchant_json_text';
-import * as migration_20260715_120000_offers_rename_merchant_batch_id from './20260715_120000_offers_rename_merchant_batch_id';
-import * as migration_20260716_120000_offers_amazon_dfs_snapshot from './20260716_120000_offers_amazon_dfs_snapshot';
-import * as migration_20260717_120000_offers_review_draft from './20260717_120000_offers_review_draft';
-import * as migration_20260718_120000_site_layout_amz_template_2 from './20260718_120000_site_layout_amz_template_2';
-import * as migration_20260719_120000_keywords_eligible_pipeline_amz from './20260719_120000_keywords_eligible_pipeline_amz';
-import * as migration_20260720_120000_media_ai_image_fields from './20260720_120000_media_ai_image_fields';
-import * as migration_20260721_120000_repair_media_site_id_fk_to_sites from './20260721_120000_repair_media_site_id_fk_to_sites';
-import * as migration_20260731_150000_categories_cover_image_id from './20260731_150000_categories_cover_image_id';
-import * as migration_20260801_120000_sites_homepage_hero_banner_id from './20260801_120000_sites_homepage_hero_banner_id';
-import * as migration_20260802_120000_sites_site_logo_id from './20260802_120000_sites_site_logo_id';
-import * as migration_20260803_120000_sites_public_locales from './20260803_120000_sites_public_locales';
-import * as migration_20260804_120000_sites_public_locale_codes_child_table from './20260804_120000_sites_public_locale_codes_child_table';
-import * as migration_20260805_120000_categories_locale from './20260805_120000_categories_locale';
-import * as migration_20260806_120000_seo_meta_no_index from './20260806_120000_seo_meta_no_index';
-import * as migration_20260807_120000_authors_rels_sites_id from './20260807_120000_authors_rels_sites_id';
-import * as migration_20260808_120000_tenant_prompt_templates from './20260808_120000_tenant_prompt_templates';
-import * as migration_20260809_120000_seed_tenant_prompt_templates_defaults from './20260809_120000_seed_tenant_prompt_templates_defaults';
-import * as migration_20260810_120000_seed_category_slots_tenant_prompts from './20260810_120000_seed_category_slots_tenant_prompts';
-import * as migration_20260811_120000_seed_trust_pages_bundle_tenant_prompts from './20260811_120000_seed_trust_pages_bundle_tenant_prompts';
-import * as migration_20260812_120000_seed_openrouter_tenant_prompts from './20260812_120000_seed_openrouter_tenant_prompts';
-import * as migration_20260813_120000_seed_together_image_tenant_prompts from './20260813_120000_seed_together_image_tenant_prompts';
-import * as migration_20260814_120000_pipeline_profiles from './20260814_120000_pipeline_profiles';
-import * as migration_20260815_120000_seed_seo_theory_pipeline_profiles from './20260815_120000_seed_seo_theory_pipeline_profiles';
-import * as migration_20260816_120000_pipeline_t2_variants_and_article_snapshots from './20260816_120000_pipeline_t2_variants_and_article_snapshots';
-import * as migration_20260817_120000_seed_finalize_pipeline_tenant_prompts from './20260817_120000_seed_finalize_pipeline_tenant_prompts';
-import * as migration_20260818_120000_seed_seo_theory_pipeline_profiles from './20260818_120000_seed_seo_theory_pipeline_profiles';
-import * as migration_20260819_120000_keyword_batch_presets from './20260819_120000_keyword_batch_presets';
+import * as migration_20250929_111647 from './20250929_111647'
+import * as migration_20260420_084024_mcp_plugin from './20260420_084024_mcp_plugin'
+import * as migration_20260420_093625 from './20260420_093625'
+import * as migration_20260420_093949 from './20260420_093949'
+import * as migration_20260420_103719 from './20260420_103719'
+import * as migration_20260420_151119 from './20260420_151119'
+import * as migration_20260420_213352_phase_c_affiliate_globals from './20260420_213352_phase_c_affiliate_globals'
+import * as migration_20260420_214651_phase_d_content_automation from './20260420_214651_phase_d_content_automation'
+import * as migration_20260420_224925_product_ia_extensions from './20260420_224925_product_ia_extensions'
+import * as migration_20260421_120000_articles_pages_split from './20260421_120000_articles_pages_split'
+import * as migration_20260421_150000_announcements_collection from './20260421_150000_announcements_collection'
+import * as migration_20260421_210000_site_scope_categories_media_blueprints from './20260421_210000_site_scope_categories_media_blueprints'
+import * as migration_20260422_120000_public_landing_and_sites_landing from './20260422_120000_public_landing_and_sites_landing'
+import * as migration_20260423_120000_landing_templates from './20260423_120000_landing_templates'
+import * as migration_20260424_120000_blog_public_theme from './20260424_120000_blog_public_theme'
+import * as migration_20260425_120000_seo_plugin_meta from './20260425_120000_seo_plugin_meta'
+import * as migration_20260426_100000_locale_and_redirects from './20260426_100000_locale_and_redirects'
+import * as migration_20260427_120000_landing_template_preview_url from './20260427_120000_landing_template_preview_url'
+import * as migration_20260428_120000_plugin_ai_instructions from './20260428_120000_plugin_ai_instructions'
+import * as migration_20260429_120000_payload_automation from './20260429_120000_payload_automation'
+import * as migration_20260430_120000_seo_pipeline_foundation from './20260430_120000_seo_pipeline_foundation'
+import * as migration_20260430_130000_fix_locked_docs_rels from './20260430_130000_fix_locked_docs_rels'
+import * as migration_20260430_140000_article_link_budget_warnings from './20260430_140000_article_link_budget_warnings'
+import * as migration_20260501_120000_team_home_global from './20260501_120000_team_home_global'
+import * as migration_20260501_130000_teams_collection from './20260501_130000_teams_collection'
+import * as migration_20260502_120000_operation_manuals from './20260502_120000_operation_manuals'
+import * as migration_20260506_120000_sites_created_by_id from './20260506_120000_sites_created_by_id'
+import * as migration_20260507_120000_affiliate_finance from './20260507_120000_affiliate_finance'
+import * as migration_20260508_120000_sites_ai_cost_ledger from './20260508_120000_sites_ai_cost_ledger'
+import * as migration_20260509_120000_site_quotas_dfs_usd_vendor_billing from './20260509_120000_site_quotas_dfs_usd_vendor_billing'
+import * as migration_20260510_120000_categories_category_cover_workflow_status from './20260510_120000_categories_category_cover_workflow_status'
+import * as migration_20260511_120000_keywords_data_for_seo_seeds from './20260511_120000_keywords_data_for_seo_seeds'
+import * as migration_20260820_120000_rankings_ranking_source from './20260820_120000_rankings_ranking_source'
+import * as migration_20260821_120000_tenant_prompt_templates_pipeline_profile from './20260821_120000_tenant_prompt_templates_pipeline_profile'
+import * as migration_20260822_120000_seed_quality_constrained_tenant_prompts from './20260822_120000_seed_quality_constrained_tenant_prompts'
+import * as migration_20260823_120000_seed_publish_quality_80_pipeline_profile from './20260823_120000_seed_publish_quality_80_pipeline_profile'
+import * as migration_20260510_140000_quality_constrained_seo_workflow_sync from './20260510_140000_quality_constrained_seo_workflow_sync'
+import * as migration_20260512_120000_keyword_batch_presets_strategy_fields from './20260512_120000_keyword_batch_presets_strategy_fields'
+import * as migration_20260513_120000_seed_jiyuan_keji_advanced_pipeline_profiles from './20260513_120000_seed_jiyuan_keji_advanced_pipeline_profiles'
+import * as migration_20260514_120000_seed_geo_citation_quality_80_pipeline_profile from './20260514_120000_seed_geo_citation_quality_80_pipeline_profile'
+import * as migration_20260515_120000_seed_default_opportunity_brief_pipeline_profile from './20260515_120000_seed_default_opportunity_brief_pipeline_profile'
+import * as migration_20260516_120000_seed_affiliate_keyword_batch_presets from './20260516_120000_seed_affiliate_keyword_batch_presets'
+import * as migration_20260517_120000_article_publish_queue from './20260517_120000_article_publish_queue'
+import * as migration_20260518_120000_seed_complete_keyword_batch_presets from './20260518_120000_seed_complete_keyword_batch_presets'
+import * as migration_20260601_100000_articles_affiliate_page_layout from './20260601_100000_articles_affiliate_page_layout'
+import * as migration_20260602_120000_sites_site_layout from './20260602_120000_sites_site_layout'
+import * as migration_20260603_120000_sites_review_hub_v1 from './20260603_120000_sites_review_hub_v1'
+import * as migration_20260604_120000_sites_template1_copy from './20260604_120000_sites_template1_copy'
+import * as migration_20260605_120000_landing_templates_full_site_theme from './20260605_120000_landing_templates_full_site_theme'
+import * as migration_20260624_120000_remove_landing_templates_and_site_t1 from './20260624_120000_remove_landing_templates_and_site_t1'
+import * as migration_20260626_120000_site_blueprints_affiliate_design from './20260626_120000_site_blueprints_affiliate_design'
+import * as migration_20260627_120000_sites_drop_landing_overrides from './20260627_120000_sites_drop_landing_overrides'
+import * as migration_20260628_120000_site_layouts_catalog from './20260628_120000_site_layouts_catalog'
+import * as migration_20260629_120000_site_blueprints_t2_locale_json from './20260629_120000_site_blueprints_t2_locale_json'
+import * as migration_20260629_130000_site_layouts_template2_row from './20260629_130000_site_layouts_template2_row'
+import * as migration_20260629_140000_repair_locked_docs_drop_site_t1_locales_id from './20260629_140000_repair_locked_docs_drop_site_t1_locales_id'
+import * as migration_20260629_150000_repair_sites_drop_landing_template_id_and_t1_columns from './20260629_150000_repair_sites_drop_landing_template_id_and_t1_columns'
+import * as migration_20260630_120000_site_portfolios_seo_matrix from './20260630_120000_site_portfolios_seo_matrix'
+import * as migration_20260630_200000_sites_domain_ai_fields from './20260630_200000_sites_domain_ai_fields'
+import * as migration_20260701_120000_site_layout_only_template1_template2 from './20260701_120000_site_layout_only_template1_template2'
+import * as migration_20260701_130000_site_blueprints_mirrored_site_layout from './20260701_130000_site_blueprints_mirrored_site_layout'
+import * as migration_20260702_140000_site_blueprints_amz_site_config_json from './20260702_140000_site_blueprints_amz_site_config_json'
+import * as migration_20260703_120000_repair_site_blueprints_site_id_fk_sites from './20260703_120000_repair_site_blueprints_site_id_fk_sites'
+import * as migration_20260704_120000_drop_sites_blueprint_relation from './20260704_120000_drop_sites_blueprint_relation'
+import * as migration_20260705_120000_site_blueprints_design_workflow_status from './20260705_120000_site_blueprints_design_workflow_status'
+import * as migration_20260706_120000_category_slots_workflow from './20260706_120000_category_slots_workflow'
+import * as migration_20260707_120000_drop_sites_category_slots_workflow_status from './20260707_120000_drop_sites_category_slots_workflow_status'
+import * as migration_20260708_120000_repair_site_id_fk_to_sites from './20260708_120000_repair_site_id_fk_to_sites'
+import * as migration_20260709_120000_site_blueprints_design_workflow_error_log from './20260709_120000_site_blueprints_design_workflow_error_log'
+import * as migration_20260710_120000_site_blueprints_design_workflow_log from './20260710_120000_site_blueprints_design_workflow_log'
+import * as migration_20260711_120000_pages_site_pages_bundle_workflow from './20260711_120000_pages_site_pages_bundle_workflow'
+import * as migration_20260712_120000_pages_sanitize_empty_date_text from './20260712_120000_pages_sanitize_empty_date_text'
+import * as migration_20260712_130000_repair_pages_articles_site_id_fk_to_sites from './20260712_130000_repair_pages_articles_site_id_fk_to_sites'
+import * as migration_20260712_141000_categories_kind from './20260712_141000_categories_kind'
+import * as migration_20260712_150000_offers_rels_categories_and_featured_home from './20260712_150000_offers_rels_categories_and_featured_home'
+import * as migration_20260713_120000_offers_categories_merchant_slot_workflow from './20260713_120000_offers_categories_merchant_slot_workflow'
+import * as migration_20260714_120000_sanitize_invalid_merchant_json_text from './20260714_120000_sanitize_invalid_merchant_json_text'
+import * as migration_20260715_120000_offers_rename_merchant_batch_id from './20260715_120000_offers_rename_merchant_batch_id'
+import * as migration_20260716_120000_offers_amazon_dfs_snapshot from './20260716_120000_offers_amazon_dfs_snapshot'
+import * as migration_20260717_120000_offers_review_draft from './20260717_120000_offers_review_draft'
+import * as migration_20260718_120000_site_layout_amz_template_2 from './20260718_120000_site_layout_amz_template_2'
+import * as migration_20260719_120000_keywords_eligible_pipeline_amz from './20260719_120000_keywords_eligible_pipeline_amz'
+import * as migration_20260720_120000_media_ai_image_fields from './20260720_120000_media_ai_image_fields'
+import * as migration_20260721_120000_repair_media_site_id_fk_to_sites from './20260721_120000_repair_media_site_id_fk_to_sites'
+import * as migration_20260731_150000_categories_cover_image_id from './20260731_150000_categories_cover_image_id'
+import * as migration_20260801_120000_sites_homepage_hero_banner_id from './20260801_120000_sites_homepage_hero_banner_id'
+import * as migration_20260802_120000_sites_site_logo_id from './20260802_120000_sites_site_logo_id'
+import * as migration_20260803_120000_sites_public_locales from './20260803_120000_sites_public_locales'
+import * as migration_20260804_120000_sites_public_locale_codes_child_table from './20260804_120000_sites_public_locale_codes_child_table'
+import * as migration_20260805_120000_categories_locale from './20260805_120000_categories_locale'
+import * as migration_20260806_120000_seo_meta_no_index from './20260806_120000_seo_meta_no_index'
+import * as migration_20260807_120000_authors_rels_sites_id from './20260807_120000_authors_rels_sites_id'
+import * as migration_20260808_120000_tenant_prompt_templates from './20260808_120000_tenant_prompt_templates'
+import * as migration_20260809_120000_seed_tenant_prompt_templates_defaults from './20260809_120000_seed_tenant_prompt_templates_defaults'
+import * as migration_20260810_120000_seed_category_slots_tenant_prompts from './20260810_120000_seed_category_slots_tenant_prompts'
+import * as migration_20260811_120000_seed_trust_pages_bundle_tenant_prompts from './20260811_120000_seed_trust_pages_bundle_tenant_prompts'
+import * as migration_20260812_120000_seed_openrouter_tenant_prompts from './20260812_120000_seed_openrouter_tenant_prompts'
+import * as migration_20260813_120000_seed_together_image_tenant_prompts from './20260813_120000_seed_together_image_tenant_prompts'
+import * as migration_20260814_120000_pipeline_profiles from './20260814_120000_pipeline_profiles'
+import * as migration_20260815_120000_seed_seo_theory_pipeline_profiles from './20260815_120000_seed_seo_theory_pipeline_profiles'
+import * as migration_20260816_120000_pipeline_t2_variants_and_article_snapshots from './20260816_120000_pipeline_t2_variants_and_article_snapshots'
+import * as migration_20260817_120000_seed_finalize_pipeline_tenant_prompts from './20260817_120000_seed_finalize_pipeline_tenant_prompts'
+import * as migration_20260818_120000_seed_seo_theory_pipeline_profiles from './20260818_120000_seed_seo_theory_pipeline_profiles'
+import * as migration_20260819_120000_keyword_batch_presets from './20260819_120000_keyword_batch_presets'
 
 export const migrations = [
   {
@@ -196,7 +197,7 @@ export const migrations = [
   {
     up: migration_20260428_120000_plugin_ai_instructions.up,
     down: migration_20260428_120000_plugin_ai_instructions.down,
-    name: '20260428_120000_plugin_ai_instructions'
+    name: '20260428_120000_plugin_ai_instructions',
   },
   {
     up: migration_20260429_120000_payload_automation.up,
@@ -618,4 +619,9 @@ export const migrations = [
     down: migration_20260517_120000_article_publish_queue.down,
     name: '20260517_120000_article_publish_queue',
   },
-];
+  {
+    up: migration_20260518_120000_seed_complete_keyword_batch_presets.up,
+    down: migration_20260518_120000_seed_complete_keyword_batch_presets.down,
+    name: '20260518_120000_seed_complete_keyword_batch_presets',
+  },
+]
