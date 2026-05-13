@@ -21,7 +21,11 @@ import { recordOpenRouterAiCost } from '@/utilities/aiCostLog'
 import { resolveTenantPromptPair } from '@/utilities/openRouterTenantPrompts/loadTenantPromptTemplateBody'
 import { incrementSiteQuotaUsage } from '@/utilities/siteQuotaCheck'
 import { resolvePipelineConfigForSite } from '@/utilities/resolvePipelineConfig'
-import { getTenantScopeForStats, tenantIdFromRelation, type TenantScope } from '@/utilities/tenantScope'
+import {
+  getTenantScopeForStats,
+  tenantIdFromRelation,
+  type TenantScope,
+} from '@/utilities/tenantScope'
 import { assertUsersCollection } from '@/utilities/workflowQuickCreate'
 
 export const dynamic = 'force-dynamic'
@@ -67,20 +71,18 @@ async function assertOfferAccess(
   payload: Payload,
   scope: TenantScope,
   offer: Offer,
-): Promise<
-  { ok: true; siteId: number; tenantId: number | null } | { ok: false; message: string }
-> {
+): Promise<{ ok: true; siteId: number; tenantId: number | null } | { ok: false; message: string }> {
   const sites = offer.sites
   if (!Array.isArray(sites) || sites.length === 0) {
     return { ok: false, message: 'Offer has no linked site' }
   }
   const s0 = sites[0]
   const siteId =
-    typeof s0 === 'number' && Number.isFinite(s0) ?
-      s0
-    : s0 && typeof s0 === 'object' && 'id' in s0 ?
-      Number((s0 as { id: number }).id)
-    : NaN
+    typeof s0 === 'number' && Number.isFinite(s0)
+      ? s0
+      : s0 && typeof s0 === 'object' && 'id' in s0
+        ? Number((s0 as { id: number }).id)
+        : NaN
   if (!Number.isFinite(siteId)) {
     return { ok: false, message: 'Invalid site on offer' }
   }
@@ -126,9 +128,8 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const rawIds = body.offerIds
-  const offerIds: number[] =
-    Array.isArray(rawIds) ?
-      rawIds
+  const offerIds: number[] = Array.isArray(rawIds)
+    ? rawIds
         .map((x) => (typeof x === 'number' ? x : Number(x)))
         .filter((n) => Number.isFinite(n) && n > 0)
     : []
@@ -143,8 +144,7 @@ export async function POST(request: Request): Promise<Response> {
 
   const createArticle =
     body.createArticle === true || body.createArticle === 1 || body.createArticle === 'true'
-  const locale =
-    typeof body.locale === 'string' && body.locale.trim() ? body.locale.trim() : 'en'
+  const locale = typeof body.locale === 'string' && body.locale.trim() ? body.locale.trim() : 'en'
   const aiOverride = typeof body.aiModel === 'string' ? body.aiModel : undefined
 
   let templateMdx: string
@@ -152,10 +152,7 @@ export async function POST(request: Request): Promise<Response> {
     templateMdx = loadOfferReviewTemplate()
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    return Response.json(
-      { error: `Failed to load review MDX template: ${msg}` },
-      { status: 500 },
-    )
+    return Response.json({ error: `Failed to load review MDX template: ${msg}` }, { status: 500 })
   }
   const scope = getTenantScopeForStats(user)
 
@@ -183,7 +180,7 @@ export async function POST(request: Request): Promise<Response> {
       const offer = offerDoc as Offer
 
       const access = await assertOfferAccess(payload, scope, offer)
-      if (!access.ok) {
+      if (access.ok !== true) {
         results.push({ offerId, ok: false, error: access.message })
         continue
       }
@@ -216,7 +213,12 @@ export async function POST(request: Request): Promise<Response> {
         offerVars,
       )
 
-      const { text: llmText, finishReason, usage, raw: llmRaw } = await openrouterChatWithMeta(
+      const {
+        text: llmText,
+        finishReason,
+        usage,
+        raw: llmRaw,
+      } = await openrouterChatWithMeta(
         model,
         [
           {
@@ -245,8 +247,7 @@ export async function POST(request: Request): Promise<Response> {
             status: 'ready',
             workflowStatus: 'done',
             workflowUpdatedAt: new Date().toISOString(),
-            workflowLog:
-              `OK · model ${model}${finishReason && finishReason !== 'stop' ? ` · finish:${finishReason}` : ''}`,
+            workflowLog: `OK · model ${model}${finishReason && finishReason !== 'stop' ? ` · finish:${finishReason}` : ''}`,
           },
         },
         overrideAccess: true,
@@ -254,6 +255,7 @@ export async function POST(request: Request): Promise<Response> {
 
       let articleId: number | undefined
       let articleCreated: boolean | undefined
+      const postWriteWarnings: string[] = []
       if (createArticle) {
         const ar = await upsertArticleFromOfferReview({
           payload,
@@ -273,11 +275,42 @@ export async function POST(request: Request): Promise<Response> {
             raw: llmRaw,
             kind: 'offer_review_mdx',
             metaExtra: { offerId },
+          }).catch((e: unknown) => {
+            const msg = e instanceof Error ? e.message : String(e)
+            postWriteWarnings.push(`AI cost log failed: ${msg}`)
           })
         }
       }
 
-      await incrementSiteQuotaUsage(payload, access.siteId, { openrouterUsd: OPENROUTER_EST_USD })
+      await incrementSiteQuotaUsage(payload, access.siteId, {
+        openrouterUsd: OPENROUTER_EST_USD,
+      }).catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e)
+        postWriteWarnings.push(`quota usage update failed: ${msg}`)
+      })
+
+      if (postWriteWarnings.length > 0) {
+        await payload
+          .update({
+            collection: 'offers',
+            id: offerId,
+            data: {
+              reviewDraft: {
+                mdx: extracted.safeMdx,
+                slug: finalSlug,
+                status: 'ready',
+                workflowStatus: 'done',
+                workflowUpdatedAt: new Date().toISOString(),
+                workflowLog: `OK · model ${model} · warning: ${postWriteWarnings.join('; ')}`.slice(
+                  0,
+                  4000,
+                ),
+              },
+            },
+            overrideAccess: true,
+          })
+          .catch(() => {})
+      }
 
       results.push({
         offerId,

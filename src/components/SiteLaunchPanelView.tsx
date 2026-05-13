@@ -91,6 +91,7 @@ type OfferReviewOption = {
   id: number
   title: string
   asin?: string | null
+  hasReviewArticle?: boolean
   reviewStatus?: string | null
 }
 
@@ -871,9 +872,17 @@ export function SiteLaunchPanelView(): React.ReactElement {
     const savedSite = siteOverride ?? (await resolveOperationSite())
     progress?.('正在读取当前站点 Offer')
     const offers = await loadOfferReviewOptionsForSite(savedSite.id)
-    const pendingOffers = offers.filter((offer) => offer.reviewStatus !== 'done')
-    const picked = (pendingOffers.length > 0 ? pendingOffers : offers).slice(0, 40)
-    if (picked.length === 0) throw new Error('当前站点没有可生成 Review 的 Offer')
+    const pendingOffers = offers.filter(
+      (offer) => offer.reviewStatus !== 'done' && offer.hasReviewArticle !== true,
+    )
+    if (offers.length === 0) throw new Error('当前站点没有可生成 Review 的 Offer')
+    if (pendingOffers.length === 0) {
+      const detail = `Review 已存在：当前站点 ${offers.length} 个 Offer 均已生成或已有关联文章，无需重复生成`
+      progress?.(detail)
+      addLog(detail)
+      return detail
+    }
+    const picked = pendingOffers.slice(0, 40)
 
     const batchSize = 5
     const batches: OfferReviewOption[][] = []

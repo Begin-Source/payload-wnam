@@ -10,6 +10,7 @@ type OfferRow = {
   id: number
   title: string
   asin: string | null
+  hasReviewArticle?: boolean
   reviewStatus?: string | null
 }
 
@@ -85,17 +86,58 @@ export async function GET(request: Request): Promise<Response> {
     ...(where ? { where } : {}),
   })
 
+  const offerIds = result.docs
+    .map((doc) => doc.id)
+    .filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
+  const relatedArticleOfferIds = new Set<number>()
+  if (offerIds.length > 0) {
+    const articles = await payload.find({
+      collection: 'articles',
+      where: {
+        and: [
+          { site: { equals: siteId } },
+          { or: offerIds.map((id) => ({ relatedOffers: { contains: id } })) },
+        ],
+      },
+      limit: 500,
+      depth: 0,
+      overrideAccess: true,
+      select: {
+        relatedOffers: true,
+      },
+    })
+    for (const article of articles.docs) {
+      const relatedOffers = (article as { relatedOffers?: unknown }).relatedOffers
+      if (!Array.isArray(relatedOffers)) continue
+      for (const offer of relatedOffers) {
+        const id =
+          typeof offer === 'number'
+            ? offer
+            : offer && typeof offer === 'object' && 'id' in offer
+              ? Number(offer.id)
+              : NaN
+        if (Number.isFinite(id)) relatedArticleOfferIds.add(id)
+      }
+    }
+  }
+
   const offers: OfferRow[] = result.docs.map((doc) => {
     const row = doc as typeof doc & {
       amazon?: { asin?: string | null } | null
-      reviewDraft?: { workflowStatus?: string | null } | null
+      reviewDraft?: {
+        workflowStatus?: string | null
+      } | null
     }
+    const reviewDraft = row.reviewDraft
+    const workflowStatus =
+      typeof reviewDraft?.workflowStatus === 'string' ? reviewDraft.workflowStatus : null
+    const hasReviewArticle = relatedArticleOfferIds.has(doc.id)
     return {
       id: doc.id,
       title: typeof row.title === 'string' ? row.title : String(row.title ?? ''),
       asin: row.amazon?.asin != null ? String(row.amazon.asin) : null,
-      reviewStatus:
-        typeof row.reviewDraft?.workflowStatus === 'string' ? row.reviewDraft.workflowStatus : null,
+      hasReviewArticle,
+      reviewStatus: hasReviewArticle ? 'done' : workflowStatus,
     }
   })
 
