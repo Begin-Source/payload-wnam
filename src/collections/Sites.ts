@@ -27,6 +27,7 @@ export const Sites: CollectionConfig = {
     useAsTitle: 'name',
     defaultColumns: [
       'name',
+      'mainProduct',
       'slug',
       'createdBy',
       'portfolio',
@@ -57,10 +58,7 @@ export const Sites: CollectionConfig = {
       validateSitesPublicLocales,
       enforceSitesMatrixQuota,
     ],
-    afterChange: [
-      syncBlueprintsMirroredLayoutAfterSiteChange,
-      auditSitesMatrixChange,
-    ],
+    afterChange: [syncBlueprintsMirroredLayoutAfterSiteChange, auditSitesMatrixChange],
   },
   fields: [
     {
@@ -78,7 +76,11 @@ export const Sites: CollectionConfig = {
     {
       name: 'name',
       type: 'text',
+      label: '标识名称',
       required: true,
+      admin: {
+        description: '仅作为后台识别用；业务主品请填写「主产品」。',
+      },
     },
     {
       name: 'slug',
@@ -285,7 +287,7 @@ export const Sites: CollectionConfig = {
         {
           name: 'mainProduct',
           type: 'text',
-          label: '主品 / Main product',
+          label: '主产品',
           admin: { description: '用于域名与受众提示词（对应原 n8n main_product）。' },
         },
         {

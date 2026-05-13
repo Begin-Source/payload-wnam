@@ -1,19 +1,19 @@
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
+import type { Site, SiteBlueprint } from '@/payload-types'
 import {
   prepareAmzTemplateDesignForBlueprint,
   runAmzTemplateDesignForBlueprint,
 } from '@/utilities/amzTemplateDesign/runAmzTemplateDesignForSite'
+import { slugify } from '@/utilities/offerReviewMdx/offerReviewSlug'
 import { parseRelationshipId } from '@/utilities/parseRelationshipId'
 import { getTenantScopeForStats, type TenantScope } from '@/utilities/tenantScope'
 import { assertUsersCollection } from '@/utilities/workflowQuickCreate'
 
 export const dynamic = 'force-dynamic'
 
-function tenantIdFromRelation(
-  tenant: number | { id: number } | null | undefined,
-): number | null {
+function tenantIdFromRelation(tenant: number | { id: number } | null | undefined): number | null {
   if (tenant == null || tenant === undefined) return null
   if (typeof tenant === 'number') return tenant
   if (typeof tenant === 'object' && typeof tenant.id === 'number') return tenant.id
@@ -36,10 +36,41 @@ function toBool(value: unknown): boolean {
   return s === 'true' || s === '1' || s === 'yes' || s === 'on'
 }
 
+async function resolveBlueprintIdForSite(args: {
+  payload: Awaited<ReturnType<typeof getPayload>>
+  site: Site
+}): Promise<number> {
+  const { payload, site } = args
+  const existing = await payload.find({
+    collection: 'site-blueprints',
+    where: { site: { equals: site.id } },
+    limit: 1,
+    sort: '-updatedAt',
+    depth: 0,
+  })
+  const first = existing.docs[0] as SiteBlueprint | undefined
+  if (typeof first?.id === 'number') return first.id
+
+  const baseSlug = slugify(site.slug || site.primaryDomain || site.name || `site-${site.id}`)
+  const blueprintSlug = `${baseSlug || `site-${site.id}`}-design`
+  const created = (await payload.create({
+    collection: 'site-blueprints',
+    data: {
+      name: `${site.name || site.slug || `Site ${site.id}`} Design`,
+      slug: blueprintSlug,
+      site: site.id,
+      description: '站点启动面板自动创建的设计记录。',
+    } as never,
+  })) as SiteBlueprint
+
+  return created.id
+}
+
 /**
- * POST { blueprintId, mainProduct?, aiModel?, prepare?, afterPrepare?, fillSlots? }
+ * POST { blueprintId?, siteId?, mainProduct?, aiModel?, prepare?, afterPrepare?, fillSlots? }
  * fillSlots: truthy = flat copy-only whitelist regen (no full siteConfig in prompt).
  * Cookie session + tenant-scoped. OpenRouter rewrites linked blueprint amzSiteConfigJson for AMZ template sites (amz-template-1 / amz-template-2).
+ * `siteId` is accepted for launch-panel flows; it reuses the latest blueprint for that site or creates one.
  * When prepare is true, validates and sets designWorkflowStatus running then returns immediately (modal closes; run job in background).
  * When afterPrepare is true, skips re-marking running (client already called prepare).
  */
@@ -54,6 +85,7 @@ export async function POST(request: Request): Promise<Response> {
 
   let body: {
     blueprintId?: unknown
+    siteId?: unknown
     mainProduct?: unknown
     aiModel?: unknown
     ai_model?: unknown
@@ -67,41 +99,63 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const blueprintId =
-    typeof body.blueprintId === 'number' ? body.blueprintId : Number(body.blueprintId)
-  if (!Number.isFinite(blueprintId)) {
-    return Response.json({ error: 'blueprintId is required' }, { status: 400 })
-  }
-
   const scope = getTenantScopeForStats(user)
-  const blueprintRow = await payload.findByID({
-    collection: 'site-blueprints',
-    id: blueprintId,
-    depth: 0,
-  })
-  if (!blueprintRow) {
-    return Response.json({ error: 'Blueprint not found' }, { status: 404 })
+
+  let blueprintId =
+    typeof body.blueprintId === 'number' ? body.blueprintId : Number(body.blueprintId)
+  let effectiveTenant: number | null = null
+
+  if (!Number.isFinite(blueprintId)) {
+    const siteId = typeof body.siteId === 'number' ? body.siteId : Number(body.siteId)
+    if (!Number.isFinite(siteId)) {
+      return Response.json({ error: 'blueprintId or siteId is required' }, { status: 400 })
+    }
+
+    const siteRow = (await payload.findByID({
+      collection: 'sites',
+      id: siteId,
+      depth: 0,
+    })) as Site | null
+    if (!siteRow) {
+      return Response.json({ error: 'Site not found' }, { status: 404 })
+    }
+
+    effectiveTenant = tenantIdFromRelation(
+      (siteRow as { tenant?: number | { id: number } | null }).tenant,
+    )
+    if (!siteAccessible(scope, effectiveTenant)) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    blueprintId = await resolveBlueprintIdForSite({ payload, site: siteRow })
+  } else {
+    const blueprintRow = await payload.findByID({
+      collection: 'site-blueprints',
+      id: blueprintId,
+      depth: 0,
+    })
+    if (!blueprintRow) {
+      return Response.json({ error: 'Blueprint not found' }, { status: 404 })
+    }
+
+    const siteId = parseRelationshipId((blueprintRow as { site?: unknown }).site)
+    const siteRow =
+      siteId != null
+        ? await payload.findByID({
+            collection: 'sites',
+            id: siteId,
+            depth: 0,
+          })
+        : null
+
+    const siteTenantId = tenantIdFromRelation(
+      (siteRow as { tenant?: number | { id: number } | null } | null)?.tenant,
+    )
+    const blueprintTenantId = tenantIdFromRelation(
+      (blueprintRow as { tenant?: number | { id: number } | null }).tenant,
+    )
+    effectiveTenant = siteTenantId ?? blueprintTenantId
   }
-
-  const siteId = parseRelationshipId(
-    (blueprintRow as { site?: unknown }).site,
-  )
-  const siteRow =
-    siteId != null
-      ? await payload.findByID({
-          collection: 'sites',
-          id: siteId,
-          depth: 0,
-        })
-      : null
-
-  const siteTenantId = tenantIdFromRelation(
-    (siteRow as { tenant?: number | { id: number } | null } | null)?.tenant,
-  )
-  const blueprintTenantId = tenantIdFromRelation(
-    (blueprintRow as { tenant?: number | { id: number } | null }).tenant,
-  )
-  const effectiveTenant = siteTenantId ?? blueprintTenantId
 
   if (!siteAccessible(scope, effectiveTenant)) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
@@ -112,8 +166,7 @@ export async function POST(request: Request): Promise<Response> {
     typeof rawMain === 'string' && rawMain.trim() ? rawMain.trim() : undefined
 
   const rawModel = body.aiModel ?? body.ai_model
-  const aiModel =
-    typeof rawModel === 'string' && rawModel.trim() ? rawModel.trim() : undefined
+  const aiModel = typeof rawModel === 'string' && rawModel.trim() ? rawModel.trim() : undefined
 
   const fillSlots = toBool(body.fillSlots)
 
@@ -126,7 +179,8 @@ export async function POST(request: Request): Promise<Response> {
       fillSlots,
     })
     if (!prep.ok) {
-      return Response.json({ error: prep.message, code: prep.code }, { status: prep.status })
+      const failed = prep as { message: string; code?: string; status: number }
+      return Response.json({ error: failed.message, code: failed.code }, { status: failed.status })
     }
     return Response.json({ ok: true, blueprintId: prep.blueprintId })
   }
@@ -141,7 +195,8 @@ export async function POST(request: Request): Promise<Response> {
   })
 
   if (!result.ok) {
-    return Response.json({ error: result.message, code: result.code }, { status: result.status })
+    const failed = result as { message: string; code?: string; status: number }
+    return Response.json({ error: failed.message, code: failed.code }, { status: failed.status })
   }
 
   return Response.json({ ok: true, blueprintId: result.blueprintId })

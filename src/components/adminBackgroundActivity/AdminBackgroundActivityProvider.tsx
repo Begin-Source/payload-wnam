@@ -48,59 +48,83 @@ export function AdminBackgroundActivityProvider({
   }, [])
 
   const refreshIfCategoriesList = useCallback((): void => {
-    if (
-      typeof window !== 'undefined' &&
-      pathname.includes('/collections/categories')
-    ) {
+    if (typeof window !== 'undefined' && pathname.includes('/collections/categories')) {
       router.refresh()
     }
   }, [pathname, router])
 
   const refreshIfCategoriesOrOffersList = useCallback((): void => {
     if (typeof window === 'undefined') return
-    if (
-      pathname.includes('/collections/categories') ||
-      pathname.includes('/collections/offers')
-    ) {
+    if (pathname.includes('/collections/categories') || pathname.includes('/collections/offers')) {
       router.refresh()
     }
   }, [pathname, router])
 
   const refreshIfPagesList = useCallback((): void => {
-    if (
-      typeof window !== 'undefined' &&
-      pathname.includes('/collections/pages')
-    ) {
+    if (typeof window !== 'undefined' && pathname.includes('/collections/pages')) {
       router.refresh()
     }
   }, [pathname, router])
 
   const refreshIfKeywordsList = useCallback((): void => {
-    if (
-      typeof window !== 'undefined' &&
-      pathname.includes('/collections/keywords')
-    ) {
+    if (typeof window !== 'undefined' && pathname.includes('/collections/keywords')) {
       router.refresh()
     }
   }, [pathname, router])
 
   const refreshIfWorkflowJobsList = useCallback((): void => {
-    if (
-      typeof window !== 'undefined' &&
-      pathname.includes('/collections/workflow-jobs')
-    ) {
+    if (typeof window !== 'undefined' && pathname.includes('/collections/workflow-jobs')) {
       router.refresh()
     }
   }, [pathname, router])
 
   const refreshIfContentBriefsList = useCallback((): void => {
-    if (
-      typeof window !== 'undefined' &&
-      pathname.includes('/collections/content-briefs')
-    ) {
+    if (typeof window !== 'undefined' && pathname.includes('/collections/content-briefs')) {
       router.refresh()
     }
   }, [pathname, router])
+
+  const refreshIfSitesList = useCallback((): void => {
+    if (typeof window !== 'undefined' && pathname.includes('/collections/sites')) {
+      router.refresh()
+    }
+  }, [pathname, router])
+
+  const refreshIfOffersList = useCallback((): void => {
+    if (typeof window !== 'undefined' && pathname.includes('/collections/offers')) {
+      router.refresh()
+    }
+  }, [pathname, router])
+
+  const refreshIfArticlesList = useCallback((): void => {
+    if (typeof window !== 'undefined' && pathname.includes('/collections/articles')) {
+      router.refresh()
+    }
+  }, [pathname, router])
+
+  const refreshIfPageLinkGraphList = useCallback((): void => {
+    if (typeof window !== 'undefined' && pathname.includes('/collections/page-link-graph')) {
+      router.refresh()
+    }
+  }, [pathname, router])
+
+  const refreshIfContentManagementTargetList = useCallback((): void => {
+    refreshIfCategoriesList()
+    refreshIfOffersList()
+    refreshIfKeywordsList()
+    refreshIfContentBriefsList()
+    refreshIfArticlesList()
+    refreshIfWorkflowJobsList()
+    refreshIfPageLinkGraphList()
+  }, [
+    refreshIfCategoriesList,
+    refreshIfOffersList,
+    refreshIfKeywordsList,
+    refreshIfContentBriefsList,
+    refreshIfArticlesList,
+    refreshIfWorkflowJobsList,
+    refreshIfPageLinkGraphList,
+  ])
 
   const hasRunningCategoriesListWork = jobs.some(
     (j) =>
@@ -142,6 +166,14 @@ export function AdminBackgroundActivityProvider({
     (j) => j.phase === 'running' && j.kind === 'batch-enqueue-sync',
   )
 
+  const hasRunningSiteRecordSaveWork = jobs.some(
+    (j) => j.phase === 'running' && j.kind === 'site-record-save-sync',
+  )
+
+  const hasRunningContentManagementActionWork = jobs.some(
+    (j) => j.phase === 'running' && j.kind === 'content-management-action-sync',
+  )
+
   const hasRunningListPollWork =
     hasRunningCategoriesListWork ||
     hasRunningTrustPagesBundleWork ||
@@ -150,7 +182,9 @@ export function AdminBackgroundActivityProvider({
     hasRunningKeywordBatchModePreviewWork ||
     hasRunningContentBriefDraftSkeletonPreviewWork ||
     hasRunningBatchEnqueueWork ||
-    hasRunningWorkflowJobsPipelineWork
+    hasRunningWorkflowJobsPipelineWork ||
+    hasRunningSiteRecordSaveWork ||
+    hasRunningContentManagementActionWork
 
   useEffect(() => {
     if (!hasRunningListPollWork) return
@@ -161,6 +195,10 @@ export function AdminBackgroundActivityProvider({
       refreshIfKeywordsList()
       refreshIfWorkflowJobsList()
       refreshIfContentBriefsList()
+      refreshIfSitesList()
+      refreshIfOffersList()
+      refreshIfArticlesList()
+      refreshIfPageLinkGraphList()
     }, POLL_MS)
     let capMs = POLL_CAP_MS
     if (hasRunningMerchantCategoriesWork) capMs = Math.max(capMs, POLL_CAP_MS_MERCHANT)
@@ -181,6 +219,9 @@ export function AdminBackgroundActivityProvider({
     if (hasRunningContentBriefDraftSkeletonPreviewWork) {
       capMs = Math.max(capMs, POLL_CAP_MS_KEYWORDS_LONG)
     }
+    if (hasRunningContentManagementActionWork) {
+      capMs = Math.max(capMs, POLL_CAP_MS_KEYWORDS_LONG)
+    }
     const cap = window.setTimeout(() => {
       window.clearInterval(interval)
     }, capMs)
@@ -199,11 +240,17 @@ export function AdminBackgroundActivityProvider({
     hasRunningContentBriefDraftSkeletonPreviewWork,
     hasRunningBatchEnqueueWork,
     hasRunningWorkflowJobsPipelineWork,
+    hasRunningSiteRecordSaveWork,
+    hasRunningContentManagementActionWork,
     refreshIfCategoriesList,
     refreshIfPagesList,
     refreshIfKeywordsList,
     refreshIfWorkflowJobsList,
     refreshIfContentBriefsList,
+    refreshIfSitesList,
+    refreshIfOffersList,
+    refreshIfArticlesList,
+    refreshIfPageLinkGraphList,
   ])
 
   const startCategoryCoverJob = useCallback(
@@ -310,7 +357,9 @@ export function AdminBackgroundActivityProvider({
                 phase: 'succeeded',
                 ...(typeof okCount === 'number' ? { okCount } : {}),
                 ...(typeof failCount === 'number' ? { failCount } : {}),
-                ...(Array.isArray(results) && results.length > 0 ? { slotsSyncResults: results } : {}),
+                ...(Array.isArray(results) && results.length > 0
+                  ? { slotsSyncResults: results }
+                  : {}),
               }
             : j,
         ),
@@ -427,15 +476,7 @@ export function AdminBackgroundActivityProvider({
   )
 
   const completeTrustPagesBundleJob = useCallback(
-    ({
-      jobId,
-      slugs,
-      locale,
-    }: {
-      jobId: string
-      slugs?: string[]
-      locale?: string
-    }): void => {
+    ({ jobId, slugs, locale }: { jobId: string; slugs?: string[]; locale?: string }): void => {
       setJobs((prev) =>
         prev.map((j) =>
           j.id === jobId && j.phase === 'running' && j.kind === 'trust-pages-bundle-sync'
@@ -445,7 +486,9 @@ export function AdminBackgroundActivityProvider({
                 okCount: 1,
                 failCount: 0,
                 ...(locale?.trim() ? { trustPagesBundleLocale: locale.trim() } : {}),
-                ...(Array.isArray(slugs) && slugs.length > 0 ? { trustPagesBundleSlugs: slugs } : {}),
+                ...(Array.isArray(slugs) && slugs.length > 0
+                  ? { trustPagesBundleSlugs: slugs }
+                  : {}),
               }
             : j,
         ),
@@ -678,7 +721,9 @@ export function AdminBackgroundActivityProvider({
     }): void => {
       setJobs((prev) =>
         prev.map((j) =>
-          j.id === jobId && j.phase === 'running' && j.kind === 'content-brief-draft-skeleton-preview-sync'
+          j.id === jobId &&
+          j.phase === 'running' &&
+          j.kind === 'content-brief-draft-skeleton-preview-sync'
             ? {
                 ...j,
                 phase: 'succeeded',
@@ -697,7 +742,9 @@ export function AdminBackgroundActivityProvider({
     ({ jobId, message }: { jobId: string; message: string }): void => {
       setJobs((prev) =>
         prev.map((j) =>
-          j.id === jobId && j.phase === 'running' && j.kind === 'content-brief-draft-skeleton-preview-sync'
+          j.id === jobId &&
+          j.phase === 'running' &&
+          j.kind === 'content-brief-draft-skeleton-preview-sync'
             ? {
                 ...j,
                 phase: 'failed',
@@ -774,20 +821,23 @@ export function AdminBackgroundActivityProvider({
     [refreshIfContentBriefsList, refreshIfWorkflowJobsList],
   )
 
-  const startWorkflowJobsPipelineJob = useCallback((args?: { scopeHint?: string }): string => {
-    const id = newId()
-    const hint = args?.scopeHint?.trim()
-    const job: BackgroundActivityJob = {
-      id,
-      kind: 'workflow-jobs-pipeline-sync',
-      phase: 'running',
-      ...(hint ? { workflowPipelineScopeHint: hint } : {}),
-      startedAt: Date.now(),
-    }
-    setJobs((prev) => [...prev, job])
-    refreshIfWorkflowJobsList()
-    return id
-  }, [refreshIfWorkflowJobsList])
+  const startWorkflowJobsPipelineJob = useCallback(
+    (args?: { scopeHint?: string }): string => {
+      const id = newId()
+      const hint = args?.scopeHint?.trim()
+      const job: BackgroundActivityJob = {
+        id,
+        kind: 'workflow-jobs-pipeline-sync',
+        phase: 'running',
+        ...(hint ? { workflowPipelineScopeHint: hint } : {}),
+        startedAt: Date.now(),
+      }
+      setJobs((prev) => [...prev, job])
+      refreshIfWorkflowJobsList()
+      return id
+    },
+    [refreshIfWorkflowJobsList],
+  )
 
   const updateWorkflowJobsPipelineJobProgress = useCallback(
     ({
@@ -826,13 +876,7 @@ export function AdminBackgroundActivityProvider({
   )
 
   const completeWorkflowJobsPipelineJob = useCallback(
-    ({
-      jobId,
-      summary,
-    }: {
-      jobId: string
-      summary: WorkflowJobsPipelineSummary
-    }): void => {
+    ({ jobId, summary }: { jobId: string; summary: WorkflowJobsPipelineSummary }): void => {
       setJobs((prev) =>
         prev.map((j) => {
           if (j.id !== jobId || j.phase !== 'running' || j.kind !== 'workflow-jobs-pipeline-sync') {
@@ -844,9 +888,9 @@ export function AdminBackgroundActivityProvider({
             phase: 'succeeded',
             workflowJobsPipelineSummary: {
               ...summary,
-              ...(hintLines != null && hintLines.length > 0 ?
-                { pipelineBannerHints: [...hintLines] }
-              : {}),
+              ...(hintLines != null && hintLines.length > 0
+                ? { pipelineBannerHints: [...hintLines] }
+                : {}),
             },
             workflowJobsPipelineDebugLines: undefined,
           }
@@ -873,6 +917,170 @@ export function AdminBackgroundActivityProvider({
       refreshIfWorkflowJobsList()
     },
     [refreshIfWorkflowJobsList],
+  )
+
+  const startSiteRecordSaveJob = useCallback(
+    ({ action, siteLabel }: { action: 'create' | 'update'; siteLabel?: string }): string => {
+      const id = newId()
+      const job: BackgroundActivityJob = {
+        id,
+        kind: 'site-record-save-sync',
+        phase: 'running',
+        ...(siteLabel?.trim() ? { siteLabel: siteLabel.trim() } : {}),
+        siteRecordSaveSummary: {
+          action,
+          siteId: 0,
+          name: siteLabel?.trim() || '站点记录',
+          slug: '',
+        },
+        startedAt: Date.now(),
+      }
+      setJobs((prev) => [...prev, job])
+      refreshIfSitesList()
+      return id
+    },
+    [refreshIfSitesList],
+  )
+
+  const completeSiteRecordSaveJob = useCallback(
+    ({
+      jobId,
+      summary,
+    }: {
+      jobId: string
+      summary: NonNullable<BackgroundActivityJob['siteRecordSaveSummary']>
+    }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'site-record-save-sync'
+            ? {
+                ...j,
+                phase: 'succeeded',
+                siteRecordSaveSummary: summary,
+              }
+            : j,
+        ),
+      )
+      refreshIfSitesList()
+    },
+    [refreshIfSitesList],
+  )
+
+  const failSiteRecordSaveJob = useCallback(
+    ({ jobId, message }: { jobId: string; message: string }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'site-record-save-sync'
+            ? {
+                ...j,
+                phase: 'failed',
+                errorMessage: message,
+              }
+            : j,
+        ),
+      )
+      refreshIfSitesList()
+    },
+    [refreshIfSitesList],
+  )
+
+  const startContentManagementActionJob = useCallback(
+    ({
+      label,
+      siteId,
+      siteLabel,
+      targetCollection,
+    }: {
+      label: string
+      siteId?: number
+      siteLabel?: string
+      targetCollection?: NonNullable<
+        BackgroundActivityJob['contentManagementActionSummary']
+      >['targetCollection']
+    }): string => {
+      const id = newId()
+      const labelTrim = label.trim() || '内容管理操作'
+      const siteLabelTrim = siteLabel?.trim()
+      const job: BackgroundActivityJob = {
+        id,
+        kind: 'content-management-action-sync',
+        phase: 'running',
+        ...(siteLabelTrim ? { siteLabel: siteLabelTrim } : {}),
+        contentManagementActionSummary: {
+          label: labelTrim,
+          ...(typeof siteId === 'number' && Number.isFinite(siteId) ? { siteId } : {}),
+          ...(siteLabelTrim ? { siteLabel: siteLabelTrim } : {}),
+          ...(targetCollection ? { targetCollection } : {}),
+        },
+        startedAt: Date.now(),
+      }
+      setJobs((prev) => [...prev, job])
+      refreshIfContentManagementTargetList()
+      return id
+    },
+    [refreshIfContentManagementTargetList],
+  )
+
+  const completeContentManagementActionJob = useCallback(
+    ({
+      jobId,
+      detail,
+      targetCollection,
+    }: {
+      jobId: string
+      detail?: string
+      targetCollection?: NonNullable<
+        BackgroundActivityJob['contentManagementActionSummary']
+      >['targetCollection']
+    }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'content-management-action-sync'
+            ? {
+                ...j,
+                phase: 'succeeded',
+                contentManagementActionSummary: {
+                  label: j.contentManagementActionSummary?.label ?? '内容管理操作',
+                  ...(typeof j.contentManagementActionSummary?.siteId === 'number' &&
+                  Number.isFinite(j.contentManagementActionSummary.siteId)
+                    ? { siteId: j.contentManagementActionSummary.siteId }
+                    : {}),
+                  ...(j.contentManagementActionSummary?.siteLabel
+                    ? { siteLabel: j.contentManagementActionSummary.siteLabel }
+                    : {}),
+                  ...(detail?.trim() ? { detail: detail.trim() } : {}),
+                  ...((targetCollection ?? j.contentManagementActionSummary?.targetCollection)
+                    ? {
+                        targetCollection:
+                          targetCollection ?? j.contentManagementActionSummary?.targetCollection,
+                      }
+                    : {}),
+                },
+              }
+            : j,
+        ),
+      )
+      refreshIfContentManagementTargetList()
+    },
+    [refreshIfContentManagementTargetList],
+  )
+
+  const failContentManagementActionJob = useCallback(
+    ({ jobId, message }: { jobId: string; message: string }): void => {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId && j.phase === 'running' && j.kind === 'content-management-action-sync'
+            ? {
+                ...j,
+                phase: 'failed',
+                errorMessage: message,
+              }
+            : j,
+        ),
+      )
+      refreshIfContentManagementTargetList()
+    },
+    [refreshIfContentManagementTargetList],
   )
 
   const value = useMemo<AdminBackgroundActivityApi>(
@@ -909,6 +1117,12 @@ export function AdminBackgroundActivityProvider({
       updateWorkflowJobsPipelineJobProgress,
       completeWorkflowJobsPipelineJob,
       failWorkflowJobsPipelineJob,
+      startSiteRecordSaveJob,
+      completeSiteRecordSaveJob,
+      failSiteRecordSaveJob,
+      startContentManagementActionJob,
+      completeContentManagementActionJob,
+      failContentManagementActionJob,
       dismissJob,
     }),
     [
@@ -944,6 +1158,12 @@ export function AdminBackgroundActivityProvider({
       updateWorkflowJobsPipelineJobProgress,
       completeWorkflowJobsPipelineJob,
       failWorkflowJobsPipelineJob,
+      startSiteRecordSaveJob,
+      completeSiteRecordSaveJob,
+      failSiteRecordSaveJob,
+      startContentManagementActionJob,
+      completeContentManagementActionJob,
+      failContentManagementActionJob,
       dismissJob,
     ],
   )

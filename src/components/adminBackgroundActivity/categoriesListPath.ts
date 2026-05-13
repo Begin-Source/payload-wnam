@@ -32,3 +32,10 @@ export function adminContentBriefsListPath(currentPathname: string): string {
   if (idx === -1) return '/admin/collections/content-briefs'
   return `${currentPathname.slice(0, idx)}/collections/content-briefs`
 }
+
+/** Build sites collection list URL from current admin pathname (preserves tenant / base prefix). */
+export function adminSitesListPath(currentPathname: string): string {
+  const idx = currentPathname.indexOf('/collections/')
+  if (idx === -1) return '/admin/collections/sites'
+  return `${currentPathname.slice(0, idx)}/collections/sites`
+}

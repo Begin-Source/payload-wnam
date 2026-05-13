@@ -15,6 +15,8 @@ export type BackgroundJobKind =
   | 'content-brief-draft-skeleton-preview-sync'
   | 'batch-enqueue-sync'
   | 'workflow-jobs-pipeline-sync'
+  | 'site-record-save-sync'
+  | 'content-management-action-sync'
 
 /** Strategies that use `POST /api/admin/articles/batch-enqueue` preview + replay (non–Quick-win). */
 export type KeywordBatchModePreviewMode =
@@ -171,6 +173,30 @@ export type BackgroundActivityJob = {
   /** 进行中：tick 返回的脱敏排查行（可截图） */
   workflowJobsPipelineDebugLines?: string[]
   workflowJobsPipelineSummary?: WorkflowJobsPipelineSummary
+  /** 站点启动面板：创建/保存站点记录 */
+  siteRecordSaveSummary?: {
+    action: 'create' | 'update'
+    siteId: number
+    name: string
+    slug: string
+    mainProduct?: string | null
+  }
+  /** 站点启动面板 · 内容管理通用操作 */
+  contentManagementActionSummary?: {
+    label: string
+    siteId?: number
+    siteLabel?: string
+    detail?: string
+    targetCollection?:
+      | 'keywords'
+      | 'content-briefs'
+      | 'articles'
+      | 'workflow-jobs'
+      | 'categories'
+      | 'offers'
+      | 'page-link-graph'
+      | 'pages'
+  }
 }
 
 export type AdminBackgroundActivityApi = {
@@ -201,11 +227,7 @@ export type AdminBackgroundActivityApi = {
   }) => void
   failMerchantSlotDispatchJob: (args: { jobId: string; message: string }) => void
   startTrustPagesBundleJob: (args: { siteLabel?: string }) => string
-  completeTrustPagesBundleJob: (args: {
-    jobId: string
-    slugs?: string[]
-    locale?: string
-  }) => void
+  completeTrustPagesBundleJob: (args: { jobId: string; slugs?: string[]; locale?: string }) => void
   failTrustPagesBundleJob: (args: { jobId: string; message: string }) => void
   startKeywordsDfsFetchJob: (args: { siteLabel?: string }) => string
   completeKeywordsDfsFetchJob: (args: {
@@ -244,8 +266,33 @@ export type AdminBackgroundActivityApi = {
     totalTicks: number
     debugLinesAppend?: string[]
   }) => void
-  completeWorkflowJobsPipelineJob: (args: { jobId: string; summary: WorkflowJobsPipelineSummary }) => void
+  completeWorkflowJobsPipelineJob: (args: {
+    jobId: string
+    summary: WorkflowJobsPipelineSummary
+  }) => void
   failWorkflowJobsPipelineJob: (args: { jobId: string; message: string }) => void
+  startSiteRecordSaveJob: (args: { action: 'create' | 'update'; siteLabel?: string }) => string
+  completeSiteRecordSaveJob: (args: {
+    jobId: string
+    summary: NonNullable<BackgroundActivityJob['siteRecordSaveSummary']>
+  }) => void
+  failSiteRecordSaveJob: (args: { jobId: string; message: string }) => void
+  startContentManagementActionJob: (args: {
+    label: string
+    siteId?: number
+    siteLabel?: string
+    targetCollection?: NonNullable<
+      BackgroundActivityJob['contentManagementActionSummary']
+    >['targetCollection']
+  }) => string
+  completeContentManagementActionJob: (args: {
+    jobId: string
+    detail?: string
+    targetCollection?: NonNullable<
+      BackgroundActivityJob['contentManagementActionSummary']
+    >['targetCollection']
+  }) => void
+  failContentManagementActionJob: (args: { jobId: string; message: string }) => void
   dismissJob: (jobId: string) => void
 }
 
@@ -253,7 +300,10 @@ const Ctx = createContext<AdminBackgroundActivityApi | null>(null)
 
 export function useAdminBackgroundActivity(): AdminBackgroundActivityApi {
   const v = useContext(Ctx)
-  if (!v) throw new Error('useAdminBackgroundActivity must be used within AdminBackgroundActivityProvider')
+  if (!v)
+    throw new Error(
+      'useAdminBackgroundActivity must be used within AdminBackgroundActivityProvider',
+    )
   return v
 }
 

@@ -56,7 +56,9 @@ export async function GET(request: Request): Promise<Response> {
   const site = await payload.findByID({ collection: 'sites', id: siteId, depth: 1 })
   if (!site) return Response.json({ error: 'Site not found' }, { status: 404 })
 
-  const siteTenantId = tenantIdFromRelation((site as { tenant?: number | { id: number } | null }).tenant)
+  const siteTenantId = tenantIdFromRelation(
+    (site as { tenant?: number | { id: number } | null }).tenant,
+  )
   if (!siteAccessible(getTenantScopeForStats(user), siteTenantId)) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
@@ -65,10 +67,7 @@ export async function GET(request: Request): Promise<Response> {
   const pendingJobs = await payload.find({
     collection: 'workflow-jobs',
     where: {
-      and: [
-        siteWhere,
-        { status: { equals: 'pending' } },
-      ],
+      and: [siteWhere, { status: { equals: 'pending' } }],
     },
     limit: 100,
     depth: 0,
@@ -116,6 +115,10 @@ export async function GET(request: Request): Promise<Response> {
       primaryDomain: site.primaryDomain,
       mainProduct: (site as { mainProduct?: string | null }).mainProduct ?? null,
       siteLayout: (site as { siteLayout?: string | null }).siteLayout ?? null,
+      status: (site as { status?: string | null }).status ?? null,
+      defaultAmazonTrackingId:
+        (site as { defaultAmazonTrackingId?: string | null }).defaultAmazonTrackingId ?? null,
+      notes: (site as { notes?: string | null }).notes ?? null,
       pipelineProfile:
         pipeline && typeof pipeline === 'object'
           ? {

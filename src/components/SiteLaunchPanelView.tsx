@@ -2,16 +2,10 @@
 
 import { Button, Gutter } from '@payloadcms/ui'
 import Link from 'next/link'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 
-type SiteOption = {
-  id: number
-  name: string
-  slug: string
-  primaryDomain?: string | null
-  mainProduct?: string | null
-  siteLayout?: string | null
-}
+import type { BackgroundActivityJob } from '@/components/adminBackgroundActivity/AdminBackgroundActivityContext'
+import { useAdminBackgroundActivity } from '@/components/adminBackgroundActivity/AdminBackgroundActivityProvider'
 
 type PresetJson = {
   preset?: {
@@ -35,6 +29,9 @@ type SummaryJson = {
     primaryDomain?: string | null
     mainProduct?: string | null
     siteLayout?: string | null
+    status?: string | null
+    defaultAmazonTrackingId?: string | null
+    notes?: string | null
     pipelineProfile?: { id?: unknown; name?: unknown; slug?: unknown } | null
     keywordBatchPreset?: {
       id?: unknown
@@ -60,7 +57,41 @@ type SummaryJson = {
   pendingJobIds?: number[]
 }
 
-type LaunchStepId = 'assets' | 'briefs' | 'workflow' | 'refresh'
+type SiteSummary = NonNullable<SummaryJson['site']>
+
+type SiteRecordForm = {
+  name: string
+  slug: string
+  primaryDomain: string
+  mainProduct: string
+  siteLayout: string
+  status: string
+  defaultAmazonTrackingId: string
+  notes: string
+}
+
+type SiteOption = {
+  id: number
+  name: string
+  slug: string
+  primaryDomain?: string | null
+  mainProduct?: string | null
+  siteLayout?: string | null
+}
+
+type CategoryOption = {
+  id: number
+  name: string
+  slug: string
+  slotIndex?: number | null
+  kind?: 'article' | 'guide' | 'review' | null
+}
+
+type ContentActionTarget = NonNullable<
+  NonNullable<BackgroundActivityJob['contentManagementActionSummary']>['targetCollection']
+>
+
+type LaunchStepId = 'domain' | 'design' | 'trust'
 type LaunchStepStatus = 'idle' | 'running' | 'done' | 'failed'
 
 type LaunchStep = {
@@ -73,25 +104,44 @@ type LaunchStep = {
 
 const launchStepTemplates: Array<Omit<LaunchStep, 'status' | 'detail'>> = [
   {
-    id: 'assets',
-    label: '品牌素材',
-    description: 'Logo / Hero 生成任务入队',
+    id: 'domain',
+    label: '域名建议',
+    description: '生成可用域名建议并写回站点',
   },
   {
-    id: 'briefs',
-    label: 'Brief 排产',
-    description: '按关键词策略创建 Brief 工作流',
+    id: 'design',
+    label: '设计',
+    description: '生成 AMZ 站点设计配置',
   },
   {
-    id: 'workflow',
-    label: '执行工作流',
-    description: '运行本站 pending 任务生成内容',
+    id: 'trust',
+    label: '信任页面',
+    description: '生成 About / Contact / Privacy 等信任页',
   },
-  {
-    id: 'refresh',
-    label: '刷新状态',
-    description: '重新读取站点内容与任务统计',
-  },
+]
+
+const emptySiteRecordForm: SiteRecordForm = {
+  name: '',
+  slug: '',
+  primaryDomain: '',
+  mainProduct: '',
+  siteLayout: 'amz-template-1',
+  status: 'draft',
+  defaultAmazonTrackingId: '',
+  notes: '',
+}
+
+const siteLayoutOptions = [
+  { label: 'AMZ Template 1', value: 'amz-template-1' },
+  { label: 'AMZ Template 2', value: 'amz-template-2' },
+  { label: 'Template 1', value: 'template1' },
+  { label: 'Template 2', value: 'template2' },
+]
+
+const siteStatusOptions = [
+  { label: 'Draft', value: 'draft' },
+  { label: 'Active', value: 'active' },
+  { label: 'Archived', value: 'archived' },
 ]
 
 function initialLaunchSteps(): LaunchStep[] {
@@ -152,13 +202,51 @@ const actionRowStyle: React.CSSProperties = {
   alignItems: 'center',
 }
 
-function siteLabel(site: SiteOption): string {
-  return `${site.name} (${site.slug})${site.primaryDomain ? ` · ${site.primaryDomain}` : ''}`
+const contentLinkStyle: React.CSSProperties = {
+  fontSize: '0.8125rem',
+  textDecoration: 'underline',
+  textUnderlineOffset: 3,
 }
 
 function numberOr(value: string, fallback: number): number {
   const n = Number(value)
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback
+}
+
+function siteRecordFormFromSite(site: Partial<SiteSummary> | null | undefined): SiteRecordForm {
+  return {
+    name: String(site?.name ?? ''),
+    slug: String(site?.slug ?? ''),
+    primaryDomain: String(site?.primaryDomain ?? ''),
+    mainProduct: String(site?.mainProduct ?? ''),
+    siteLayout: String(site?.siteLayout ?? 'amz-template-1'),
+    status: String(site?.status ?? 'draft'),
+    defaultAmazonTrackingId: String(site?.defaultAmazonTrackingId ?? ''),
+    notes: String(site?.notes ?? ''),
+  }
+}
+
+function siteOptionLabel(site: SiteOption): string {
+  const domain = site.primaryDomain?.trim()
+  const mainProduct = site.mainProduct?.trim()
+  return [
+    `${site.name} (${site.slug})`,
+    domain ? domain : null,
+    mainProduct ? `主产品：${mainProduct}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+function siteOptionFromSummary(site: SiteSummary): SiteOption {
+  return {
+    id: site.id,
+    name: site.name,
+    slug: site.slug,
+    primaryDomain: site.primaryDomain,
+    mainProduct: site.mainProduct,
+    siteLayout: site.siteLayout,
+  }
 }
 
 async function postJson<T>(url: string, body: Record<string, unknown>): Promise<T> {
@@ -173,12 +261,48 @@ async function postJson<T>(url: string, body: Record<string, unknown>): Promise<
   return data
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+function adminCollectionHref(collection: ContentActionTarget, siteId?: number | null): string {
+  const base = `/admin/collections/${collection}`
+  if (typeof siteId !== 'number' || !Number.isFinite(siteId)) return base
+  const encodedSiteId = encodeURIComponent(String(siteId))
+  if (collection === 'offers') return `${base}?where[sites][contains]=${encodedSiteId}`
+  return `${base}?where[site][equals]=${encodedSiteId}`
+}
+
+function parseSiteIdParam(value: string | null | undefined): number | null {
+  if (!value) return null
+  const n = Number(value)
+  return Number.isInteger(n) && n > 0 ? n : null
+}
+
+function readInitialSelectedSiteId(): number | null {
+  if (typeof window === 'undefined') return null
+  return parseSiteIdParam(new URLSearchParams(window.location.search).get('siteId'))
+}
+
 export function SiteLaunchPanelView(): React.ReactElement {
+  const {
+    startSiteRecordSaveJob,
+    completeSiteRecordSaveJob,
+    failSiteRecordSaveJob,
+    startTrustPagesBundleJob,
+    completeTrustPagesBundleJob,
+    failTrustPagesBundleJob,
+    startContentManagementActionJob,
+    completeContentManagementActionJob,
+    failContentManagementActionJob,
+  } = useAdminBackgroundActivity()
   const [sites, setSites] = useState<SiteOption[]>([])
+  const [sitesLoading, setSitesLoading] = useState(false)
   const [selectedSiteId, setSelectedSiteId] = useState<number | null>(null)
   const [preset, setPreset] = useState<PresetJson['preset']>(null)
   const [summary, setSummary] = useState<SummaryJson | null>(null)
   const [batchMode, setBatchMode] = useState('quick_wins')
+  const [siteRecord, setSiteRecord] = useState<SiteRecordForm>(emptySiteRecordForm)
   const [briefLimit, setBriefLimit] = useState('10')
   const [publishLimit, setPublishLimit] = useState('30')
   const [minQualityScore, setMinQualityScore] = useState('80')
@@ -188,44 +312,54 @@ export function SiteLaunchPanelView(): React.ReactElement {
   const [error, setError] = useState<string | null>(null)
   const [logLines, setLogLines] = useState<string[]>([])
   const [launchSteps, setLaunchSteps] = useState<LaunchStep[]>(initialLaunchSteps)
-
-  const selectedSite = sites.find((site) => site.id === selectedSiteId) ?? null
+  const currentSiteIdRef = useRef<number | null>(null)
+  const initialSiteIdAppliedRef = useRef(false)
 
   const addLog = useCallback((line: string): void => {
     setLogLines((prev) => [`${new Date().toLocaleTimeString()} · ${line}`, ...prev].slice(0, 16))
   }, [])
 
-  const updateLaunchStep = useCallback((
-    id: LaunchStepId,
-    status: LaunchStepStatus,
-    detail?: string,
-  ): void => {
-    setLaunchSteps((prev) =>
-      prev.map((step) => (step.id === id ? { ...step, status, detail } : step)),
-    )
+  const updateLaunchStep = useCallback(
+    (id: LaunchStepId, status: LaunchStepStatus, detail?: string): void => {
+      setLaunchSteps((prev) =>
+        prev.map((step) => (step.id === id ? { ...step, status, detail } : step)),
+      )
+    },
+    [],
+  )
+
+  const loadSites = useCallback(async (): Promise<void> => {
+    setSitesLoading(true)
+    try {
+      const res = await fetch('/api/admin/article-quick-action/options', { credentials: 'include' })
+      const data = (await res.json().catch(() => ({}))) as {
+        sites?: SiteOption[]
+        error?: string
+      }
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+      setSites(data.sites ?? [])
+    } finally {
+      setSitesLoading(false)
+    }
   }, [])
 
-  const loadSummaryValue = useCallback(async (): Promise<SummaryJson | null> => {
-    if (selectedSiteId == null) {
-      setSummary(null)
-      return null
-    }
-    const res = await fetch(`/api/admin/site-launch/summary?siteId=${selectedSiteId}`, {
-      credentials: 'include',
-    })
-    const data = (await res.json().catch(() => ({}))) as SummaryJson
-    if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
-    setSummary(data)
-    return data
-  }, [selectedSiteId])
-
-  const loadSites = useCallback(async () => {
-    const res = await fetch('/api/admin/article-quick-action/options', { credentials: 'include' })
-    const data = (await res.json().catch(() => ({}))) as { sites?: SiteOption[]; error?: string }
-    if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
-    setSites(data.sites ?? [])
-    if (selectedSiteId == null && data.sites?.[0]) setSelectedSiteId(data.sites[0].id)
-  }, [selectedSiteId])
+  const loadSummaryValue = useCallback(
+    async (siteIdOverride?: number): Promise<SummaryJson | null> => {
+      const siteId = siteIdOverride ?? selectedSiteId
+      if (siteId == null) {
+        setSummary(null)
+        return null
+      }
+      const res = await fetch(`/api/admin/site-launch/summary?siteId=${siteId}`, {
+        credentials: 'include',
+      })
+      const data = (await res.json().catch(() => ({}))) as SummaryJson
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`)
+      setSummary(data)
+      return data
+    },
+    [selectedSiteId],
+  )
 
   const loadPreset = useCallback(async () => {
     if (selectedSiteId == null) {
@@ -242,17 +376,33 @@ export function SiteLaunchPanelView(): React.ReactElement {
       setBatchMode(data.preset.batchMode)
     }
     const suggestedLimit = data.preset?.defaultBatchLimit ?? data.preset?.maxPick
-    if (typeof suggestedLimit === 'number' && Number.isFinite(suggestedLimit) && suggestedLimit > 0) {
+    if (
+      typeof suggestedLimit === 'number' &&
+      Number.isFinite(suggestedLimit) &&
+      suggestedLimit > 0
+    ) {
       setBriefLimit(String(Math.floor(suggestedLimit)))
     }
   }, [selectedSiteId])
 
   useEffect(() => {
-    void loadSites().catch((e) => setError(e instanceof Error ? e.message : '加载站点失败'))
+    void loadSites().catch((e) => {
+      setError(e instanceof Error ? e.message : '加载站点列表失败')
+    })
   }, [loadSites])
 
   useEffect(() => {
+    if (initialSiteIdAppliedRef.current) return
+    const initialSiteId = readInitialSelectedSiteId()
+    if (initialSiteId == null) return
+    initialSiteIdAppliedRef.current = true
+    currentSiteIdRef.current = initialSiteId
+    setSelectedSiteId(initialSiteId)
+  }, [])
+
+  useEffect(() => {
     if (selectedSiteId == null) return
+    currentSiteIdRef.current = selectedSiteId
     setError(null)
     setLaunchSteps(initialLaunchSteps())
     void Promise.all([loadPreset(), loadSummaryValue()]).catch((e) => {
@@ -260,12 +410,17 @@ export function SiteLaunchPanelView(): React.ReactElement {
     })
   }, [selectedSiteId, loadPreset, loadSummaryValue])
 
+  useEffect(() => {
+    if (!summary?.site || summary.site.id !== selectedSiteId) return
+    setSiteRecord(siteRecordFormFromSite(summary.site))
+  }, [selectedSiteId, summary?.site])
+
   const runAction = async (key: string, fn: () => Promise<void>): Promise<void> => {
     setBusy(key)
     setError(null)
     try {
       await fn()
-      await loadSummaryValue().catch((): null => null)
+      await loadSummaryValue(currentSiteIdRef.current ?? undefined).catch((): null => null)
     } catch (e) {
       setError(e instanceof Error ? e.message : '操作失败')
     } finally {
@@ -273,42 +428,204 @@ export function SiteLaunchPanelView(): React.ReactElement {
     }
   }
 
-  const requireSiteId = (): number => {
-    if (selectedSiteId == null) throw new Error('请先选择站点')
-    return selectedSiteId
+  const updateSiteRecordField = (field: keyof SiteRecordForm, value: string): void => {
+    setSiteRecord((prev) => ({ ...prev, [field]: value }))
   }
 
-  const generateDomain = async (): Promise<void> => {
-    const siteId = requireSiteId()
+  const resolveOperationSite = async (): Promise<SiteSummary> => {
+    if (selectedSiteId == null) return saveSiteRecord()
+    if (summary?.site?.id === selectedSiteId) return summary.site
+    const data = await loadSummaryValue(selectedSiteId)
+    if (!data?.site) throw new Error('站点状态加载失败')
+    return data.site
+  }
+
+  const runContentActionWithBanner = async (
+    label: string,
+    targetCollection: ContentActionTarget,
+    fn: (site: SiteSummary) => Promise<string | void>,
+  ): Promise<void> => {
+    const site = await resolveOperationSite()
+    const jobId = startContentManagementActionJob({
+      label,
+      siteId: site.id,
+      siteLabel: site.name || site.slug,
+      targetCollection,
+    })
+    try {
+      const detail = await fn(site)
+      const detailText = typeof detail === 'string' ? detail.trim() : ''
+      completeContentManagementActionJob({
+        jobId,
+        ...(detailText ? { detail: detailText } : {}),
+        targetCollection,
+      })
+    } catch (e) {
+      failContentManagementActionJob({
+        jobId,
+        message: e instanceof Error ? e.message : '操作失败',
+      })
+      throw e
+    }
+  }
+
+  const saveSiteRecord = async (): Promise<SiteSummary> => {
+    const mainProduct = siteRecord.mainProduct.trim()
+    const name = siteRecord.name.trim() || mainProduct
+    if (!name) throw new Error('请填写标识名称或主产品')
+    const creating = selectedSiteId == null
+    const saveJobId = startSiteRecordSaveJob({
+      action: creating ? 'create' : 'update',
+      siteLabel: name,
+    })
+
+    try {
+      const data = await postJson<{ site?: SiteSummary }>('/api/admin/site-launch/site-record', {
+        ...(selectedSiteId != null ? { siteId: selectedSiteId } : {}),
+        fields: {
+          name,
+          slug: siteRecord.slug.trim(),
+          primaryDomain: siteRecord.primaryDomain.trim(),
+          mainProduct,
+          siteLayout: siteRecord.siteLayout,
+          status: siteRecord.status,
+          defaultAmazonTrackingId: siteRecord.defaultAmazonTrackingId.trim(),
+          notes: siteRecord.notes.trim(),
+        },
+      })
+      if (!data.site) throw new Error('站点保存失败')
+      const saved = data.site
+      currentSiteIdRef.current = saved.id
+      setSites((prev) => {
+        const next = siteOptionFromSummary(saved)
+        const withoutCurrent = prev.filter((site) => site.id !== saved.id)
+        return [next, ...withoutCurrent]
+      })
+      setSelectedSiteId(saved.id)
+      setSiteRecord(siteRecordFormFromSite(saved))
+      setSummary((prev) =>
+        prev?.site && prev.site.id === saved.id
+          ? { ...prev, site: { ...prev.site, ...saved } }
+          : prev,
+      )
+      addLog(creating ? '站点记录已创建' : '站点记录已保存')
+      completeSiteRecordSaveJob({
+        jobId: saveJobId,
+        summary: {
+          action: creating ? 'create' : 'update',
+          siteId: saved.id,
+          name: saved.name,
+          slug: saved.slug,
+          mainProduct: saved.mainProduct,
+        },
+      })
+      void loadSummaryValue(saved.id).catch((): null => null)
+      return saved
+    } catch (e) {
+      failSiteRecordSaveJob({
+        jobId: saveJobId,
+        message: e instanceof Error ? e.message : '请求失败',
+      })
+      throw e
+    }
+  }
+
+  const generateDomain = async (siteOverride?: SiteSummary): Promise<void> => {
+    const savedSite = siteOverride ?? (await resolveOperationSite())
+    const siteId = savedSite.id
     await postJson('/api/admin/sites/generate-domain', { siteId, prepare: true })
     addLog('域名流程已标记运行中')
-    void postJson('/api/admin/sites/generate-domain', {
+    await postJson('/api/admin/sites/generate-domain', {
       siteId,
       force: false,
-      ...(selectedSite?.mainProduct ? { mainProduct: selectedSite.mainProduct } : {}),
+      ...(savedSite?.mainProduct ? { mainProduct: savedSite.mainProduct } : {}),
     })
-      .then(() => {
-        addLog('域名生成完成')
-        void loadSummaryValue().catch((): null => null)
+    addLog('域名建议生成完成')
+    await loadSummaryValue(siteId).catch((): null => null)
+  }
+
+  const generateDesign = async (siteOverride?: SiteSummary): Promise<void> => {
+    const savedSite = siteOverride ?? (await resolveOperationSite())
+    const siteId = savedSite.id
+    const mainProduct = savedSite.mainProduct?.trim() || siteRecord.mainProduct.trim()
+    if (!mainProduct) throw new Error('请先填写主产品，设计生成需要主产品作为提示词')
+    await postJson('/api/admin/site-blueprints/generate-amz-template-design', {
+      siteId,
+      mainProduct,
+      prepare: true,
+    })
+    const data = await postJson<{ blueprintId?: number }>(
+      '/api/admin/site-blueprints/generate-amz-template-design',
+      {
+        siteId,
+        mainProduct,
+        afterPrepare: true,
+      },
+    )
+    addLog(`设计生成完成${data.blueprintId != null ? `：#${data.blueprintId}` : ''}`)
+  }
+
+  const generateTrustPages = async (siteOverride?: SiteSummary): Promise<void> => {
+    const savedSite = siteOverride ?? (await resolveOperationSite())
+    const siteId = savedSite.id
+    const jobId = startTrustPagesBundleJob({ siteLabel: savedSite.name || savedSite.slug })
+    try {
+      await postJson('/api/admin/pages/generate-trust-content', { siteId, prepare: true })
+      const data = await postJson<{ slugs?: unknown; locale?: unknown }>(
+        '/api/admin/pages/generate-trust-content',
+        {
+          siteId,
+          afterPrepare: true,
+        },
+      )
+      const slugs = Array.isArray(data.slugs)
+        ? data.slugs
+            .map((x) => (typeof x === 'string' ? x.trim() : String(x ?? '').trim()))
+            .filter(Boolean)
+        : undefined
+      const locale =
+        typeof data.locale === 'string' && data.locale.trim() ? data.locale.trim() : undefined
+      completeTrustPagesBundleJob({ jobId, slugs, locale })
+      addLog('信任页面生成完成')
+    } catch (e) {
+      failTrustPagesBundleJob({
+        jobId,
+        message: e instanceof Error ? e.message : '信任页面生成失败',
       })
-      .catch((e) => addLog(`域名生成失败：${e instanceof Error ? e.message : String(e)}`))
+      throw e
+    }
   }
 
-  const queueBrandAssets = async (): Promise<void> => {
-    const siteId = requireSiteId()
-    const [logo, hero] = await Promise.all([
-      postJson<{ queuedCount?: number; skipped?: unknown[] }>('/api/admin/sites/queue-site-logo', {
-        siteIds: [siteId],
-      }),
-      postJson<{ queuedCount?: number; skipped?: unknown[] }>('/api/admin/sites/queue-hero-banner', {
-        siteIds: [siteId],
-      }),
-    ])
-    addLog(`品牌素材已入队：Logo ${logo.queuedCount ?? 0}，Hero ${hero.queuedCount ?? 0}`)
+  const syncKeywords = async (siteOverride?: SiteSummary): Promise<string> => {
+    const savedSite = siteOverride ?? (await resolveOperationSite())
+    const categories = await loadCategoriesForSite(savedSite.id)
+    const categorySeeds = categories
+      .map((cat) => cat.name.trim())
+      .filter(Boolean)
+      .slice(0, 5)
+    const fallbackSeed = (savedSite.mainProduct || savedSite.name || savedSite.slug).trim()
+    const seeds = categorySeeds.length > 0 ? categorySeeds : fallbackSeed ? [fallbackSeed] : []
+    if (seeds.length === 0) throw new Error('请先生成分类或填写主产品，拉取关键词需要种子词')
+    const data = await postJson<{
+      total?: number
+      persisted?: number
+      skipped?: number
+      eligibleCount?: number
+      dataForSeoUsdCharged?: number
+    }>('/api/admin/keywords/dfs-fetch', {
+      siteId: savedSite.id,
+      seeds,
+    })
+    const seedNote =
+      categorySeeds.length > 0 ? `分类种子 ${categorySeeds.length} 个` : '主产品种子 1 个'
+    const detail = `${seedNote}；候选 ${data.total ?? 0}，写入 ${data.persisted ?? 0}，跳过 ${data.skipped ?? 0}，eligible ${data.eligibleCount ?? 0}${typeof data.dataForSeoUsdCharged === 'number' ? `，成本 $${data.dataForSeoUsdCharged.toFixed(4)}` : ''}`
+    addLog(`关键词拉取完成：${detail}`)
+    return detail
   }
 
-  const enqueueBriefs = async (): Promise<void> => {
-    const siteId = requireSiteId()
+  const enqueueBriefs = async (siteOverride?: SiteSummary): Promise<string> => {
+    const savedSite = siteOverride ?? (await resolveOperationSite())
+    const siteId = savedSite.id
     const data = await postJson<{
       enqueued?: number
       skipped?: number
@@ -319,17 +636,41 @@ export function SiteLaunchPanelView(): React.ReactElement {
       mode: batchMode,
       limit: numberOr(briefLimit, 10),
     })
-    const terms = Array.isArray(data.pickedTerms) && data.pickedTerms.length > 0
-      ? ` · ${data.pickedTerms.slice(0, 3).join(', ')}`
-      : ''
-    const errors = Array.isArray(data.errorsSample) && data.errorsSample.length > 0
-      ? ` · 提示：${data.errorsSample[0]}`
-      : ''
-    addLog(`Brief 排产完成：入队 ${data.enqueued ?? 0}，跳过 ${data.skipped ?? 0}${terms}${errors}`)
+    const terms =
+      Array.isArray(data.pickedTerms) && data.pickedTerms.length > 0
+        ? ` · ${data.pickedTerms.slice(0, 3).join(', ')}`
+        : ''
+    const errors =
+      Array.isArray(data.errorsSample) && data.errorsSample.length > 0
+        ? ` · 提示：${data.errorsSample[0]}`
+        : ''
+    const detail = `入队 ${data.enqueued ?? 0}，跳过 ${data.skipped ?? 0}${terms}${errors}`
+    addLog(`Brief 排产完成：${detail}`)
+    return detail
   }
 
-  const runSiteJobs = async (freshSummary?: SummaryJson | null): Promise<void> => {
-    const state = freshSummary ?? summary
+  const generateContent = async (siteOverride?: SiteSummary): Promise<string> => {
+    const savedSite = siteOverride ?? (await resolveOperationSite())
+    const enqueueDetail = await enqueueBriefs(savedSite)
+    const fresh = await loadSummaryValue(savedSite.id)
+    const pendingCount = fresh?.pendingJobIds?.length ?? 0
+    if (pendingCount === 0) {
+      addLog('内容生成：排产后没有 pending 工作流任务需要执行')
+      return `${enqueueDetail}；无待执行任务`
+    }
+    addLog(`内容生成：发现 ${pendingCount} 个 pending 任务，开始立即执行`)
+    const runDetail = await runSiteJobs(fresh, savedSite)
+    return `${enqueueDetail}；${runDetail}`
+  }
+
+  const runSiteJobs = async (
+    freshSummary?: SummaryJson | null,
+    siteOverride?: SiteSummary,
+  ): Promise<string> => {
+    const savedSite = siteOverride ?? (await resolveOperationSite())
+    const state =
+      freshSummary ??
+      (summary?.site?.id === savedSite.id ? summary : await loadSummaryValue(savedSite.id))
     const ids = state?.pendingJobIds ?? []
     if (ids.length === 0) throw new Error('当前站点没有 pending 工作流任务')
     const data = await postJson<{ totalRuns?: number; stoppedReason?: string; ok?: boolean }>(
@@ -341,11 +682,119 @@ export function SiteLaunchPanelView(): React.ReactElement {
         stopOnFailure: true,
       },
     )
-    addLog(`本站工作流执行完成：运行 ${data.totalRuns ?? 0} 次，停止原因 ${data.stoppedReason ?? 'unknown'}`)
+    const detail = `运行 ${data.totalRuns ?? 0} 次，停止原因 ${data.stoppedReason ?? 'unknown'}`
+    addLog(`本站工作流执行完成：${detail}`)
+    return detail
   }
 
-  const schedulePublish = async (): Promise<void> => {
-    const siteId = requireSiteId()
+  const generateCategorySlots = async (siteOverride?: SiteSummary): Promise<string> => {
+    const savedSite = siteOverride ?? (await resolveOperationSite())
+    await postJson('/api/admin/categories/generate-slots', {
+      siteId: savedSite.id,
+      ...(savedSite.mainProduct?.trim() ? { mainProduct: savedSite.mainProduct.trim() } : {}),
+      prepare: true,
+    })
+    const data = await postJson<{ okCount?: number; failCount?: number }>(
+      '/api/admin/categories/generate-slots',
+      {
+        siteId: savedSite.id,
+        ...(savedSite.mainProduct?.trim() ? { mainProduct: savedSite.mainProduct.trim() } : {}),
+        afterPrepare: true,
+      },
+    )
+    const detail = `成功 ${data.okCount ?? 0}，失败 ${data.failCount ?? 0}`
+    addLog(`分类槽位生成完成：${detail}`)
+    return detail
+  }
+
+  const loadCategoriesForSite = async (siteId: number): Promise<CategoryOption[]> => {
+    const res = await fetch(
+      `/api/admin/article-quick-action/options?siteId=${encodeURIComponent(String(siteId))}`,
+      { credentials: 'include' },
+    )
+    const data = (await res.json().catch(() => ({}))) as {
+      categories?: CategoryOption[]
+      error?: string
+    }
+    if (!res.ok) throw new Error(data.error ?? '加载分类失败')
+    return data.categories ?? []
+  }
+
+  const fetchOffersForSite = async (siteOverride?: SiteSummary): Promise<string> => {
+    const savedSite = siteOverride ?? (await resolveOperationSite())
+    const categories = await loadCategoriesForSite(savedSite.id)
+    const slotted = categories.filter((cat) => cat.slotIndex != null && cat.slotIndex >= 1)
+    const picked = (slotted.length > 0 ? slotted : categories).slice(0, 5)
+    if (picked.length === 0) throw new Error('当前站点没有可拉品的分类')
+    const categoryIds = picked.map((cat) => cat.id)
+    const data = await postJson<{ batchId?: string; results?: unknown }>(
+      '/api/admin/offers/merchant-slot-fetch',
+      {
+        siteId: savedSite.id,
+        categoryIds,
+        fetchAsinLimit: 5,
+        force: false,
+      },
+    )
+    const rows = Array.isArray(data.results) ? data.results : []
+    const okCount = rows.filter((row) => (row as { ok?: unknown })?.ok === true).length
+    const failCount = rows.length - okCount
+    if (!data.batchId) {
+      const detail = `分类 ${picked.length} 个，派发成功 ${okCount}，失败 ${failCount}；未返回 batchId，无法等待 DataForSEO 回调`
+      addLog(`Offer 拉品已派发：${detail}`)
+      return detail
+    }
+
+    addLog(`Offer 拉品已派发：分类 ${picked.length} 个，等待 DataForSEO 回调写入`)
+
+    const deadline = Date.now() + 15 * 60_000
+    let lastDetail = `分类 ${picked.length} 个，派发成功 ${okCount}，失败 ${failCount}；等待回调`
+    while (Date.now() < deadline) {
+      await sleep(2500)
+      const qs = new URLSearchParams({
+        siteId: String(savedSite.id),
+        batchId: data.batchId,
+        categoryIds: categoryIds.join(','),
+      })
+      const statusRes = await fetch(`/api/admin/offers/merchant-slot-dispatch-status?${qs}`, {
+        credentials: 'include',
+      })
+      const statusData = (await statusRes.json().catch(() => ({}))) as {
+        categories?: Array<{
+          batchMatches?: boolean
+          merchantOfferFetchWorkflowStatus?: string | null
+          logSnippet?: string
+        }>
+        error?: string
+      }
+      if (!statusRes.ok) throw new Error(statusData.error ?? `HTTP ${statusRes.status}`)
+      const statusRows = Array.isArray(statusData.categories) ? statusData.categories : []
+      const matched = statusRows.filter((row) => row.batchMatches === true)
+      const done = matched.filter((row) => row.merchantOfferFetchWorkflowStatus === 'done')
+      const errored = matched.filter((row) => row.merchantOfferFetchWorkflowStatus === 'error')
+      const pending = Math.max(0, picked.length - done.length - errored.length)
+      lastDetail = `分类 ${picked.length} 个，已写回 ${done.length}，失败 ${errored.length}，等待 ${pending}`
+      if (errored.length > 0) {
+        const sample = errored.find((row) => row.logSnippet?.trim())?.logSnippet?.trim()
+        throw new Error(sample ? `${lastDetail}；${sample}` : lastDetail)
+      }
+      if (done.length >= picked.length) {
+        addLog(`Offer 拉品完成：${lastDetail}`)
+        return lastDetail
+      }
+    }
+
+    throw new Error(`${lastDetail}；等待 DataForSEO 回调超时，请确认 postback URL 外网可访问`)
+  }
+
+  const runInternalLinkTasks = async (siteOverride?: SiteSummary): Promise<string> => {
+    const detail = await runSiteJobs(null, siteOverride)
+    return `内链相关 pending 任务已纳入执行；${detail}`
+  }
+
+  const schedulePublish = async (siteOverride?: SiteSummary): Promise<string> => {
+    const savedSite = siteOverride ?? (await resolveOperationSite())
+    const siteId = savedSite.id
     const data = await postJson<{
       scanned?: number
       queued?: number
@@ -356,11 +805,14 @@ export function SiteLaunchPanelView(): React.ReactElement {
       limit: numberOr(publishLimit, 30),
       minQualityScore: numberOr(minQualityScore, 80),
     })
-    addLog(`发布队列检查：扫描 ${data.scanned ?? 0}，排期 ${data.queued ?? 0}，阻塞 ${data.blocked ?? 0}，每日上限 ${data.dailyPostCap ?? '—'}`)
+    const detail = `扫描 ${data.scanned ?? 0}，排期 ${data.queued ?? 0}，阻塞 ${data.blocked ?? 0}，每日上限 ${data.dailyPostCap ?? '—'}`
+    addLog(`发布队列检查：${detail}`)
+    return detail
   }
 
-  const publishOnce = async (): Promise<void> => {
-    const siteId = requireSiteId()
+  const publishOnce = async (siteOverride?: SiteSummary): Promise<string> => {
+    const savedSite = siteOverride ?? (await resolveOperationSite())
+    const siteId = savedSite.id
     const data = await postJson<{
       scanned?: number
       published?: number
@@ -371,58 +823,128 @@ export function SiteLaunchPanelView(): React.ReactElement {
       limit: 20,
       minQualityScore: numberOr(minQualityScore, 80),
     })
-    addLog(`定时发布执行：扫描 ${data.scanned ?? 0}，发布 ${data.published ?? 0}，阻塞 ${data.blocked ?? 0}，跳过 ${data.skipped ?? 0}`)
+    const detail = `扫描 ${data.scanned ?? 0}，发布 ${data.published ?? 0}，阻塞 ${data.blocked ?? 0}，跳过 ${data.skipped ?? 0}`
+    addLog(`定时发布执行：${detail}`)
+    return detail
   }
 
   const oneClickLaunch = async (): Promise<void> => {
     setLaunchSteps(initialLaunchSteps())
+    const savedSite = await resolveOperationSite()
 
     try {
-      updateLaunchStep('assets', 'running', '正在创建 Logo / Hero 工作流任务')
-      await queueBrandAssets()
-      updateLaunchStep('assets', 'done', 'Logo / Hero 已入队')
+      updateLaunchStep('domain', 'running', '正在生成域名建议并校验可用性')
+      await generateDomain(savedSite)
+      updateLaunchStep('domain', 'done', '域名建议已生成并写回站点')
     } catch (e) {
-      updateLaunchStep('assets', 'failed', e instanceof Error ? e.message : '品牌素材入队失败')
+      updateLaunchStep('domain', 'failed', e instanceof Error ? e.message : '域名建议生成失败')
       throw e
     }
 
     try {
-      updateLaunchStep('briefs', 'running', `正在按 ${batchMode} 排产 ${numberOr(briefLimit, 10)} 条 Brief`)
-      await enqueueBriefs()
-      updateLaunchStep('briefs', 'done', 'Brief 工作流已入队')
+      updateLaunchStep('design', 'running', '正在生成 AMZ 站点设计配置')
+      await generateDesign(savedSite)
+      updateLaunchStep('design', 'done', '设计已生成并写回设计记录')
     } catch (e) {
-      updateLaunchStep('briefs', 'failed', e instanceof Error ? e.message : 'Brief 排产失败')
-      throw e
-    }
-
-    let nextSummary: SummaryJson | null = null
-    try {
-      updateLaunchStep('workflow', 'running', '正在读取待执行工作流任务')
-      nextSummary = await loadSummaryValue()
-      const pendingCount = nextSummary?.pendingJobIds?.length ?? 0
-      if (pendingCount === 0) {
-        updateLaunchStep('workflow', 'done', '没有 pending 工作流任务需要执行')
-      } else {
-        updateLaunchStep('workflow', 'running', `发现 ${pendingCount} 个 pending 任务，开始执行`)
-        await runSiteJobs(nextSummary)
-        updateLaunchStep('workflow', 'done', '本站 pending 工作流已执行一轮')
-      }
-    } catch (e) {
-      updateLaunchStep('workflow', 'failed', e instanceof Error ? e.message : '工作流执行失败')
+      updateLaunchStep('design', 'failed', e instanceof Error ? e.message : '设计生成失败')
       throw e
     }
 
     try {
-      updateLaunchStep('refresh', 'running', '正在刷新站点统计')
-      await loadSummaryValue()
-      updateLaunchStep('refresh', 'done', '站点统计已刷新')
+      updateLaunchStep('trust', 'running', '正在生成五张基础信任页面')
+      await generateTrustPages(savedSite)
+      updateLaunchStep('trust', 'done', '信任页面已生成并写回')
     } catch (e) {
-      updateLaunchStep('refresh', 'failed', e instanceof Error ? e.message : '状态刷新失败')
+      updateLaunchStep('trust', 'failed', e instanceof Error ? e.message : '信任页面生成失败')
       throw e
     }
+
+    await loadSummaryValue(savedSite.id).catch((): null => null)
   }
 
   const counts = summary?.counts
+  const selectedOperationSite =
+    selectedSiteId == null
+      ? null
+      : (sites.find((site) => site.id === selectedSiteId) ??
+        (summary?.site?.id === selectedSiteId ? siteOptionFromSummary(summary.site) : null))
+  const selectedOperationSiteId = selectedOperationSite?.id ?? selectedSiteId
+  const siteScopedCollectionHref = (collection: ContentActionTarget): string =>
+    adminCollectionHref(collection, selectedOperationSiteId)
+
+  const operationSiteSelect = (label: string): React.ReactElement => (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(260px, 520px) minmax(220px, 1fr)',
+        gap: '0.75rem',
+        alignItems: 'end',
+        margin: '0.85rem 0',
+      }}
+    >
+      <label>
+        <span style={fieldLabel}>{label}</span>
+        <select
+          disabled={busy != null || sitesLoading}
+          style={inputStyle}
+          value={selectedSiteId ?? ''}
+          onChange={(e) => {
+            const next = e.target.value ? Number(e.target.value) : null
+            currentSiteIdRef.current = next
+            setSelectedSiteId(next)
+            if (next == null) {
+              setSummary(null)
+              setPreset(null)
+            }
+          }}
+        >
+          <option value="">
+            {sitesLoading ? '站点加载中…' : '未选择：使用上方站点记录创建 / 保存'}
+          </option>
+          {sites.map((site) => (
+            <option key={site.id} value={site.id}>
+              {siteOptionLabel(site)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div style={{ fontSize: '0.8125rem', opacity: 0.78, lineHeight: 1.45 }}>
+        {selectedOperationSite
+          ? `当前选中：${siteOptionLabel(selectedOperationSite)}`
+          : '创建 / 保存站点记录成功后，这里会自动选中最新保存的站点。'}
+      </div>
+    </div>
+  )
+
+  const siteMetricsGrid = (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+        gap: '0.75rem',
+        marginBottom: '1rem',
+      }}
+    >
+      {[
+        [
+          '关键词 / eligible',
+          `${counts?.keywordsTotal ?? '—'} / ${counts?.keywordsEligible ?? '—'}`,
+        ],
+        ['内容大纲', counts?.briefsTotal ?? '—'],
+        ['草稿 / 已发布', `${counts?.articlesDraft ?? '—'} / ${counts?.articlesPublished ?? '—'}`],
+        ['待运行 / 运行中', `${counts?.jobsPending ?? '—'} / ${counts?.jobsRunning ?? '—'}`],
+        ['发布队列 / 阻塞', `${counts?.articlesQueued ?? '—'} / ${counts?.articlesBlocked ?? '—'}`],
+        ['每日发布上限', counts?.dailyPostCap ?? '—'],
+        ['流水线', String(summary?.site?.pipelineProfile?.name ?? '未设置')],
+        ['站点布局', summary?.site?.siteLayout ?? '—'],
+      ].map(([label, value]) => (
+        <div key={String(label)} style={metricStyle}>
+          <div style={{ fontSize: '0.75rem', opacity: 0.72, marginBottom: '0.35rem' }}>{label}</div>
+          <div style={{ fontSize: '1rem', fontWeight: 600 }}>{value}</div>
+        </div>
+      ))}
+    </div>
+  )
 
   return (
     <Gutter>
@@ -430,30 +952,99 @@ export function SiteLaunchPanelView(): React.ReactElement {
         <div style={{ marginBottom: '1.25rem' }}>
           <h1 style={{ margin: '0 0 0.4rem', fontSize: '2rem' }}>站点启动操作面板</h1>
           <p style={{ margin: 0, maxWidth: 880, opacity: 0.82, lineHeight: 1.55 }}>
-            员工在这里选择一个站点，然后按顺序完成前期建站内容流程。右侧快捷抽屉保留为单项补救工具；日常规模化操作以本面板为准。
+            员工在这里填写站点记录，然后按顺序完成前期建站内容流程。右侧快捷抽屉保留为单项补救工具；日常规模化操作以本面板为准。
           </p>
         </div>
 
         <div style={cardStyle}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 2fr) 1fr 1fr', gap: '0.75rem' }}>
+          <h2 style={{ fontSize: '1.05rem', marginTop: 0 }}>站点记录</h2>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '0.75rem',
+            }}
+          >
             <label>
-              <span style={fieldLabel}>站点</span>
+              <span style={fieldLabel}>标识名称</span>
+              <input
+                placeholder="后台识别名"
+                style={inputStyle}
+                value={siteRecord.name}
+                onChange={(e) => updateSiteRecordField('name', e.target.value)}
+              />
+            </label>
+            <label>
+              <span style={fieldLabel}>Slug</span>
+              <input
+                placeholder="留空则按标识名称生成"
+                style={inputStyle}
+                value={siteRecord.slug}
+                onChange={(e) => updateSiteRecordField('slug', e.target.value)}
+              />
+            </label>
+            <label>
+              <span style={fieldLabel}>主产品</span>
+              <input
+                placeholder="例如：Owala water bottles"
+                style={inputStyle}
+                value={siteRecord.mainProduct}
+                onChange={(e) => updateSiteRecordField('mainProduct', e.target.value)}
+              />
+            </label>
+            <label>
+              <span style={fieldLabel}>主域名</span>
+              <input
+                placeholder="example.com"
+                style={inputStyle}
+                value={siteRecord.primaryDomain}
+                onChange={(e) => updateSiteRecordField('primaryDomain', e.target.value)}
+              />
+            </label>
+            <label>
+              <span style={fieldLabel}>站点布局</span>
               <select
                 style={inputStyle}
-                value={selectedSiteId ?? ''}
-                onChange={(e) => setSelectedSiteId(e.target.value ? Number(e.target.value) : null)}
+                value={siteRecord.siteLayout}
+                onChange={(e) => updateSiteRecordField('siteLayout', e.target.value)}
               >
-                <option value="">请选择站点</option>
-                {sites.map((site) => (
-                  <option key={site.id} value={site.id}>
-                    {siteLabel(site)}
+                {siteLayoutOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
             </label>
             <label>
+              <span style={fieldLabel}>状态</span>
+              <select
+                style={inputStyle}
+                value={siteRecord.status}
+                onChange={(e) => updateSiteRecordField('status', e.target.value)}
+              >
+                {siteStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span style={fieldLabel}>Amazon Tracking ID</span>
+              <input
+                placeholder="可选"
+                style={inputStyle}
+                value={siteRecord.defaultAmazonTrackingId}
+                onChange={(e) => updateSiteRecordField('defaultAmazonTrackingId', e.target.value)}
+              />
+            </label>
+            <label>
               <span style={fieldLabel}>推荐关键词策略</span>
-              <select style={inputStyle} value={batchMode} onChange={(e) => setBatchMode(e.target.value)}>
+              <select
+                style={inputStyle}
+                value={batchMode}
+                onChange={(e) => setBatchMode(e.target.value)}
+              >
                 <option value="quick_wins">Quick-win</option>
                 <option value="high_commission_affiliate">高价值类目</option>
                 <option value="comparison_decision">对比决策</option>
@@ -465,13 +1056,26 @@ export function SiteLaunchPanelView(): React.ReactElement {
             </label>
             <label>
               <span style={fieldLabel}>Brief 入队数量</span>
-              <input style={inputStyle} value={briefLimit} onChange={(e) => setBriefLimit(e.target.value)} />
+              <input
+                style={inputStyle}
+                value={briefLimit}
+                onChange={(e) => setBriefLimit(e.target.value)}
+              />
             </label>
           </div>
+          <label style={{ display: 'block', marginTop: '0.75rem' }}>
+            <span style={fieldLabel}>备注</span>
+            <textarea
+              placeholder="站点启动备注、负责人协作信息等"
+              rows={2}
+              style={{ ...inputStyle, resize: 'vertical', minHeight: 56 }}
+              value={siteRecord.notes}
+              onChange={(e) => updateSiteRecordField('notes', e.target.value)}
+            />
+          </label>
 
           <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem', opacity: 0.86 }}>
-            当前站点预设：
-            {' '}
+            当前站点预设：{' '}
             {preset ? (
               <>
                 {preset.name ?? preset.slug ?? '未命名预设'}
@@ -479,7 +1083,28 @@ export function SiteLaunchPanelView(): React.ReactElement {
               </>
             ) : (
               '未设置，面板会使用你上面选择的策略'
-            )}
+            )}{' '}
+            · 主产品： {siteRecord.mainProduct.trim() || '未填写'}
+          </div>
+          <div style={{ ...actionRowStyle, marginTop: '0.85rem' }}>
+            <Button
+              buttonStyle="secondary"
+              disabled={busy != null}
+              onClick={() =>
+                void runAction('save-site-record', async () => {
+                  await saveSiteRecord()
+                })
+              }
+            >
+              {selectedSiteId == null ? '创建站点记录' : '保存站点记录'}
+            </Button>
+            <Link
+              href="/admin/collections/sites"
+              prefetch={false}
+              style={{ fontSize: '0.8125rem' }}
+            >
+              打开站点表格
+            </Link>
           </div>
         </div>
 
@@ -487,40 +1112,43 @@ export function SiteLaunchPanelView(): React.ReactElement {
           <div style={{ ...cardStyle, color: 'var(--theme-error-500)' }}>{error}</div>
         ) : null}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
-          {[
-            ['关键词 / eligible', `${counts?.keywordsTotal ?? '—'} / ${counts?.keywordsEligible ?? '—'}`],
-            ['内容大纲', counts?.briefsTotal ?? '—'],
-            ['草稿 / 已发布', `${counts?.articlesDraft ?? '—'} / ${counts?.articlesPublished ?? '—'}`],
-            ['待运行 / 运行中', `${counts?.jobsPending ?? '—'} / ${counts?.jobsRunning ?? '—'}`],
-            ['发布队列 / 阻塞', `${counts?.articlesQueued ?? '—'} / ${counts?.articlesBlocked ?? '—'}`],
-            ['每日发布上限', counts?.dailyPostCap ?? '—'],
-            ['流水线', String(summary?.site?.pipelineProfile?.name ?? '未设置')],
-            ['站点布局', summary?.site?.siteLayout ?? '—'],
-          ].map(([label, value]) => (
-            <div key={String(label)} style={metricStyle}>
-              <div style={{ fontSize: '0.75rem', opacity: 0.72, marginBottom: '0.35rem' }}>{label}</div>
-              <div style={{ fontSize: '1rem', fontWeight: 600 }}>{value}</div>
-            </div>
-          ))}
-        </div>
-
         <div style={cardStyle}>
           <h2 style={{ fontSize: '1.05rem', marginTop: 0 }}>一键启动</h2>
           <p style={{ fontSize: '0.8125rem', opacity: 0.82, lineHeight: 1.55 }}>
-            执行品牌素材入队、按推荐策略排产 Brief，并运行本站 pending 工作流一段时间。发布仍单独执行，避免低质量草稿自动上线。
+            按建站前置顺序生成域名建议、站点设计和基础信任页面。Brief
+            排产、工作流执行和发布仍放在内容管理里，避免内容流程过早启动。
           </p>
+          {operationSiteSelect('一键启动站点')}
           <div style={actionRowStyle}>
-            <Button disabled={busy != null || selectedSiteId == null} onClick={() => void runAction('one-click', oneClickLaunch)}>
+            <Button
+              disabled={busy != null}
+              onClick={() => void runAction('one-click', oneClickLaunch)}
+            >
               {busy === 'one-click'
                 ? `执行中：${launchSteps.find((step) => step.status === 'running')?.label ?? '准备中'}`
-                : '一键启动前期内容'}
+                : '一键启动建站准备'}
             </Button>
-            <Button buttonStyle="secondary" disabled={busy != null} onClick={() => void runAction('refresh', async () => { await loadSummaryValue(); addLog('状态已刷新') })}>
+            <Button
+              buttonStyle="secondary"
+              disabled={busy != null}
+              onClick={() =>
+                void runAction('refresh', async () => {
+                  await loadSummaryValue(currentSiteIdRef.current ?? undefined)
+                  addLog('状态已刷新')
+                })
+              }
+            >
               刷新状态
             </Button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.6rem', marginTop: '1rem' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              gap: '0.6rem',
+              marginTop: '1rem',
+            }}
+          >
             {launchSteps.map((step, index) => (
               <div
                 key={step.id}
@@ -528,12 +1156,30 @@ export function SiteLaunchPanelView(): React.ReactElement {
                   padding: '0.75rem',
                   borderRadius: 8,
                   border: `1px solid ${step.status === 'running' ? '#d88b00' : 'var(--theme-elevation-150)'}`,
-                  background: step.status === 'running' ? 'rgba(216, 139, 0, 0.12)' : 'var(--theme-elevation-0)',
+                  background:
+                    step.status === 'running'
+                      ? 'rgba(216, 139, 0, 0.12)'
+                      : 'var(--theme-elevation-0)',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                  <strong style={{ fontSize: '0.85rem' }}>{index + 1}. {step.label}</strong>
-                  <span style={{ color: launchStepStatusColor(step.status), fontSize: '0.75rem', fontWeight: 600 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                    marginBottom: '0.35rem',
+                  }}
+                >
+                  <strong style={{ fontSize: '0.85rem' }}>
+                    {index + 1}. {step.label}
+                  </strong>
+                  <span
+                    style={{
+                      color: launchStepStatusColor(step.status),
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                    }}
+                  >
                     {launchStepStatusLabel(step.status)}
                   </span>
                 </div>
@@ -545,67 +1191,305 @@ export function SiteLaunchPanelView(): React.ReactElement {
           </div>
         </div>
 
-        <div style={cardStyle}>
-          <h2 style={{ fontSize: '1.05rem', marginTop: 0 }}>单步操作</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
-            <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>1. 域名与品牌</h3>
-              <div style={actionRowStyle}>
-                <Button buttonStyle="secondary" disabled={busy != null || selectedSiteId == null} onClick={() => void runAction('domain', generateDomain)}>
-                  生成域名
-                </Button>
-                <Button buttonStyle="secondary" disabled={busy != null || selectedSiteId == null} onClick={() => void runAction('assets', queueBrandAssets)}>
-                  Logo + Hero 入队
-                </Button>
-              </div>
-            </div>
+        {siteMetricsGrid}
 
+        <div style={cardStyle}>
+          <h2 style={{ fontSize: '1.05rem', marginTop: 0 }}>内容管理</h2>
+          <p style={{ fontSize: '0.8125rem', opacity: 0.82, lineHeight: 1.55 }}>
+            按内容生产顺序操作：先生成分类，再按分类拉商品与关键词，然后生成文章、补内链并发布。
+          </p>
+          {operationSiteSelect('内容管理站点')}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '0.75rem',
+            }}
+          >
             <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>2. 关键词到 Brief</h3>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>1. 分类</h3>
+              <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
+                先生成站点分类槽位，后续商品、关键词和文章都按分类承接。
+              </p>
               <div style={actionRowStyle}>
-                <Button buttonStyle="secondary" disabled={busy != null || selectedSiteId == null} onClick={() => void runAction('briefs', enqueueBriefs)}>
-                  按策略排产 Brief
+                <Button
+                  buttonStyle="secondary"
+                  disabled={busy != null}
+                  onClick={() =>
+                    void runAction('category-slots', async () => {
+                      await runContentActionWithBanner(
+                        '生成分类槽位',
+                        'categories',
+                        generateCategorySlots,
+                      )
+                    })
+                  }
+                >
+                  生成分类槽位
                 </Button>
-                <Link href="/admin/collections/keywords" prefetch={false} style={{ fontSize: '0.8125rem' }}>
-                  查看关键词
+                <Link
+                  href={siteScopedCollectionHref('categories')}
+                  prefetch={false}
+                  style={contentLinkStyle}
+                >
+                  打开分类
                 </Link>
               </div>
             </div>
 
             <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>3. 运行工作流</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <label>
-                  <span style={fieldLabel}>最多运行次数</span>
-                  <input style={inputStyle} value={runMaxRuns} onChange={(e) => setRunMaxRuns(e.target.value)} />
-                </label>
-                <label>
-                  <span style={fieldLabel}>预算秒数</span>
-                  <input style={inputStyle} value={runBudgetSeconds} onChange={(e) => setRunBudgetSeconds(e.target.value)} />
-                </label>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>2. Offer / 商品</h3>
+              <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
+                根据分类槽位拉取 Amazon 商品，补齐后续测评与 money page 素材。
+              </p>
+              <div style={actionRowStyle}>
+                <Button
+                  buttonStyle="secondary"
+                  disabled={busy != null}
+                  onClick={() =>
+                    void runAction('offer-fetch', async () => {
+                      await runContentActionWithBanner('Offer 拉品', 'offers', fetchOffersForSite)
+                    })
+                  }
+                >
+                  拉取商品
+                </Button>
+                <Link
+                  href={siteScopedCollectionHref('offers')}
+                  prefetch={false}
+                  style={contentLinkStyle}
+                >
+                  打开 Offer
+                </Link>
               </div>
-              <Button buttonStyle="secondary" disabled={busy != null || selectedSiteId == null || (summary?.pendingJobIds?.length ?? 0) === 0} onClick={() => void runAction('run-jobs', async () => runSiteJobs())}>
-                运行本站待处理任务
-              </Button>
             </div>
 
             <div style={metricStyle}>
-              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>4. 质量门槛与发布</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>3. 关键词</h3>
+              <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
+                根据分类名称拉词，筛选 eligible / opportunity，确定可排产关键词。
+              </p>
+              <div style={actionRowStyle}>
+                <Button
+                  buttonStyle="secondary"
+                  disabled={busy != null}
+                  onClick={() =>
+                    void runAction('keywords-sync', async () => {
+                      await runContentActionWithBanner('拉取关键词', 'keywords', syncKeywords)
+                    })
+                  }
+                >
+                  拉取关键词
+                </Button>
+                <Link
+                  href={siteScopedCollectionHref('keywords')}
+                  prefetch={false}
+                  style={contentLinkStyle}
+                >
+                  打开关键词
+                </Link>
+              </div>
+            </div>
+
+            <div style={metricStyle}>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>4. 内容生成</h3>
+              <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
+                按推荐关键词策略创建 Brief，并立即运行本站待处理内容工作流。
+              </p>
+              <div style={actionRowStyle}>
+                <Button
+                  disabled={busy != null}
+                  onClick={() =>
+                    void runAction('generate-content', async () => {
+                      await runContentActionWithBanner('生成内容', 'workflow-jobs', generateContent)
+                    })
+                  }
+                >
+                  生成内容
+                </Button>
+                <Button
+                  buttonStyle="secondary"
+                  disabled={busy != null}
+                  onClick={() =>
+                    void runAction('briefs', async () => {
+                      await runContentActionWithBanner(
+                        '仅排产 Brief',
+                        'content-briefs',
+                        enqueueBriefs,
+                      )
+                    })
+                  }
+                >
+                  仅排产 Brief
+                </Button>
+                <Link
+                  href={siteScopedCollectionHref('content-briefs')}
+                  prefetch={false}
+                  style={contentLinkStyle}
+                >
+                  查看大纲
+                </Link>
+              </div>
+            </div>
+
+            <div style={metricStyle}>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>5. 待处理任务</h3>
+              <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
+                生成内容中断或失败后，用这里继续执行本站 pending 工作流任务。
+              </p>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '0.5rem',
+                  marginBottom: '0.75rem',
+                }}
+              >
+                <label>
+                  <span style={fieldLabel}>最多运行次数</span>
+                  <input
+                    style={inputStyle}
+                    value={runMaxRuns}
+                    onChange={(e) => setRunMaxRuns(e.target.value)}
+                  />
+                </label>
+                <label>
+                  <span style={fieldLabel}>预算秒数</span>
+                  <input
+                    style={inputStyle}
+                    value={runBudgetSeconds}
+                    onChange={(e) => setRunBudgetSeconds(e.target.value)}
+                  />
+                </label>
+              </div>
+              <Button
+                buttonStyle="secondary"
+                disabled={
+                  busy != null ||
+                  (selectedSiteId != null && (summary?.pendingJobIds?.length ?? 0) === 0)
+                }
+                onClick={() =>
+                  void runAction('run-jobs', async () => {
+                    await runContentActionWithBanner(
+                      '继续运行待处理任务',
+                      'workflow-jobs',
+                      (site) => runSiteJobs(undefined, site),
+                    )
+                  })
+                }
+              >
+                继续运行待处理任务
+              </Button>
+              <div style={{ ...actionRowStyle, marginTop: '0.65rem' }}>
+                <Link
+                  href={siteScopedCollectionHref('articles')}
+                  prefetch={false}
+                  style={contentLinkStyle}
+                >
+                  查看文章
+                </Link>
+                <Link
+                  href={siteScopedCollectionHref('workflow-jobs')}
+                  prefetch={false}
+                  style={contentLinkStyle}
+                >
+                  查看工作流
+                </Link>
+              </div>
+            </div>
+
+            <div style={metricStyle}>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>6. 文章内链</h3>
+              <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
+                查看 PageLinkGraph、内链注入 / 强化任务和 money page 内链健康。
+              </p>
+              <div style={actionRowStyle}>
+                <Button
+                  buttonStyle="secondary"
+                  disabled={
+                    busy != null ||
+                    (selectedSiteId != null && (summary?.pendingJobIds?.length ?? 0) === 0)
+                  }
+                  onClick={() =>
+                    void runAction('internal-links', async () => {
+                      await runContentActionWithBanner(
+                        '执行内链任务',
+                        'page-link-graph',
+                        runInternalLinkTasks,
+                      )
+                    })
+                  }
+                >
+                  执行内链任务
+                </Button>
+                <Link
+                  href={siteScopedCollectionHref('page-link-graph')}
+                  prefetch={false}
+                  style={contentLinkStyle}
+                >
+                  查看内链图
+                </Link>
+                <Link
+                  href={siteScopedCollectionHref('workflow-jobs')}
+                  prefetch={false}
+                  style={contentLinkStyle}
+                >
+                  内链任务
+                </Link>
+              </div>
+            </div>
+
+            <div style={metricStyle}>
+              <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>7. 发布与刷新</h3>
+              <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
+                按质量分门槛加入发布队列，或执行一次本站排期发布。
+              </p>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '0.5rem',
+                  marginBottom: '0.75rem',
+                }}
+              >
                 <label>
                   <span style={fieldLabel}>发布排队数量</span>
-                  <input style={inputStyle} value={publishLimit} onChange={(e) => setPublishLimit(e.target.value)} />
+                  <input
+                    style={inputStyle}
+                    value={publishLimit}
+                    onChange={(e) => setPublishLimit(e.target.value)}
+                  />
                 </label>
                 <label>
                   <span style={fieldLabel}>最低质量分</span>
-                  <input style={inputStyle} value={minQualityScore} onChange={(e) => setMinQualityScore(e.target.value)} />
+                  <input
+                    style={inputStyle}
+                    value={minQualityScore}
+                    onChange={(e) => setMinQualityScore(e.target.value)}
+                  />
                 </label>
               </div>
               <div style={actionRowStyle}>
-                <Button buttonStyle="secondary" disabled={busy != null || selectedSiteId == null} onClick={() => void runAction('schedule-publish', schedulePublish)}>
+                <Button
+                  buttonStyle="secondary"
+                  disabled={busy != null}
+                  onClick={() =>
+                    void runAction('schedule-publish', async () => {
+                      await runContentActionWithBanner('加入发布队列', 'articles', schedulePublish)
+                    })
+                  }
+                >
                   加入发布队列
                 </Button>
-                <Button buttonStyle="secondary" disabled={busy != null || selectedSiteId == null} onClick={() => void runAction('publish-once', publishOnce)}>
+                <Button
+                  buttonStyle="secondary"
+                  disabled={busy != null}
+                  onClick={() =>
+                    void runAction('publish-once', async () => {
+                      await runContentActionWithBanner('执行一次发布', 'articles', publishOnce)
+                    })
+                  }
+                >
                   执行一次发布
                 </Button>
               </div>
