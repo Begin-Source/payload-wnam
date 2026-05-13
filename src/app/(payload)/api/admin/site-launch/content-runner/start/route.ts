@@ -33,6 +33,112 @@ function numberFromBody(value: unknown): number | null {
   return Number.isFinite(n) ? Math.floor(n) : null
 }
 
+function relationIdFromUnknown(raw: unknown): number | null {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return Math.floor(raw)
+  if (typeof raw === 'string' && /^\d+$/.test(raw.trim())) return Number(raw.trim())
+  if (raw && typeof raw === 'object' && 'id' in raw) {
+    return relationIdFromUnknown((raw as { id?: unknown }).id)
+  }
+  return null
+}
+
+function csvToList(raw: unknown): string[] | undefined {
+  if (Array.isArray(raw) && raw.every((x) => typeof x === 'string')) {
+    const cleaned = raw.map((x) => x.trim()).filter(Boolean)
+    return cleaned.length > 0 ? cleaned : undefined
+  }
+  if (typeof raw !== 'string') return undefined
+  const cleaned = raw
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean)
+  return cleaned.length > 0 ? cleaned : undefined
+}
+
+function numberField(raw: unknown): number | undefined {
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : Number.NaN
+  return Number.isFinite(n) ? n : undefined
+}
+
+function booleanField(raw: unknown): boolean | undefined {
+  return typeof raw === 'boolean' ? raw : undefined
+}
+
+function presetDocFromRelation(raw: unknown): Record<string, unknown> | null {
+  return raw && typeof raw === 'object' && 'batchMode' in raw
+    ? (raw as Record<string, unknown>)
+    : null
+}
+
+function enqueueBodyFromSitePreset(
+  site: Record<string, unknown>,
+  requestBody: Record<string, unknown>,
+): Record<string, unknown> {
+  const preset = presetDocFromRelation(site.keywordBatchPreset)
+  const sitePipelineProfileId = relationIdFromUnknown(site.pipelineProfile)
+  const presetMode =
+    typeof preset?.batchMode === 'string' && preset.batchMode.trim()
+      ? preset.batchMode.trim()
+      : undefined
+  const mode = presetMode ?? (typeof requestBody.mode === 'string' ? requestBody.mode : 'default')
+
+  const presetDefaultLimit = numberField(preset?.defaultBatchLimit)
+  const presetMaxPick = numberField(preset?.maxPick)
+  const requestedLimit = numberFromBody(requestBody.limit)
+
+  const enqueueBody: Record<string, unknown> = {
+    siteId: requestBody.siteId,
+    mode,
+    limit: requestedLimit ?? presetDefaultLimit ?? presetMaxPick,
+    pipelineProfileId: sitePipelineProfileId ?? requestBody.pipelineProfileId,
+  }
+
+  if (preset && mode === 'quick_wins') {
+    const filter: Record<string, unknown> = {}
+    const eligibleOnly = booleanField(preset.eligibleOnly)
+    const intentWhitelist = csvToList(preset.intentWhitelist)
+    const minVolume = numberField(preset.minVolume)
+    const maxVolume = numberField(preset.maxVolume)
+    const maxKd = numberField(preset.maxKd)
+    const maxPick = numberField(preset.maxPick)
+    if (eligibleOnly !== undefined) filter.eligibleOnly = eligibleOnly
+    if (intentWhitelist) filter.intentWhitelist = intentWhitelist
+    if (minVolume !== undefined) filter.minVolume = minVolume
+    if (maxVolume !== undefined) filter.maxVolume = maxVolume
+    if (maxKd !== undefined) filter.maxKd = maxKd
+    if (maxPick !== undefined) filter.maxPick = maxPick
+    if (Object.keys(filter).length > 0) enqueueBody.filter = filter
+    const clusterBeforeEnqueue = booleanField(preset.clusterBeforeEnqueue)
+    const clusterMinOverlap = numberField(preset.clusterMinOverlap)
+    if (clusterBeforeEnqueue !== undefined) enqueueBody.clusterBeforeEnqueue = clusterBeforeEnqueue
+    if (clusterMinOverlap !== undefined) enqueueBody.clusterMinOverlap = clusterMinOverlap
+  }
+
+  if (preset && mode === 'geo_friendly') {
+    const geoIntentWhitelist = csvToList(preset.geoIntentWhitelist)
+    const geoQuestionOnly = booleanField(preset.geoQuestionOnly)
+    if (geoIntentWhitelist) enqueueBody.geoIntentWhitelist = geoIntentWhitelist
+    if (geoQuestionOnly !== undefined) enqueueBody.geoQuestionOnly = geoQuestionOnly
+  }
+
+  if (preset && mode === 'pillar_sprint') {
+    const pillarId = numberField(preset.pillarKeywordId)
+    if (pillarId !== undefined) enqueueBody.pillarId = Math.floor(pillarId)
+  }
+
+  if (preset && mode === 'seasonal') {
+    const minSeasonalScore = numberField(preset.minSeasonalScore)
+    if (minSeasonalScore !== undefined) enqueueBody.minSeasonalScore = minSeasonalScore
+  }
+
+  if (preset && mode === 'refresh_decay') {
+    const decayThreshold = numberField(preset.decayThreshold)
+    if (decayThreshold !== undefined) enqueueBody.decayThreshold = decayThreshold
+  }
+
+  return enqueueBody
+}
+
 async function scheduleBackgroundRunner(promise: Promise<unknown>): Promise<void> {
   promise.catch((e) => {
     console.error('[site-content-runner] background failure', e)
@@ -65,7 +171,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'siteId required' }, { status: 400 })
   }
 
-  const site = await payload.findByID({ collection: 'sites', id: siteId, depth: 0 })
+  const site = await payload.findByID({ collection: 'sites', id: siteId, depth: 1 })
   if (!site) {
     return Response.json({ error: 'Site not found' }, { status: 404 })
   }
@@ -84,12 +190,9 @@ export async function POST(request: Request): Promise<Response> {
     new Request(new URL('/api/admin/articles/batch-enqueue', request.url), {
       method: 'POST',
       headers: enqueueHeaders,
-      body: JSON.stringify({
-        siteId,
-        mode: typeof body.mode === 'string' ? body.mode : 'default',
-        limit: numberFromBody(body.limit) ?? undefined,
-        pipelineProfileId: body.pipelineProfileId,
-      }),
+      body: JSON.stringify(
+        enqueueBodyFromSitePreset(site as Record<string, unknown>, { ...body, siteId }),
+      ),
     }),
   )
   const enqueueBody = (await enqueueRes.json().catch(() => ({}))) as Record<string, unknown>
