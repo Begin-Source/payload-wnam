@@ -632,6 +632,8 @@ export function SiteLaunchPanelView(): React.ReactElement {
     if (seeds.length === 0) throw new Error('请先生成分类或填写主产品，拉取关键词需要种子词')
     const data = await postJson<{
       total?: number
+      persistable?: number
+      filteredOutByPersistCriteria?: number
       persisted?: number
       skipped?: number
       eligibleCount?: number
@@ -639,10 +641,17 @@ export function SiteLaunchPanelView(): React.ReactElement {
     }>('/api/admin/keywords/dfs-fetch', {
       siteId: savedSite.id,
       seeds,
+      intentWhitelist: ['informational', 'navigational', 'commercial', 'transactional'],
+      maxKd: 30,
+      minVolume: 30,
+      persistFilter: {
+        maxKdLessThan: 30,
+        minVolumeGreaterThan: 30,
+      },
     })
     const seedNote =
       categorySeeds.length > 0 ? `分类种子 ${categorySeeds.length} 个` : '主产品种子 1 个'
-    const detail = `${seedNote}；候选 ${data.total ?? 0}，写入 ${data.persisted ?? 0}，跳过 ${data.skipped ?? 0}，eligible ${data.eligibleCount ?? 0}${typeof data.dataForSeoUsdCharged === 'number' ? `，成本 $${data.dataForSeoUsdCharged.toFixed(4)}` : ''}`
+    const detail = `${seedNote}；候选 ${data.total ?? 0}，符合 KD<30 且 volume>30 ${data.persistable ?? 0}，过滤 ${data.filteredOutByPersistCriteria ?? 0}，写入 ${data.persisted ?? 0}，跳过 ${data.skipped ?? 0}，eligible ${data.eligibleCount ?? 0}${typeof data.dataForSeoUsdCharged === 'number' ? `，成本 $${data.dataForSeoUsdCharged.toFixed(4)}` : ''}`
     addLog(`关键词拉取完成：${detail}`)
     return detail
   }

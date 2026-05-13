@@ -2,7 +2,10 @@ import configPromise from '@payload-config'
 import type { Payload, Where } from 'payload'
 import { getPayload } from 'payload'
 
-import { fetchKeywordSuggestionsLive, mergeUniqueSeeds } from '@/services/integrations/dataforseo/keywords'
+import {
+  fetchKeywordSuggestionsLive,
+  mergeUniqueSeeds,
+} from '@/services/integrations/dataforseo/keywords'
 import type { Config } from '@/payload-types'
 import { isUsersCollection } from '@/utilities/announcementAccess'
 import { classifyGeoFriendly } from '@/utilities/classifyGeoFriendly'
@@ -24,9 +27,7 @@ import { getTenantScopeForStats, type TenantScope } from '@/utilities/tenantScop
 
 export const dynamic = 'force-dynamic'
 
-function tenantIdFromRelation(
-  tenant: number | { id: number } | null | undefined,
-): number | null {
+function tenantIdFromRelation(tenant: number | { id: number } | null | undefined): number | null {
   if (tenant == null || tenant === undefined) return null
   if (typeof tenant === 'number') return tenant
   if (typeof tenant === 'object' && typeof tenant.id === 'number') return tenant.id
@@ -56,6 +57,62 @@ const INTENT_ALLOWED = new Set<string>([
   'transactional',
 ])
 
+type PersistFilter = {
+  intentWhitelist?: KeywordIntent[]
+  maxKdLessThan?: number
+  minVolumeGreaterThan?: number
+}
+
+function parsePersistFilter(raw: unknown): PersistFilter | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const obj = raw as Record<string, unknown>
+  const filter: PersistFilter = {}
+  if (Array.isArray(obj.intentWhitelist) && obj.intentWhitelist.length > 0) {
+    const intents = obj.intentWhitelist
+      .map((x) => (typeof x === 'string' ? x.trim().toLowerCase() : ''))
+      .filter((x) => INTENT_ALLOWED.has(x)) as KeywordIntent[]
+    if (intents.length > 0) {
+      filter.intentWhitelist = intents
+    }
+  }
+  if (obj.minVolumeGreaterThan != null && Number.isFinite(Number(obj.minVolumeGreaterThan))) {
+    filter.minVolumeGreaterThan = Number(obj.minVolumeGreaterThan)
+  }
+  if (obj.maxKdLessThan != null && Number.isFinite(Number(obj.maxKdLessThan))) {
+    filter.maxKdLessThan = Number(obj.maxKdLessThan)
+  }
+  return Object.keys(filter).length > 0 ? filter : null
+}
+
+function matchesPersistFilter(
+  row: { intent: KeywordIntent; kd: number; volume: number },
+  filter: PersistFilter | null,
+): boolean {
+  if (!filter) return true
+  if (
+    filter.intentWhitelist &&
+    filter.intentWhitelist.length > 0 &&
+    !filter.intentWhitelist.includes(row.intent)
+  ) {
+    return false
+  }
+  if (
+    filter.minVolumeGreaterThan != null &&
+    Number.isFinite(filter.minVolumeGreaterThan) &&
+    row.volume <= filter.minVolumeGreaterThan
+  ) {
+    return false
+  }
+  if (
+    filter.maxKdLessThan != null &&
+    Number.isFinite(filter.maxKdLessThan) &&
+    row.kd >= filter.maxKdLessThan
+  ) {
+    return false
+  }
+  return true
+}
+
 async function findKeywordDocBySlugForSite(
   payload: Payload,
   userArg: Config['user'] & { collection: 'users' },
@@ -79,7 +136,10 @@ async function findKeywordDocBySlugForSite(
 
 function stringArrayFromJsonField(v: unknown): string[] {
   if (!Array.isArray(v)) return []
-  return v.filter((x): x is string => typeof x === 'string').map((s) => s.trim()).filter(Boolean)
+  return v
+    .filter((x): x is string => typeof x === 'string')
+    .map((s) => s.trim())
+    .filter(Boolean)
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -131,10 +191,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
   if (siteTenantId == null) {
-    return Response.json(
-      { error: '所选站点未关联租户，无法创建关键词' },
-      { status: 400 },
-    )
+    return Response.json({ error: '所选站点未关联租户，无法创建关键词' }, { status: 400 })
   }
 
   const rawPid = body.pipelineProfileId
@@ -238,6 +295,9 @@ export async function POST(request: Request): Promise<Response> {
     )
     return { ...r, opportunityScore, eligible, eligibilityReason: reason }
   })
+  const persistFilter = parsePersistFilter(body.persistFilter)
+  const persistableRows = enriched.filter((row) => matchesPersistFilter(row, persistFilter))
+  const filteredOutByPersistCriteria = enriched.length - persistableRows.length
 
   let persisted = 0
   let skipped = 0
@@ -260,7 +320,7 @@ export async function POST(request: Request): Promise<Response> {
 
   const nowIso = new Date().toISOString()
 
-  for (const row of enriched) {
+  for (const row of persistableRows) {
     if (row.eligible) eligibleCount += 1
     const slug = slugify(row.term) || `kw-${Date.now()}-${persisted}-${skipped}`
 
@@ -356,12 +416,15 @@ export async function POST(request: Request): Promise<Response> {
   return Response.json({
     ok: true,
     total: enriched.length,
+    persistable: persistableRows.length,
+    filteredOutByPersistCriteria,
     persisted,
     skipped,
     eligibleCount,
     dataForSeoUsdCharged: totalCostUsd,
     location: { locationCode, languageCode },
     thresholds,
+    ...(persistFilter ? { persistFilter } : {}),
     seeds,
     rows: rowsOut.map((ro) => ({
       term: ro.term,
