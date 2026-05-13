@@ -17,7 +17,7 @@ type OfferOptionRow = {
   asin: string | null
 }
 
-const BATCH_MAX = 40
+const BATCH_MAX = 5
 
 function formatSiteLine(s: SiteOption): string {
   return `${s.name} (${s.slug}) ${s.primaryDomain}`
@@ -210,7 +210,11 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
   }
 
   const parseManualIds = (): number[] => {
-    const raw = idsText.replace(/,/g, ' ').split(/\s+/).map((x) => x.trim()).filter(Boolean)
+    const raw = idsText
+      .replace(/,/g, ' ')
+      .split(/\s+/)
+      .map((x) => x.trim())
+      .filter(Boolean)
     const nums = raw.map((s) => Number(s)).filter((n) => Number.isFinite(n) && n > 0)
     return Array.from(new Set(nums))
   }
@@ -262,7 +266,9 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
         const batch = chunks[i]
         const batchNo = i + 1
         setBatchStatus(
-          chunks.length > 1 ? `批次 ${batchNo} / ${chunks.length}（本批 ${batch.length} 条）…` : null,
+          chunks.length > 1
+            ? `批次 ${batchNo} / ${chunks.length}（本批 ${batch.length} 条）…`
+            : null,
         )
 
         const res = await fetch('/api/admin/offers/generate-review-mdx', {
@@ -280,7 +286,9 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
         if (!res.ok) {
           setError(typeof data.error === 'string' ? data.error : `HTTP ${res.status}`)
           const lines = merged.map((r) =>
-            r.ok ? `#${r.offerId} OK${r.articleId != null ? ` article ${r.articleId}` : ''}` : `#${r.offerId} ERR ${r.error ?? ''}`,
+            r.ok
+              ? `#${r.offerId} OK${r.articleId != null ? ` article ${r.articleId}` : ''}`
+              : `#${r.offerId} ERR ${r.error ?? ''}`,
           )
           if (lines.length > 0) {
             setSummary(
@@ -326,7 +334,7 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
         生成 Review MDX
       </Button>
 
-      {open ?
+      {open ? (
         <div aria-labelledby={titleId} aria-modal role="dialog" style={backdropStyle}>
           <button
             aria-label="关闭"
@@ -347,8 +355,8 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
               Generate Review MDX（OpenRouter）
             </h2>
             <p style={{ fontSize: '0.8rem', opacity: 0.85, marginBottom: '1rem' }}>
-              选择站点后勾选 Offer（或全选当前列表），写入 Offer · Review MDX 草稿；可选同步创建/更新 draft{' '}
-              <code>articles</code>
+              选择站点后勾选 Offer（或全选当前列表），写入 Offer · Review MDX
+              草稿；可选同步创建/更新 draft <code>articles</code>
               （Lexical）。每请求最多 {BATCH_MAX} 条，超出将自动分批。
             </p>
 
@@ -398,7 +406,7 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
                 </span>
               </button>
 
-              {siteMenuOpen ?
+              {siteMenuOpen ? (
                 <div
                   role="listbox"
                   style={{
@@ -429,11 +437,14 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
                     onClick={(e) => e.stopPropagation()}
                   />
                   <div style={{ maxHeight: 200, overflow: 'auto' }}>
-                    {sitesLoading ?
-                      <span style={{ fontSize: '0.75rem', opacity: 0.7, padding: '0.25rem 0.5rem' }}>
+                    {sitesLoading ? (
+                      <span
+                        style={{ fontSize: '0.75rem', opacity: 0.7, padding: '0.25rem 0.5rem' }}
+                      >
                         加载中…
                       </span>
-                    : sites.map((s) => (
+                    ) : (
+                      sites.map((s) => (
                         <button
                           key={s.id}
                           aria-selected={selectedSiteId === s.id}
@@ -456,15 +467,19 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
                           {formatSiteLine(s)}
                         </button>
                       ))
-                    }
+                    )}
                   </div>
                 </div>
-              : null}
+              ) : null}
             </div>
 
             <div style={{ marginBottom: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, opacity: 0.85 }}>Offer（多选）</span>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}
+              >
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, opacity: 0.85 }}>
+                  Offer（多选）
+                </span>
                 <Button
                   buttonStyle="secondary"
                   disabled={offers.length === 0 || submitting}
@@ -475,15 +490,15 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
                   全选本站点 Offer
                 </Button>
               </div>
-              {atOfferCap ?
+              {atOfferCap ? (
                 <p style={{ fontSize: '0.7rem', opacity: 0.75, margin: '0.25rem 0 0' }}>
                   当前列表最多 {offersCap} 条（按更新时间）；全选仅针对已加载项。
                 </p>
-              : offers.length > 0 ?
+              ) : offers.length > 0 ? (
                 <p style={{ fontSize: '0.7rem', opacity: 0.65, margin: '0.25rem 0 0' }}>
                   已加载 {offers.length} 条
                 </p>
-              : null}
+              ) : null}
               <div
                 style={{
                   marginTop: '0.5rem',
@@ -495,13 +510,14 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
                   fontSize: '0.8125rem',
                 }}
               >
-                {selectedSiteId == null ?
+                {selectedSiteId == null ? (
                   <span style={{ opacity: 0.65 }}>先选择站点…</span>
-                : offersLoading ?
+                ) : offersLoading ? (
                   <span style={{ opacity: 0.7 }}>加载 Offer…</span>
-                : offers.length === 0 ?
+                ) : offers.length === 0 ? (
                   <span style={{ opacity: 0.65 }}>该站点下暂无 Offer</span>
-                : offers.map((o) => {
+                ) : (
+                  offers.map((o) => {
                     const asinBit = o.asin ? ` · ASIN ${o.asin}` : ''
                     return (
                       <label
@@ -531,7 +547,7 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
                       </label>
                     )
                   })
-                }
+                )}
               </div>
             </div>
 
@@ -555,20 +571,25 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
               <span aria-hidden>{advancedOpen ? '▼' : '▶'}</span>
               高级：手动输入 Offer ID（与勾选合并）
             </button>
-            {advancedOpen ?
+            {advancedOpen ? (
               <>
                 <label style={fieldLabel} htmlFor="offer-review-ids">
                   额外 Offer ID
                 </label>
                 <textarea
                   id="offer-review-ids"
-                  style={{ ...inputStyle, minHeight: '3.5rem', fontFamily: 'inherit', marginBottom: '0.75rem' }}
+                  style={{
+                    ...inputStyle,
+                    minHeight: '3.5rem',
+                    fontFamily: 'inherit',
+                    marginBottom: '0.75rem',
+                  }}
                   value={idsText}
                   onChange={(e) => setIdsText(e.target.value)}
                   placeholder="空格或逗号分隔，例如：12 34 56"
                 />
               </>
-            : null}
+            ) : null}
 
             <div style={{ marginTop: '0.85rem' }}>
               <label style={fieldLabel} htmlFor="offer-review-locale">
@@ -595,7 +616,9 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
               />
             </div>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.85rem' }}>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.85rem' }}
+            >
               <input
                 type="checkbox"
                 checked={createArticle}
@@ -604,15 +627,23 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
               <span style={{ fontSize: '0.875rem' }}>同时创建/更新 Article（draft）</span>
             </label>
 
-            {error ?
-              <p style={{ color: 'var(--theme-error-500)', marginTop: '0.75rem', fontSize: '0.875rem' }}>
+            {error ? (
+              <p
+                style={{
+                  color: 'var(--theme-error-500)',
+                  marginTop: '0.75rem',
+                  fontSize: '0.875rem',
+                }}
+              >
                 {error}
               </p>
-            : null}
-            {batchStatus ?
-              <p style={{ marginTop: '0.5rem', fontSize: '0.8125rem', opacity: 0.85 }}>{batchStatus}</p>
-            : null}
-            {summary ?
+            ) : null}
+            {batchStatus ? (
+              <p style={{ marginTop: '0.5rem', fontSize: '0.8125rem', opacity: 0.85 }}>
+                {batchStatus}
+              </p>
+            ) : null}
+            {summary ? (
               <pre
                 style={{
                   marginTop: '0.75rem',
@@ -625,9 +656,16 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
               >
                 {summary}
               </pre>
-            : null}
+            ) : null}
 
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.5rem',
+                marginTop: '1rem',
+                justifyContent: 'flex-end',
+              }}
+            >
               <Button type="button" buttonStyle="secondary" onClick={close} disabled={submitting}>
                 关闭
               </Button>
@@ -637,7 +675,7 @@ export function OfferReviewMdxQuickActionModal(): React.ReactElement {
             </div>
           </div>
         </div>
-      : null}
+      ) : null}
     </>
   )
 }

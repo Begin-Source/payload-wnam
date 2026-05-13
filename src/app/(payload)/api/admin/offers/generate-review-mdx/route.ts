@@ -31,6 +31,16 @@ import { assertUsersCollection } from '@/utilities/workflowQuickCreate'
 export const dynamic = 'force-dynamic'
 
 const OPENROUTER_EST_USD = 0.04
+const MAX_REVIEW_BATCH_SIZE = 5
+
+type OfferReviewGenerateResult = {
+  offerId: number
+  ok: boolean
+  error?: string
+  articleId?: number
+  articleCreated?: boolean
+  model?: string
+}
 
 function siteAccessible(scope: TenantScope, siteTenantId: number | null): boolean {
   if (scope.mode === 'all') return true
@@ -103,6 +113,186 @@ async function assertOfferAccess(
   return { ok: true, siteId, tenantId: siteTenantId }
 }
 
+async function generateReviewForOffer(args: {
+  aiOverride?: string
+  createArticle: boolean
+  locale: string
+  offerId: number
+  payload: Payload
+  scope: TenantScope
+  templateMdx: string
+}): Promise<OfferReviewGenerateResult> {
+  const { aiOverride, createArticle, locale, offerId, payload, scope, templateMdx } = args
+  const now = new Date().toISOString()
+  try {
+    const offerDoc = await payload.findByID({
+      collection: 'offers',
+      id: offerId,
+      depth: 1,
+    })
+    if (!offerDoc) {
+      return { offerId, ok: false, error: 'Offer not found' }
+    }
+    const offer = offerDoc as Offer
+
+    const access = await assertOfferAccess(payload, scope, offer)
+    if (access.ok !== true) {
+      return { offerId, ok: false, error: access.message }
+    }
+
+    const model = await resolveReviewAiModel(payload, access.siteId, aiOverride)
+
+    await payload.update({
+      collection: 'offers',
+      id: offerId,
+      data: {
+        reviewDraft: {
+          workflowStatus: 'running',
+          workflowUpdatedAt: now,
+          workflowLog: 'Review MDX generation started…',
+        },
+      },
+      overrideAccess: true,
+    })
+
+    const ctx = buildOfferReviewGenContext(offer)
+    const offerVars = buildOfferReviewMdxPromptVarsFromContext(templateMdx, ctx)
+    const offerDefaults = buildOfferReviewMdxResolvedDefaults(templateMdx, ctx)
+    const { system: offerSystem, user: offerUser } = await resolveTenantPromptPair(
+      payload,
+      access.tenantId,
+      OFFER_REVIEW_MDX_SYSTEM,
+      OFFER_REVIEW_MDX_USER,
+      offerDefaults,
+      offerVars,
+    )
+
+    const {
+      text: llmText,
+      finishReason,
+      usage,
+      raw: llmRaw,
+    } = await openrouterChatWithMeta(
+      model,
+      [
+        {
+          role: 'system',
+          content: offerSystem,
+        },
+        { role: 'user', content: offerUser },
+      ],
+      { maxTokens: 4096, temperature: 0.35 },
+    )
+
+    const extracted = extractOfferReviewFromLlm(llmText, ctx)
+    const finalSlug = ensureReviewSlugWithAsin({
+      title: extracted.meta.title,
+      asin: extracted.meta.asin,
+      existingReviewSlug: ctx.reviewSlug,
+    })
+
+    await payload.update({
+      collection: 'offers',
+      id: offerId,
+      data: {
+        reviewDraft: {
+          mdx: extracted.safeMdx,
+          slug: finalSlug,
+          status: 'ready',
+          workflowStatus: 'done',
+          workflowUpdatedAt: new Date().toISOString(),
+          workflowLog: `OK · model ${model}${finishReason && finishReason !== 'stop' ? ` · finish:${finishReason}` : ''}`,
+        },
+      },
+      overrideAccess: true,
+    })
+
+    let articleId: number | undefined
+    let articleCreated: boolean | undefined
+    const postWriteWarnings: string[] = []
+    if (createArticle) {
+      const ar = await upsertArticleFromOfferReview({
+        payload,
+        offer,
+        extracted,
+        reviewSlug: finalSlug,
+        locale,
+      })
+      articleId = ar.articleId
+      articleCreated = ar.created
+      if (articleId != null) {
+        await recordOpenRouterAiCost({
+          payload,
+          target: { collection: 'articles', id: articleId },
+          model,
+          usage,
+          raw: llmRaw,
+          kind: 'offer_review_mdx',
+          metaExtra: { offerId },
+        }).catch((e: unknown) => {
+          const msg = e instanceof Error ? e.message : String(e)
+          postWriteWarnings.push(`AI cost log failed: ${msg}`)
+        })
+      }
+    }
+
+    await incrementSiteQuotaUsage(payload, access.siteId, {
+      openrouterUsd: OPENROUTER_EST_USD,
+    }).catch((e: unknown) => {
+      const msg = e instanceof Error ? e.message : String(e)
+      postWriteWarnings.push(`quota usage update failed: ${msg}`)
+    })
+
+    if (postWriteWarnings.length > 0) {
+      await payload
+        .update({
+          collection: 'offers',
+          id: offerId,
+          data: {
+            reviewDraft: {
+              mdx: extracted.safeMdx,
+              slug: finalSlug,
+              status: 'ready',
+              workflowStatus: 'done',
+              workflowUpdatedAt: new Date().toISOString(),
+              workflowLog: `OK · model ${model} · warning: ${postWriteWarnings.join('; ')}`.slice(
+                0,
+                4000,
+              ),
+            },
+          },
+          overrideAccess: true,
+        })
+        .catch(() => {})
+    }
+
+    return {
+      offerId,
+      ok: true,
+      articleId,
+      articleCreated,
+      model,
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    await payload
+      .update({
+        collection: 'offers',
+        id: offerId,
+        data: {
+          reviewDraft: {
+            workflowStatus: 'error',
+            workflowUpdatedAt: new Date().toISOString(),
+            workflowLog: msg.slice(0, 4000),
+          },
+        },
+        overrideAccess: true,
+      })
+      .catch(() => {})
+    return { offerId, ok: false, error: msg }
+  }
+}
+
 /**
  * POST { offerIds: number[], aiModel?: string, createArticle?: boolean, locale?: string }
  */
@@ -129,17 +319,24 @@ export async function POST(request: Request): Promise<Response> {
 
   const rawIds = body.offerIds
   const offerIds: number[] = Array.isArray(rawIds)
-    ? rawIds
-        .map((x) => (typeof x === 'number' ? x : Number(x)))
-        .filter((n) => Number.isFinite(n) && n > 0)
+    ? Array.from(
+        new Set(
+          rawIds
+            .map((x) => (typeof x === 'number' ? x : Number(x)))
+            .filter((n) => Number.isFinite(n) && n > 0),
+        ),
+      )
     : []
 
   if (offerIds.length === 0) {
     return Response.json({ error: 'offerIds must be a non-empty array' }, { status: 400 })
   }
 
-  if (offerIds.length > 40) {
-    return Response.json({ error: 'offerIds max 40 per request' }, { status: 400 })
+  if (offerIds.length > MAX_REVIEW_BATCH_SIZE) {
+    return Response.json(
+      { error: `offerIds max ${MAX_REVIEW_BATCH_SIZE} per request` },
+      { status: 400 },
+    )
   }
 
   const createArticle =
@@ -156,194 +353,27 @@ export async function POST(request: Request): Promise<Response> {
   }
   const scope = getTenantScopeForStats(user)
 
-  let lastModel = ''
-  const results: {
-    offerId: number
-    ok: boolean
-    error?: string
-    articleId?: number
-    articleCreated?: boolean
-  }[] = []
-
-  for (const offerId of offerIds) {
-    const now = new Date().toISOString()
-    try {
-      const offerDoc = await payload.findByID({
-        collection: 'offers',
-        id: offerId,
-        depth: 1,
-      })
-      if (!offerDoc) {
-        results.push({ offerId, ok: false, error: 'Offer not found' })
-        continue
-      }
-      const offer = offerDoc as Offer
-
-      const access = await assertOfferAccess(payload, scope, offer)
-      if (access.ok !== true) {
-        results.push({ offerId, ok: false, error: access.message })
-        continue
-      }
-
-      const model = await resolveReviewAiModel(payload, access.siteId, aiOverride)
-      lastModel = model
-
-      await payload.update({
-        collection: 'offers',
-        id: offerId,
-        data: {
-          reviewDraft: {
-            workflowStatus: 'running',
-            workflowUpdatedAt: now,
-            workflowLog: 'Review MDX generation started…',
-          },
-        },
-        overrideAccess: true,
-      })
-
-      const ctx = buildOfferReviewGenContext(offer)
-      const offerVars = buildOfferReviewMdxPromptVarsFromContext(templateMdx, ctx)
-      const offerDefaults = buildOfferReviewMdxResolvedDefaults(templateMdx, ctx)
-      const { system: offerSystem, user: offerUser } = await resolveTenantPromptPair(
-        payload,
-        access.tenantId,
-        OFFER_REVIEW_MDX_SYSTEM,
-        OFFER_REVIEW_MDX_USER,
-        offerDefaults,
-        offerVars,
-      )
-
-      const {
-        text: llmText,
-        finishReason,
-        usage,
-        raw: llmRaw,
-      } = await openrouterChatWithMeta(
-        model,
-        [
-          {
-            role: 'system',
-            content: offerSystem,
-          },
-          { role: 'user', content: offerUser },
-        ],
-        { maxTokens: 4096, temperature: 0.35 },
-      )
-
-      const extracted = extractOfferReviewFromLlm(llmText, ctx)
-      const finalSlug = ensureReviewSlugWithAsin({
-        title: extracted.meta.title,
-        asin: extracted.meta.asin,
-        existingReviewSlug: ctx.reviewSlug,
-      })
-
-      await payload.update({
-        collection: 'offers',
-        id: offerId,
-        data: {
-          reviewDraft: {
-            mdx: extracted.safeMdx,
-            slug: finalSlug,
-            status: 'ready',
-            workflowStatus: 'done',
-            workflowUpdatedAt: new Date().toISOString(),
-            workflowLog: `OK · model ${model}${finishReason && finishReason !== 'stop' ? ` · finish:${finishReason}` : ''}`,
-          },
-        },
-        overrideAccess: true,
-      })
-
-      let articleId: number | undefined
-      let articleCreated: boolean | undefined
-      const postWriteWarnings: string[] = []
-      if (createArticle) {
-        const ar = await upsertArticleFromOfferReview({
-          payload,
-          offer,
-          extracted,
-          reviewSlug: finalSlug,
-          locale,
-        })
-        articleId = ar.articleId
-        articleCreated = ar.created
-        if (articleId != null) {
-          await recordOpenRouterAiCost({
-            payload,
-            target: { collection: 'articles', id: articleId },
-            model,
-            usage,
-            raw: llmRaw,
-            kind: 'offer_review_mdx',
-            metaExtra: { offerId },
-          }).catch((e: unknown) => {
-            const msg = e instanceof Error ? e.message : String(e)
-            postWriteWarnings.push(`AI cost log failed: ${msg}`)
-          })
-        }
-      }
-
-      await incrementSiteQuotaUsage(payload, access.siteId, {
-        openrouterUsd: OPENROUTER_EST_USD,
-      }).catch((e: unknown) => {
-        const msg = e instanceof Error ? e.message : String(e)
-        postWriteWarnings.push(`quota usage update failed: ${msg}`)
-      })
-
-      if (postWriteWarnings.length > 0) {
-        await payload
-          .update({
-            collection: 'offers',
-            id: offerId,
-            data: {
-              reviewDraft: {
-                mdx: extracted.safeMdx,
-                slug: finalSlug,
-                status: 'ready',
-                workflowStatus: 'done',
-                workflowUpdatedAt: new Date().toISOString(),
-                workflowLog: `OK · model ${model} · warning: ${postWriteWarnings.join('; ')}`.slice(
-                  0,
-                  4000,
-                ),
-              },
-            },
-            overrideAccess: true,
-          })
-          .catch(() => {})
-      }
-
-      results.push({
+  const results = await Promise.all(
+    offerIds.map((offerId) =>
+      generateReviewForOffer({
+        aiOverride,
+        createArticle,
+        locale,
         offerId,
-        ok: true,
-        articleId,
-        articleCreated,
-      })
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      await payload
-        .update({
-          collection: 'offers',
-          id: offerId,
-          data: {
-            reviewDraft: {
-              workflowStatus: 'error',
-              workflowUpdatedAt: new Date().toISOString(),
-              workflowLog: msg.slice(0, 4000),
-            },
-          },
-          overrideAccess: true,
-        })
-        .catch(() => {})
-      results.push({ offerId, ok: false, error: msg })
-    }
-  }
+        payload,
+        scope,
+        templateMdx,
+      }),
+    ),
+  )
 
   const okCount = results.filter((r) => r.ok).length
+  const lastModel = results.find((r) => r.model)?.model ?? ''
   return Response.json({
     ok: okCount === results.length,
     model: lastModel,
     createArticle,
-    results,
+    results: results.map(({ model: _model, ...result }) => result),
     okCount,
     total: results.length,
   })
