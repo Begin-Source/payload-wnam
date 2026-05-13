@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import {
   fetchKeywordSuggestionsLive,
   mergeUniqueSeeds,
+  type DataForSeoLabsFilter,
 } from '@/services/integrations/dataforseo/keywords'
 import type { Config } from '@/payload-types'
 import { isUsersCollection } from '@/utilities/announcementAccess'
@@ -111,6 +112,26 @@ function matchesPersistFilter(
     return false
   }
   return true
+}
+
+function dataForSeoFiltersFromPersistFilter(
+  filter: PersistFilter | null,
+): DataForSeoLabsFilter[] | undefined {
+  if (!filter) return undefined
+  const filters: DataForSeoLabsFilter[] = []
+  const addFilter = (next: DataForSeoLabsFilter) => {
+    if (filters.length > 0) filters.push('and')
+    filters.push(next)
+  }
+
+  if (filter.minVolumeGreaterThan != null && Number.isFinite(filter.minVolumeGreaterThan)) {
+    addFilter(['keyword_info.search_volume', '>', filter.minVolumeGreaterThan])
+  }
+  if (filter.maxKdLessThan != null && Number.isFinite(filter.maxKdLessThan)) {
+    addFilter(['keyword_properties.keyword_difficulty', '<', filter.maxKdLessThan])
+  }
+
+  return filters.length > 0 ? filters : undefined
 }
 
 async function findKeywordDocBySlugForSite(
@@ -246,6 +267,8 @@ export async function POST(request: Request): Promise<Response> {
     typeof body.languageCode === 'string' && body.languageCode.trim().length > 0
       ? body.languageCode.trim().toLowerCase()
       : fromMerged.language_code
+  const persistFilter = parsePersistFilter(body.persistFilter)
+  const dataForSeoFilters = dataForSeoFiltersFromPersistFilter(persistFilter)
 
   /** Preflight: legacy-equivalent USD ceiling (~2 abstract credits × LEGACY per seed). */
   const estimateUsd = seeds.length > 0 ? seeds.length * 2 * LEGACY_DFS_UNIT_TO_USD : 0
@@ -270,6 +293,7 @@ export async function POST(request: Request): Promise<Response> {
       locationCode,
       languageCode,
       limitTotal: thresholds.pullLimit,
+      filters: dataForSeoFilters,
     })
     normalizedRows = res.rows
     totalCostUsd = res.totalCostUsd
@@ -295,7 +319,6 @@ export async function POST(request: Request): Promise<Response> {
     )
     return { ...r, opportunityScore, eligible, eligibilityReason: reason }
   })
-  const persistFilter = parsePersistFilter(body.persistFilter)
   const persistableRows = enriched.filter((row) => matchesPersistFilter(row, persistFilter))
   const filteredOutByPersistCriteria = enriched.length - persistableRows.length
 
@@ -425,6 +448,7 @@ export async function POST(request: Request): Promise<Response> {
     location: { locationCode, languageCode },
     thresholds,
     ...(persistFilter ? { persistFilter } : {}),
+    ...(dataForSeoFilters ? { dataForSeoFilters } : {}),
     seeds,
     rows: rowsOut.map((ro) => ({
       term: ro.term,

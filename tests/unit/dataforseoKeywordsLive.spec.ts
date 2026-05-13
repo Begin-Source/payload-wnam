@@ -5,14 +5,14 @@ vi.mock('@/services/integrations/dataforseo/client', () => ({
 }))
 
 import { dataForSeoPost } from '@/services/integrations/dataforseo/client'
-import { fetchKeywordSuggestionsLive } from '@/services/integrations/dataforseo/keywords'
+import {
+  fetchKeywordSuggestionsLive,
+  type DataForSeoLabsFilter,
+} from '@/services/integrations/dataforseo/keywords'
 
 const LABS_ENDPOINT = '/v3/dataforseo_labs/google/keyword_suggestions/live'
 
-function labsEnvelope(
-  resultSlices: Record<string, unknown>[],
-  opts?: { taskCost?: number },
-) {
+function labsEnvelope(resultSlices: Record<string, unknown>[], opts?: { taskCost?: number }) {
   const taskCost = opts?.taskCost ?? 0
   return {
     status_code: 20000,
@@ -144,6 +144,43 @@ describe('fetchKeywordSuggestionsLive', () => {
     })
     expect(out.totalCostUsd).toBeCloseTo(0.01, 6)
     expect(out.rows).toHaveLength(2)
+  })
+
+  it('passes Labs filters into each keyword suggestions request', async () => {
+    vi.mocked(dataForSeoPost).mockResolvedValue(
+      labsEnvelope([
+        {
+          seed_keyword: 'tent',
+          items: [
+            {
+              keyword: 'best tent under 100',
+              keyword_info: { search_volume: 90 },
+              keyword_properties: { keyword_difficulty: 12 },
+              search_intent_info: { main_intent: 'commercial' },
+            },
+          ],
+        },
+      ]) as never,
+    )
+
+    const filters: DataForSeoLabsFilter[] = [
+      ['keyword_info.search_volume', '>', 30],
+      'and',
+      ['keyword_properties.keyword_difficulty', '<', 30],
+    ]
+
+    await fetchKeywordSuggestionsLive({
+      seeds: ['tent'],
+      locationCode: 2840,
+      languageCode: 'en',
+      limitTotal: 10,
+      filters,
+    })
+
+    const body = vi.mocked(dataForSeoPost).mock.calls[0]?.[1] as {
+      filters?: unknown
+    }[]
+    expect(body[0].filters).toEqual(filters)
   })
 
   it('merges seed_keyword_data KD/intent from slice parent', async () => {

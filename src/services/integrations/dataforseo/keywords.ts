@@ -1,9 +1,6 @@
 import { dataForSeoPost } from '@/services/integrations/dataforseo/client'
 import { extractDataForSeoCostUsd } from '@/services/integrations/dataforseo/extractDataForSeoCostUsd'
-import {
-  normalizeKeywordIntent,
-  type KeywordIntent,
-} from '@/utilities/keywordEligibility'
+import { normalizeKeywordIntent, type KeywordIntent } from '@/utilities/keywordEligibility'
 
 export type NormalizedKeywordRow = {
   term: string
@@ -15,6 +12,10 @@ export type NormalizedKeywordRow = {
   /** Labs request seed(s) that produced this row (union when the same term appears under multiple seeds). */
   sourceSeeds: string[]
 }
+
+type DataForSeoFilterValue = string | number | boolean | Array<string | number | boolean>
+
+export type DataForSeoLabsFilter = [string, string, DataForSeoFilterValue] | 'and' | 'or'
 
 type KeywordInfoPayload = {
   search_volume?: number
@@ -148,9 +149,10 @@ export async function fetchKeywordSuggestionsLive(args: {
   locationCode: number
   languageCode: string
   limitTotal: number
+  filters?: DataForSeoLabsFilter[]
   signal?: AbortSignal
 }): Promise<{ rows: NormalizedKeywordRow[]; totalCostUsd: number }> {
-  const { seeds, locationCode, languageCode, limitTotal, signal } = args
+  const { seeds, locationCode, languageCode, limitTotal, filters, signal } = args
   const cleanSeeds = seeds.map((s) => s.trim()).filter(Boolean)
   if (cleanSeeds.length === 0 || limitTotal <= 0) return { rows: [], totalCostUsd: 0 }
 
@@ -170,6 +172,7 @@ export async function fetchKeywordSuggestionsLive(args: {
           limit: dfsLimit,
           include_seed_keyword: true,
           include_serp_info: false,
+          ...(filters && filters.length > 0 ? { filters } : {}),
         },
       ],
       { signal },
@@ -183,11 +186,7 @@ export async function fetchKeywordSuggestionsLive(args: {
     if (!task) {
       throw new Error('DataForSEO: no tasks in Labs response')
     }
-    throwIfBadStatus(
-      `DataForSEO task[0]`,
-      task.status_code,
-      task.status_message ?? undefined,
-    )
+    throwIfBadStatus(`DataForSEO task[0]`, task.status_code, task.status_message ?? undefined)
 
     const rows = collectNormalizedFromResult(task.result ?? undefined, seed)
 
