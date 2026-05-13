@@ -323,7 +323,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
   const [batchMode, setBatchMode] = useState('quick_wins')
   const [siteRecord, setSiteRecord] = useState<SiteRecordForm>(emptySiteRecordForm)
   const [briefLimit, setBriefLimit] = useState('10')
-  const [reviewLimit, setReviewLimit] = useState('5')
+  const [reviewConcurrency, setReviewConcurrency] = useState('5')
   const [publishLimit, setPublishLimit] = useState('30')
   const [minQualityScore, setMinQualityScore] = useState('80')
   const [runMaxRuns, setRunMaxRuns] = useState('12')
@@ -883,28 +883,55 @@ export function SiteLaunchPanelView(): React.ReactElement {
       addLog(detail)
       return detail
     }
-    const limit = Math.min(5, Math.max(1, numberOr(reviewLimit, 5)))
-    const picked = pendingOffers.slice(0, limit)
-    const names = picked
-      .map((offer) => offer.title || offer.asin || `Offer #${offer.id}`)
-      .join('、')
-    progress?.(`并发生成 Review：本次提交 ${picked.length} 篇；${names}`)
-    const data = await postJson<{
-      okCount?: number
-      total?: number
-      results?: Array<{ offerId: number; ok: boolean; error?: string; articleId?: number }>
-    }>('/api/admin/offers/generate-review-mdx', {
-      offerIds: picked.map((offer) => offer.id),
-      createArticle: true,
-      locale: 'en',
-    })
-    const results = Array.isArray(data.results) ? data.results : []
-    const okTotal = data.okCount ?? results.filter((row) => row.ok).length
-    const total = data.total ?? results.length
-    const failTotal = Math.max(0, total - okTotal)
-    const articleTotal = results.filter((row) => row.ok && row.articleId != null).length
+    const concurrency = Math.min(5, Math.max(1, numberOr(reviewConcurrency, 5)))
+    const batches: OfferReviewOption[][] = []
+    for (let i = 0; i < pendingOffers.length; i += concurrency) {
+      batches.push(pendingOffers.slice(i, i + concurrency))
+    }
 
-    const detail = `Review 生成完成：执行 ${total}，成功 ${okTotal}，失败 ${failTotal}，写入文章 ${articleTotal}`
+    let okTotal = 0
+    let failTotal = 0
+    let articleTotal = 0
+    let executedTotal = 0
+    progress?.(
+      `准备生成整站 Review：待生成 ${pendingOffers.length} 篇，并发 ${concurrency}，共 ${batches.length} 批`,
+    )
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i] ?? []
+      const names = batch
+        .map((offer) => offer.title || offer.asin || `Offer #${offer.id}`)
+        .join('、')
+      progress?.(
+        `第 ${i + 1}/${batches.length} 批并发提交 ${batch.length} 篇：${names}；累计成功 ${okTotal}，失败 ${failTotal}，剩余 ${
+          pendingOffers.length - executedTotal
+        }`,
+      )
+      const data = await postJson<{
+        okCount?: number
+        total?: number
+        results?: Array<{ offerId: number; ok: boolean; error?: string; articleId?: number }>
+      }>('/api/admin/offers/generate-review-mdx', {
+        offerIds: batch.map((offer) => offer.id),
+        createArticle: true,
+        locale: 'en',
+      })
+      const results = Array.isArray(data.results) ? data.results : []
+      const batchOk = data.okCount ?? results.filter((row) => row.ok).length
+      const batchTotal = data.total ?? results.length
+      const batchFail = Math.max(0, batchTotal - batchOk)
+      okTotal += batchOk
+      failTotal += batchFail
+      articleTotal += results.filter((row) => row.ok && row.articleId != null).length
+      executedTotal += batchTotal
+      progress?.(
+        `第 ${i + 1}/${batches.length} 批完成：本批成功 ${batchOk}，失败 ${batchFail}；累计成功 ${okTotal}，失败 ${failTotal}，剩余 ${
+          pendingOffers.length - executedTotal
+        }`,
+      )
+    }
+
+    const detail = `Review 生成完成：待生成 ${pendingOffers.length}，执行 ${executedTotal}，成功 ${okTotal}，失败 ${failTotal}，写入文章 ${articleTotal}`
     addLog(detail)
     return detail
   }
@@ -1393,11 +1420,11 @@ export function SiteLaunchPanelView(): React.ReactElement {
                 根据商品素材生成 Review 文章，承接 Amazon 商品测评与 money page 内链。
               </p>
               <label style={{ display: 'block', marginBottom: '0.75rem' }}>
-                <span style={fieldLabel}>生成篇数（最多 5）</span>
+                <span style={fieldLabel}>并发篇数（最多 5）</span>
                 <input
                   style={inputStyle}
-                  value={reviewLimit}
-                  onChange={(e) => setReviewLimit(e.target.value)}
+                  value={reviewConcurrency}
+                  onChange={(e) => setReviewConcurrency(e.target.value)}
                 />
               </label>
               <div style={actionRowStyle}>
