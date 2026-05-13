@@ -24,7 +24,8 @@ function relId(value: unknown): string | null {
 export function articleIdFromJob(job: WorkflowJobDoc): string | null {
   const fromRel = relId(job.article)
   if (fromRel) return fromRel
-  const input = job.input && typeof job.input === 'object' ? (job.input as Record<string, unknown>) : null
+  const input =
+    job.input && typeof job.input === 'object' ? (job.input as Record<string, unknown>) : null
   const aid = input?.articleId
   if (typeof aid === 'string' || typeof aid === 'number') return String(aid)
   return null
@@ -37,7 +38,8 @@ export function siteIdFromJob(job: WorkflowJobDoc): string | null {
 export function keywordIdFromJob(job: WorkflowJobDoc): string | null {
   const fromRel = relId(job.pipelineKeyword)
   if (fromRel) return fromRel
-  const input = job.input && typeof job.input === 'object' ? (job.input as Record<string, unknown>) : null
+  const input =
+    job.input && typeof job.input === 'object' ? (job.input as Record<string, unknown>) : null
   const kid = input?.keywordId
   if (typeof kid === 'string' || typeof kid === 'number') return String(kid)
   return null
@@ -46,7 +48,8 @@ export function keywordIdFromJob(job: WorkflowJobDoc): string | null {
 export function briefIdFromJob(job: WorkflowJobDoc): string | null {
   const fromRel = relId(job.contentBrief)
   if (fromRel) return fromRel
-  const input = job.input && typeof job.input === 'object' ? (job.input as Record<string, unknown>) : null
+  const input =
+    job.input && typeof job.input === 'object' ? (job.input as Record<string, unknown>) : null
   const bid = input?.briefId
   if (typeof bid === 'string' || typeof bid === 'number') return String(bid)
   return null
@@ -56,7 +59,10 @@ function jobInput(job: WorkflowJobDoc): Record<string, unknown> {
   return job.input && typeof job.input === 'object' ? (job.input as Record<string, unknown>) : {}
 }
 
-export async function keywordTermFromJob(payload: Payload, job: WorkflowJobDoc): Promise<string | null> {
+export async function keywordTermFromJob(
+  payload: Payload,
+  job: WorkflowJobDoc,
+): Promise<string | null> {
   const input = jobInput(job)
   if (typeof input.keyword === 'string' && input.keyword.trim()) return input.keyword.trim()
 
@@ -100,14 +106,18 @@ export async function dispatchWorkflowJob(
   if (Number.isFinite(siteNum)) {
     const gate = await checkPipelineSpendForJob(payload, siteNum, jt)
     if (!gate.ok) {
-      return Response.json({ ok: false, error: 'quota_exceeded', message: gate.message })
+      const message = 'message' in gate ? gate.message : 'quota exceeded'
+      return Response.json({ ok: false, error: 'quota_exceeded', message })
     }
   }
 
   switch (jt) {
     case 'internal_link_inject': {
       if (!articleId) {
-        return Response.json({ error: 'articleId required (set article relation or input.articleId)' }, { status: 400 })
+        return Response.json(
+          { error: 'articleId required (set article relation or input.articleId)' },
+          { status: 400 },
+        )
       }
       return forwardPipelinePost(request, '/api/pipeline/internal-link-inject', { articleId })
     }
@@ -155,7 +165,9 @@ export async function dispatchWorkflowJob(
       })
     }
     case 'rank_track': {
-      const term = (typeof input.keyword === 'string' && input.keyword.trim()) || (await keywordTermFromJob(payload, job))
+      const term =
+        (typeof input.keyword === 'string' && input.keyword.trim()) ||
+        (await keywordTermFromJob(payload, job))
       if (!term) {
         return Response.json(
           { error: 'keyword text required (input.keyword or pipelineKeyword / keywordId)' },
@@ -205,11 +217,15 @@ export async function dispatchWorkflowJob(
         }
       }
       if (keywordIds.length === 0) {
-        return Response.json({ error: 'input.keywordIds required (non-empty number[])' }, { status: 400 })
+        return Response.json(
+          { error: 'input.keywordIds required (non-empty number[])' },
+          { status: 400 },
+        )
       }
       const quota = await checkPipelineSpendForJob(payload, sid, 'keyword_cluster')
       if (!quota.ok) {
-        return Response.json({ ok: false, error: 'quota_exceeded', message: quota.message })
+        const message = 'message' in quota ? quota.message : 'quota exceeded'
+        return Response.json({ ok: false, error: 'quota_exceeded', message })
       }
       const mo =
         typeof input.minOverlap === 'number'
@@ -217,9 +233,7 @@ export async function dispatchWorkflowJob(
           : typeof input.minOverlap === 'string'
             ? Number(input.minOverlap)
             : Number.NaN
-      const minOverlap = Number.isFinite(mo)
-        ? Math.min(6, Math.max(2, Math.floor(mo)))
-        : 3
+      const minOverlap = Number.isFinite(mo) ? Math.min(6, Math.max(2, Math.floor(mo))) : 3
       return forwardPipelinePost(request, '/api/pipeline/keyword-cluster', {
         siteId: sid,
         keywordIds,
@@ -230,38 +244,80 @@ export async function dispatchWorkflowJob(
     case 'brief_generate': {
       const kid = keywordIdFromJob(job)
       if (!kid) {
-        return Response.json({ error: 'keywordId required (pipelineKeyword or input.keywordId)' }, { status: 400 })
+        return Response.json(
+          { error: 'keywordId required (pipelineKeyword or input.keywordId)' },
+          { status: 400 },
+        )
       }
       const siteNum = numericIfDigits(siteId)
       return forwardPipelinePost(request, '/api/pipeline/brief-generate', {
         keywordId: numericIfDigits(kid) ?? kid,
         ...(typeof siteNum === 'number' ? { siteId: siteNum } : {}),
-        ...(typeof input.keywordStrategyMode === 'string' ? { keywordStrategyMode: input.keywordStrategyMode } : {}),
-        ...(typeof input.affiliateContentRole === 'string' ? { affiliateContentRole: input.affiliateContentRole } : {}),
-        ...(typeof input.affiliatePageLayout === 'string' ? { affiliatePageLayout: input.affiliatePageLayout } : {}),
+        ...(typeof input.keywordStrategyMode === 'string'
+          ? { keywordStrategyMode: input.keywordStrategyMode }
+          : {}),
+        ...(typeof input.affiliateContentRole === 'string'
+          ? { affiliateContentRole: input.affiliateContentRole }
+          : {}),
+        ...(typeof input.affiliatePageLayout === 'string'
+          ? { affiliatePageLayout: input.affiliatePageLayout }
+          : {}),
         ...(typeof input.recommendedPipelineSlug === 'string'
           ? { recommendedPipelineSlug: input.recommendedPipelineSlug }
           : {}),
         ...(typeof input.operatorHint === 'string' ? { operatorHint: input.operatorHint } : {}),
         ...(typeof input.pipelineProfileId === 'number' && Number.isFinite(input.pipelineProfileId)
           ? { pipelineProfileId: Math.floor(input.pipelineProfileId) }
-          : typeof input.pipelineProfileId === 'string' && /^\d+$/.test(String(input.pipelineProfileId).trim())
+          : typeof input.pipelineProfileId === 'string' &&
+              /^\d+$/.test(String(input.pipelineProfileId).trim())
             ? { pipelineProfileId: Number(String(input.pipelineProfileId).trim()) }
             : {}),
+      })
+    }
+    case 'site_content_runner': {
+      const sid = Number.isFinite(siteNum)
+        ? siteNum
+        : typeof input.siteId === 'number' && Number.isFinite(input.siteId)
+          ? Math.floor(input.siteId)
+          : typeof input.siteId === 'string' && /^\d+$/.test(input.siteId.trim())
+            ? Number(input.siteId.trim())
+            : null
+      if (sid == null) {
+        return Response.json(
+          { error: 'siteId required (job.site relation or input.siteId)' },
+          { status: 400 },
+        )
+      }
+      return forwardPipelinePost(request, '/api/pipeline/site-content-runner', {
+        siteId: sid,
+        runnerJobId: job.id,
+        ...(typeof input.batchMaxRuns === 'number' ? { batchMaxRuns: input.batchMaxRuns } : {}),
+        ...(typeof input.batchBudgetMs === 'number' ? { batchBudgetMs: input.batchBudgetMs } : {}),
+        ...(typeof input.maxBatches === 'number' ? { maxBatches: input.maxBatches } : {}),
+        ...(input.stopOnFailure === false ? { stopOnFailure: false } : {}),
       })
     }
     case 'draft_skeleton': {
       const bid = briefIdFromJob(job)
       if (!bid) {
-        return Response.json({ error: 'briefId required (contentBrief or input.briefId)' }, { status: 400 })
+        return Response.json(
+          { error: 'briefId required (contentBrief or input.briefId)' },
+          { status: 400 },
+        )
       }
       const siteNum = numericIfDigits(siteId)
       return forwardPipelinePost(request, '/api/pipeline/draft-skeleton', {
         briefId: numericIfDigits(bid) ?? bid,
         ...(typeof siteNum === 'number' ? { siteId: siteNum } : {}),
-        ...(typeof input.keywordStrategyMode === 'string' ? { keywordStrategyMode: input.keywordStrategyMode } : {}),
-        ...(typeof input.affiliateContentRole === 'string' ? { affiliateContentRole: input.affiliateContentRole } : {}),
-        ...(typeof input.affiliatePageLayout === 'string' ? { affiliatePageLayout: input.affiliatePageLayout } : {}),
+        ...(typeof input.keywordStrategyMode === 'string'
+          ? { keywordStrategyMode: input.keywordStrategyMode }
+          : {}),
+        ...(typeof input.affiliateContentRole === 'string'
+          ? { affiliateContentRole: input.affiliateContentRole }
+          : {}),
+        ...(typeof input.affiliatePageLayout === 'string'
+          ? { affiliatePageLayout: input.affiliatePageLayout }
+          : {}),
       })
     }
     case 'draft_section': {
@@ -276,7 +332,11 @@ export async function dispatchWorkflowJob(
             ? Number(String(input.articleId).trim())
             : NaN
       const aidNum =
-        aidRaw != null && /^\d+$/.test(aidRaw) ? Number(aidRaw) : Number.isFinite(idFromInput) ? idFromInput : NaN
+        aidRaw != null && /^\d+$/.test(aidRaw)
+          ? Number(aidRaw)
+          : Number.isFinite(idFromInput)
+            ? idFromInput
+            : NaN
       if (!Number.isFinite(aidNum)) {
         return Response.json(
           { error: 'draft_section workflow job requires article (relation or input.articleId)' },
@@ -290,19 +350,26 @@ export async function dispatchWorkflowJob(
         pipelineProfileId:
           typeof input.pipelineProfileId === 'number' && Number.isFinite(input.pipelineProfileId)
             ? input.pipelineProfileId
-            : typeof input.pipelineProfileId === 'string' && /^\d+$/.test(input.pipelineProfileId.trim())
+            : typeof input.pipelineProfileId === 'string' &&
+                /^\d+$/.test(input.pipelineProfileId.trim())
               ? Number(input.pipelineProfileId.trim())
               : undefined,
         sectionId: String(input.sectionId),
         sectionType: typeof input.sectionType === 'string' ? input.sectionType : undefined,
         previousSectionSummary:
-          typeof input.previousSectionSummary === 'string' ? input.previousSectionSummary : undefined,
+          typeof input.previousSectionSummary === 'string'
+            ? input.previousSectionSummary
+            : undefined,
         globalContext: typeof input.globalContext === 'string' ? input.globalContext : undefined,
         articleId: aidNum,
         ...(bidRaw && /^\d+$/.test(bidRaw)
           ? { briefId: numericIfDigits(bidRaw) ?? bidRaw }
           : typeof input.briefId === 'string' || typeof input.briefId === 'number'
-            ? { briefId: Number.isFinite(Number(input.briefId)) ? Number(input.briefId) : input.briefId }
+            ? {
+                briefId: Number.isFinite(Number(input.briefId))
+                  ? Number(input.briefId)
+                  : input.briefId,
+              }
             : {}),
       })
     }
@@ -342,12 +409,13 @@ export async function dispatchWorkflowJob(
           : typeof input.articleId === 'string' && /^\d+$/.test(input.articleId)
             ? Number(input.articleId)
             : undefined
-      const articleNumeric =
-        aidImg && /^\d+$/.test(aidImg) ? Number(aidImg) : articleFromInput
+      const articleNumeric = aidImg && /^\d+$/.test(aidImg) ? Number(aidImg) : articleFromInput
       return forwardPipelinePost(request, '/api/pipeline/image-generate', {
         prompt: input.prompt,
         ...(typeof siteNum === 'number' ? { siteId: siteNum } : {}),
-        ...(typeof input.siteId === 'number' && Number.isFinite(input.siteId) ? { siteId: input.siteId } : {}),
+        ...(typeof input.siteId === 'number' && Number.isFinite(input.siteId)
+          ? { siteId: input.siteId }
+          : {}),
         ...(typeof articleNumeric === 'number' && Number.isFinite(articleNumeric)
           ? { articleId: articleNumeric }
           : {}),
@@ -420,7 +488,9 @@ export async function dispatchWorkflowJob(
       return forwardPipelinePost(request, '/api/pipeline/category-cover-generate', {
         categoryId: cid,
         ...(typeof siteMerged === 'number' ? { siteId: siteMerged } : {}),
-        ...(typeof input.prompt === 'string' && input.prompt.trim() ? { prompt: input.prompt.trim() } : {}),
+        ...(typeof input.prompt === 'string' && input.prompt.trim()
+          ? { prompt: input.prompt.trim() }
+          : {}),
       })
     }
     case 'hero_banner_generate': {
@@ -432,7 +502,11 @@ export async function dispatchWorkflowJob(
             : null
       const fromJobSite = numericIfDigits(siteId)
       const siteMerged =
-        sid != null && Number.isFinite(sid) ? sid : typeof fromJobSite === 'number' ? fromJobSite : null
+        sid != null && Number.isFinite(sid)
+          ? sid
+          : typeof fromJobSite === 'number'
+            ? fromJobSite
+            : null
       if (siteMerged == null || !Number.isFinite(siteMerged)) {
         return Response.json(
           { error: 'siteId required (job.site relation or numeric input.siteId)' },
@@ -455,7 +529,11 @@ export async function dispatchWorkflowJob(
             : null
       const fromJobSite = numericIfDigits(siteId)
       const siteMerged =
-        sid != null && Number.isFinite(sid) ? sid : typeof fromJobSite === 'number' ? fromJobSite : null
+        sid != null && Number.isFinite(sid)
+          ? sid
+          : typeof fromJobSite === 'number'
+            ? fromJobSite
+            : null
       if (siteMerged == null || !Number.isFinite(siteMerged)) {
         return Response.json(
           { error: 'siteId required (job.site relation or numeric input.siteId)' },
@@ -478,13 +556,17 @@ export async function dispatchWorkflowJob(
     case 'competitor_gap':
       return forwardPipelinePost(request, '/api/pipeline/competitor-gap', {
         topic: typeof input.topic === 'string' ? input.topic : undefined,
-        urls: Array.isArray(input.urls) ? (input.urls as unknown[]).filter((u): u is string => typeof u === 'string') : undefined,
+        urls: Array.isArray(input.urls)
+          ? (input.urls as unknown[]).filter((u): u is string => typeof u === 'string')
+          : undefined,
       })
     case 'backlink_scan': {
       if (typeof input.target !== 'string' || !input.target.trim()) {
         return Response.json({ error: 'input.target (domain) required' }, { status: 400 })
       }
-      return forwardPipelinePost(request, '/api/pipeline/backlink-scan', { target: input.target.trim() })
+      return forwardPipelinePost(request, '/api/pipeline/backlink-scan', {
+        target: input.target.trim(),
+      })
     }
     case 'domain_audit':
       return forwardPipelinePost(request, '/api/pipeline/domain-audit', {

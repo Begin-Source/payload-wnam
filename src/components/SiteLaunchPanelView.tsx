@@ -112,6 +112,27 @@ type LaunchStep = {
   detail?: string
 }
 
+function describePipelineStoppedReason(reason: string | null | undefined): string {
+  switch (reason) {
+    case 'budget':
+      return '本轮时间到，可继续运行'
+    case 'max_runs':
+      return '达到本轮次数上限，可继续运行'
+    case 'no_pending':
+      return '没有待处理任务'
+    case 'failure':
+      return '任务执行失败'
+    case 'aborted':
+      return '已取消'
+    case undefined:
+    case null:
+    case '':
+      return '未知'
+    default:
+      return reason
+  }
+}
+
 const launchStepTemplates: Array<Omit<LaunchStep, 'status' | 'detail'>> = [
   {
     id: 'domain',
@@ -684,16 +705,41 @@ export function SiteLaunchPanelView(): React.ReactElement {
 
   const generateContent = async (siteOverride?: SiteSummary): Promise<string> => {
     const savedSite = siteOverride ?? (await resolveOperationSite())
-    const enqueueDetail = await enqueueBriefs(savedSite)
-    const fresh = await loadSummaryValue(savedSite.id)
-    const pendingCount = fresh?.pendingJobIds?.length ?? 0
-    if (pendingCount === 0) {
-      addLog('内容生成：排产后没有 pending 工作流任务需要执行')
-      return `${enqueueDetail}；无待执行任务`
-    }
-    addLog(`内容生成：发现 ${pendingCount} 个 pending 任务，开始立即执行`)
-    const runDetail = await runSiteJobs(fresh, savedSite)
-    return `${enqueueDetail}；${runDetail}`
+    const data = await postJson<{
+      enqueue?: {
+        enqueued?: number
+        skipped?: number
+        pickedTerms?: string[]
+        errorsSample?: string[]
+      }
+      runnerJobId?: string | number
+      runnerReused?: boolean
+      scheduled?: boolean
+      message?: string
+    }>('/api/admin/site-launch/content-runner/start', {
+      siteId: savedSite.id,
+      mode: batchMode,
+      limit: numberOr(briefLimit, 10),
+      batchMaxRuns: 20,
+      batchBudgetMs: 55000,
+      maxBatches: 80,
+      stopOnFailure: true,
+    })
+    const enqueue = data.enqueue ?? {}
+    const terms =
+      Array.isArray(enqueue.pickedTerms) && enqueue.pickedTerms.length > 0
+        ? ` · ${enqueue.pickedTerms.slice(0, 3).join(', ')}`
+        : ''
+    const errors =
+      Array.isArray(enqueue.errorsSample) && enqueue.errorsSample.length > 0
+        ? ` · 提示：${enqueue.errorsSample[0]}`
+        : ''
+    const detail = `后台 Runner 已启动：入队 ${enqueue.enqueued ?? 0}，跳过 ${enqueue.skipped ?? 0}${terms}${errors}；Runner #${String(
+      data.runnerJobId ?? '—',
+    )}${data.runnerReused ? '（复用运行中）' : ''}`
+    addLog(`内容生成：${detail}`)
+    await loadSummaryValue(savedSite.id).catch((): null => null)
+    return detail
   }
 
   const runSiteJobs = async (
@@ -715,7 +761,9 @@ export function SiteLaunchPanelView(): React.ReactElement {
         stopOnFailure: true,
       },
     )
-    const detail = `运行 ${data.totalRuns ?? 0} 次，停止原因 ${data.stoppedReason ?? 'unknown'}`
+    const detail = `运行 ${data.totalRuns ?? 0} 次，停止原因：${describePipelineStoppedReason(
+      data.stoppedReason,
+    )}`
     addLog(`本站工作流执行完成：${detail}`)
     return detail
   }
@@ -1499,7 +1547,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
             <div style={metricStyle}>
               <h3 style={{ fontSize: '0.95rem', marginTop: 0 }}>5. 内容生成</h3>
               <p style={{ fontSize: '0.75rem', opacity: 0.78, lineHeight: 1.45 }}>
-                按推荐关键词策略创建 Brief，并立即运行本站待处理内容工作流。
+                按推荐关键词策略创建 Brief，并交给后端 Runner 持续生成文章。
               </p>
               <div style={actionRowStyle}>
                 <Button
@@ -1510,7 +1558,7 @@ export function SiteLaunchPanelView(): React.ReactElement {
                     })
                   }
                 >
-                  生成内容
+                  后台生成内容
                 </Button>
                 <Button
                   buttonStyle="secondary"

@@ -73,6 +73,7 @@ export const WorkflowJobs: CollectionConfig = {
         { label: 'Keyword discover', value: 'keyword_discover' },
         { label: 'Keyword cluster · SERP overlap', value: 'keyword_cluster' },
         { label: 'SERP audit', value: 'serp_audit' },
+        { label: 'Site content runner', value: 'site_content_runner' },
         { label: 'Brief generate', value: 'brief_generate' },
         { label: 'Draft skeleton', value: 'draft_skeleton' },
         { label: 'Draft section', value: 'draft_section' },

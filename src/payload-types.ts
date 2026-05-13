@@ -1816,6 +1816,7 @@ export interface WorkflowJob {
     | 'keyword_discover'
     | 'keyword_cluster'
     | 'serp_audit'
+    | 'site_content_runner'
     | 'brief_generate'
     | 'draft_skeleton'
     | 'draft_section'
