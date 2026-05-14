@@ -1,5 +1,6 @@
 import type { Payload } from 'payload'
 
+import { enqueueArticlePipelineCatchup } from '@/app/api/pipeline/lib/articlePipelineChain'
 import { runNextPendingJobs, type RunNextFetchImpl } from '@/utilities/pipelineRunNext'
 
 export const SITE_CONTENT_RUNNER_JOB_TYPE = 'site_content_runner'
@@ -20,6 +21,12 @@ export type SiteContentRunnerResult = {
   stoppedReason: string
   pendingRemaining: number
   failureSummary?: string
+}
+
+export type SiteDraftCatchupResult = {
+  checked: number
+  enqueued: number
+  messages: string[]
 }
 
 const DEFAULT_BATCH_MAX_RUNS = 20
@@ -66,6 +73,67 @@ export async function listPendingWorkflowJobIdsForSite(
     if (typeof id === 'string' || typeof id === 'number') ids.push(id)
   }
   return ids
+}
+
+function relationIdNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.trunc(value)
+  if (typeof value === 'object' && value !== null && 'id' in value) {
+    const id = (value as { id?: unknown }).id
+    if (typeof id === 'number' && Number.isFinite(id)) return Math.trunc(id)
+  }
+  return null
+}
+
+export function articleBodyHasSectionPlaceholders(body: unknown): boolean {
+  if (body == null) return false
+  try {
+    return JSON.stringify(body).includes('<!-- section:')
+  } catch {
+    return false
+  }
+}
+
+export async function ensureDraftSectionCatchupForSite(
+  payload: Payload,
+  siteId: number,
+): Promise<SiteDraftCatchupResult> {
+  const articles = await payload.find({
+    collection: 'articles',
+    where: { site: { equals: siteId } },
+    sort: 'createdAt',
+    limit: 100,
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  let checked = 0
+  let enqueued = 0
+  const messages: string[] = []
+
+  for (const doc of articles.docs as Array<{
+    id?: unknown
+    sourceBrief?: unknown
+    body?: unknown
+  }>) {
+    const articleId = relationIdNumber(doc.id)
+    const sourceBriefId = relationIdNumber(doc.sourceBrief)
+    if (articleId == null || sourceBriefId == null) continue
+    if (!articleBodyHasSectionPlaceholders(doc.body)) continue
+
+    checked += 1
+    const result = await enqueueArticlePipelineCatchup(payload, articleId)
+    if (!result.ok) {
+      messages.push(`article #${articleId}: ${result.error}`)
+      continue
+    }
+    const created = result.messages.some((m) => m.includes('入队'))
+    if (created) {
+      enqueued += 1
+      messages.push(`article #${articleId}: ${result.messages.join('；')}`)
+    }
+  }
+
+  return { checked, enqueued, messages }
 }
 
 async function patchRunnerJob(
@@ -117,6 +185,7 @@ export async function runSiteContentRunner(args: {
   let noProgressRounds = 0
 
   for (let round = 0; round < input.maxBatches; round += 1) {
+    const catchup = await ensureDraftSectionCatchupForSite(args.payload, input.siteId)
     const pendingIds = await listPendingWorkflowJobIdsForSite(args.payload, input.siteId)
     pendingRemaining = pendingIds.length
     if (pendingIds.length === 0) {
@@ -155,6 +224,7 @@ export async function runSiteContentRunner(args: {
         pendingRemaining,
         lastFailureSummary: out.failureSummary,
         lastBannerHints: out.bannerHints?.slice(0, 12) ?? [],
+        draftCatchup: catchup,
       },
     })
 

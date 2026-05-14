@@ -1,10 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  articleBodyHasSectionPlaceholders,
+  ensureDraftSectionCatchupForSite,
   listPendingWorkflowJobIdsForSite,
   runSiteContentRunner,
   SITE_CONTENT_RUNNER_JOB_TYPE,
 } from '@/utilities/siteContentRunner'
+
+vi.mock('@/app/api/pipeline/lib/articlePipelineChain', () => ({
+  enqueueArticlePipelineCatchup: vi.fn(async (_payload, articleId: number) => ({
+    ok: true,
+    messages: [`入队 draft_section × 1 for ${articleId}`],
+  })),
+}))
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -44,8 +53,44 @@ describe('siteContentRunner', () => {
     )
   })
 
+  it('detects draft skeleton placeholders in article body', () => {
+    expect(articleBodyHasSectionPlaceholders({ root: { children: ['<!-- section:intro -->'] } })).toBe(
+      true,
+    )
+    expect(articleBodyHasSectionPlaceholders({ root: { children: ['real content'] } })).toBe(false)
+  })
+
+  it('enqueues section catchup for existing article skeletons before running site jobs', async () => {
+    const payload = {
+      find: vi.fn(async (args: { collection: string }) => {
+        if (args.collection === 'articles') {
+          return {
+            docs: [
+              {
+                id: 31,
+                sourceBrief: 11,
+                body: { root: { children: [{ text: '<!-- section:intro -->' }] } },
+              },
+              {
+                id: 32,
+                sourceBrief: 12,
+                body: { root: { children: [{ text: 'already written' }] } },
+              },
+            ],
+          }
+        }
+        return { docs: [] }
+      }),
+    }
+
+    const result = await ensureDraftSectionCatchupForSite(payload as never, 7)
+
+    expect(result).toMatchObject({ checked: 1, enqueued: 1 })
+    expect(result.messages[0]).toContain('article #31')
+  })
+
   it('runs pending site jobs in backend batches until the site has no pending jobs', async () => {
-    const payload = payloadMockWithPendingSequences([[{ id: 21 }], []])
+    const payload = payloadMockWithPendingSequences([[], [{ id: 21 }], [], []])
     const fetchImpl = vi.fn(async () =>
       jsonResponse({
         ok: true,
