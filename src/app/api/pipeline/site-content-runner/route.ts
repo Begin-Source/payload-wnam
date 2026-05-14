@@ -7,6 +7,7 @@ import { runSiteContentRunner } from '@/utilities/siteContentRunner'
 export const dynamic = 'force-dynamic'
 
 const PATH = '/api/pipeline/site-content-runner'
+const HARD_FAILURE_REASONS = new Set(['failure', 'aborted', 'no_progress'])
 
 function numberFromBody(value: unknown): number | null {
   const n =
@@ -43,5 +44,6 @@ export async function POST(request: Request): Promise<Response> {
     },
   })
 
-  return Response.json(result, { status: result.ok ? 200 : 500 })
+  const httpStatus = result.failureSummary || HARD_FAILURE_REASONS.has(result.stoppedReason) ? 500 : 200
+  return Response.json(result, { status: httpStatus })
 }
