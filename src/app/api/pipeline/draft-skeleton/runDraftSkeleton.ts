@@ -90,6 +90,31 @@ async function uniqueArticleSlug(
   return `${base}-${Date.now().toString(36)}`
 }
 
+async function existingArticleIdForBrief(
+  payload: Payload,
+  args: { briefIdNum: number; siteId?: number },
+): Promise<number | null> {
+  if (!Number.isFinite(args.briefIdNum)) return null
+  const found = await payload.find({
+    collection: 'articles',
+    where: {
+      and: [
+        { sourceBrief: { equals: args.briefIdNum } },
+        ...(typeof args.siteId === 'number' && Number.isFinite(args.siteId)
+          ? [{ site: { equals: args.siteId } }]
+          : []),
+      ],
+    },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const id = (found.docs[0] as { id?: unknown } | undefined)?.id
+  if (typeof id === 'number' && Number.isFinite(id)) return Math.trunc(id)
+  if (typeof id === 'string' && /^\d+$/.test(id.trim())) return Number(id.trim())
+  return null
+}
+
 async function firstAuthorForSite(payload: Payload, siteId?: number): Promise<number | undefined> {
   if (typeof siteId !== 'number' || !Number.isFinite(siteId)) return undefined
   try {
@@ -307,6 +332,12 @@ export async function runDraftSkeletonFromBrief(
       : typeof b.site === 'number'
         ? b.site
         : undefined)
+
+  const existingArticleId = await existingArticleIdForBrief(payload, {
+    briefIdNum: briefNum,
+    siteId: typeof siteId === 'number' && Number.isFinite(siteId) ? siteId : undefined,
+  })
+  if (existingArticleId != null) return { ok: true, articleId: existingArticleId }
 
   let tenantId = tenantIdFromRelation(b.tenant)
   if (tenantId == null && typeof siteId === 'number' && Number.isFinite(siteId)) {
