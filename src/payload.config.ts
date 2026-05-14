@@ -63,6 +63,7 @@ import { LlmPrompts } from './globals/LlmPrompts'
 import { PromptLibrary } from './globals/PromptLibrary'
 import { PublicLanding } from './globals/PublicLanding'
 import { PipelineSettings } from './globals/PipelineSettings'
+import { setCloudflareD1Binding } from './utilities/cloudflareD1Binding'
 import { Announcements } from './collections/Announcements'
 import { Teams } from './collections/Teams'
 import { KeywordBatchPresets } from './collections/KeywordBatchPresets'
@@ -159,6 +160,8 @@ const cloudflare =
     : await getCloudflareContext({ async: true })
 
 const payloadSecretFromBinding = (cloudflare.env as Cloudflare.Env).PAYLOAD_SECRET
+setCloudflareD1Binding(cloudflare.env.D1)
+
 const payloadSecret =
   process.env.PAYLOAD_SECRET?.trim() ||
   (typeof payloadSecretFromBinding === 'string' ? payloadSecretFromBinding.trim() : '') ||
