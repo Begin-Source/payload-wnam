@@ -1,4 +1,5 @@
 import configPromise from '@payload-config'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getPayload } from 'payload'
 
 import type { Config } from '@/payload-types'
@@ -172,12 +173,11 @@ function enqueueBodyFromSitePreset(
   return enqueueBody
 }
 
-async function scheduleBackgroundRunner(promise: Promise<unknown>): Promise<void> {
+function scheduleBackgroundRunner(promise: Promise<unknown>): void {
   promise.catch((e) => {
     console.error('[site-content-runner] background failure', e)
   })
   try {
-    const { getCloudflareContext } = await import('@opennextjs/cloudflare')
     const ctx = getCloudflareContext()
     ctx.ctx.waitUntil(promise)
   } catch {
