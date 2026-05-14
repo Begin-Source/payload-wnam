@@ -298,9 +298,10 @@ export async function POST(request: Request): Promise<Response> {
     maxBatches: numberFromBody(body.maxBatches) ?? 80,
     stopOnFailure: body.stopOnFailure !== false,
   }
-  const forceRunnerRestart = body.forceRunnerRestart === true
+  const resumeExistingContentTasks = body.enqueueBriefs === false
+  const forceRunnerRestart = body.forceRunnerRestart === true || resumeExistingContentTasks
   const revivedRunningJobs =
-    body.reviveStaleRunningJobs === true
+    body.reviveStaleRunningJobs === true || resumeExistingContentTasks
       ? await reviveStaleRunningSiteJobs({ payload, siteId })
       : 0
 
