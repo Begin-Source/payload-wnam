@@ -767,11 +767,14 @@ export function SiteLaunchPanelView(): React.ReactElement {
       runnerJobId?: string | number
       runnerReused?: boolean
       runnerRestarted?: boolean
+      revivedRunningJobs?: number
       scheduled?: boolean
       message?: string
     }>('/api/admin/site-launch/content-runner/start', {
       siteId: savedSite.id,
       enqueueBriefs: false,
+      forceRunnerRestart: true,
+      reviveStaleRunningJobs: true,
       batchMaxRuns: 20,
       batchBudgetMs: 55000,
       maxBatches: 80,
@@ -782,7 +785,11 @@ export function SiteLaunchPanelView(): React.ReactElement {
       draft.queriedCount ?? results.length
     }${reason}；后台 Runner #${String(
       data.runnerJobId ?? '—',
-    )}${data.runnerRestarted ? '（重新接管旧 Runner）' : data.runnerReused ? '（复用运行中）' : ''}${
+    )}${data.runnerRestarted ? '（重新接管）' : data.runnerReused ? '（复用运行中）' : ''}${
+      typeof data.revivedRunningJobs === 'number' && data.revivedRunningJobs > 0
+        ? ` · 已恢复 ${data.revivedRunningJobs} 个长时间运行中的任务`
+        : ''
+    }${
       data.message ? ` · ${data.message}` : ''
     }`
     addLog(`文章草稿生成：${detail}`)

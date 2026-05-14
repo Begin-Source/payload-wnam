@@ -14,6 +14,7 @@ import { getTenantScopeForStats, type TenantScope } from '@/utilities/tenantScop
 export const dynamic = 'force-dynamic'
 
 const RUNNER_STALE_MS = 5 * 60 * 1000
+const CHILD_JOB_STALE_MS = 2 * 60 * 1000
 
 function tenantIdFromRelation(tenant: number | { id: number } | null | undefined): number | null {
   if (tenant == null || tenant === undefined) return null
@@ -81,6 +82,19 @@ function runnerIsStale(doc: {
   const lastTouch = timestampMs(doc.updatedAt) ?? timestampMs(doc.createdAt)
   if (lastTouch == null) return true
   return Date.now() - lastTouch > RUNNER_STALE_MS
+}
+
+function jobIsStale(doc: {
+  status?: string | null
+  updatedAt?: string | null
+  startedAt?: string | null
+  createdAt?: string | null
+}): boolean {
+  if (doc.status !== 'running') return false
+  const lastTouch =
+    timestampMs(doc.updatedAt) ?? timestampMs(doc.startedAt) ?? timestampMs(doc.createdAt)
+  if (lastTouch == null) return true
+  return Date.now() - lastTouch > CHILD_JOB_STALE_MS
 }
 
 function presetDocFromRelation(raw: unknown): Record<string, unknown> | null {
@@ -171,6 +185,53 @@ async function scheduleBackgroundRunner(promise: Promise<unknown>): Promise<void
   }
 }
 
+async function reviveStaleRunningSiteJobs(args: {
+  payload: Awaited<ReturnType<typeof getPayload>>
+  siteId: number
+}): Promise<number> {
+  const running = await args.payload.find({
+    collection: 'workflow-jobs',
+    where: {
+      and: [
+        { site: { equals: args.siteId } },
+        { status: { equals: 'running' } },
+        { jobType: { not_equals: SITE_CONTENT_RUNNER_JOB_TYPE } },
+      ],
+    },
+    limit: 100,
+    sort: 'updatedAt',
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  let revived = 0
+  for (const doc of running.docs as Array<{
+    id?: string | number
+    status?: string | null
+    updatedAt?: string | null
+    startedAt?: string | null
+    createdAt?: string | null
+  }>) {
+    if (doc.id == null || !jobIsStale(doc)) continue
+    await args.payload.update({
+      collection: 'workflow-jobs',
+      id: doc.id,
+      data: {
+        status: 'pending',
+        errorMessage: '',
+        output: {
+          ok: true,
+          recoveredFromStaleRunning: true,
+          recoveredAt: new Date().toISOString(),
+        },
+      },
+      overrideAccess: true,
+    })
+    revived += 1
+  }
+  return revived
+}
+
 export async function POST(request: Request): Promise<Response> {
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers: request.headers })
@@ -237,6 +298,11 @@ export async function POST(request: Request): Promise<Response> {
     maxBatches: numberFromBody(body.maxBatches) ?? 80,
     stopOnFailure: body.stopOnFailure !== false,
   }
+  const forceRunnerRestart = body.forceRunnerRestart === true
+  const revivedRunningJobs =
+    body.reviveStaleRunningJobs === true
+      ? await reviveStaleRunningSiteJobs({ payload, siteId })
+      : 0
 
   const active = await payload.find({
     collection: 'workflow-jobs',
@@ -270,7 +336,7 @@ export async function POST(request: Request): Promise<Response> {
   if (activeDoc) {
     runnerJobId = activeDoc.id
     runnerReused = true
-    runnerRestarted = runnerIsStale(activeDoc)
+    runnerRestarted = forceRunnerRestart || runnerIsStale(activeDoc)
     if (activeDoc.status !== 'running' || runnerRestarted) {
       scheduled = true
       void scheduleBackgroundRunner(
@@ -314,10 +380,13 @@ export async function POST(request: Request): Promise<Response> {
     runnerJobId,
     runnerReused,
     runnerRestarted,
+    revivedRunningJobs,
     scheduled,
     message: scheduled
       ? runnerRestarted
-        ? '检测到旧内容 Runner 已长时间无进展，已在后端重新接管 pending 任务。'
+        ? forceRunnerRestart
+          ? `已在后端重新接管 pending 任务${revivedRunningJobs > 0 ? `，并恢复 ${revivedRunningJobs} 个长时间运行中的子任务` : ''}。`
+          : '检测到旧内容 Runner 已长时间无进展，已在后端重新接管 pending 任务。'
         : '内容 Runner 已在后端启动；页面关闭后仍可在工作流任务表查看状态。'
       : '已有内容 Runner 正在运行；新排产任务会由该 Runner 继续处理。',
   })
