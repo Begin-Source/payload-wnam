@@ -1,4 +1,5 @@
 import type { Payload } from 'payload'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 
 type D1Prepared = {
   bind: (...args: unknown[]) => {
@@ -35,6 +36,16 @@ export function d1ClientFromPayload(payload: Payload): D1Client | null {
 
   if (isD1Client(db?.binding)) {
     return db.binding
+  }
+
+  try {
+    const ctx = getCloudflareContext()
+    const d1 = (ctx.env as { D1?: unknown }).D1
+    if (isD1Client(d1)) {
+      return d1
+    }
+  } catch {
+    // Non-Cloudflare runtimes/tests do not expose OpenNext context.
   }
 
   return null
