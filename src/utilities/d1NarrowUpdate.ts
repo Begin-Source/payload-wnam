@@ -1,7 +1,7 @@
 import type { Payload } from 'payload'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 
-import { getCloudflareD1Binding } from '@/utilities/cloudflareD1Binding'
+import { getCloudflareD1Binding } from './cloudflareD1Binding'
 
 type D1Prepared = {
   bind: (...args: unknown[]) => {
