@@ -5,6 +5,7 @@ import {
   previewDraftSkeletonEnqueue,
   tryEnqueueDraftSkeletonJob,
 } from '@/app/api/pipeline/lib/enqueueDraftSkeletonAfterBrief'
+import { enqueueArticlePipelineCatchup } from '@/app/api/pipeline/lib/articlePipelineChain'
 import type { Config } from '@/payload-types'
 import { isUsersCollection } from '@/utilities/announcementAccess'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
@@ -20,7 +21,9 @@ export type EnqueueDraftSkeletonResultRow = {
   briefId: number
   created: boolean
   jobId?: number
+  articleId?: number
   reason?: string
+  messages?: string[]
 }
 
 export type DraftSkeletonDryRunPreviewRow = {
@@ -50,6 +53,64 @@ function clampSiteLimit(raw: unknown): number {
   const n = parsePositiveInt(raw)
   if (n == null || !Number.isFinite(n)) return DEFAULT_SITE_LIMIT
   return Math.min(MAX_SITE_LIMIT, Math.max(1, n))
+}
+
+async function latestArticleIdForBrief(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  user: Config['user'] & { collection: 'users' },
+  briefId: number,
+): Promise<number | null> {
+  const articles = await payload.find({
+    collection: 'articles',
+    where: { sourceBrief: { equals: briefId } },
+    sort: '-createdAt',
+    limit: 1,
+    depth: 0,
+    user,
+    overrideAccess: false,
+  })
+  const first = articles.docs[0] as { id?: unknown } | undefined
+  return typeof first?.id === 'number' && Number.isFinite(first.id) ? first.id : null
+}
+
+async function enqueueDraftSkeletonOrCatchup(args: {
+  payload: Awaited<ReturnType<typeof getPayload>>
+  user: Config['user'] & { collection: 'users' }
+  briefId: number
+  siteNumeric: number | null
+  tenantNumeric: number | null
+}): Promise<EnqueueDraftSkeletonResultRow> {
+  const existingArticleId = await latestArticleIdForBrief(args.payload, args.user, args.briefId)
+  if (existingArticleId != null) {
+    const catchup = await enqueueArticlePipelineCatchup(args.payload, existingArticleId)
+    if (!catchup.ok) {
+      return {
+        briefId: args.briefId,
+        created: false,
+        articleId: existingArticleId,
+        reason: catchup.error,
+      }
+    }
+    const created = catchup.messages.some((m) => m.includes('入队'))
+    return {
+      briefId: args.briefId,
+      created,
+      articleId: existingArticleId,
+      ...(catchup.messages.length > 0
+        ? { messages: catchup.messages }
+        : { reason: 'article_catchup_no_missing_jobs' }),
+    }
+  }
+
+  const r = await tryEnqueueDraftSkeletonJob(args.payload, {
+    briefId: args.briefId,
+    siteNumeric: args.siteNumeric,
+    tenantNumeric: args.tenantNumeric,
+  })
+  if (r.created) {
+    return { briefId: args.briefId, created: true, jobId: r.id }
+  }
+  return { briefId: args.briefId, created: false, reason: r.reason }
 }
 
 /** POST — enqueue `draft_skeleton` jobs for selected brief ids or for the oldest briefs under a site. */
@@ -133,16 +194,13 @@ export async function POST(request: Request): Promise<Response> {
       const siteNumeric = siteIdFromBriefDoc(brief)
       const tenantNumeric = tenantIdFromRelation(brief.tenant)
       try {
-        const r = await tryEnqueueDraftSkeletonJob(payload, {
+        results.push(await enqueueDraftSkeletonOrCatchup({
+          payload,
+          user: userArg,
           briefId: id,
           siteNumeric,
           tenantNumeric,
-        })
-        if (r.created) {
-          results.push({ briefId: id, created: true, jobId: r.id })
-        } else {
-          results.push({ briefId: id, created: false, reason: r.reason })
-        }
+        }))
       } catch (e) {
         results.push({
           briefId: id,
@@ -262,16 +320,13 @@ export async function POST(request: Request): Promise<Response> {
 
     try {
       const tenantNumeric = tenantIdFromRelation(brief.tenant)
-      const r = await tryEnqueueDraftSkeletonJob(payload, {
+      results.push(await enqueueDraftSkeletonOrCatchup({
+        payload,
+        user: userArg,
         briefId: bid,
         siteNumeric: siteOnBrief,
         tenantNumeric,
-      })
-      if (r.created) {
-        results.push({ briefId: bid, created: true, jobId: r.id })
-      } else {
-        results.push({ briefId: bid, created: false, reason: r.reason })
-      }
+      }))
     } catch (e) {
       results.push({
         briefId: bid,
