@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import type { Config } from '@/payload-types'
 import { POST as enqueueArticleBatch } from '@/app/(payload)/api/admin/articles/batch-enqueue/route'
 import { isUsersCollection } from '@/utilities/announcementAccess'
+import { enqueueDraftSkeletonAfterBriefGenerate } from '@/app/api/pipeline/lib/enqueueDraftSkeletonAfterBrief'
 import {
   runSiteContentRunner,
   SITE_CONTENT_RUNNER_JOB_TYPE,
@@ -72,6 +73,16 @@ function timestampMs(raw: unknown): number | null {
   if (typeof raw !== 'string' || !raw.trim()) return null
   const ms = Date.parse(raw)
   return Number.isFinite(ms) ? ms : null
+}
+
+function recordFromUnknown(raw: unknown): Record<string, unknown> {
+  return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+}
+
+function numberFromUnknown(raw: unknown): number | null {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return Math.floor(raw)
+  if (typeof raw === 'string' && /^\d+$/.test(raw.trim())) return Number(raw.trim())
+  return null
 }
 
 function runnerIsStale(doc: {
@@ -188,6 +199,8 @@ function scheduleBackgroundRunner(promise: Promise<unknown>): void {
 async function reviveStaleRunningSiteJobs(args: {
   payload: Awaited<ReturnType<typeof getPayload>>
   siteId: number
+  force?: boolean
+  enqueueRecoveredBriefSkeletons?: boolean
 }): Promise<number> {
   const running = await args.payload.find({
     collection: 'workflow-jobs',
@@ -207,12 +220,66 @@ async function reviveStaleRunningSiteJobs(args: {
   let revived = 0
   for (const doc of running.docs as Array<{
     id?: string | number
+    jobType?: string | null
+    input?: unknown
     status?: string | null
     updatedAt?: string | null
     startedAt?: string | null
     createdAt?: string | null
   }>) {
-    if (doc.id == null || !jobIsStale(doc)) continue
+    if (doc.id == null || (!args.force && !jobIsStale(doc))) continue
+    const jobInput = recordFromUnknown(doc.input)
+
+    if (doc.jobType === 'brief_generate') {
+      const keywordId = numberFromUnknown(jobInput.keywordId)
+      if (keywordId != null) {
+        const existingBrief = await args.payload.find({
+          collection: 'content-briefs',
+          where: {
+            and: [
+              { site: { equals: args.siteId } },
+              { primaryKeyword: { equals: keywordId } },
+            ],
+          },
+          limit: 1,
+          sort: '-createdAt',
+          depth: 0,
+          overrideAccess: true,
+        })
+        const brief = existingBrief.docs[0] as { id?: string | number } | undefined
+        if (brief?.id != null) {
+          await args.payload.update({
+            collection: 'workflow-jobs',
+            id: doc.id,
+            data: {
+              status: 'completed',
+              completedAt: new Date().toISOString(),
+              errorMessage: '',
+              output: {
+                ok: true,
+                id: brief.id,
+                recoveredFromStaleRunning: true,
+                recoveredAt: new Date().toISOString(),
+              },
+            },
+            overrideAccess: true,
+          })
+          if (
+            args.enqueueRecoveredBriefSkeletons ||
+            (jobInput.chainAfterBrief !== false && jobInput.outlineOnly !== true)
+          ) {
+            await enqueueDraftSkeletonAfterBriefGenerate(args.payload, {
+              completedBriefJobId: doc.id,
+              briefId: brief.id,
+              siteNumeric: args.siteId,
+            }).catch(() => null)
+          }
+          revived += 1
+          continue
+        }
+      }
+    }
+
     await args.payload.update({
       collection: 'workflow-jobs',
       id: doc.id,
@@ -302,7 +369,12 @@ export async function POST(request: Request): Promise<Response> {
   const forceRunnerRestart = body.forceRunnerRestart === true || resumeExistingContentTasks
   const revivedRunningJobs =
     body.reviveStaleRunningJobs === true || resumeExistingContentTasks
-      ? await reviveStaleRunningSiteJobs({ payload, siteId })
+      ? await reviveStaleRunningSiteJobs({
+          payload,
+          siteId,
+          force: forceRunnerRestart,
+          enqueueRecoveredBriefSkeletons: resumeExistingContentTasks,
+        })
       : 0
 
   const active = await payload.find({
