@@ -2,8 +2,12 @@ import type { Payload } from 'payload'
 
 import type { Article } from '@/payload-types'
 import { buildLexicalSkeleton } from '@/services/writing/skeletonBuilder'
+import {
+  d1FindArticleIdByBrief,
+  d1NarrowInsertArticleSkeleton,
+} from '@/utilities/d1NarrowUpdate'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
-import type { PipelineSettingShape } from '@/utilities/pipelineSettingShape'
+import { snapshotPipelineMerged, type PipelineSettingShape } from '@/utilities/pipelineSettingShape'
 import { normalizeSkeletonVariant } from '@/utilities/pipelineVariants'
 import type { SkeletonVariantId } from '@/utilities/pipelineVariants'
 import type { SerpOrganicBriefLine } from '@/utilities/serpBriefExtract'
@@ -112,7 +116,10 @@ async function existingArticleIdForBrief(
   const id = (found.docs[0] as { id?: unknown } | undefined)?.id
   if (typeof id === 'number' && Number.isFinite(id)) return Math.trunc(id)
   if (typeof id === 'string' && /^\d+$/.test(id.trim())) return Number(id.trim())
-  return null
+  return d1FindArticleIdByBrief(payload, {
+    briefId: args.briefIdNum,
+    siteId: typeof args.siteId === 'number' && Number.isFinite(args.siteId) ? args.siteId : undefined,
+  })
 }
 
 async function firstAuthorForSite(payload: Payload, siteId?: number): Promise<number | undefined> {
@@ -457,6 +464,52 @@ export async function runDraftSkeletonFromBrief(
   const sectionSummaries: Record<string, unknown> =
     delegateOutline.length > 0 ? { globalContext: delegateOutline } : {}
 
+  if (variant === 'cluster_driven' && outlineSectionsPayload && outlineSectionsPayload.length >= 2) {
+    try {
+      await payload.update({
+        collection: 'content-briefs',
+        id: String(briefNum),
+        data: {
+          outline: {
+            sections: outlineSectionsPayload,
+            globalContext: { targetKeyword: priorTargetKw, delegateOutline },
+          },
+        },
+        overrideAccess: true,
+      })
+    } catch {
+      /* non-fatal */
+    }
+  }
+
+  const d1ArticleId = await d1NarrowInsertArticleSkeleton(payload, {
+    title: seoTitle.title,
+    slug: articleSlug,
+    locale,
+    tenantId,
+    ...(typeof siteId === 'number' && Number.isFinite(siteId) ? { siteId } : {}),
+    ...(authorId != null ? { authorId } : {}),
+    ...(categoryId != null ? { categoryId } : {}),
+    ...(Number.isFinite(briefNum) ? { sourceBriefId: briefNum } : {}),
+    ...(pk != null ? { primaryKeywordId: pk } : {}),
+    affiliatePageLayout,
+    ...(pipelineProfileId != null ? { pipelineProfileId } : {}),
+    pipelineProfileSnapshot: snapshotPipelineMerged(merged),
+    ...(Object.keys(sectionSummaries).length > 0 ? { sectionSummaries } : {}),
+    metaVariants: {
+      startedAt: new Date().toISOString(),
+      source: 'draft_skeleton_title_writer',
+      championVariantId: seoTitle.id,
+      variants: [seoTitle],
+    },
+    body: lexical,
+    metaTitle: seoTitle.title,
+    metaDescription: seoTitle.description,
+  })
+  if (d1ArticleId != null) {
+    return { ok: true, articleId: d1ArticleId }
+  }
+
   const art = await payload.create({
     collection: 'articles',
     draft: false,
@@ -487,24 +540,6 @@ export async function runDraftSkeletonFromBrief(
       status: 'draft',
     },
   })
-
-  if (variant === 'cluster_driven' && outlineSectionsPayload && outlineSectionsPayload.length >= 2) {
-    try {
-      await payload.update({
-        collection: 'content-briefs',
-        id: String(briefNum),
-        data: {
-          outline: {
-            sections: outlineSectionsPayload,
-            globalContext: { targetKeyword: priorTargetKw, delegateOutline },
-          },
-        },
-        overrideAccess: true,
-      })
-    } catch {
-      /* non-fatal */
-    }
-  }
 
   return { ok: true, articleId: typeof art.id === 'number' ? art.id : Number(art.id) }
 }
