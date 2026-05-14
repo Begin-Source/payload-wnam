@@ -11,6 +11,7 @@ import {
 } from '@/utilities/onPageSeoFormatAudit'
 import { normalizeGlobalPipelineDoc } from '@/utilities/pipelineSettingShape'
 import { resolvePipelineConfigForArticle, type ResolvedPipelineConfig } from '@/utilities/resolvePipelineConfig'
+import { d1NarrowUpdate } from '@/utilities/d1NarrowUpdate'
 
 export const dynamic = 'force-dynamic'
 const PATH = '/api/pipeline/content-audit'
@@ -73,6 +74,12 @@ function hasRelationValue(raw: unknown): boolean {
   if (typeof raw === 'string') return raw.trim().length > 0
   if (typeof raw === 'object' && 'id' in raw) return hasRelationValue((raw as { id?: unknown }).id)
   return false
+}
+
+function jsonColumnValue(value: unknown): string | null {
+  if (value == null) return null
+  if (typeof value === 'string') return value
+  return JSON.stringify(value)
 }
 
 function inferVetoes(article: Record<string, unknown>, plain: string, supplied: unknown): string[] {
@@ -202,12 +209,23 @@ export async function POST(request: Request): Promise<Response> {
     updateData._quality = { rawScore, vetoes }
   }
 
-  await payload.update({
-    collection: 'articles',
-    id: String(articleId),
-    data: updateData,
-    overrideAccess: true,
-  })
+  try {
+    await payload.update({
+      collection: 'articles',
+      id: String(articleId),
+      data: updateData,
+      overrideAccess: true,
+    })
+  } catch (e) {
+    const narrowPairs: Array<[string, unknown]> = [
+      ['quality_score', finalOverallScore],
+      ['eeat_check', jsonColumnValue(eeatCheck)],
+      ['veto_codes', jsonColumnValue(vetoes)],
+    ]
+    if (updateData.status === 'published') narrowPairs.push(['status', 'published'])
+    const narrowOk = await d1NarrowUpdate(payload, 'articles', articleId, narrowPairs)
+    if (!narrowOk) throw e
+  }
 
   return Response.json({
     ok: true,
