@@ -1,7 +1,14 @@
 import type { Payload } from 'payload'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 
+import { runDraftSkeletonFromBrief } from '@/app/api/pipeline/draft-skeleton/runDraftSkeleton'
 import { forwardPipelinePost, readJsonSafe } from '@/app/api/pipeline/lib/internalPipelineFetch'
+import { isAffiliateArticleLayout } from '@/utilities/affiliateSeoFlow'
+import { isD1Client, type D1Client } from '@/utilities/d1NarrowUpdate'
+import { normalizeGlobalPipelineDoc } from '@/utilities/pipelineSettingShape'
+import { resolvePipelineConfig } from '@/utilities/resolvePipelineConfig'
 import { checkPipelineSpendForJob } from '@/utilities/siteQuotaCheck'
+import { tenantIdFromRelation } from '@/utilities/tenantScope'
 
 export type WorkflowJobDoc = {
   id: string | number
@@ -86,6 +93,93 @@ export async function keywordTermFromJob(
 function numericIfDigits(value: string | null): string | number | undefined {
   if (value == null) return undefined
   return /^\d+$/.test(value) ? Number(value) : value
+}
+
+async function d1ClientFromOpenNextContext(): Promise<D1Client | null> {
+  try {
+    const ctx = await getCloudflareContext({ async: true })
+    const d1 = (ctx.env as { D1?: unknown }).D1
+    return isD1Client(d1) ? d1 : null
+  } catch {
+    return null
+  }
+}
+
+async function dispatchDraftSkeletonJob(
+  payload: Payload,
+  job: WorkflowJobDoc,
+): Promise<Response> {
+  const input = jobInput(job)
+  const bid = briefIdFromJob(job)
+  if (!bid) {
+    return Response.json(
+      { error: 'briefId required (contentBrief or input.briefId)' },
+      { status: 400 },
+    )
+  }
+
+  const brief = await payload.findByID({
+    collection: 'content-briefs',
+    id: String(bid),
+    depth: 0,
+    overrideAccess: true,
+  })
+  const b = brief as {
+    site?: number | { id: number } | null
+    tenant?: number | { id: number } | null
+  }
+  const siteNum = numericIfDigits(siteIdFromJob(job))
+  const siteId =
+    typeof b.site === 'object' && b.site?.id != null
+      ? b.site.id
+      : typeof b.site === 'number'
+        ? b.site
+        : typeof siteNum === 'number'
+          ? siteNum
+          : undefined
+
+  let tenantId = tenantIdFromRelation(b.tenant)
+  if (tenantId == null && typeof siteId === 'number' && Number.isFinite(siteId)) {
+    try {
+      const site = await payload.findByID({
+        collection: 'sites',
+        id: siteId,
+        depth: 0,
+        overrideAccess: true,
+      })
+      tenantId = tenantIdFromRelation((site as { tenant?: number | { id: number } | null }).tenant)
+    } catch {
+      tenantId = null
+    }
+  }
+
+  let merged = normalizeGlobalPipelineDoc(
+    (await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })) as unknown as Record<string, unknown>,
+  )
+  if (tenantId != null && typeof siteId === 'number' && Number.isFinite(siteId)) {
+    merged = (
+      await resolvePipelineConfig({
+        payload,
+        tenantId,
+        siteId,
+      })
+    ).merged
+  }
+
+  const run = await runDraftSkeletonFromBrief(payload, {
+    briefId: numericIfDigits(bid) ?? bid,
+    ...(typeof siteId === 'number' && Number.isFinite(siteId) ? { siteIdOverride: siteId } : {}),
+    merged,
+    ...(typeof input.keywordStrategyMode === 'string' ? { keywordStrategyMode: input.keywordStrategyMode } : {}),
+    ...(typeof input.affiliateContentRole === 'string' ? { affiliateContentRole: input.affiliateContentRole } : {}),
+    ...(isAffiliateArticleLayout(input.affiliatePageLayout) ? { affiliatePageLayout: input.affiliatePageLayout } : {}),
+    d1Client: await d1ClientFromOpenNextContext(),
+  })
+
+  if ('error' in run) {
+    return Response.json({ ok: false, error: run.error }, { status: run.status ?? 500 })
+  }
+  return Response.json({ ok: true, articleId: run.articleId })
 }
 
 /**
@@ -298,27 +392,7 @@ export async function dispatchWorkflowJob(
       })
     }
     case 'draft_skeleton': {
-      const bid = briefIdFromJob(job)
-      if (!bid) {
-        return Response.json(
-          { error: 'briefId required (contentBrief or input.briefId)' },
-          { status: 400 },
-        )
-      }
-      const siteNum = numericIfDigits(siteId)
-      return forwardPipelinePost(request, '/api/pipeline/draft-skeleton', {
-        briefId: numericIfDigits(bid) ?? bid,
-        ...(typeof siteNum === 'number' ? { siteId: siteNum } : {}),
-        ...(typeof input.keywordStrategyMode === 'string'
-          ? { keywordStrategyMode: input.keywordStrategyMode }
-          : {}),
-        ...(typeof input.affiliateContentRole === 'string'
-          ? { affiliateContentRole: input.affiliateContentRole }
-          : {}),
-        ...(typeof input.affiliatePageLayout === 'string'
-          ? { affiliatePageLayout: input.affiliatePageLayout }
-          : {}),
-      })
+      return dispatchDraftSkeletonJob(payload, job)
     }
     case 'draft_section': {
       if (!input.sectionId) {
