@@ -1,4 +1,5 @@
 import configPromise from '@payload-config'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
@@ -7,10 +8,21 @@ import { normalizeGlobalPipelineDoc } from '@/utilities/pipelineSettingShape'
 import { resolvePipelineConfig } from '@/utilities/resolvePipelineConfig'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
 import { isAffiliateArticleLayout } from '@/utilities/affiliateSeoFlow'
+import { isD1Client, type D1Client } from '@/utilities/d1NarrowUpdate'
 
 export const dynamic = 'force-dynamic'
 
 const PATH = '/api/pipeline/draft-skeleton'
+
+async function d1ClientFromOpenNextContext(): Promise<D1Client | null> {
+  try {
+    const ctx = await getCloudflareContext({ async: true })
+    const d1 = (ctx.env as { D1?: unknown }).D1
+    return isD1Client(d1) ? d1 : null
+  } catch {
+    return null
+  }
+}
 
 export async function POST(request: Request): Promise<Response> {
   const g = requirePipelineJson(request, PATH)
@@ -82,6 +94,7 @@ export async function POST(request: Request): Promise<Response> {
     ...(typeof body.keywordStrategyMode === 'string' ? { keywordStrategyMode: body.keywordStrategyMode } : {}),
     ...(typeof body.affiliateContentRole === 'string' ? { affiliateContentRole: body.affiliateContentRole } : {}),
     ...(isAffiliateArticleLayout(body.affiliatePageLayout) ? { affiliatePageLayout: body.affiliatePageLayout } : {}),
+    d1Client: await d1ClientFromOpenNextContext(),
   })
 
   if ('error' in run) {

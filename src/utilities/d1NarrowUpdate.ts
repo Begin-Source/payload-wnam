@@ -8,15 +8,19 @@ type D1Prepared = {
   }
 }
 
-type D1Client = {
+export type D1Client = {
   prepare: (sql: string) => D1Prepared
 }
 
-function isD1Client(value: unknown): value is D1Client {
+export function isD1Client(value: unknown): value is D1Client {
   return Boolean(value && typeof value === 'object' && typeof (value as D1Client).prepare === 'function')
 }
 
-export function d1ClientFromPayload(payload: Payload): D1Client | null {
+export function d1ClientFromPayload(payload: Payload, explicitClient?: D1Client | null): D1Client | null {
+  if (isD1Client(explicitClient)) {
+    return explicitClient
+  }
+
   const db =
     payload.db as
       | {
@@ -125,8 +129,9 @@ function numericId(value: unknown): number | null {
 export async function d1FindArticleIdByBrief(
   payload: Payload,
   args: { briefId: number; siteId?: number },
+  d1Client?: D1Client | null,
 ): Promise<number | null> {
-  const client = d1ClientFromPayload(payload)
+  const client = d1ClientFromPayload(payload, d1Client)
   if (!client || !Number.isFinite(args.briefId)) return null
   const siteId = typeof args.siteId === 'number' && Number.isFinite(args.siteId) ? args.siteId : null
   const row = await client
@@ -141,8 +146,9 @@ export async function d1FindArticleIdByBrief(
 export async function d1NarrowInsertArticleSkeleton(
   payload: Payload,
   data: D1ArticleSkeletonInsert,
+  d1Client?: D1Client | null,
 ): Promise<number | null> {
-  const client = d1ClientFromPayload(payload)
+  const client = d1ClientFromPayload(payload, d1Client)
   if (!client) return null
 
   const now = new Date().toISOString()

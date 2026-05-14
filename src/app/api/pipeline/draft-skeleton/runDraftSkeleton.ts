@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 import type { Article } from '@/payload-types'
 import { buildLexicalSkeleton } from '@/services/writing/skeletonBuilder'
 import {
+  type D1Client,
   d1FindArticleIdByBrief,
   d1NarrowInsertArticleSkeleton,
 } from '@/utilities/d1NarrowUpdate'
@@ -97,6 +98,7 @@ async function uniqueArticleSlug(
 async function existingArticleIdForBrief(
   payload: Payload,
   args: { briefIdNum: number; siteId?: number },
+  d1Client?: D1Client | null,
 ): Promise<number | null> {
   if (!Number.isFinite(args.briefIdNum)) return null
   const found = await payload.find({
@@ -116,10 +118,14 @@ async function existingArticleIdForBrief(
   const id = (found.docs[0] as { id?: unknown } | undefined)?.id
   if (typeof id === 'number' && Number.isFinite(id)) return Math.trunc(id)
   if (typeof id === 'string' && /^\d+$/.test(id.trim())) return Number(id.trim())
-  return d1FindArticleIdByBrief(payload, {
-    briefId: args.briefIdNum,
-    siteId: typeof args.siteId === 'number' && Number.isFinite(args.siteId) ? args.siteId : undefined,
-  })
+  return d1FindArticleIdByBrief(
+    payload,
+    {
+      briefId: args.briefIdNum,
+      siteId: typeof args.siteId === 'number' && Number.isFinite(args.siteId) ? args.siteId : undefined,
+    },
+    d1Client,
+  )
 }
 
 async function firstAuthorForSite(payload: Payload, siteId?: number): Promise<number | undefined> {
@@ -287,6 +293,7 @@ export async function runDraftSkeletonFromBrief(
     keywordStrategyMode?: string
     affiliateContentRole?: string
     affiliatePageLayout?: string
+    d1Client?: D1Client | null
   },
 ): Promise<DraftSkeletonResult> {
   const merged = args.merged
@@ -340,10 +347,14 @@ export async function runDraftSkeletonFromBrief(
         ? b.site
         : undefined)
 
-  const existingArticleId = await existingArticleIdForBrief(payload, {
-    briefIdNum: briefNum,
-    siteId: typeof siteId === 'number' && Number.isFinite(siteId) ? siteId : undefined,
-  })
+  const existingArticleId = await existingArticleIdForBrief(
+    payload,
+    {
+      briefIdNum: briefNum,
+      siteId: typeof siteId === 'number' && Number.isFinite(siteId) ? siteId : undefined,
+    },
+    args.d1Client,
+  )
   if (existingArticleId != null) return { ok: true, articleId: existingArticleId }
 
   let tenantId = tenantIdFromRelation(b.tenant)
@@ -482,30 +493,34 @@ export async function runDraftSkeletonFromBrief(
     }
   }
 
-  const d1ArticleId = await d1NarrowInsertArticleSkeleton(payload, {
-    title: seoTitle.title,
-    slug: articleSlug,
-    locale,
-    tenantId,
-    ...(typeof siteId === 'number' && Number.isFinite(siteId) ? { siteId } : {}),
-    ...(authorId != null ? { authorId } : {}),
-    ...(categoryId != null ? { categoryId } : {}),
-    ...(Number.isFinite(briefNum) ? { sourceBriefId: briefNum } : {}),
-    ...(pk != null ? { primaryKeywordId: pk } : {}),
-    affiliatePageLayout,
-    ...(pipelineProfileId != null ? { pipelineProfileId } : {}),
-    pipelineProfileSnapshot: snapshotPipelineMerged(merged),
-    ...(Object.keys(sectionSummaries).length > 0 ? { sectionSummaries } : {}),
-    metaVariants: {
-      startedAt: new Date().toISOString(),
-      source: 'draft_skeleton_title_writer',
-      championVariantId: seoTitle.id,
-      variants: [seoTitle],
+  const d1ArticleId = await d1NarrowInsertArticleSkeleton(
+    payload,
+    {
+      title: seoTitle.title,
+      slug: articleSlug,
+      locale,
+      tenantId,
+      ...(typeof siteId === 'number' && Number.isFinite(siteId) ? { siteId } : {}),
+      ...(authorId != null ? { authorId } : {}),
+      ...(categoryId != null ? { categoryId } : {}),
+      ...(Number.isFinite(briefNum) ? { sourceBriefId: briefNum } : {}),
+      ...(pk != null ? { primaryKeywordId: pk } : {}),
+      affiliatePageLayout,
+      ...(pipelineProfileId != null ? { pipelineProfileId } : {}),
+      pipelineProfileSnapshot: snapshotPipelineMerged(merged),
+      ...(Object.keys(sectionSummaries).length > 0 ? { sectionSummaries } : {}),
+      metaVariants: {
+        startedAt: new Date().toISOString(),
+        source: 'draft_skeleton_title_writer',
+        championVariantId: seoTitle.id,
+        variants: [seoTitle],
+      },
+      body: lexical,
+      metaTitle: seoTitle.title,
+      metaDescription: seoTitle.description,
     },
-    body: lexical,
-    metaTitle: seoTitle.title,
-    metaDescription: seoTitle.description,
-  })
+    args.d1Client,
+  )
   if (d1ArticleId != null) {
     return { ok: true, articleId: d1ArticleId }
   }
