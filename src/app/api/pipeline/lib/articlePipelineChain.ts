@@ -18,6 +18,7 @@ import { resolvePipelineConfigForArticle } from '@/utilities/resolvePipelineConf
 import { lexicalArticleBodyToPlainText } from '@/services/writing/lexicalBodyPlain'
 import { buildArticleFeaturedTogetherPromptText } from '@/utilities/togetherTenantPrompts/togetherImagePromptTemplates'
 import { tenantIdFromRelation } from '@/utilities/tenantScope'
+import { d1NarrowUpdate } from '@/utilities/d1NarrowUpdate'
 
 async function articleHasExtractableFinalizePlain(payload: Payload, articleIdNum: number): Promise<boolean> {
   try {
@@ -406,14 +407,21 @@ async function ensureArticlePipelineProfileSnapshot(
   const cur = doc as { pipelineProfileSnapshot?: unknown }
   if (cur.pipelineProfileSnapshot != null) return
 
+  const pipelineProfileSlug =
+    resolved.profileSlug != null && resolved.profileSlug.trim() ? resolved.profileSlug.trim() : null
+  const updatedNarrow = await d1NarrowUpdate(payload, 'articles', articleNum, [
+    ['pipeline_profile_snapshot', JSON.stringify(snapshotPipelineMerged(resolved.merged))],
+    ['pipeline_profile_slug', pipelineProfileSlug],
+    ['pipeline_profile_source', resolved.source],
+  ])
+  if (updatedNarrow) return
+
   await payload.update({
     collection: 'articles',
     id: String(articleNum),
     data: {
       pipelineProfileSnapshot: snapshotPipelineMerged(resolved.merged),
-      ...(resolved.profileSlug != null && resolved.profileSlug.trim() ?
-        { pipelineProfileSlug: resolved.profileSlug.trim() }
-      : {}),
+      ...(pipelineProfileSlug ? { pipelineProfileSlug } : {}),
       pipelineProfileSource: resolved.source,
     },
     overrideAccess: true,

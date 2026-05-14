@@ -268,6 +268,76 @@ describe('articlePipelineChain', () => {
       const created = create.mock.calls[0]?.[0] as { data?: { input?: { sectionId?: string } } }
       expect(created?.data?.input?.sectionId).toBe('faq')
     })
+
+    it('uses a narrow D1 update when storing a missing article pipeline snapshot', async () => {
+      const base = normalizeGlobalPipelineDoc({})
+      vi.mocked(resolvePipelineConfigForArticle).mockResolvedValue({
+        merged: {
+          ...base,
+          sectionParallelism: 1,
+          sectionParallelWhitelist: ['intro'],
+        },
+        profileId: 1,
+        profileSlug: 'test-profile',
+        source: 'profile',
+      })
+
+      const run = vi.fn().mockResolvedValue({})
+      const bind = vi.fn().mockReturnValue({ run })
+      const prepare = vi.fn().mockReturnValue({ bind })
+      const update = vi.fn()
+      const create = vi.fn().mockResolvedValue({ id: 901 })
+
+      const payload = {
+        db: { client: { prepare } },
+        logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+        findByID: vi.fn((args: { collection: string }) => {
+          if (args.collection === 'articles') {
+            return Promise.resolve({
+              id: 1,
+              body: {},
+              sectionSummaries: {},
+            })
+          }
+          if (args.collection === 'content-briefs') {
+            return Promise.resolve({
+              outline: {
+                sections: [{ id: 'intro', type: 'intro' }],
+              },
+            })
+          }
+          return Promise.resolve(null)
+        }),
+        find: vi.fn().mockResolvedValue({ docs: [] }),
+        count: vi.fn().mockResolvedValue({ totalDocs: 0 }),
+        create,
+        update,
+      } as unknown as Payload
+
+      const n = await enqueueAvailableDraftSectionJobs(payload, {
+        articleNum: 1,
+        briefNum: 2,
+        siteId: null,
+        tenantNum: null,
+        globalContext: 'ctx',
+        pipelineProfileId: 1,
+      })
+
+      expect(n).toBe(1)
+      expect(update).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: 'articles',
+        }),
+      )
+      expect(prepare).toHaveBeenCalledWith(expect.stringContaining('UPDATE `articles` SET'))
+      expect(bind).toHaveBeenCalledWith(
+        expect.stringContaining('"sectionParallelism":1'),
+        'test-profile',
+        'profile',
+        expect.any(String),
+        1,
+      )
+    })
   })
 
   describe('enqueueDraftFinalizeIfSectionsDone', () => {
