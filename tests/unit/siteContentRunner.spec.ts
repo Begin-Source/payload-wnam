@@ -7,6 +7,7 @@ import {
   runSiteContentRunner,
   SITE_CONTENT_RUNNER_JOB_TYPE,
 } from '@/utilities/siteContentRunner'
+import { enqueueArticlePipelineCatchup } from '@/app/api/pipeline/lib/articlePipelineChain'
 
 vi.mock('@/app/api/pipeline/lib/articlePipelineChain', () => ({
   enqueueArticlePipelineCatchup: vi.fn(async (_payload, articleId: number) => ({
@@ -32,6 +33,7 @@ function payloadMockWithPendingSequences(sequences: Array<Array<{ id: number }>>
 describe('siteContentRunner', () => {
   beforeEach(() => {
     process.env.PAYLOAD_SECRET = 'secret123'
+    vi.mocked(enqueueArticlePipelineCatchup).mockClear()
   })
 
   it('lists site pending jobs excluding the runner job itself', async () => {
@@ -87,6 +89,97 @@ describe('siteContentRunner', () => {
 
     expect(result).toMatchObject({ checked: 1, enqueued: 1 })
     expect(result.messages[0]).toContain('article #31')
+  })
+
+  it('accepts string relation ids when catching up existing article skeletons', async () => {
+    const payload = {
+      find: vi.fn(async (args: { collection: string }) => {
+        if (args.collection === 'articles') {
+          return {
+            docs: [
+              {
+                id: '31',
+                sourceBrief: '11',
+                body: { root: { children: [{ text: '<!-- section:intro -->' }] } },
+              },
+            ],
+          }
+        }
+        return { docs: [] }
+      }),
+    }
+
+    const result = await ensureDraftSectionCatchupForSite(payload as never, 7)
+
+    expect(result).toMatchObject({ checked: 1, enqueued: 1 })
+    expect(enqueueArticlePipelineCatchup).toHaveBeenCalledWith(payload, 31)
+  })
+
+  it('runs draft-section catchup again after a batch creates article skeletons', async () => {
+    let articleFindCalls = 0
+    let workflowFindCalls = 0
+    const payload = {
+      find: vi.fn(async (args: { collection: string }) => {
+        if (args.collection === 'articles') {
+          articleFindCalls += 1
+          if (articleFindCalls === 1) return { docs: [] }
+          return {
+            docs: [
+              {
+                id: '31',
+                sourceBrief: '11',
+                body: { root: { children: [{ text: '<!-- section:intro -->' }] } },
+              },
+            ],
+          }
+        }
+        workflowFindCalls += 1
+        if (workflowFindCalls === 1) return { docs: [{ id: 21 }] }
+        return { docs: [{ id: 99 }] }
+      }),
+      update: vi.fn(async () => ({})),
+    }
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        ok: true,
+        executed: true,
+        jobId: 21,
+        jobType: 'draft_skeleton',
+        result: 'completed',
+      }),
+    )
+
+    const result = await runSiteContentRunner({
+      payload: payload as never,
+      origin: 'http://localhost:3000',
+      runnerJobId: 99,
+      input: { siteId: 7, batchMaxRuns: 1, batchBudgetMs: 5000, maxBatches: 1 },
+      fetchImpl,
+    })
+
+    expect(result).toMatchObject({
+      ok: false,
+      siteId: 7,
+      batches: 1,
+      totalTicks: 1,
+      stoppedReason: 'max_batches',
+      pendingRemaining: 1,
+    })
+    expect(enqueueArticlePipelineCatchup).toHaveBeenCalledWith(payload, 31)
+    expect(payload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: 'workflow-jobs',
+        id: 99,
+        data: expect.objectContaining({
+          output: expect.objectContaining({
+            draftCatchup: expect.objectContaining({
+              enqueued: 1,
+              after: expect.objectContaining({ enqueued: 1 }),
+            }),
+          }),
+        }),
+      }),
+    )
   })
 
   it('runs pending site jobs in backend batches until the site has no pending jobs', async () => {

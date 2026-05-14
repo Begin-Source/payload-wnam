@@ -77,9 +77,11 @@ export async function listPendingWorkflowJobIdsForSite(
 
 function relationIdNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return Math.trunc(value)
+  if (typeof value === 'string' && /^\d+$/.test(value.trim())) return Number(value.trim())
   if (typeof value === 'object' && value !== null && 'id' in value) {
     const id = (value as { id?: unknown }).id
     if (typeof id === 'number' && Number.isFinite(id)) return Math.trunc(id)
+    if (typeof id === 'string' && /^\d+$/.test(id.trim())) return Number(id.trim())
   }
   return null
 }
@@ -185,7 +187,7 @@ export async function runSiteContentRunner(args: {
   let noProgressRounds = 0
 
   for (let round = 0; round < input.maxBatches; round += 1) {
-    const catchup = await ensureDraftSectionCatchupForSite(args.payload, input.siteId)
+    const catchupBefore = await ensureDraftSectionCatchupForSite(args.payload, input.siteId)
     const pendingIds = await listPendingWorkflowJobIdsForSite(args.payload, input.siteId)
     pendingRemaining = pendingIds.length
     if (pendingIds.length === 0) {
@@ -209,6 +211,7 @@ export async function runSiteContentRunner(args: {
     stoppedReason = out.stoppedReason
     failureSummary = out.failureSummary
 
+    const catchupAfter = await ensureDraftSectionCatchupForSite(args.payload, input.siteId)
     const pendingAfter = await listPendingWorkflowJobIdsForSite(args.payload, input.siteId)
     pendingRemaining = pendingAfter.length
 
@@ -224,7 +227,13 @@ export async function runSiteContentRunner(args: {
         pendingRemaining,
         lastFailureSummary: out.failureSummary,
         lastBannerHints: out.bannerHints?.slice(0, 12) ?? [],
-        draftCatchup: catchup,
+        draftCatchup: {
+          checked: catchupBefore.checked + catchupAfter.checked,
+          enqueued: catchupBefore.enqueued + catchupAfter.enqueued,
+          messages: [...catchupBefore.messages, ...catchupAfter.messages].slice(0, 20),
+          before: catchupBefore,
+          after: catchupAfter,
+        },
       },
     })
 
