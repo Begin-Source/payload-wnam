@@ -67,6 +67,14 @@ function hasRelationItems(raw: unknown): boolean {
   return Array.isArray(raw) && raw.length > 0
 }
 
+function hasRelationValue(raw: unknown): boolean {
+  if (raw == null) return false
+  if (typeof raw === 'number') return Number.isFinite(raw)
+  if (typeof raw === 'string') return raw.trim().length > 0
+  if (typeof raw === 'object' && 'id' in raw) return hasRelationValue((raw as { id?: unknown }).id)
+  return false
+}
+
 function inferVetoes(article: Record<string, unknown>, plain: string, supplied: unknown): string[] {
   const out = new Set<string>()
   if (Array.isArray(supplied)) {
@@ -136,7 +144,13 @@ export async function POST(request: Request): Promise<Response> {
     vetoCount: vetoes.length,
   })
   const hardBlocked = hardVetoes.length > 0 || listContainsHardVeto(vetoes)
-  const passes = finalOverallScore >= gate.minOverallScore && !blocked && !hardBlocked
+  const publishRequested = body.publishIfPass === true || gate.publishIfPass
+  const missingAuthorForPublish = publishRequested && !hasRelationValue(article.author)
+  const passes =
+    finalOverallScore >= gate.minOverallScore &&
+    !blocked &&
+    !hardBlocked &&
+    !missingAuthorForPublish
   const verdict = passes ? 'SHIP' : hardBlocked ? 'BLOCK' : 'FIX'
 
   const eeatCheck = {
@@ -162,11 +176,13 @@ export async function POST(request: Request): Promise<Response> {
       onPageSeo: onPageAudit.metrics,
       onPageSeoRequirements: onPageAudit.requirements,
       onPageSeoMissing: onPageAudit.missing,
+      authorPresent: hasRelationValue(article.author),
     },
     topFixes:
       passes ? []
       : [
           ...onPageAudit.missing,
+          missingAuthorForPublish ? 'Assign an author before publishing.' : '',
           finalOverallScore < gate.minOverallScore ?
             `Raise article qualityScore to at least ${gate.minOverallScore}.`
           : '',
@@ -181,7 +197,7 @@ export async function POST(request: Request): Promise<Response> {
     eeatCheck,
     vetoCodes: vetoes,
   }
-  if ((body.publishIfPass === true || gate.publishIfPass) && passes) {
+  if (publishRequested && passes) {
     updateData.status = 'published'
     updateData._quality = { rawScore, vetoes }
   }
