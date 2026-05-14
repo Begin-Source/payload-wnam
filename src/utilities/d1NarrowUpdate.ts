@@ -11,13 +11,33 @@ type D1Client = {
   prepare: (sql: string) => D1Prepared
 }
 
+function isD1Client(value: unknown): value is D1Client {
+  return Boolean(value && typeof value === 'object' && typeof (value as D1Client).prepare === 'function')
+}
+
 export function d1ClientFromPayload(payload: Payload): D1Client | null {
-  const db = payload.db as unknown as { client?: unknown } | undefined
-  const client = db?.client
-  if (!client || typeof client !== 'object' || typeof (client as D1Client).prepare !== 'function') {
-    return null
+  const db =
+    payload.db as
+      | {
+          binding?: unknown
+          client?: unknown
+          drizzle?: { $client?: unknown }
+        }
+      | undefined
+
+  if (isD1Client(db?.client)) {
+    return db.client
   }
-  return client as D1Client
+
+  if (isD1Client(db?.drizzle?.$client)) {
+    return db.drizzle.$client
+  }
+
+  if (isD1Client(db?.binding)) {
+    return db.binding
+  }
+
+  return null
 }
 
 function jsonColumnValue(value: unknown): string | null {
