@@ -30,9 +30,16 @@ export async function forwardPipelinePost(
 }
 
 export async function readJsonSafe(res: Response): Promise<unknown> {
+  const text = await res.text()
+  if (!text.trim()) return null
   try {
-    return await res.json()
+    return JSON.parse(text) as unknown
   } catch {
-    return { parseError: true, status: res.status }
+    return {
+      parseError: true,
+      status: res.status,
+      contentType: res.headers.get('content-type') ?? '',
+      bodyPreview: text.replace(/\s+/g, ' ').trim().slice(0, 800),
+    }
   }
 }

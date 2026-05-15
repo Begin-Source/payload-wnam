@@ -17,104 +17,117 @@ export async function POST(request: Request): Promise<Response> {
   if (isPipelineUnauthorized(g)) {
     return g.response
   }
-  const body = (await request.json().catch(() => ({}))) as {
-    keywordId?: string | number
-    siteId?: number
-    pipelineProfileId?: string | number
-    keywordStrategyMode?: string
-    affiliateContentRole?: string
-    affiliatePageLayout?: string
-    recommendedPipelineSlug?: string
-    operatorHint?: string
-  }
-  const payload = await getPayload({ config: configPromise })
-  if (!body.keywordId) {
-    return Response.json({ error: 'keywordId required' }, { status: 400 })
-  }
-  const kw = await payload.findByID({
-    collection: 'keywords',
-    id: String(body.keywordId),
-    depth: 0,
-    overrideAccess: true,
-  })
-  const kid =
-    typeof body.keywordId === 'number' ?
-      body.keywordId
-    : Number(body.keywordId)
-  if (!Number.isFinite(kid)) {
-    return Response.json({ error: 'keywordId invalid' }, { status: 400 })
-  }
-
-  const term = (kw as { term?: string }).term || 'topic'
-  const siteId =
-    body.siteId ??
-    (typeof (kw as { site?: number | { id: number } | null })?.site === 'object' &&
-    (kw as { site?: { id: number } | null })?.site
-      ? (kw as { site: { id: number } }).site.id
-      : (kw as { site?: number | null })?.site) ??
-    undefined
-
-  let tenantId = tenantIdFromRelation((kw as { tenant?: number | { id: number } | null }).tenant)
-  if (tenantId == null && typeof siteId === 'number' && Number.isFinite(siteId)) {
-    try {
-      const site = await payload.findByID({
-        collection: 'sites',
-        id: siteId,
-        depth: 0,
-        overrideAccess: true,
-      })
-      tenantId = tenantIdFromRelation((site as { tenant?: number | { id: number } | null }).tenant)
-    } catch {
-      tenantId = null
+  try {
+    const body = (await request.json().catch(() => ({}))) as {
+      keywordId?: string | number
+      siteId?: number
+      pipelineProfileId?: string | number
+      keywordStrategyMode?: string
+      affiliateContentRole?: string
+      affiliatePageLayout?: string
+      recommendedPipelineSlug?: string
+      operatorHint?: string
     }
-  }
-  if (tenantId == null) {
+    const payload = await getPayload({ config: configPromise })
+    if (!body.keywordId) {
+      return Response.json({ error: 'keywordId required' }, { status: 400 })
+    }
+    const kw = await payload.findByID({
+      collection: 'keywords',
+      id: String(body.keywordId),
+      depth: 0,
+      overrideAccess: true,
+    })
+    const kid =
+      typeof body.keywordId === 'number' ?
+        body.keywordId
+      : Number(body.keywordId)
+    if (!Number.isFinite(kid)) {
+      return Response.json({ error: 'keywordId invalid' }, { status: 400 })
+    }
+
+    const term = (kw as { term?: string }).term || 'topic'
+    const siteId =
+      body.siteId ??
+      (typeof (kw as { site?: number | { id: number } | null })?.site === 'object' &&
+      (kw as { site?: { id: number } | null })?.site
+        ? (kw as { site: { id: number } }).site.id
+        : (kw as { site?: number | null })?.site) ??
+      undefined
+
+    let tenantId = tenantIdFromRelation((kw as { tenant?: number | { id: number } | null }).tenant)
+    if (tenantId == null && typeof siteId === 'number' && Number.isFinite(siteId)) {
+      try {
+        const site = await payload.findByID({
+          collection: 'sites',
+          id: siteId,
+          depth: 0,
+          overrideAccess: true,
+        })
+        tenantId = tenantIdFromRelation((site as { tenant?: number | { id: number } | null }).tenant)
+      } catch {
+        tenantId = null
+      }
+    }
+    if (tenantId == null) {
+      return Response.json(
+        {
+          error:
+            typeof siteId === 'number' && Number.isFinite(siteId)
+              ? '所选站点未关联租户，无法创建内容大纲'
+              : '无法解析租户：请确认关键词与站点已关联租户',
+        },
+        { status: 400 },
+      )
+    }
+
+    const rawPp = body.pipelineProfileId
+    let explicitPipelineProfileId: number | undefined
+    if (typeof rawPp === 'number' && Number.isFinite(rawPp)) {
+      explicitPipelineProfileId = Math.floor(rawPp)
+    } else if (typeof rawPp === 'string' && /^\d+$/.test(rawPp.trim())) {
+      explicitPipelineProfileId = Number(rawPp.trim())
+    }
+
+    const pipelineCfg = await resolvePipelineConfig({
+      payload,
+      tenantId,
+      siteId: typeof siteId === 'number' && Number.isFinite(siteId) ? siteId : undefined,
+      explicitProfileId: explicitPipelineProfileId,
+    })
+    const merged = pipelineCfg.merged
+    const briefVariant = normalizeBriefVariant(merged.briefVariant)
+
+    const run = await runBriefGeneration({
+      payload,
+      merged,
+      pipelineCfg,
+      tenantId,
+      siteId,
+      keywordId: kid,
+      term,
+      variant: briefVariant,
+      keywordStrategyMode: body.keywordStrategyMode,
+      affiliateContentRole: body.affiliateContentRole,
+      affiliatePageLayout: body.affiliatePageLayout,
+      recommendedPipelineSlug: body.recommendedPipelineSlug,
+      operatorHint: body.operatorHint,
+    })
+
+    if ('error' in run) {
+      return Response.json({ error: run.error }, { status: 502 })
+    }
+    return Response.json({ ok: true, id: run.id })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    const stack = e instanceof Error ? e.stack : undefined
     return Response.json(
       {
-        error:
-          typeof siteId === 'number' && Number.isFinite(siteId)
-            ? '所选站点未关联租户，无法创建内容大纲'
-            : '无法解析租户：请确认关键词与站点已关联租户',
+        ok: false,
+        error: msg,
+        ...(stack ? { stack: stack.slice(0, 1800) } : {}),
       },
-      { status: 400 },
+      { status: 500 },
     )
   }
-
-  const rawPp = body.pipelineProfileId
-  let explicitPipelineProfileId: number | undefined
-  if (typeof rawPp === 'number' && Number.isFinite(rawPp)) {
-    explicitPipelineProfileId = Math.floor(rawPp)
-  } else if (typeof rawPp === 'string' && /^\d+$/.test(rawPp.trim())) {
-    explicitPipelineProfileId = Number(rawPp.trim())
-  }
-
-  const pipelineCfg = await resolvePipelineConfig({
-    payload,
-    tenantId,
-    siteId: typeof siteId === 'number' && Number.isFinite(siteId) ? siteId : undefined,
-    explicitProfileId: explicitPipelineProfileId,
-  })
-  const merged = pipelineCfg.merged
-  const briefVariant = normalizeBriefVariant(merged.briefVariant)
-
-  const run = await runBriefGeneration({
-    payload,
-    merged,
-    pipelineCfg,
-    tenantId,
-    siteId,
-    keywordId: kid,
-    term,
-    variant: briefVariant,
-    keywordStrategyMode: body.keywordStrategyMode,
-    affiliateContentRole: body.affiliateContentRole,
-    affiliatePageLayout: body.affiliatePageLayout,
-    recommendedPipelineSlug: body.recommendedPipelineSlug,
-    operatorHint: body.operatorHint,
-  })
-
-  if ('error' in run) {
-    return Response.json({ error: run.error }, { status: 502 })
-  }
-  return Response.json({ ok: true, id: run.id })
 }
