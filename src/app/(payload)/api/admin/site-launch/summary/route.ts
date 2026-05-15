@@ -92,6 +92,8 @@ export async function GET(request: Request): Promise<Response> {
     articlesBlocked,
     jobsRunning,
     jobsFailed,
+    briefGenerateJobsPending,
+    briefGenerateJobsRunning,
     dailyPostCap,
   ] = await Promise.all([
     count(payload, 'keywords', siteWhere),
@@ -103,6 +105,20 @@ export async function GET(request: Request): Promise<Response> {
     count(payload, 'articles', { and: [siteWhere, { publishQueueStatus: { equals: 'blocked' } }] }),
     count(payload, 'workflow-jobs', { and: [siteWhere, { status: { equals: 'running' } }] }),
     count(payload, 'workflow-jobs', { and: [siteWhere, { status: { equals: 'failed' } }] }),
+    count(payload, 'workflow-jobs', {
+      and: [
+        siteWhere,
+        { jobType: { equals: 'brief_generate' } },
+        { status: { equals: 'pending' } },
+      ],
+    }),
+    count(payload, 'workflow-jobs', {
+      and: [
+        siteWhere,
+        { jobType: { equals: 'brief_generate' } },
+        { status: { equals: 'running' } },
+      ],
+    }),
     dailyPostCapForSite(payload, siteId),
   ])
 
@@ -149,6 +165,8 @@ export async function GET(request: Request): Promise<Response> {
       jobsPending: pendingJobs.totalDocs,
       jobsRunning,
       jobsFailed,
+      briefGenerateJobsPending,
+      briefGenerateJobsRunning,
       dailyPostCap,
     },
     pendingJobIds,

@@ -52,6 +52,8 @@ type SummaryJson = {
     jobsPending: number
     jobsRunning: number
     jobsFailed: number
+    briefGenerateJobsPending?: number
+    briefGenerateJobsRunning?: number
     dailyPostCap: number
   }
   pendingJobIds?: number[]
@@ -242,6 +244,12 @@ const contentLinkStyle: React.CSSProperties = {
 function numberOr(value: string, fallback: number): number {
   const n = Number(value)
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback
+}
+
+function activeBriefGenerateJobs(summaryValue: SummaryJson | null | undefined): number {
+  const pending = summaryValue?.counts?.briefGenerateJobsPending
+  const running = summaryValue?.counts?.briefGenerateJobsRunning
+  return (typeof pending === 'number' ? pending : 0) + (typeof running === 'number' ? running : 0)
 }
 
 function siteRecordFormFromSite(site: Partial<SiteSummary> | null | undefined): SiteRecordForm {
@@ -743,6 +751,14 @@ export function SiteLaunchPanelView(): React.ReactElement {
     progress?: ContentActionProgress,
   ): Promise<string> => {
     const savedSite = siteOverride ?? (await resolveOperationSite())
+    progress?.('检查是否还有 Brief 生成任务')
+    const freshSummary = await loadSummaryValue(savedSite.id)
+    const activeBriefJobs = activeBriefGenerateJobs(freshSummary)
+    if (activeBriefJobs > 0) {
+      throw new Error(
+        `还有 ${activeBriefJobs} 个 Brief 生成任务未完成。请等“生成内容大纲”完成后，再点击“生成文章草稿”。`,
+      )
+    }
     progress?.('从已有大纲排产文章草稿任务')
     const draft = await postJson<{
       queriedCount?: number

@@ -55,6 +55,24 @@ function clampSiteLimit(raw: unknown): number {
   return Math.min(MAX_SITE_LIMIT, Math.max(1, n))
 }
 
+async function countActiveBriefGenerateJobsForSite(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  siteId: number,
+): Promise<number> {
+  const active = await payload.count({
+    collection: 'workflow-jobs',
+    where: {
+      and: [
+        { site: { equals: siteId } },
+        { jobType: { equals: 'brief_generate' } },
+        { status: { in: ['pending', 'running'] } },
+      ],
+    },
+    overrideAccess: true,
+  })
+  return active.totalDocs
+}
+
 async function latestArticleIdForBrief(
   payload: Awaited<ReturnType<typeof getPayload>>,
   user: Config['user'] & { collection: 'users' },
@@ -130,6 +148,7 @@ export async function POST(request: Request): Promise<Response> {
     siteId?: unknown
     limit?: unknown
     dryRun?: unknown
+    allowWhileBriefGenerate?: unknown
   }
 
   const dryRun = body.dryRun === true
@@ -237,6 +256,19 @@ export async function POST(request: Request): Promise<Response> {
   }
   if (!siteOk) {
     return Response.json({ error: 'Site not found or forbidden' }, { status: 404 })
+  }
+
+  if (body.allowWhileBriefGenerate !== true) {
+    const activeBriefGenerateJobs = await countActiveBriefGenerateJobsForSite(payload, siteId)
+    if (activeBriefGenerateJobs > 0) {
+      return Response.json(
+        {
+          error: `还有 ${activeBriefGenerateJobs} 个 Brief 生成任务未完成，请等大纲生成完成后再生成文章草稿。`,
+          activeBriefGenerateJobs,
+        },
+        { status: 409 },
+      )
+    }
   }
 
   const limit = clampSiteLimit(body.limit)
