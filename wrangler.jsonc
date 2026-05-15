@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
+  "main": "src/worker.ts",
   "name": "payload-wnam",
   "compatibility_date": "2025-08-15",
   "compatibility_flags": [
@@ -24,6 +24,9 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS",
   },
+  "vars": {
+    "PIPELINE_BASE_URL": "https://payload-wnam.sunnybuilds.workers.dev",
+  },
   "d1_databases": [
     {
       "binding": "D1",
@@ -41,13 +44,31 @@
   ],
   // Domain generation (n8n parity): POST /api/sites/generate-domain needs Worker secrets
   // SPACESHIP_API_KEY + SPACESHIP_API_SECRET (and existing OPENAI_API_KEY / OPENROUTER for OpenRouter).
-  // Cron triggers require a Worker `scheduled` handler. OpenNext does not emit one yet —
-  // use GitHub Actions (`.github/workflows/pipeline-cron.yml` + `pipeline-daily.yml`) calling
-  // POST /api/pipeline/tick?execute=1 and POST /api/pipeline/cron-dispatch with `x-internal-token: PAYLOAD_SECRET`.
+  // The custom Worker entrypoint in `src/worker.ts` preserves OpenNext fetch and adds queue / scheduled handlers.
+  // Cron calls POST /api/pipeline/content-workflow/kick to re-deliver pending or stale site content runners.
   // Cloudflare weekdays: 1=Sun … 7=Sat (not Unix 0–6; DOW "0" is invalid). Weekly slots below = Monday UTC.
-  // `crons` stays empty until a dedicated cron Worker or OpenNext `scheduled()` exists.
   "triggers": {
-    "crons": []
+    "crons": ["*/5 * * * *"]
+  },
+  "queues": {
+    "producers": [
+      {
+        "binding": "CONTENT_WORKFLOW_QUEUE",
+        "queue": "payload-wnam-content-workflow",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "payload-wnam-content-workflow",
+        "max_batch_size": 1,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "retry_delay": 30,
+        "visibility_timeout_ms": 300000,
+        "max_concurrency": 1,
+        "dead_letter_queue": "payload-wnam-content-workflow-dlq",
+      },
+    ],
   },
   "r2_buckets": [
     {

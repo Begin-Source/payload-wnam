@@ -7,6 +7,12 @@ import { POST as enqueueArticleBatch } from '@/app/(payload)/api/admin/articles/
 import { isUsersCollection } from '@/utilities/announcementAccess'
 import { enqueueDraftSkeletonAfterBriefGenerate } from '@/app/api/pipeline/lib/enqueueDraftSkeletonAfterBrief'
 import {
+  CONTENT_WORKFLOW_MESSAGE_SITE_RUNNER,
+  enqueueContentWorkflowMessage,
+  getContentWorkflowQueueFromOpenNext,
+  type ContentWorkflowQueueMessage,
+} from '@/utilities/contentWorkflowQueue'
+import {
   runSiteContentRunner,
   SITE_CONTENT_RUNNER_JOB_TYPE,
   type SiteContentRunnerInput,
@@ -196,6 +202,39 @@ function scheduleBackgroundRunner(promise: Promise<unknown>): void {
   }
 }
 
+async function enqueueOrScheduleBackgroundRunner(args: {
+  payload: Awaited<ReturnType<typeof getPayload>>
+  origin: string
+  runnerJobId: string | number
+  input: SiteContentRunnerInput
+}): Promise<'queue' | 'waitUntil'> {
+  const queue = getContentWorkflowQueueFromOpenNext()
+  if (queue) {
+    const message: ContentWorkflowQueueMessage = {
+      type: CONTENT_WORKFLOW_MESSAGE_SITE_RUNNER,
+      siteId: args.input.siteId,
+      runnerJobId: args.runnerJobId,
+      input: {
+        ...args.input,
+        // Queue consumer deliberately runs short chunks and re-enqueues itself.
+        maxBatches: Math.min(args.input.maxBatches ?? 80, 3),
+      },
+    }
+    await enqueueContentWorkflowMessage(queue, message)
+    return 'queue'
+  }
+
+  scheduleBackgroundRunner(
+    runSiteContentRunner({
+      payload: args.payload,
+      origin: args.origin,
+      runnerJobId: args.runnerJobId,
+      input: args.input,
+    }),
+  )
+  return 'waitUntil'
+}
+
 async function reviveStaleRunningSiteJobs(args: {
   payload: Awaited<ReturnType<typeof getPayload>>
   siteId: number
@@ -272,7 +311,7 @@ async function reviveStaleRunningSiteJobs(args: {
               completedBriefJobId: doc.id,
               briefId: brief.id,
               siteNumeric: args.siteId,
-            }).catch(() => null)
+            }).catch((_e: unknown): null => null)
           }
           revived += 1
           continue
@@ -405,6 +444,7 @@ export async function POST(request: Request): Promise<Response> {
   let runnerReused = false
   let runnerRestarted = false
   let scheduled = false
+  let scheduleMode: 'queue' | 'waitUntil' | 'none' = 'none'
 
   if (activeDoc) {
     runnerJobId = activeDoc.id
@@ -412,14 +452,12 @@ export async function POST(request: Request): Promise<Response> {
     runnerRestarted = forceRunnerRestart || runnerIsStale(activeDoc)
     if (activeDoc.status !== 'running' || runnerRestarted) {
       scheduled = true
-      void scheduleBackgroundRunner(
-        runSiteContentRunner({
-          payload,
-          origin: new URL(request.url).origin,
-          runnerJobId,
-          input: runnerInput,
-        }),
-      )
+      scheduleMode = await enqueueOrScheduleBackgroundRunner({
+        payload,
+        origin: new URL(request.url).origin,
+        runnerJobId,
+        input: runnerInput,
+      })
     }
   } else {
     const runner = await payload.create({
@@ -437,14 +475,12 @@ export async function POST(request: Request): Promise<Response> {
     })
     runnerJobId = runner.id
     scheduled = true
-    void scheduleBackgroundRunner(
-      runSiteContentRunner({
-        payload,
-        origin: new URL(request.url).origin,
-        runnerJobId,
-        input: runnerInput,
-      }),
-    )
+    scheduleMode = await enqueueOrScheduleBackgroundRunner({
+      payload,
+      origin: new URL(request.url).origin,
+      runnerJobId,
+      input: runnerInput,
+    })
   }
 
   return Response.json({
@@ -455,12 +491,15 @@ export async function POST(request: Request): Promise<Response> {
     runnerRestarted,
     revivedRunningJobs,
     scheduled,
+    scheduleMode,
     message: scheduled
       ? runnerRestarted
         ? forceRunnerRestart
-          ? `已在后端重新接管 pending 任务${revivedRunningJobs > 0 ? `，并恢复 ${revivedRunningJobs} 个长时间运行中的子任务` : ''}。`
-          : '检测到旧内容 Runner 已长时间无进展，已在后端重新接管 pending 任务。'
-        : '内容 Runner 已在后端启动；页面关闭后仍可在工作流任务表查看状态。'
+          ? `已由${scheduleMode === 'queue' ? '后台队列' : '后端 Runner'}重新接管 pending 任务${revivedRunningJobs > 0 ? `，并恢复 ${revivedRunningJobs} 个长时间运行中的子任务` : ''}。`
+          : `检测到旧内容 Runner 已长时间无进展，已由${scheduleMode === 'queue' ? '后台队列' : '后端 Runner'}重新接管 pending 任务。`
+        : scheduleMode === 'queue'
+          ? '内容任务已交给后台队列；页面关闭后仍会继续处理，可在工作流任务表查看状态。'
+          : '内容 Runner 已在后端启动；页面关闭后仍可在工作流任务表查看状态。'
       : '已有内容 Runner 正在运行；新排产任务会由该 Runner 继续处理。',
   })
 }

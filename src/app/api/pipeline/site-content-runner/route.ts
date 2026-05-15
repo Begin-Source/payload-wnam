@@ -42,6 +42,7 @@ export async function POST(request: Request): Promise<Response> {
       maxBatches: numberFromBody(body.maxBatches) ?? undefined,
       stopOnFailure: body.stopOnFailure !== false,
     },
+    partialAsRunning: body.partialAsRunning === true,
   })
 
   const httpStatus = result.failureSummary || HARD_FAILURE_REASONS.has(result.stoppedReason) ? 500 : 200

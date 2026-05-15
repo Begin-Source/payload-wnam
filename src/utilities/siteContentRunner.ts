@@ -125,7 +125,8 @@ export async function ensureDraftSectionCatchupForSite(
     checked += 1
     const result = await enqueueArticlePipelineCatchup(payload, articleId)
     if (!result.ok) {
-      messages.push(`article #${articleId}: ${result.error}`)
+      const errorMessage = 'error' in result ? result.error : 'unknown catchup error'
+      messages.push(`article #${articleId}: ${errorMessage}`)
       continue
     }
     const created = result.messages.some((m) => m.includes('入队'))
@@ -162,6 +163,12 @@ export async function runSiteContentRunner(args: {
   input: SiteContentRunnerInput
   runnerJobId?: string | number | null
   fetchImpl?: RunNextFetchImpl
+  /**
+   * Queue consumers run the site workflow in short chunks. A chunk that hits
+   * max_batches / budget with work remaining should keep the runner alive so
+   * the queue can re-deliver the next chunk instead of marking it failed.
+   */
+  partialAsRunning?: boolean
 }): Promise<SiteContentRunnerResult> {
   const input = normalizeRunnerInput(args.input)
 
@@ -263,7 +270,15 @@ export async function runSiteContentRunner(args: {
     stoppedReason = 'max_batches'
   }
 
-  const ok = pendingRemaining === 0 && !failureSummary
+  const canContinuePartial =
+    args.partialAsRunning === true &&
+    pendingRemaining > 0 &&
+    !failureSummary &&
+    (stoppedReason === 'max_batches' ||
+      stoppedReason === 'budget' ||
+      stoppedReason === 'max_runs')
+
+  const ok = (pendingRemaining === 0 && !failureSummary) || canContinuePartial
   const result: SiteContentRunnerResult = {
     ok,
     siteId: input.siteId,
@@ -275,8 +290,8 @@ export async function runSiteContentRunner(args: {
   }
 
   await patchRunnerJob(args.payload, args.runnerJobId, {
-    status: ok ? 'completed' : 'failed',
-    completedAt: new Date().toISOString(),
+    status: canContinuePartial ? 'running' : ok ? 'completed' : 'failed',
+    completedAt: canContinuePartial ? null : new Date().toISOString(),
     output: result,
     errorMessage: ok ? '' : failureSummary || stoppedReason,
   })
