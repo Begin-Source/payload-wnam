@@ -50,11 +50,20 @@ function inputFromUnknown(raw: unknown, siteId: number): SiteContentRunnerInput 
 
 function runnerNeedsKick(doc: {
   status?: string | null
+  errorMessage?: string | null
   updatedAt?: string | null
   startedAt?: string | null
   createdAt?: string | null
 }): boolean {
   if (doc.status === 'pending') return true
+  if (
+    doc.status === 'failed' &&
+    typeof doc.errorMessage === 'string' &&
+    (doc.errorMessage.includes('error code: 1003') ||
+      doc.errorMessage.includes('tick 返回非 JSON（403）'))
+  ) {
+    return true
+  }
   if (doc.status !== 'running') return false
   const last =
     timestampMs(doc.updatedAt) ?? timestampMs(doc.startedAt) ?? timestampMs(doc.createdAt)
@@ -78,7 +87,7 @@ export async function POST(request: Request): Promise<Response> {
     where: {
       and: [
         { jobType: { equals: SITE_CONTENT_RUNNER_JOB_TYPE } },
-        { status: { in: ['pending', 'running'] } },
+        { status: { in: ['pending', 'running', 'failed'] } },
       ],
     },
     limit,
@@ -96,6 +105,7 @@ export async function POST(request: Request): Promise<Response> {
     id?: string | number
     site?: unknown
     status?: string | null
+    errorMessage?: string | null
     input?: unknown
     updatedAt?: string | null
     startedAt?: string | null
@@ -110,7 +120,7 @@ export async function POST(request: Request): Promise<Response> {
     const siteId = relationIdNumber(doc.site) ?? relationIdNumber((doc.input as { siteId?: unknown } | null)?.siteId)
     if (siteId == null) continue
 
-    if (doc.status === 'running') {
+    if (doc.status === 'running' || doc.status === 'failed') {
       await payload.update({
         collection: 'workflow-jobs',
         id: doc.id,

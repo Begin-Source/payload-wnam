@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 
 import type { Config } from '@/payload-types'
 import { POST as enqueueArticleBatch } from '@/app/(payload)/api/admin/articles/batch-enqueue/route'
+import { pipelineOrigin } from '@/app/api/pipeline/lib/internalPipelineFetch'
 import { isUsersCollection } from '@/utilities/announcementAccess'
 import { enqueueDraftSkeletonAfterBriefGenerate } from '@/app/api/pipeline/lib/enqueueDraftSkeletonAfterBrief'
 import {
@@ -454,7 +455,7 @@ export async function POST(request: Request): Promise<Response> {
       scheduled = true
       scheduleMode = await enqueueOrScheduleBackgroundRunner({
         payload,
-        origin: new URL(request.url).origin,
+        origin: pipelineOrigin(request),
         runnerJobId,
         input: runnerInput,
       })
@@ -477,7 +478,7 @@ export async function POST(request: Request): Promise<Response> {
     scheduled = true
     scheduleMode = await enqueueOrScheduleBackgroundRunner({
       payload,
-      origin: new URL(request.url).origin,
+      origin: pipelineOrigin(request),
       runnerJobId,
       input: runnerInput,
     })

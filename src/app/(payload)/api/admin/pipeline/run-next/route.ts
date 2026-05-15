@@ -1,6 +1,7 @@
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
+import { pipelineOrigin } from '@/app/api/pipeline/lib/internalPipelineFetch'
 import { runNextPendingJobs } from '@/utilities/pipelineRunNext'
 import { requirePipelineRunNextAccess } from '@/utilities/pipelineRunNextAccess'
 import { runNextPendingJobsWithExpandedConstraints } from '@/utilities/pipelineRunNextExpanded'
@@ -144,7 +145,7 @@ export async function POST(request: Request): Promise<Response> {
   const { payload, user } = g
 
   try {
-    const origin = new URL(request.url).origin
+    const origin = pipelineOrigin(request)
 
     payload.logger.info(
       {

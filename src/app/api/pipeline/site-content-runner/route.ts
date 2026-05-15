@@ -2,6 +2,7 @@ import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
 import { isPipelineUnauthorized, requirePipelineJson } from '@/app/api/pipeline/lib/auth'
+import { pipelineOrigin } from '@/app/api/pipeline/lib/internalPipelineFetch'
 import { runSiteContentRunner } from '@/utilities/siteContentRunner'
 
 export const dynamic = 'force-dynamic'
@@ -30,7 +31,7 @@ export async function POST(request: Request): Promise<Response> {
   const payload = await getPayload({ config: configPromise })
   const result = await runSiteContentRunner({
     payload,
-    origin: new URL(request.url).origin,
+    origin: pipelineOrigin(request),
     runnerJobId:
       typeof body.runnerJobId === 'string' || typeof body.runnerJobId === 'number'
         ? body.runnerJobId

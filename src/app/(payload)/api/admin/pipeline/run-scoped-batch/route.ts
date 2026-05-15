@@ -1,5 +1,6 @@
 import { normalizeConstrainedJobIds } from '@/utilities/workflowJobTickConstraints'
 
+import { pipelineOrigin } from '@/app/api/pipeline/lib/internalPipelineFetch'
 import { bootstrapWritingScopeIfIdle } from '@/utilities/bootstrapWritingScope'
 import { runNextPendingJobsWithExpandedConstraints } from '@/utilities/pipelineRunNextExpanded'
 import { requirePipelineRunNextAccess } from '@/utilities/pipelineRunNextAccess'
@@ -74,7 +75,7 @@ export async function POST(request: Request): Promise<Response> {
   const { articleId: scopeArticleId, briefId: scopeBriefId } = resolved.scope
 
   try {
-    const origin = new URL(request.url).origin
+    const origin = pipelineOrigin(request)
 
     const scopePendingCountBefore = await countWritingScopePending(
       payload,
