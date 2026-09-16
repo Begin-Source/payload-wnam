@@ -18,6 +18,7 @@ writeFileSync('.cloudflare-ci/wrangler.json', JSON.stringify({
 run(['run', 'ci:check'], { PAYLOAD_TEST_MODE: 'isolated', PAYLOAD_SECRET: 'isolated-test-secret' })
 execFileSync(process.execPath, ['scripts/ci-site-isolation.mjs'], { stdio: 'inherit', env: process.env })
 run(['exec', 'opennextjs-cloudflare', 'build'], { PAYLOAD_BUILD_PHASE: '1' })
+execFileSync(process.execPath, ['scripts/ci-p0-source-encoding.mjs'], { stdio: 'inherit', env: process.env })
 execFileSync(process.execPath, ['scripts/ci-p0-bundle-report.mjs'], { stdio: 'inherit', env: process.env })
 run(['exec', 'playwright', 'install', '--only-shell', 'chromium'])
 run(['exec', 'playwright', 'test', '--config=playwright.cloud-ci.config.ts'], browserLibraryEnvironment())
