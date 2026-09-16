@@ -6,6 +6,14 @@
   "githubRepositoryId": 1224379860,
   "productionDatabaseId": "f2aac41b-418d-47de-8bb3-edda485b1e2b",
   "purpose": "P0 isolation tests only; no production data or passwords copied",
+  "workerName": "payload-wnam-p0",
+  "hosts": ["p0-a.beginos.org", "p0-b.beginos.org"],
+  "r2": {
+    "bucketName": "payload-wnam-p0",
+    "createdAt": "2026-09-16T14:57:37.019Z",
+    "location": "WNAM",
+    "state": "created; deployment and upload checks pending"
+  },
   "databases": [
     {
       "siteId": "p0-a",
@@ -17,7 +25,7 @@
         "mode": "disabled"
       },
       "schemaVersion": 0,
-      "state": "created-uninitialized"
+      "state": "partially migrated by build 9d627c97-7bc2-468d-a7c0-3c4556ead4dd; stopped before keyword_batch_presets ALTER; resume curated migration order"
     },
     {
       "siteId": "p0-b",

@@ -65,7 +65,7 @@ import { PublicLanding } from './globals/PublicLanding'
 import { PipelineSettings } from './globals/PipelineSettings'
 import { setCloudflareD1Binding } from './utilities/cloudflareD1Binding'
 import { createSiteD1Proxy } from './site-runtime/d1'
-import { siteRequestIsolationPlugin } from './site-runtime/payloadPlugin'
+import { guardSanitizedSiteConfig } from './site-runtime/payloadPlugin'
 import { Announcements } from './collections/Announcements'
 import { Teams } from './collections/Teams'
 import { KeywordBatchPresets } from './collections/KeywordBatchPresets'
@@ -601,9 +601,8 @@ export default buildConfig({
         },
       },
     }),
-    ...(isSiteIsolationP0 ? [siteRequestIsolationPlugin] : []),
   ],
-})
+}).then(config => isSiteIsolationP0 ? guardSanitizedSiteConfig(config) : config)
 
 // Adapted from https://github.com/opennextjs/opennextjs-cloudflare/blob/d00b3a13e42e65aad76fba41774815726422cc39/packages/cloudflare/src/api/cloudflare-context.ts#L328C36-L328C46
 function getCloudflareContextFromWrangler(): Promise<CloudflareContext> {

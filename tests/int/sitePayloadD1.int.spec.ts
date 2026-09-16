@@ -7,7 +7,7 @@ import { buildConfig, getPayload, type Payload, type PayloadRequest } from 'payl
 import { sqliteD1Adapter } from '@payloadcms/db-d1-sqlite'
 import { withSiteContext, type SiteContext } from '../../src/site-runtime/context'
 import { createSiteD1Proxy } from '../../src/site-runtime/d1'
-import { siteRequestIsolationPlugin } from '../../src/site-runtime/payloadPlugin'
+import { guardSanitizedSiteConfig } from '../../src/site-runtime/payloadPlugin'
 
 const require = createRequire(realpathSync(resolve('node_modules/wrangler/package.json')))
 const { Miniflare } = require('miniflare')
@@ -24,8 +24,7 @@ const config = buildConfig({
     slug: 'categories', timestamps: false, lockDocuments: false,
     fields: [{ name: 'name', type: 'text', required: true }, { name: 'slug', type: 'text', required: true }, { name: 'locale', type: 'text', required: true }],
   }],
-  plugins: [siteRequestIsolationPlugin],
-})
+}).then(guardSanitizedSiteConfig)
 
 describe('one Payload instance with request-bound native D1 clients', () => {
   beforeAll(async () => {
@@ -45,6 +44,7 @@ describe('one Payload instance with request-bound native D1 clients', () => {
   afterAll(async () => { await mf?.dispose() })
 
   it('initializes without a default binding and refuses context-free reads', async () => {
+    expect(payload.config.collections.find(c => c.slug === 'payload-preferences')?.hooks.beforeOperation.length).toBeGreaterThan(0)
     expect(await getPayload({ config, key: 'site-d1-isolation' })).toBe(payload)
     await expect(payload.find({ collection: 'categories' })).rejects.toThrow()
   })

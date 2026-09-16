@@ -1,5 +1,6 @@
 import { bindSiteCallback, requireSiteContext, withSiteContext, type SiteContext } from '../../src/site-runtime/context'
 import { createSiteD1Proxy } from '../../src/site-runtime/d1'
+import { createSiteR2Proxy } from '../../src/site-runtime/r2'
 
 type Env = { SITE_A: D1Database; SITE_B: D1Database; MEDIA: R2Bucket; JOBS: Queue }
 type Job = { siteId: 'a' | 'b'; id: number }
@@ -71,9 +72,13 @@ export default {
       } catch { rolledBack = true }
       assert(rolledBack, 'Invalid batch succeeded')
       assert(await db.prepare('SELECT id FROM records WHERE id = ?').bind(id).first() === null, 'Batch did not roll back')
-      const mediaKey = `sites/${requireSiteContext().siteId}/fixture-${id}.txt`
-      await env.MEDIA.put(mediaKey, siteId)
-      assert(await (await env.MEDIA.get(mediaKey))?.text() === siteId, 'Cross-site media')
+      const media = createSiteR2Proxy(env.MEDIA)
+      const mediaKey = `fixture-${id}.txt`
+      const uploaded = await media.put(mediaKey, siteId)
+      assert(uploaded?.key === mediaKey, 'R2 relative key mismatch')
+      assert(await (await media.get(mediaKey))?.text() === siteId, 'Cross-site media')
+      await media.delete(mediaKey)
+      assert(await media.head(mediaKey) === null, 'Scoped R2 delete failed')
       const cacheKey = new Request(`https://isolation.test/sites/${siteId}/v1/${id}`)
       const publicCache = await caches.open('site-isolation')
       await publicCache.put(cacheKey, new Response(siteId, { headers: { 'cache-control': 'public, max-age=300' } }))

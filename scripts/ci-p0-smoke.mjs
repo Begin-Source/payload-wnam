@@ -8,6 +8,7 @@ const gate = process.env.P0_GATE_SECRET
 const password = process.env.P0_TEST_PASSWORD
 if (!gate || !password) throw new Error('P0 smoke credentials missing')
 const fixtures = []
+const isolates = new Map()
 for (const site of ['a', 'b']) {
   const origin = `https://p0-${site}.beginos.org`
   // DNS/certificate propagation may lag the first custom-domain deployment.
@@ -20,12 +21,20 @@ for (const site of ['a', 'b']) {
     await new Promise(resolve => setTimeout(resolve, 5000))
   }
   assert.equal(response?.status, 204, `P0 ${site} gate session`)
+  assert.equal((await fetch(`${origin}/admin/login`)).status, 401, 'Unauthenticated admin request must stay behind P0 gate')
   const cookies = [`__Host-p0-access=${gate}`]
   async function request(path, init = {}) {
     const response = await fetch(`${origin}${path}`, {
       ...init, headers: { cookie: cookies.join('; '), origin, ...init.headers }, signal: AbortSignal.timeout(30000),
     })
-    if (!response.ok) throw new Error(`P0 ${site} ${init.method ?? 'GET'} ${path}: HTTP ${response.status}`)
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}))
+      throw new Error(`P0 ${site} ${init.method ?? 'GET'} ${path}: HTTP ${response.status}; ${detail.errors?.map(e => e.message).join('; ') ?? 'no JSON error'}`)
+    }
+    const isolate = response.headers.get('x-p0-isolate-id')
+    assert.ok(isolate, 'P0 isolate identity missing')
+    if (!isolates.has(isolate)) isolates.set(isolate, new Set())
+    isolates.get(isolate).add(site)
     return response
   }
   async function json(path, method = 'GET', data) {
@@ -50,6 +59,7 @@ await Promise.all(Array.from({ length: 40 }, (_, i) => {
   const fixture = fixtures[i % 2]
   return fixture.json(`/api/categories/${fixture.category.id}?depth=0`).then(doc => assert.equal(doc.name, `Site ${fixture.site}`))
 }))
+assert.ok([...isolates.values()].some(sites => sites.size === 2), 'No evidence that one deployed isolate served both databases')
 
 // Real Payload media endpoint -> storage plugin -> scoped R2 adapter.
 for (const fixture of fixtures) {
@@ -85,6 +95,7 @@ try {
 } finally { await browser.close() }
 
 const report = { event: 'p0_deployed_smoke_passed', commit: process.env.WORKERS_CI_COMMIT_SHA, at: new Date().toISOString(),
-  scope: 'Full Next/Payload REST, admin browser, two remote D1, real R2 upload/delete; queue/cache/failure/performance gates still pending', concurrentReads: 40 }
+  scope: 'Full Next/Payload REST, admin browser, two remote D1, real R2 upload/delete; queue/cache/failure/performance gates still pending', concurrentReads: 40,
+  isolatesServingBothSites: [...isolates.values()].filter(sites => sites.size === 2).length }
 writeFileSync('.cloudflare-ci/p0-deployed-smoke.json', JSON.stringify(report, null, 2))
 console.log(JSON.stringify(report))

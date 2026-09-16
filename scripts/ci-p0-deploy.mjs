@@ -54,7 +54,7 @@ for (const db of config.d1_databases) {
     d1_databases: [{ ...db, binding: 'D1' }], r2_buckets: config.r2_buckets,
   }))
   const maintenance = { PAYLOAD_P0_MIGRATION: '1', PAYLOAD_SECRET: payloadSecret, P0_TEST_PASSWORD: password }
-  run(['exec', 'payload', 'migrate'], maintenance)
+  run(['exec', 'payload', 'run', 'scripts/p0-migrate.ts'], maintenance)
   run(['exec', 'payload', 'run', 'scripts/p0-seed.ts'], maintenance)
 }
 run(['exec', 'opennextjs-cloudflare', 'deploy', '--config', 'wrangler.p0.json'])

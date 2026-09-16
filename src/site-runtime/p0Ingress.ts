@@ -16,6 +16,7 @@ const hosts = new Map([
 ])
 const database = createSiteD1Proxy()
 const cookieName = '__Host-p0-access'
+let isolateId: string | undefined
 
 async function matchesSecret(candidate: string, expected: string): Promise<boolean> {
   const digest = (value: string) => crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
@@ -74,6 +75,8 @@ export async function p0Fetch<E extends P0Env>(
     const headers = new Headers(response.headers)
     headers.set('cache-control', 'private, no-store')
     headers.set('x-robots-tag', 'noindex, nofollow')
+    isolateId ??= crypto.randomUUID()
+    headers.set('x-p0-isolate-id', isolateId)
     return new Response(body, { status: response.status, statusText: response.statusText, headers })
   })
 }

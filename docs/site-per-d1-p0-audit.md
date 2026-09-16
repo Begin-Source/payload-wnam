@@ -41,6 +41,9 @@
 
 ## 证据与下一门槛
 
+- 完整 P0 提交 `f39f791` 的构建 `9d627c97-7bc2-468d-a7c0-3c4556ead4dd` 已通过打包/浏览器检查，但远程 A 库迁移在 `20260512_120000_keyword_batch_presets_strategy_fields` 停止。原因是 Payload CLI 按文件名排序，创建该表的 `20260819_120000_keyword_batch_presets` 尚未运行；仓库 index 原本已表达正确先后顺序。修正为受资源白名单保护的 `payload.db.migrate({ migrations })`，保留迁移记录并断点继续，不跳过失败迁移。生产部署 ID 核对仍为 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`。
+- 完整 P0 使用固定测试域名、独立测试 gate、R2 站点前缀代理；测试凭据由 CI 随机生成并以 stdin/进程环境传递，不写入仓库文件。`guardSanitizedSiteConfig` 在 Payload 添加内部集合后挂接所有 collection/global 的 beforeOperation；部署 smoke 还必须记录至少一个共同服务两个站点的 isolate ID。临时 P0 密码账户只存在测试库，不算最终 SSO 实现。
+
 - 单元测试 `tests/unit/siteD1Isolation.spec.ts`：6 项通过，含 100 个交错异步请求与分包注册表边界。
 - 实际 adapter 测试 `tests/int/sitePayloadD1.int.spec.ts`：3 项通过，含 40 个跨站并发列表查询。这是功能测试，未构成 P95 <2 秒性能验收。
 - 云端提交 `77f6bf7` 已通过 lint、类型检查和 436 项测试；随后测试打包入口定位失败，未产生成功 release marker。修复仍走同一云端链路。
