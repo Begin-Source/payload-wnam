@@ -84,7 +84,7 @@ const nextConfig = {
     })
 
     if (isServer) {
-      if (process.env.WORKERS_CI === '1' && process.env.WORKERS_CI_BRANCH === 'feat/site-per-d1') {
+      if (process.env.CI) {
         webpackConfig.plugins.push({
           apply(compiler: any) {
             compiler.hooks.done.tap('P0ModuleSizes', (stats: any) => {
