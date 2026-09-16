@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { mkdirSync, writeFileSync } from 'node:fs'
 
 import { withPayload } from '@payloadcms/next/withPayload'
 
@@ -83,6 +84,20 @@ const nextConfig = {
     })
 
     if (isServer) {
+      if (process.env.WORKERS_CI === '1' && process.env.WORKERS_CI_BRANCH === 'feat/site-per-d1') {
+        webpackConfig.plugins.push({
+          apply(compiler: any) {
+            compiler.hooks.done.tap('P0ModuleSizes', (stats: any) => {
+              const rows = [...stats.compilation.modules].map((module: any) => ({
+                module: module.identifier().split('?')[0], sourceBytes: module.size(),
+              })).sort((a, b) => b.sourceBytes - a.sourceBytes)
+              mkdirSync('.cloudflare-ci', { recursive: true })
+              const name = String(compiler.name ?? 'server').replace(/[^a-zA-Z0-9_-]/g, '_')
+              writeFileSync(`.cloudflare-ci/module-sizes-${name}.json`, JSON.stringify(rows.slice(0, 60)))
+            })
+          },
+        })
+      }
       webpackConfig.resolve.alias = {
         ...(webpackConfig.resolve.alias ?? {}),
         ...cloudflareWorkerStubAliases,
