@@ -1,4 +1,4 @@
-import fs from 'fs'
+import { isPayloadCLI } from './utilities/isPayloadCLI'
 import path from 'path'
 import { sqliteD1Adapter } from '@payloadcms/db-d1-sqlite'
 import { buildConfig } from 'payload'
@@ -109,12 +109,13 @@ const mcpCollectionSlugs = [
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
-const realpath = (value: string) => (fs.existsSync(value) ? fs.realpathSync(value) : undefined)
-
-const isCLI = process.argv.some((value) => realpath(value).endsWith(path.join('payload', 'bin.js')))
+const isCLI = isPayloadCLI(process.argv)
+const isIsolatedTest = process.env.PAYLOAD_TEST_MODE === 'isolated'
 const isProduction = process.env.NODE_ENV === 'production'
 /** Do not require Worker secrets during Next.js production build. */
 const isNextBuild =
+  isIsolatedTest ||
+  process.env.PAYLOAD_BUILD_PHASE === '1' ||
   process.env.npm_lifecycle_event === 'build' ||
   process.env.NEXT_PHASE === 'phase-production-build'
 
@@ -327,7 +328,7 @@ export default buildConfig({
      * Dev `pushDevSchema` would re-apply indexes already created by SQL migrations → duplicate
      * `CREATE INDEX` (e.g. `announcements_tenant_idx`). Schema changes go through `src/migrations/`.
      */
-    push: false,
+    push: isIsolatedTest,
   }),
   logger: isProduction ? cloudflareLogger : undefined,
   plugins: [
@@ -604,6 +605,7 @@ function getCloudflareContextFromWrangler(): Promise<CloudflareContext> {
   return import(/* webpackIgnore: true */ `${'__wrangler'.replaceAll('_', '')}`).then(
     ({ getPlatformProxy }) =>
       getPlatformProxy({
+        ...(isIsolatedTest ? { configPath: '.cloudflare-ci/wrangler.json' } : {}),
         environment: process.env.CLOUDFLARE_ENV,
         remoteBindings: isProduction && !isNextBuild,
         /** Avoid parallel Next build workers contending on `.wrangler/state/v3` D1 SQLite (SQLITE_BUSY). */

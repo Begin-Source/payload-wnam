@@ -2,6 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": "src/worker.ts",
   "name": "payload-wnam",
+  "account_id": "d487cf34c606620b442632a72272014d",
   "compatibility_date": "2025-08-15",
   "compatibility_flags": [
     // Enable Node.js API
@@ -11,8 +12,8 @@
     // see https://developers.cloudflare.com/workers/configuration/compatibility-flags/#global-fetch-strictly-public
     "global_fetch_strictly_public",
   ],
-  // Deploy: Cloudflare Pages often runs `pnpm run build` then `pnpm run deploy`. Use `pnpm run deploy:ci` so OpenNext
-  // skips a second `next build` (SKIP_NEXT_APP_BUILD / opennext `--skipNextBuild`). Local full builds keep `pnpm run deploy`.
+  // Workers Builds: pnpm run ci:build, then pnpm run ci:deploy.
+  // Complete checks and OpenNext packaging before production migrations.
   // Wrangler API error 100312 ("Completion token has already been consumed") is usually transient—retry deployment,
   // avoid two concurrent deploys to the same worker name, and keep `wrangler` current in package.json.
   // Smart Placement: run closer to back-end (e.g. D1/R2) when it reduces latency — not a CLI flag; deploy via opennext/wrangler

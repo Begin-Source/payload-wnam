@@ -66,3 +66,5 @@ node_modules/
 # Local pipeline / admin debug captures (may contain secrets; do not commit)
 docs/pipeline-debug.local.log
 docs/pipeline-debug.local.txt
+# Cloudflare CI test bindings and release metadata
+.cloudflare-ci/
