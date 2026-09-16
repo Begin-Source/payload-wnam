@@ -67,6 +67,7 @@ const offerPublicSelect = {
   slug: true,
   targetUrl: true,
   status: true,
+  sites: true,
   amazon: true,
   network: true,
   categories: true,
@@ -103,6 +104,7 @@ const pagePublicSelect = {
 
 // Relationship projections belong in populate, not nested select fields.
 const publicPopulate = {
+  sites: { slug: true },
   media: mediaPublicSelect,
   authors: authorPublicSelect,
   categories: categoryPublicSelect,
