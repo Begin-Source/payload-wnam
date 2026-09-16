@@ -1,3 +1,4 @@
+import { browserLibraryEnvironment } from './ci-browser-libs.mjs'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 
@@ -17,6 +18,6 @@ writeFileSync('.cloudflare-ci/wrangler.json', JSON.stringify({
 run(['run', 'ci:check'], { PAYLOAD_TEST_MODE: 'isolated', PAYLOAD_SECRET: 'isolated-test-secret' })
 run(['exec', 'opennextjs-cloudflare', 'build'], { PAYLOAD_BUILD_PHASE: '1' })
 run(['exec', 'playwright', 'install', '--only-shell', 'chromium'])
-run(['exec', 'playwright', 'test', '--config=playwright.cloud-ci.config.ts'])
+run(['exec', 'playwright', 'test', '--config=playwright.cloud-ci.config.ts'], browserLibraryEnvironment())
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
 writeFileSync('.cloudflare-ci/release.json', JSON.stringify({ commit, builtAt: new Date().toISOString() }))
