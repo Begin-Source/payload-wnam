@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, realpathSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { unstable_startWorker } from 'wrangler'
+
+// Wrangler's inspector requires an Origin header when a client sends User-Agent.
+// Resolve its pinned WebSocket implementation, which supports handshake headers.
+const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
+const WebSocket = require('ws')
 
 // Called only by the resource-verified P0 deploy script, after fresh build/migrations.
 if (process.env.WORKERS_CI !== '1' || process.env.WORKERS_CI_BRANCH !== 'feat/site-per-d1') {
@@ -40,7 +46,7 @@ try {
   assert.ok(inspector, 'Workerd inspector is required for heap measurements')
   const targets = await (await fetch(new URL('/json', inspector))).json()
   assert.equal(targets.length, 1, 'Expected exactly one application inspector target')
-  socket = new WebSocket(targets[0].webSocketDebuggerUrl)
+  socket = new WebSocket(targets[0].webSocketDebuggerUrl, { origin: 'http://localhost' })
   await new Promise((resolve, reject) => {
     socket.addEventListener('open', resolve, { once: true })
     socket.addEventListener('error', () => reject(new Error('Workerd inspector connection failed')), { once: true })
