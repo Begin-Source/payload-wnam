@@ -1,6 +1,6 @@
 # P1 身份服务与浏览器交接
 
-实施状态：代码和定向测试已实现，云端原生 RPC / Chromium 检查待本次构建验证。尚未挂载到独立中央/站点生产配置；本文件不代表 P1 放行。
+实施状态：代码、定向测试及云端原生 RPC / Chromium 检查已通过；本轮 P0 发布后的线上回归也已通过。尚未挂载到独立中央/站点生产配置；本文件不代表 P1 放行。
 
 ## 服务能力
 
@@ -44,3 +44,7 @@
 第二轮 `7b4ea01` / `3254fc5c-e870-429a-954e-41686566ed4b` 已通过原生 RPC 前半检查，但 Chromium 表单停留中央页。独立浏览器实验确认 `no-referrer` 会令导航 POST 的 Origin 变为 null；改用 strict-origin 的交接页和入口表单，继续拒绝 null Origin，且只披露原本已由 Origin 表示的来源，不披露路径或票据。正式中央站点选择页也必须采用兼容的策略。参见 [浏览器 Referrer-Policy 对 Origin 的影响](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy#effect_on_the_origin_header)。失败构建均未发布。
 
 第三轮 `eebc8cf` / `e9c4487b-9863-4e08-9ad9-4a40bfe15011` 的浏览器已正确发送中央 Origin，完成 POST 签发与 303 兑换；Playwright 拦截桥接未覆盖后续跳转，转为解析未部署域名并失败。检查改为 Chromium 精确 host-resolver 映射到 Miniflare 本地 HTTPS 入口，保留真实 303，去掉模拟响应桥接；仍未发布。
+
+`4208e39039e762dcfeb66f6b4d8fadda65d61e67` 的构建 `c59fe93c-f449-4124-b5e1-c51ecfd7f9c9` 于 2026-09-16T21:52:38Z 输出 `site_identity_workerd_rpc: ok=true`：两座 Worker、三座 D1、20 次并发兑换、20 次双站身份读取，以及 Chromium 直接 HTTPS 的两站登录交接全部通过；后续角色变更/撤销、站点退出、中央退出及中央 D1 异常检查也通过。随后 2026-09-16T21:56:12Z 部署后双站回归及发布检查通过；[完整机器可读证据](site-per-d1-p1-service-validation.json)记录构建、部署及范围。
+
+最终 P0 deployment `01264593-495f-4564-afac-1dc9dee79f58`，version `cafb36ee-9a86-47e8-b4b7-a67a79533130`；生产 deployment 仍为 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`。全部 485 项单元/集成、原 14 项浏览器检查及新增身份 HTTPS 检查通过。当前阶段仍为 P1 实施中，独立配置和正式入口接入未完成。

@@ -21,8 +21,8 @@
 | P0 完整 Payload、后台、上传、内部缓存审计 | `6f43fba` 的 454 项测试、14 项浏览器检查、部署及线上 REST/后台/R2/队列/公开缓存/流式响应检查通过；5 个 isolate 共同服务两站；[最新证据](site-per-d1-p0-runtime-optimization.json) | 可行性通过 |
 | P0 现有用量基线 | [生产基线](site-per-d1-baseline.json)含 CPU、D1 读写/存储与账本用量；供应商账单未对账，不能作为真实单篇成本 | 基线已记录，成本验收待后续 |
 | P0 冷启动、CPU 与内存 | `6f43fba` 启动 30 ms；403 请求无执行错误；CPU P95 87.913 ms；内存 P95 104,548,730 bytes、P99.9 106,280,960 bytes；[原始查询及边界](site-per-d1-p0-runtime-optimization.json) | 小规模原型通过；非容量验收 |
-| P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用及无凭据身份投影核心已实现；独立配置与主数据同步未接入；[进度](site-per-d1-p1-identity.md) | 实施中，未通过 |
-| P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 中央 broker 与 Payload 自定义策略通过 12 项定向测试；P1 核心随 P0 回归通过 473 项测试与线上检查，真实服务绑定、入口与浏览器流程尚未接通 | 实施中，未通过 |
+| P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用、无凭据身份投影及同步已实现；独立配置与共享主数据同步未接入；[进度](site-per-d1-p1-identity.md) | 实施中，未通过 |
+| P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；485 项测试和 P0 线上回归通过；独立完整角色部署和真实中央登录尚未接入 | 实施中，未通过 |
 | P1 建站、进入、暂停/恢复、MCP 明确 siteId | 未实现 | 待实施 |
 | P2 持久步骤链、公平调度、独立发布队列 | 未实现 | 待实施 |
 | P2 供应商 DO 配额、预算、429、结果不明核查 | 未实现 | 待实施 |
@@ -62,5 +62,7 @@
 ## P1 实施记录
 
 - `17a6130` 实现中央注册表、单次票据、实时中央会话核验与无凭据身份投影核心。`f82fd59` 移除可变全局 D1 引用，原始 SQL/nonce 强制使用站点上下文。
-- `f82fd59` 云端构建 `3b57e68f-801f-4dd6-8b40-2f4fcc98c142` 成功：473 项测试、14 项浏览器检查、完整双站线上 smoke；2026-09-16T21:14:50Z 发布检查通过。最新 P0 deployment `96460824-09e7-4def-a889-95c5be4caf60`，生产 deployment 仍为 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`。
-- [身份与验证边界](site-per-d1-p1-identity.md)及[独立配置拆分清单](site-per-d1-p1-config-boundaries.md)记录当前实现和全部 37 个业务集合的归属。独立配置、主数据同步、真实服务绑定/浏览器 SSO、建站及 MCP 明确 siteId 尚未完成，P1 保持未通过。
+- `f82fd59` 云端构建 `3b57e68f-801f-4dd6-8b40-2f4fcc98c142` 成功：473 项测试、14 项浏览器检查、完整双站线上 smoke；2026-09-16T21:14:50Z 发布检查通过。该轮 P0 deployment `96460824-09e7-4def-a889-95c5be4caf60`，生产 deployment 仍为 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`。
+- [身份与验证边界](site-per-d1-p1-identity.md)及[独立配置拆分清单](site-per-d1-p1-config-boundaries.md)记录当前实现和全部 37 个业务集合的归属。独立配置、共享主数据同步、正式角色的服务绑定/浏览器 SSO、建站及 MCP 明确 siteId 尚未完成，P1 保持未通过。
+
+- `4208e39` 的构建 `c59fe93c-f449-4124-b5e1-c51ecfd7f9c9` 最终通过 485 项测试、14 项既有浏览器检查、新增 workerd RPC/Chromium HTTPS 双站身份检查及部署后回归。最新 P0 deployment `01264593-495f-4564-afac-1dc9dee79f58`，生产未变；[验证证据及范围](site-per-d1-p1-service-validation.json)。此前三次构建失败均未发布，原因与修复见 [服务边界记录](site-per-d1-p1-service-boundary.md)。下一步为独立完整配置、正式入口/内置登录退出接入、主数据同步及建站/MCP，P1 不通过。

@@ -1,0 +1,97 @@
+{
+  "capturedAt": "2026-09-16T21:58:28.291Z",
+  "phase": "P1 implementation — not accepted",
+  "commit": "4208e39039e762dcfeb66f6b4d8fadda65d61e67",
+  "buildId": "c59fe93c-f449-4124-b5e1-c51ecfd7f9c9",
+  "buildOutcome": "success",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "repository": "Begin-Source/payload-wnam",
+  "validation": {
+    "unitAndIntegrationTests": 485,
+    "existingBrowserChecks": 14,
+    "identityRuntime": {
+      "passed": true,
+      "at": "2026-09-16T21:52:38.643Z",
+      "workers": 2,
+      "databases": 3,
+      "concurrentRedemptions": 20,
+      "concurrentSiteRequests": 20,
+      "browserHandoffSites": 2,
+      "transport": "Native workerd named Service Binding RPC; Chromium direct HTTPS to isolated Miniflare via exact host resolver mappings",
+      "checks": [
+        "No RPC issuer or HTTP capability",
+        "POST ticket handoff",
+        "CSP and host-only cookie navigation",
+        "Single-use ticket under concurrency",
+        "Host and Origin binding",
+        "Credential-free identity projection synchronization",
+        "Live roles and revocation",
+        "Site and central logout",
+        "Central failure denies access",
+        "Independent fixture public response"
+      ],
+      "limitations": [
+        "Synthetic central login, not full central Payload login UI",
+        "Minimal site identity collection, not independent complete Payload configurations",
+        "Fixture public response does not prove complete public content behavior",
+        "Local test certificate ignored only in isolated Chromium context"
+      ]
+    },
+    "deployedP0": {
+      "passed": true,
+      "at": "2026-09-16T21:56:12.644Z",
+      "worker": "payload-wnam-p0",
+      "deploymentId": "01264593-495f-4564-afac-1dc9dee79f58",
+      "versionId": "cafb36ee-9a86-47e8-b4b7-a67a79533130",
+      "concurrentReads": 40,
+      "concurrentPublicPages": 12,
+      "isolatesServingBothSites": 6,
+      "configuredIconViews": 4,
+      "checks": [
+        "Payload REST/admin",
+        "Two remote D1",
+        "R2 upload/delete",
+        "Queue duplicate delivery",
+        "Nonce and lease/heartbeat SQL",
+        "Public React caches and streaming",
+        "Forged hosts and draft exclusion"
+      ],
+      "limitation": "P0 still uses temporary passwords; new central control schema and identity service are not deployed"
+    }
+  },
+  "production": {
+    "unchanged": true,
+    "worker": "payload-wnam",
+    "deploymentId": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+    "versionId": "34efc5b4-0c21-4dd7-a61d-f279b49068f5"
+  },
+  "priorFailedBuilds": [
+    {
+      "commit": "3c35cf7",
+      "buildId": "30904bdc-627b-4797-bb63-9cd4e71952ba",
+      "cause": "Missing Miniflare domain routes blocked Origin before application",
+      "deployed": false
+    },
+    {
+      "commit": "7b4ea01",
+      "buildId": "3254fc5c-e870-429a-954e-41686566ed4b",
+      "cause": "no-referrer changed navigation POST Origin to null",
+      "deployed": false
+    },
+    {
+      "commit": "eebc8cf",
+      "buildId": "e9c4487b-9863-4e08-9ad9-4a40bfe15011",
+      "cause": "Playwright response interception did not bridge subsequent 303 navigation",
+      "deployed": false
+    }
+  ],
+  "remainingP1": [
+    "Independent central/site configurations and business ownership",
+    "Shared master-data copies and explicit migrations",
+    "Production ingress and service binding mounting",
+    "Real central login and built-in Payload logout integration",
+    "Provisioning and permission administration",
+    "Explicit siteId MCP authorization",
+    "Deployed complete editor and revocation acceptance"
+  ]
+}
