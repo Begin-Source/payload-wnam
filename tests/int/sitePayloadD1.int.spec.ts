@@ -7,7 +7,7 @@ import { buildConfig, getPayload, type Payload, type PayloadRequest } from 'payl
 import { sqliteD1Adapter } from '@payloadcms/db-d1-sqlite'
 import { withSiteContext, type SiteContext } from '../../src/site-runtime/context'
 import { createSiteD1Proxy } from '../../src/site-runtime/d1'
-import { assertSitePayloadRequest } from '../../src/site-runtime/payloadRequest'
+import { siteRequestIsolationPlugin } from '../../src/site-runtime/payloadPlugin'
 
 const require = createRequire(realpathSync(resolve('node_modules/wrangler/package.json')))
 const { Miniflare } = require('miniflare')
@@ -22,9 +22,9 @@ const config = buildConfig({
   db: sqliteD1Adapter({ binding: createSiteD1Proxy(), push: false, allowIDOnCreate: true }),
   collections: [{
     slug: 'categories', timestamps: false, lockDocuments: false,
-    hooks: { beforeOperation: [({ req }) => { assertSitePayloadRequest(req) }] },
     fields: [{ name: 'name', type: 'text', required: true }, { name: 'slug', type: 'text', required: true }, { name: 'locale', type: 'text', required: true }],
   }],
+  plugins: [siteRequestIsolationPlugin],
 })
 
 describe('one Payload instance with request-bound native D1 clients', () => {

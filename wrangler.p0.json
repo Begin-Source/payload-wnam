@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": "src/worker.ts",
+  "name": "payload-wnam-p0",
+  "account_id": "d487cf34c606620b442632a72272014d",
+  "compatibility_date": "2025-08-15",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS", "run_worker_first": true },
+  "vars": { "SITE_ISOLATION_P0": "1" },
+  "routes": [
+    { "pattern": "p0-a.beginos.org", "custom_domain": true },
+    { "pattern": "p0-b.beginos.org", "custom_domain": true }
+  ],
+  "d1_databases": [
+    { "binding": "SITE_D1_A", "database_name": "payload-wnam-p0-a", "database_id": "31d5906e-f276-4a61-87c1-31a13e7131e6", "remote": true },
+    { "binding": "SITE_D1_B", "database_name": "payload-wnam-p0-b", "database_id": "20fd152f-7b7c-4bc6-be81-1a36ea720060", "remote": true }
+  ],
+  "r2_buckets": [{ "binding": "R2", "bucket_name": "payload-wnam-p0" }]
+}

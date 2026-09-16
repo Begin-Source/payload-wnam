@@ -64,6 +64,8 @@ import { PromptLibrary } from './globals/PromptLibrary'
 import { PublicLanding } from './globals/PublicLanding'
 import { PipelineSettings } from './globals/PipelineSettings'
 import { setCloudflareD1Binding } from './utilities/cloudflareD1Binding'
+import { createSiteD1Proxy } from './site-runtime/d1'
+import { siteRequestIsolationPlugin } from './site-runtime/payloadPlugin'
 import { Announcements } from './collections/Announcements'
 import { Teams } from './collections/Teams'
 import { KeywordBatchPresets } from './collections/KeywordBatchPresets'
@@ -161,7 +163,9 @@ const cloudflare =
     : await getCloudflareContext({ async: true })
 
 const payloadSecretFromBinding = (cloudflare.env as Cloudflare.Env).PAYLOAD_SECRET
-setCloudflareD1Binding(cloudflare.env.D1)
+const isSiteIsolationP0 = (cloudflare.env as { SITE_ISOLATION_P0?: string }).SITE_ISOLATION_P0 === '1'
+const payloadDatabase = isSiteIsolationP0 ? createSiteD1Proxy() : cloudflare.env.D1
+setCloudflareD1Binding(payloadDatabase)
 
 const payloadSecret =
   process.env.PAYLOAD_SECRET?.trim() ||
@@ -197,9 +201,9 @@ const serverURL =
  * Without `plugin_ai_instructions` (migration `20260428_120000_plugin_ai_instructions`), onInit
  * seed would throw `no such table` and 500 the whole Admin. Skip seed until migrations apply.
  */
-let hasPluginAiInstructionsTable = true
+let hasPluginAiInstructionsTable = false
 try {
-  const d1 = cloudflare.env.D1
+  const d1 = isSiteIsolationP0 ? undefined : cloudflare.env.D1
   if (d1) {
     const row = await d1
       .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='plugin_ai_instructions'")
@@ -212,14 +216,14 @@ try {
   hasPluginAiInstructionsTable = false
 }
 
-if (!hasPluginAiInstructionsTable && isProduction && !isNextBuild && !isCLI) {
+if (!hasPluginAiInstructionsTable && !isSiteIsolationP0 && isProduction && !isNextBuild && !isCLI) {
   console.warn(
     '[payload] plugin_ai_instructions table missing (run `pnpm run deploy:database` or `payload migrate`). Skipping Payload AI generatePromptOnInit until migrations apply.',
   )
 }
 
 const openRouterModelOptions = await safeFetchOpenRouterModelOptions({
-  isNextBuild,
+  isNextBuild: isNextBuild || isSiteIsolationP0,
   isCli: isCLI,
   isProduction,
 })
@@ -323,12 +327,12 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   db: sqliteD1Adapter({
-    binding: cloudflare.env.D1,
+    binding: payloadDatabase,
     /**
      * Dev `pushDevSchema` would re-apply indexes already created by SQL migrations → duplicate
      * `CREATE INDEX` (e.g. `announcements_tenant_idx`). Schema changes go through `src/migrations/`.
      */
-    push: isIsolatedTest,
+    push: isIsolatedTest && !isSiteIsolationP0,
   }),
   logger: isProduction ? cloudflareLogger : undefined,
   plugins: [
@@ -597,6 +601,7 @@ export default buildConfig({
         },
       },
     }),
+    ...(isSiteIsolationP0 ? [siteRequestIsolationPlugin] : []),
   ],
 })
 
@@ -606,6 +611,8 @@ function getCloudflareContextFromWrangler(): Promise<CloudflareContext> {
     ({ getPlatformProxy }) =>
       getPlatformProxy({
         ...(isIsolatedTest ? { configPath: '.cloudflare-ci/wrangler.json' } : {}),
+        ...(isCLI && process.env.PAYLOAD_P0_MIGRATION === '1'
+          ? { configPath: '.cloudflare-ci/p0-migration.json' } : {}),
         environment: process.env.CLOUDFLARE_ENV,
         remoteBindings: isProduction && !isNextBuild,
         /** Avoid parallel Next build workers contending on `.wrangler/state/v3` D1 SQLite (SQLITE_BUSY). */

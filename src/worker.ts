@@ -10,8 +10,9 @@ import {
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- .open-next is generated after Next build in clean worktrees.
 // @ts-ignore .open-next is generated at build time.
 import nextWorker from '../.open-next/worker.js'
+import { p0Fetch, type P0Env } from './site-runtime/p0Ingress'
 
-type WorkerEnv = CloudflareEnv &
+type WorkerEnv = CloudflareEnv & P0Env &
   ContentWorkflowQueueEnv & {
     PAYLOAD_SECRET?: string
     PIPELINE_BASE_URL?: string
@@ -106,10 +107,13 @@ async function kickContentWorkflow(env: WorkerEnv, ctx: ExecutionContext): Promi
 
 const worker: ExportedHandler<WorkerEnv, ContentWorkflowQueueMessage> = {
   fetch(request, env, ctx) {
+    if (env.SITE_ISOLATION_P0 === '1') return p0Fetch(request, env, ctx, nextWorker.fetch.bind(nextWorker))
     return nextWorker.fetch(request, env, ctx)
   },
 
   async queue(batch, env, ctx) {
+    // The legacy scheduler is not a site-isolated task runner. P0 must never run it.
+    if (env.SITE_ISOLATION_P0 === '1') throw new Error('P0 legacy queue dispatch disabled')
     for (const message of batch.messages) {
       try {
         if (!isSiteRunnerMessage(message.body)) {
@@ -144,6 +148,7 @@ const worker: ExportedHandler<WorkerEnv, ContentWorkflowQueueMessage> = {
   },
 
   scheduled(_controller, env, ctx) {
+    if (env.SITE_ISOLATION_P0 === '1') return
     ctx.waitUntil(kickContentWorkflow(env, ctx))
   },
 }
