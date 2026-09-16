@@ -1,5 +1,3 @@
-'use client'
-
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import { generateFontCSS, generateThemeCSS } from '@/site-layouts/amz-template-1/theme-generator'
 
