@@ -1,0 +1,35 @@
+{
+  "operationId": "p0-two-d1-20260916",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "verifiedAt": "2026-09-16T14:46:51.158Z",
+  "githubRepository": "Begin-Source/payload-wnam",
+  "githubRepositoryId": 1224379860,
+  "productionDatabaseId": "f2aac41b-418d-47de-8bb3-edda485b1e2b",
+  "purpose": "P0 isolation tests only; no production data or passwords copied",
+  "databases": [
+    {
+      "siteId": "p0-a",
+      "name": "payload-wnam-p0-a",
+      "id": "31d5906e-f276-4a61-87c1-31a13e7131e6",
+      "bindingName": "SITE_D1_A",
+      "createdAt": "2026-09-16T14:46:48.623Z",
+      "readReplication": {
+        "mode": "disabled"
+      },
+      "schemaVersion": 0,
+      "state": "created-uninitialized"
+    },
+    {
+      "siteId": "p0-b",
+      "name": "payload-wnam-p0-b",
+      "id": "20fd152f-7b7c-4bc6-be81-1a36ea720060",
+      "bindingName": "SITE_D1_B",
+      "createdAt": "2026-09-16T14:46:50.340Z",
+      "readReplication": {
+        "mode": "disabled"
+      },
+      "schemaVersion": 0,
+      "state": "created-uninitialized"
+    }
+  ]
+}
