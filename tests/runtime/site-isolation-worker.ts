@@ -75,8 +75,9 @@ export default {
       await env.MEDIA.put(mediaKey, siteId)
       assert(await (await env.MEDIA.get(mediaKey))?.text() === siteId, 'Cross-site media')
       const cacheKey = new Request(`https://isolation.test/sites/${siteId}/v1/${id}`)
-      await caches.default.put(cacheKey, new Response(siteId, { headers: { 'cache-control': 'public, max-age=300' } }))
-      assert(await (await caches.default.match(cacheKey))?.text() === siteId, 'Cross-site cache')
+      const publicCache = await caches.open('site-isolation')
+      await publicCache.put(cacheKey, new Response(siteId, { headers: { 'cache-control': 'public, max-age=300' } }))
+      assert(await (await publicCache.match(cacheKey))?.text() === siteId, 'Cross-site cache')
       return Response.json({ ok: true, siteId, id })
     })
   },
