@@ -2,15 +2,18 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
-import { realpathSync, writeFileSync } from 'node:fs'
+import { realpathSync, readdirSync, writeFileSync } from 'node:fs'
 
 if (!process.env.CI) throw new Error('Runtime bundling/tests must run in Cloudflare Builds')
 const require = createRequire(realpathSync(resolve('node_modules/wrangler/package.json')))
 const { Miniflare } = require('miniflare')
-execFileSync('pnpm', ['exec', 'wrangler', 'deploy', '--dry-run', '--config', 'tests/runtime/wrangler.jsonc', '--outdir', '.cloudflare-ci/site-isolation'], { stdio: 'inherit' })
+const outputDir = resolve('.cloudflare-ci/site-isolation')
+execFileSync('pnpm', ['exec', 'wrangler', 'deploy', '--dry-run', '--config', 'tests/runtime/wrangler.jsonc', '--outdir', outputDir], { stdio: 'inherit' })
+const entries = readdirSync(outputDir).filter(name => /\.m?js$/.test(name))
+assert.equal(entries.length, 1, `Expected one bundled runtime entry, found ${entries.join(', ')}`)
 const mf = new Miniflare({
   modules: true,
-  scriptPath: '.cloudflare-ci/site-isolation/site-isolation-worker.js',
+  scriptPath: resolve(outputDir, entries[0]),
   compatibilityDate: '2025-08-15',
   compatibilityFlags: ['nodejs_compat'],
   d1Databases: { SITE_A: 'isolation-a', SITE_B: 'isolation-b' },

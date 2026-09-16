@@ -16,9 +16,9 @@
 
 | 要求 | 当前证据或缺口 | 状态 |
 | --- | --- | --- |
-| P0 请求上下文、D1 代理、同 ID 并发和 batch | `src/site-runtime/{context,d1}.ts` 与定向单测；等待执行结果 | 实施中 |
+| P0 请求上下文、D1 代理、同 ID 并发和 batch | `src/site-runtime/{context,d1}.ts` 的 5 项单测通过；真实 adapter 3 项测试通过 | 原型已验证 |
 | P0 workerd 原生执行 | `scripts/ci-site-isolation.mjs` 在 Cloudflare Builds 执行；双库 CRUD、回滚、流式回调、队列、R2、缓存 | 待云端验证 |
-| P0 完整 Payload、后台、上传、内部缓存审计 | 当前 runtime fixture 不证明完整应用隔离；不得接入生产或放行 P1 | 待实施 |
+| P0 完整 Payload、后台、上传、内部缓存审计 | [源码审计与缺口](site-per-d1-p0-audit.md)；已验证 adapter 和请求缓存边界，完整后台/部署仍缺证据 | 实施中 |
 | P0 生产 CPU、D1 读写、供应商用量、冷启动/内存 | 仅核对资源身份与初始 D1 大小，指标基线尚未采集 | 待实施 |
 | P1 中央/站点配置、注册表、关系边界和主数据副本 | 当前应用仍为共享库；未切换 | 待实施 |
 | P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 未实现 | 待实施 |
