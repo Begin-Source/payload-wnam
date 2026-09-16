@@ -5,7 +5,10 @@ import { join } from 'node:path'
 function cssFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? cssFiles(join(dir, entry.name)) : entry.name.endsWith('.css') ? [join(dir, entry.name)] : [])
 }
-const css = cssFiles('.open-next/assets/_next/static').map(file => readFileSync(file, 'utf8')).join('\n')
+const publicRoots = ['default-root', 'wide-root', 'affiliate-reviews-root', 'template1-root', 'template2-root', 'amz-template-1-root', 'amz-template-2-root']
+// Admin/welcome CSS belongs to other route bundles and must not be injected into this fixture.
+const css = cssFiles('.open-next/assets/_next/static').map(file => readFileSync(file, 'utf8')).filter(content => publicRoots.some(root => content.includes(root))).join('\n')
+if (publicRoots.some(root => !css.includes(root))) throw new Error('A frontend template stylesheet is missing from the OpenNext assets')
 for (const root of ['default', 'wide', 'affiliate-reviews', 'template1', 'template2', 'amz-template-1', 'amz-template-2']) {
   test(`${root} keeps its typography and theme boundaries`, async ({ page }) => {
     await page.route('**/*', route => route.abort())
