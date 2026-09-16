@@ -11,7 +11,22 @@ export type SiteContext = Readonly<{
 }>
 
 type Scope = SiteContext & { readonly requestToken: object }
-const storage = new AsyncLocalStorage<Scope>()
+type Runtime = Readonly<{
+  storage: AsyncLocalStorage<Scope>
+  resourceOwners: WeakMap<object, object>
+}>
+// OpenNext and the outer Worker may bundle this module separately. Share only
+// the immutable ALS container, never a mutable "current database" binding.
+const key = Symbol.for('payload-wnam.site-runtime.v1')
+const runtimeGlobal = globalThis as typeof globalThis & { [key]?: Runtime }
+if (!runtimeGlobal[key]) {
+  Object.defineProperty(runtimeGlobal, key, {
+    value: Object.freeze({ storage: new AsyncLocalStorage<Scope>(), resourceOwners: new WeakMap<object, object>() }),
+    writable: false,
+    configurable: false,
+  })
+}
+const { storage, resourceOwners } = runtimeGlobal[key]!
 
 export function requireSiteContext(): Scope {
   const context = storage.getStore()
@@ -48,4 +63,13 @@ export function bindSiteCallback<A extends unknown[], T>(callback: (...args: A) 
     requireSiteContext()
     return callback(...args)
   })
+}
+
+export function claimSiteRequestResources(resources: object[]): void {
+  const { requestToken } = requireSiteContext()
+  for (const resource of resources) {
+    const owner = resourceOwners.get(resource)
+    if (owner && owner !== requestToken) throw new Error('Cross-context Payload request/cache rejected')
+  }
+  for (const resource of resources) resourceOwners.set(resource, requestToken)
 }

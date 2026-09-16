@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest'
-import { bindSiteCallback, requireSiteContext, withSiteContext, type SiteContext } from '../../src/site-runtime/context'
+import { bindSiteCallback, claimSiteRequestResources, requireSiteContext, withSiteContext, type SiteContext } from '../../src/site-runtime/context'
 import { createSiteD1Proxy } from '../../src/site-runtime/d1'
 
 function site(siteId: string): SiteContext {
@@ -21,6 +21,19 @@ function site(siteId: string): SiteContext {
 }
 
 describe('request-scoped D1 adapter client', () => {
+  it('shares scope and request ownership across separately loaded Worker/Next modules', async () => {
+    vi.resetModules()
+    const copy = await import('../../src/site-runtime/context')
+    const request = {}
+    withSiteContext(site('a'), () => {
+      expect(copy.requireSiteContext()).toBe(requireSiteContext())
+      claimSiteRequestResources([request])
+    })
+    copy.withSiteContext(site('b'), () => {
+      expect(() => copy.claimSiteRequestResources([request])).toThrow('Cross-context Payload')
+    })
+  })
+
   it('interleaves identical IDs across two databases without changing adapter instances', async () => {
     const db = createSiteD1Proxy()
     const a = site('a'), b = site('b')

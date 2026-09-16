@@ -10,6 +10,7 @@
 4. 新增 `assertSitePayloadRequest` 同时绑定 req 和 DataLoader 到请求令牌。原型 collection 的 `beforeOperation` 调用该校验，实际 adapter 测试覆盖 req 重用和 loader 移植。未来站点配置必须覆盖每个 collection/global 与所有入口，而非仅依赖此原型。
 5. `createSiteD1Proxy` 在 prepare/exec/dump/batch 和每次语句执行前校验上下文与路由版本。已 prepare 的语句只能在原 scope 使用；不能把另一请求（即使同站）或原始 binding 的语句混入 batch。
 6. `bindSiteCallback` 明确捕获 scope，供流式响应等延后回调使用；调用时仍检查路由版本。使用 Cloudflare 支持的 AsyncLocalStorage run/getStore，不依赖 enterWith。
+7. 外层 Worker 和 OpenNext 内部可能各自打包上下文模块。通过不可替换的 `Symbol.for` 全局注册表共享 ALS 容器与请求所有权表，避免两个模块各自持有不相通的 store。注册表不保存可变的当前 D1；并发站点仍完全由 ALS 管理。重复加载模块的单测覆盖此边界。
 
 ## 已知待关闭问题
 
@@ -23,9 +24,11 @@
 
 ## 证据与下一门槛
 
-- 单元测试 `tests/unit/siteD1Isolation.spec.ts`：5 项通过，含 100 个交错异步请求。
+- 单元测试 `tests/unit/siteD1Isolation.spec.ts`：6 项通过，含 100 个交错异步请求与分包注册表边界。
 - 实际 adapter 测试 `tests/int/sitePayloadD1.int.spec.ts`：3 项通过，含 40 个跨站并发列表查询。这是功能测试，未构成 P95 <2 秒性能验收。
 - 云端提交 `77f6bf7` 已通过 lint、类型检查和 436 项测试；随后测试打包入口定位失败，未产生成功 release marker。修复仍走同一云端链路。
-- 下一门槛：修复云端 fixture 路径并通过 runtime gate，然后在隔离的已部署测试环境完成完整 Payload/上传/后台/权限及资源测量。P0 未通过前不扩大生产范围。
+- 提交 `4cccddd` 已在云端通过 workerd fixture：2 个 D1，40 个并发请求，耗时 1,517 ms（整个 fixture 的墙钟时间，不是 CPU/P95 指标）。构建 `17ec00f2-842d-42e7-b1c2-8b0440951c48` 的完整 Next/浏览器检查仍在跟进。新增分包修复须重新通过相关云端检查。
+- [原始生产基线](site-per-d1-baseline.json) 保存明确的 UTC 24 小时窗口、GraphQL 查询和单位。Worker 3,654 次请求、0 个执行错误，CPU P95 955.429 ms；requestDuration P95 2,481.664 ms。D1 读取 185,508 行、写入 131 行。账本累计 $0.028495 未与供应商账单对账，不能据此计算真实每篇费用。
+- 下一门槛：在隔离的已部署测试环境完成完整 Payload/上传/后台/权限及资源测量。P0 未通过前不扩大生产范围。
 
 官方依据：[AsyncLocalStorage](https://developers.cloudflare.com/workers/runtime-apis/nodejs/asynclocalstorage/)、[D1 限制](https://developers.cloudflare.com/d1/platform/limits/)。官方当前列出付费账户每库 10 GB、总存储 1 TB、数据库数 50,000；实际账户获批配额和各产品资源限制仍须上线前单独核验。

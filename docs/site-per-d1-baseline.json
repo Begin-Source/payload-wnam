@@ -1,0 +1,70 @@
+{
+  "capturedAt": "2026-09-16T14:37:00.615Z",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "worker": "payload-wnam",
+  "databaseId": "f2aac41b-418d-47de-8bb3-edda485b1e2b",
+  "window": {
+    "start": "2026-09-15T14:00:00Z",
+    "endExclusive": "2026-09-16T14:00:00Z"
+  },
+  "query": "{ viewer { accounts(filter: {accountTag: \"d487cf34c606620b442632a72272014d\"}) { workersInvocationsAdaptive(limit: 1, filter: {scriptName: \"payload-wnam\", datetime_geq: \"2026-09-15T14:00:00Z\", datetime_lt: \"2026-09-16T14:00:00Z\"}) { sum { requests errors subrequests } quantiles { cpuTimeP50 cpuTimeP95 cpuTimeP99 requestDurationP50 requestDurationP95 memoryUsageBytesP50 memoryUsageBytesP95 } } d1AnalyticsAdaptiveGroups(limit: 1, filter: {databaseId: \"f2aac41b-418d-47de-8bb3-edda485b1e2b\", datetime_geq: \"2026-09-15T14:00:00Z\", datetime_lt: \"2026-09-16T14:00:00Z\"}) { sum { readQueries writeQueries rowsRead rowsWritten } } } } }",
+  "analytics": {
+    "data": {
+      "viewer": {
+        "accounts": [
+          {
+            "d1AnalyticsAdaptiveGroups": [
+              {
+                "sum": {
+                  "readQueries": 11358,
+                  "rowsRead": 185508,
+                  "rowsWritten": 131,
+                  "writeQueries": 31
+                }
+              }
+            ],
+            "workersInvocationsAdaptive": [
+              {
+                "quantiles": {
+                  "cpuTimeP50": 15770,
+                  "cpuTimeP95": 955429,
+                  "cpuTimeP99": 1777499,
+                  "memoryUsageBytesP50": 143313060,
+                  "memoryUsageBytesP95": 150255740,
+                  "requestDurationP50": 31357,
+                  "requestDurationP95": 2481664
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 3654,
+                  "subrequests": 723
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "errors": null
+  },
+  "ledgerAndJobs": [
+    [
+      {
+        "recorded_site_ai_cost_usd": 0.028494999999999996
+      }
+    ],
+    [
+      {
+        "status": "completed",
+        "jobs": 19
+      }
+    ]
+  ],
+  "ledgerErrors": [],
+  "units": {
+    "cpuTime": "microseconds",
+    "requestDuration": "microseconds",
+    "memoryUsage": "bytes"
+  },
+  "scope": "Observed existing mixed traffic; not employee/concurrency/load acceptance. Ledger totals are not reconciled supplier invoices."
+}
