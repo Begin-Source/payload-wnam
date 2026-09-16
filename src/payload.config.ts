@@ -604,6 +604,13 @@ export default buildConfig({
   ],
 }).then(config => isSiteIsolationP0 ? guardSanitizedSiteConfig(config) : config)
 
+/** Explicit CLI maintenance owns the Wrangler proxy lifecycle. */
+export async function disposeP0PlatformProxy(): Promise<void> {
+  if (!isCLI || process.env.PAYLOAD_P0_MIGRATION !== '1') throw new Error('Not a P0 maintenance process')
+  const proxy = cloudflare as CloudflareContext & { dispose?: () => Promise<void> }
+  await proxy.dispose?.()
+}
+
 // Adapted from https://github.com/opennextjs/opennextjs-cloudflare/blob/d00b3a13e42e65aad76fba41774815726422cc39/packages/cloudflare/src/api/cloudflare-context.ts#L328C36-L328C46
 function getCloudflareContextFromWrangler(): Promise<CloudflareContext> {
   return import(/* webpackIgnore: true */ `${'__wrangler'.replaceAll('_', '')}`).then(

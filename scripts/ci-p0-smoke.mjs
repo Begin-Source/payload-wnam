@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
 import { chromium } from '@playwright/test'
 import { browserLibraryEnvironment } from './ci-browser-libs.mjs'
@@ -49,12 +50,17 @@ for (const site of ['a', 'b']) {
     const found = await json(`/api/${collection}?where[slug][equals]=${slug}&depth=0`)
     return found.docs[0] ?? (await json(`/api/${collection}`, 'POST', { slug, ...data })).doc
   }
-  const record = await findOrCreate('sites', 'p0-isolation', { name: `P0 ${site}`, primaryDomain: `p0-${site}.beginos.org`, publicLocaleCodes: ['en'], defaultPublicLocale: 'en' })
-  const category = await findOrCreate('categories', 'p0-same-slug', { name: `Site ${site}`, site: record.id, locale: 'en' })
+  const tenant = await findOrCreate('tenants', 'p0-isolation', { name: `P0 ${site}`, domain: `p0-${site}.beginos.org` })
+  const record = await findOrCreate('sites', 'p0-isolation', { name: `P0 ${site}`, tenant: tenant.id, primaryDomain: `p0-${site}.beginos.org`, publicLocaleCodes: ['en'], defaultPublicLocale: 'en' })
+  const category = await findOrCreate('categories', 'p0-same-slug', { name: `Site ${site}`, tenant: tenant.id, site: record.id, locale: 'en' })
   await json(`/api/categories/${category.id}`, 'PATCH', { name: `Site ${site}` })
-  fixtures.push({ site, origin, cookies, request, json, record, category })
+  fixtures.push({ site, origin, cookies, request, json, tenant, record, category })
 }
 assert.equal(fixtures[0].category.id, fixtures[1].category.id, 'test must exercise identical document IDs')
+const crossedSession = await fetch(`${fixtures[1].origin}/api/users/me`, {
+  headers: { cookie: fixtures[0].cookies.join('; ') },
+})
+assert.equal((await crossedSession.json()).user, null, 'Site A login session must not authenticate against site B')
 await Promise.all(Array.from({ length: 40 }, (_, i) => {
   const fixture = fixtures[i % 2]
   return fixture.json(`/api/categories/${fixture.category.id}?depth=0`).then(doc => assert.equal(doc.name, `Site ${fixture.site}`))
@@ -62,10 +68,11 @@ await Promise.all(Array.from({ length: 40 }, (_, i) => {
 assert.ok([...isolates.values()].some(sites => sites.size === 2), 'No evidence that one deployed isolate served both databases')
 
 // Real Payload media endpoint -> storage plugin -> scoped R2 adapter.
+const uploadFilename = `p0-${randomUUID()}.txt`
 for (const fixture of fixtures) {
   const data = new FormData()
-  data.set('_payload', JSON.stringify({ alt: `P0 ${fixture.site}`, site: fixture.record.id }))
-  data.set('file', new Blob([`P0 upload ${fixture.site}`], { type: 'text/plain' }), 'same-name.txt')
+  data.set('_payload', JSON.stringify({ alt: `P0 ${fixture.site}`, tenant: fixture.tenant.id, site: fixture.record.id }))
+  data.set('file', new Blob([`P0 upload ${fixture.site}`], { type: 'text/plain' }), uploadFilename)
   const uploaded = await (await fixture.request('/api/media', { method: 'POST', body: data })).json()
   const media = uploaded.doc
   assert.ok(media.id)
@@ -73,9 +80,11 @@ for (const fixture of fixtures) {
   assert.equal(await downloaded.text(), `P0 upload ${fixture.site}`)
   fixture.media = media
 }
+assert.equal(fixtures[0].media.filename, fixtures[1].media.filename, 'Both sites must upload the same filename')
 await fixtures[0].json(`/api/media/${fixtures[0].media.id}`, 'DELETE')
 const survivor = await fixtures[1].request(`/api/media/file/${encodeURIComponent(fixtures[1].media.filename)}`)
 assert.equal(await survivor.text(), 'P0 upload b')
+await fixtures[1].json(`/api/media/${fixtures[1].media.id}`, 'DELETE')
 
 const browser = await chromium.launch({ env: { ...process.env, ...browserLibraryEnvironment() } })
 try {

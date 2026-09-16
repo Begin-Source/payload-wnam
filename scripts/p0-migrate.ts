@@ -4,7 +4,7 @@ import { p0MaintenanceTarget } from './p0-maintenance'
 
 const target = p0MaintenanceTarget()
 process.env.PAYLOAD_MIGRATING = 'true'
-const [{ default: config }, { migrations }] = await Promise.all([
+const [{ default: config, disposeP0PlatformProxy }, { migrations }] = await Promise.all([
   import('../src/payload.config'), import('../src/migrations'),
 ])
 const payload = await getPayload({ config, disableOnInit: true })
@@ -16,5 +16,6 @@ await payload.db.migrate({ migrations: migrations.map(migration => ({
   down: (args: unknown) => migration.down(args as MigrateDownArgs),
 })) })
 await payload.destroy()
+await disposeP0PlatformProxy()
 console.log(JSON.stringify({ event: 'p0_migrations_ready', database: target.d1_databases[0].database_id, migrations: migrations.length }))
 process.exit(0)
