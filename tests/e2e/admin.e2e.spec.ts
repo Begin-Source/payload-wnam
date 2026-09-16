@@ -3,6 +3,7 @@ import { login } from '../helpers/login'
 import { seedTestUser, cleanupTestUser, testUser } from '../helpers/seedUser'
 
 test.describe('Admin Panel', () => {
+  test.skip(Boolean(process.env.E2E_BASE_URL), 'Remote checks are read-only; never seed a production test user')
   let page: Page
 
   test.beforeAll(async ({ browser }, testInfo) => {

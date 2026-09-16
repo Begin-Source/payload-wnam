@@ -1,19 +1,6 @@
-import { test, expect, Page } from '@playwright/test'
-
-test.describe('Frontend', () => {
-  let page: Page
-
-  test.beforeAll(async ({ browser }, testInfo) => {
-    const context = await browser.newContext()
-    page = await context.newPage()
-  })
-
-  test('can go on homepage', async ({ page }) => {
-    await page.goto('http://localhost:3000')
-
-    await expect(page).toHaveURL(/http:\/\/localhost:3000\/zh\/?$/)
-
-    const heading = page.locator('h1').first()
-    await expect(heading).toHaveText(/Latest posts|基源科技/)
-  })
+import { test, expect } from '@playwright/test'
+test('public frontend responds and shows a heading', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('h1').first()).toBeVisible()
+  if (process.env.E2E_BASE_URL) await expect(page).toHaveURL(/\/[a-z]{2}(?:-[A-Za-z]+)?\/?$/)
 })

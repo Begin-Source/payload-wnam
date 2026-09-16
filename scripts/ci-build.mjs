@@ -16,5 +16,7 @@ writeFileSync('.cloudflare-ci/wrangler.json', JSON.stringify({
 }))
 run(['run', 'ci:check'], { PAYLOAD_TEST_MODE: 'isolated', PAYLOAD_SECRET: 'isolated-test-secret' })
 run(['exec', 'opennextjs-cloudflare', 'build'], { PAYLOAD_BUILD_PHASE: '1' })
+run(['exec', 'playwright', 'install', '--with-deps', 'chromium'])
+run(['exec', 'playwright', 'test', '--config=playwright.cloud-ci.config.ts'])
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
 writeFileSync('.cloudflare-ci/release.json', JSON.stringify({ commit, builtAt: new Date().toISOString() }))
