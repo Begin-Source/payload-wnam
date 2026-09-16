@@ -326,7 +326,7 @@ export function mergePublicSiteTheme(
     : sl === 'template2'
       ? mergeTemplate1Layers(design?.t2LocaleJson, null)
       : mergeTemplate1Layers(design?.t1LocaleJson, null)
-  let amzSiteConfig = amzSl ? mergeAmzSiteConfigFromRaw(design?.amzSiteConfigJson) : undefined
+  let amzSiteConfig = amzSl ? mergeAmzSiteConfigFromRaw(design?.amzSiteConfigJson, design?.id) : undefined
   const siteLogoUrl = publicUrlFromSiteLogo(site)
   if (amzSl && amzSiteConfig != null && site != null) {
     const bannerUrl = publicUrlFromSiteHeroBanner(site)

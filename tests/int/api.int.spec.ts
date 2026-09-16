@@ -55,6 +55,11 @@ describe('API', () => {
     const outsider = { id: 99999, collection: 'users', roles: ['general-manager'], tenants: [{ tenant: tenant.id + 1000 }] }
     const hidden = await payload.findVersions({ collection: 'site-blueprints', user: outsider, overrideAccess: false })
     expect(hidden.docs).toHaveLength(0)
+    await d1.prepare('UPDATE "_site_blueprints_v" SET version_amz_site_config_json = ? WHERE id = ?')
+      .bind(JSON.stringify({ footer: null }), before.docs[0].id).run()
+    await expect(payload.restoreVersion({ collection: 'site-blueprints', id: before.docs[0].id, depth: 0 })).rejects.toThrow()
+    const afterRejectedRestore = await payload.findByID({ collection: 'site-blueprints', id: blueprint.id, depth: 0 })
+    expect(afterRejectedRestore.amzSiteConfigJson).toMatchObject({ brand: { name: 'Original' } })
     await expect(payload.restoreVersion({ collection: 'site-blueprints', id: before.docs[0].id, user: outsider, overrideAccess: false })).rejects.toThrow()
     await expect(payload.findVersions({ collection: 'site-blueprints', overrideAccess: false })).rejects.toThrow()
   })

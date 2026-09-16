@@ -1,6 +1,8 @@
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import { amzConfigPatchSchema, amzConfigSchema, sanitizeAmzConfig, validateAmzConfig } from './configSchema'
 
+const reportedRepairs = new Set<string>()
+
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
@@ -35,7 +37,7 @@ export function mergePatchOntoAmzConfig(base: AmzSiteConfig, patch: unknown): Am
 /**
  * Parse blueprint `amzSiteConfigJson` and merge onto bundled defaults (same shape as amz `siteConfig`).
  */
-export function mergeAmzSiteConfigFromRaw(raw: unknown): AmzSiteConfig {
+export function mergeAmzSiteConfigFromRaw(raw: unknown, blueprintId?: number): AmzSiteConfig {
   let patch: unknown = {}
   if (typeof raw === 'string' && raw.length <= 120_000 && raw.trim()) {
     try {
@@ -46,5 +48,11 @@ export function mergeAmzSiteConfigFromRaw(raw: unknown): AmzSiteConfig {
   } else if (isPlainObject(raw)) {
     patch = raw
   }
-  return sanitizeAmzConfig(patch)
+  return sanitizeAmzConfig(patch, paths => {
+    const key = `${blueprintId ?? 'unknown'}:${paths.join(',')}`
+    if (reportedRepairs.has(key)) return
+    if (reportedRepairs.size >= 100) reportedRepairs.clear()
+    reportedRepairs.add(key)
+    console.warn('[design] Repaired invalid legacy configuration', { blueprintId, paths })
+  })
 }

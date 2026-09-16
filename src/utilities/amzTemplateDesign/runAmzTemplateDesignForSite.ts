@@ -331,7 +331,7 @@ async function loadAmzTemplateDesignWorkContext(
     }
   }
 
-  const current = mergeAmzSiteConfigFromRaw(blueprint.amzSiteConfigJson)
+  const current = mergeAmzSiteConfigFromRaw(blueprint.amzSiteConfigJson, blueprint.id)
   let currentJson = JSON.stringify(current, null, 2)
   if (currentJson.length > MAX_CURRENT_JSON_CHARS) {
     currentJson = currentJson.slice(0, MAX_CURRENT_JSON_CHARS) + '\n…(truncated)'

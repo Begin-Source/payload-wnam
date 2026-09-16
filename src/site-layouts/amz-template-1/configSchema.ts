@@ -100,7 +100,8 @@ export function validateAmzConfig<T>(schema: z.ZodType<T>, value: unknown): T {
 }
 
 /** Read legacy records without allowing one malformed branch to break the whole site. */
-export function sanitizeAmzConfig(raw: unknown): AmzSiteConfig {
+export function sanitizeAmzConfig(raw: unknown, onRepair?: (paths: string[]) => void): AmzSiteConfig {
+  const repaired: string[] = []
   const repair = (base: unknown, candidate: unknown, path: string): unknown => {
     if (candidate === undefined) return structuredClone(base)
     const schema = nodeSchema(base, path, false)
@@ -113,7 +114,10 @@ export function sanitizeAmzConfig(raw: unknown): AmzSiteConfig {
       ]))
     }
     const parsed = schema.safeParse(candidate)
+    if (!parsed.success) repaired.push(path || 'config')
     return parsed.success ? parsed.data : structuredClone(base)
   }
-  return repair(defaultAmzSiteConfig, raw, '') as AmzSiteConfig
+  const result = repair(defaultAmzSiteConfig, raw, '') as AmzSiteConfig
+  if (repaired.length) onRepair?.(repaired)
+  return result
 }
