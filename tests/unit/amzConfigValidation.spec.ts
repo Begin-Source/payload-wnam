@@ -1,3 +1,5 @@
+import { reapplyLockedSlices } from '@/utilities/amzTemplateDesign/lockedDesignSlices'
+import { mergePatchOntoAmzConfig } from '@/site-layouts/amz-template-1/mergeAmzSiteConfig'
 import { describe, expect, it } from 'vitest'
 import { defaultAmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 import {
@@ -48,4 +50,20 @@ describe('AMZ design configuration boundary', () => {
     result.brand.name = 'Changed'
     expect(defaultAmzSiteConfig.brand.name).not.toBe('Changed')
   })
+})
+
+it('preserves linked navigation and footer slices without discarding valid design copy', () => {
+  const base = structuredClone(defaultAmzSiteConfig)
+  const patch = mergePatchOntoAmzConfig(base, {
+    brand: { tagline: 'New copy' },
+    navigation: { main: [] },
+    footer: { resources: [], legal: [] },
+  })
+  const result = reapplyLockedSlices(base, patch)
+  expect(result.brand.tagline).toBe('New copy')
+  expect(result.navigation.main).toEqual(base.navigation.main)
+  expect(result.footer.resources).toEqual(base.footer.resources)
+  expect(result.footer.legal).toEqual(base.footer.legal)
+  result.footer.resources[0].name = 'Mutated'
+  expect(base.footer.resources[0].name).not.toBe('Mutated')
 })

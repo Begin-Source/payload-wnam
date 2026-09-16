@@ -1,3 +1,4 @@
+import * as migration_20260916_120000_blueprint_version_history from './20260916_120000_blueprint_version_history'
 import * as migration_20250929_111647 from './20250929_111647'
 import * as migration_20260420_084024_mcp_plugin from './20260420_084024_mcp_plugin'
 import * as migration_20260420_093625 from './20260420_093625'
@@ -623,5 +624,10 @@ export const migrations = [
     up: migration_20260518_120000_seed_complete_keyword_batch_presets.up,
     down: migration_20260518_120000_seed_complete_keyword_batch_presets.down,
     name: '20260518_120000_seed_complete_keyword_batch_presets',
+  },
+  {
+    up: migration_20260916_120000_blueprint_version_history.up,
+    down: migration_20260916_120000_blueprint_version_history.down,
+    name: '20260916_120000_blueprint_version_history',
   },
 ]

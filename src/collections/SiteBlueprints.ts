@@ -1,3 +1,4 @@
+import { readBlueprintVersions } from '@/collections/access/blueprintVersionAccess'
 import { validateBlueprintDesign } from '@/collections/hooks/validateBlueprintDesign'
 import type { CollectionConfig } from 'payload'
 
@@ -65,7 +66,7 @@ export const SiteBlueprints: CollectionConfig = {
   },
   access: {
     ...siteScopedCollectionAccess('site-blueprints'),
-    readVersions: siteScopedCollectionAccess('site-blueprints')?.read,
+    readVersions: readBlueprintVersions,
   },
   fields: [
     {

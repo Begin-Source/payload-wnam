@@ -1,3 +1,4 @@
+import { reapplyLockedSlices } from './lockedDesignSlices'
 import { amzConfigSchema, AmzConfigValidationError, validateAmzConfig, type ConfigIssue } from '@/site-layouts/amz-template-1/configSchema'
 import type { Payload } from 'payload'
 
@@ -73,18 +74,6 @@ function parseJsonPatch(raw: string): unknown {
     const msg = e instanceof Error ? e.message : String(e)
     throw new Error(`AI 返回非合法 JSON: ${msg}`)
   }
-}
-
-/** After AI merge, restore slices that must stay identical to pre-merge (n8n workflow rules). */
-function reapplyLockedSlices(base: AmzSiteConfig, draft: AmzSiteConfig): AmzSiteConfig {
-  const out = structuredClone(draft)
-  out.navigation.main = structuredClone(base.navigation.main)
-  out.navigation.mainByLocale = structuredClone(base.navigation.mainByLocale)
-  out.homepage.categories.items = structuredClone(base.homepage.categories.items)
-  out.pages.guides.categories = structuredClone(base.pages.guides.categories)
-  out.footer.resources = structuredClone(base.footer.resources)
-  out.footer.legal = structuredClone(base.footer.legal)
-  return out
 }
 
 function enforceCanonicalIdentity(
