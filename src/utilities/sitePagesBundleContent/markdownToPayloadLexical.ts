@@ -348,7 +348,7 @@ function rootNode(children: any[]): NonNullable<Page['body']> {
       direction: 'ltr',
       children: children.length > 0 ? children : [paragraphNode([textNode(' ')])],
     },
-  } as Page['body']
+  }
 }
 
 function getIndentLevel(whitespace: string): number {

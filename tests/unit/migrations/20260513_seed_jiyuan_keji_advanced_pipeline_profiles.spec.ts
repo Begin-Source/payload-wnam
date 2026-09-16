@@ -14,7 +14,7 @@ type MockPayload = {
 }
 
 function makeArgs(db: MockDb, payload: MockPayload) {
-  return { db, payload, req: {} } as Parameters<typeof up>[0]
+  return { db, payload, req: {} } as unknown as Parameters<typeof up>[0]
 }
 
 describe('migration 20260513_120000_seed_jiyuan_keji_advanced_pipeline_profiles', () => {

@@ -28,7 +28,7 @@ export const requireSiteOnCreate: CollectionBeforeChangeHook = ({ data, operatio
 }
 
 /** 与文章/页面一致的 site 关系字段（新建由 hook 校验必填）。 */
-export const siteScopedSiteField: RelationshipField = {
+export const siteScopedSiteField = {
   name: 'site',
   type: 'relationship',
   relationTo: 'sites',
@@ -37,4 +37,4 @@ export const siteScopedSiteField: RelationshipField = {
     position: 'sidebar',
   },
   filterOptions: sitesRelationshipFilterOptions,
-}
+} satisfies RelationshipField
