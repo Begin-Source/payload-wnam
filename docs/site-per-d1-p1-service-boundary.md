@@ -29,16 +29,18 @@
 - `tests/unit/siteSessionTransport.spec.ts`：8 项请求级检查，覆盖中央原会话身份、无凭据 URL 交接、跨源/伪造字段/重复字段/超长 body、匿名及错误脱敏、Cookie/固定跳转、错误主机、退出失败处理及 RPC 后路由变化。
 - `tests/int/siteControlSso.int.spec.ts`：原 8 项 D1 测试之外增加按站点退出和撤权后删除会话，合计 9 项。
 - `scripts/ci-site-identity.mjs`：只允许 Cloudflare Builds；云端打包两个 runtime fixture，在 Miniflare/workerd 中启动中央与站点 Worker，使用 named RPC binding 和三座隔离 D1。20 个并发兑换只能成功一次，20 个并发身份读取核对两站相同本地 ID 的隔离；覆盖降级、撤权、退出和中央异常。
-- 同一云端脚本使用真实 Chromium 执行中央 POST → 自动表单 → 站点兑换 → `/admin`，检查 CSP/redirect/Cookie。浏览器网络入口通过 Playwright route 桥接到 fixture；服务间 RPC 与 D1 都由真实 workerd 执行。
+- 同一云端脚本使用真实 Chromium 执行中央 POST → 自动表单 → 站点兑换 → `/admin`，检查 CSP/redirect/Cookie。Chromium 将四个精确测试主机解析到 Miniflare 的本地 HTTPS 监听端口，直接执行真实 HTTP/303/Cookie 链路；仅该隔离浏览器上下文忽略测试证书错误。服务间 RPC 与 D1 也由真实 workerd 执行。
 - 中央浏览器登录是 fixture 注入的合成会话，站点是最小身份集合；不是已经部署的独立完整 Payload 配置。公开独立性此处只验证 fixture 响应，不能替代正式公开内容回归。
 - CI 在原 14 项浏览器检查后执行该脚本；只有所有检查通过才生成当前提交 release marker。没有本地构建、部署或伪造 CI 状态。
 
 ## 正式接入仍需完成
 
-独立配置与字段级投影同步；中央角色挂载 authenticated entry 路由并导出 named 服务；站点分组绑定该服务并从可信注册表建立 ingress；普通后台写入 Origin 检查及完整自定义认证策略；真实中央登录/退出、权限管理、建站与 MCP 指定站点；云端部署后完整编辑和即时撤权验收。
+独立配置与字段级投影同步；中央角色挂载 authenticated entry 路由并导出 named 服务；站点分组绑定该服务并从可信注册表建立 ingress；普通后台写入 Origin 检查及完整自定义认证策略；替换 Payload 内置登录/退出入口和按钮，使默认退出也撤销中央站点会话，而非仅清理原 payload-token；真实中央登录/退出、权限管理、建站与 MCP 指定站点；云端部署后完整编辑和即时撤权验收。
 
 依据：[Cloudflare Service Binding / WorkerEntrypoint](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/rpc/)。固定 Payload 3.82.1 的 `auth/strategies/jwt.js` 已核对：验证 JWT 后检查原 users.sessions 并将 sid 设置为 `_sid`；中央 broker 仍对 D1 原会话作二次实时核验。
 
 构建修复记录：`3c35cf7` 的构建 `30904bdc-627b-4797-bb63-9cd4e71952ba` 在首个 fixture POST 被 Miniflare 开发代理 Origin 校验拒绝，未进入发布。测试配置缺少 hub/站点 routes；补齐精确测试域名，使代理放行到应用的原有严格 Origin 检查，不放松应用校验。
 
 第二轮 `7b4ea01` / `3254fc5c-e870-429a-954e-41686566ed4b` 已通过原生 RPC 前半检查，但 Chromium 表单停留中央页。独立浏览器实验确认 `no-referrer` 会令导航 POST 的 Origin 变为 null；改用 strict-origin 的交接页和入口表单，继续拒绝 null Origin，且只披露原本已由 Origin 表示的来源，不披露路径或票据。正式中央站点选择页也必须采用兼容的策略。参见 [浏览器 Referrer-Policy 对 Origin 的影响](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy#effect_on_the_origin_header)。失败构建均未发布。
+
+第三轮 `eebc8cf` / `e9c4487b-9863-4e08-9ad9-4a40bfe15011` 的浏览器已正确发送中央 Origin，完成 POST 签发与 303 兑换；Playwright 拦截桥接未覆盖后续跳转，转为解析未部署域名并失败。检查改为 Chromium 精确 host-resolver 映射到 Miniflare 本地 HTTPS 入口，保留真实 303，去掉模拟响应桥接；仍未发布。

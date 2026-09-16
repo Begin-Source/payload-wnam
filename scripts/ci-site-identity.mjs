@@ -18,7 +18,7 @@ for (const role of ['central', 'site']) {
   paths[role] = resolve(outputDir, entries[0])
 }
 const loginToken = randomBytes(32).toString('hex')
-const mf = new Miniflare({ workers: [
+const mf = new Miniflare({ host: '127.0.0.1', port: 0, https: true, workers: [
   { name: 'site', routes: ['cms-site-a.beginos.org/*', 'cms-site-b.beginos.org/*', 'public.example/*'], modules: true, scriptPath: paths.site, compatibilityDate: '2025-08-15', compatibilityFlags: ['nodejs_compat'],
     serviceBindings: { IDENTITY: { name: 'central', entrypoint: 'SiteIdentityService' } },
     d1Databases: { SITE_A: 'identity-site-a', SITE_B: 'identity-site-b' } },
@@ -87,23 +87,22 @@ try {
   assert.equal((await site.fetch('https://cms-site-a.beginos.org/test/no-issuer')).status, 200)
   assert.equal((await site.fetch('https://cms-site-a.beginos.org/test/no-http')).status, 404)
   // Exercise actual Chromium form navigation, CSP, redirect and cookie rules.
-  // Only the network edge is bridged to the isolated workers; RPC remains native.
+  // Use real HTTPS and redirects, mapping only fixture hosts to the local listener.
   console.log(JSON.stringify({ event: 'site_identity_rpc_transport_passed', concurrentRedemptions: 20, concurrentSiteRequests: 20 }))
   const browserEvents = []
-  const browser = await chromium.launch({ headless: true })
+  const listener = await mf.ready
+  assert.equal(listener.protocol, 'https:')
+  const browserHosts = ['hub.beginos.org', 'cms-site-a.beginos.org', 'cms-site-b.beginos.org', 'public.example']
+  const hostRules = browserHosts.map(host => 'MAP ' + host + ':443 127.0.0.1:' + listener.port).join(',')
+  const browser = await chromium.launch({ headless: true, args: ['--no-proxy-server', '--host-resolver-rules=' + hostRules] })
   try {
-    const context = await browser.newContext()
+    const context = await browser.newContext({ ignoreHTTPSErrors: true, serviceWorkers: 'block' })
     await context.addCookies([{ name: 'fixture-central', value: loginToken, domain: 'hub.beginos.org', path: '/', secure: true, httpOnly: true, sameSite: 'Strict' }])
-    await context.route('**/*', async route => {
-      const request = route.request()
-      const url = new URL(request.url())
-      assert.ok(!url.search, 'Session flow must not place credentials in URLs')
-      const target = url.hostname === 'hub.beginos.org' ? central : site
-      const response = await target.fetch(request.url(), { method: request.method(), headers: await request.allHeaders(),
-        ...(request.postDataBuffer() ? { body: request.postDataBuffer() } : {}), redirect: 'manual' })
-      const requestHeaders = await request.allHeaders()
-      browserEvents.push({ host: url.hostname, path: url.pathname, method: request.method(), status: response.status, origin: requestHeaders.origin ?? null, referer: requestHeaders.referer ?? null })
-      await route.fulfill({ status: response.status, headers: Object.fromEntries(response.headers), body: Buffer.from(await response.arrayBuffer()) })
+    let unexpectedURL = false
+    context.on('response', response => {
+      const request = response.request(), url = new URL(request.url()), headers = request.headers()
+      if (url.search || !browserHosts.includes(url.hostname)) unexpectedURL = true
+      browserEvents.push({ host: url.hostname, path: url.pathname, method: request.method(), status: response.status(), origin: headers.origin ?? null, referer: headers.referer ?? null })
     })
     for (const target of ['a', 'b']) {
       const page = await context.newPage()
@@ -113,6 +112,7 @@ try {
       await page.waitForURL('https://cms-site-' + target + '.beginos.org/admin')
       assert.equal(JSON.parse(await page.locator('body').innerText()).siteId, target)
     }
+    assert.equal(unexpectedURL, false, 'Browser must stay on fixture origins without credential URLs')
     const cookiesA = await context.cookies('https://cms-site-a.beginos.org')
     const cookiesB = await context.cookies('https://cms-site-b.beginos.org')
     assert.equal(cookiesA.length, 1)
@@ -150,7 +150,7 @@ try {
     checks: ['named RPC capability', 'no RPC issuer', 'HTTP capability denied', 'POST handoff', 'Chromium form/CSP/cookie navigation', 'single-use ticket',
       'host/origin binding', 'credential-free projections', 'live role changes', 'immediate revocation', 'site logout',
       'central logout', 'central outage fails closed', 'independent public response'],
-    scope: 'Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium network edge bridged into native workerd; not deployed independent Payload configs or production browser acceptance' }
+    scope: 'Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance' }
   writeFileSync('.cloudflare-ci/site-identity.json', JSON.stringify(report, null, 2))
   console.log(JSON.stringify(report))
 } finally { await mf.dispose() }
