@@ -1,0 +1,6 @@
+{
+  "name": "payload-site-isolation-test",
+  "main": "site-isolation-worker.ts",
+  "compatibility_date": "2025-08-15",
+  "compatibility_flags": ["nodejs_compat"]
+}
