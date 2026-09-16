@@ -74,6 +74,41 @@
       }
     }
   ],
-  "scope": "Deployed P0 REST/admin/R2/queue isolation passed; remaining P0 public-cache, fault and resource gates pending",
-  "goalComplete": false
+  "scope": "Deployed REST/admin/R2/queues/public React cache and streaming checks passed; memory headroom and remaining P0 faults pending",
+  "goalComplete": false,
+  "publicPathValidation": {
+    "at": "2026-09-16T18:30:52.632Z",
+    "build": "256e2a68-8767-454f-92de-b93bd6f49054",
+    "lines": [
+      [
+        1789583065949,
+        " Test Files  92 passed (92)"
+      ],
+      [
+        1789583065949,
+        "      Tests  447 passed (447)"
+      ],
+      [
+        1789583278090,
+        "Worker Startup Time: 47 ms"
+      ],
+      [
+        1789583364538,
+        "{\"event\":\"p0_deployed_smoke_passed\",\"commit\":\"59dc12d2df987ede4a001b733651b360ab307d3c\",\"at\":\"2026-09-16T18:29:24.537Z\",\"scope\":\"Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending\",\"concurrentReads\":40,\"concurrentPublicPages\":12,\"isolatesServingBothSites\":7}"
+      ],
+      [
+        1789583364556,
+        "{\"event\":\"p0_release_passed\",\"commit\":\"59dc12d2df987ede4a001b733651b360ab307d3c\",\"worker\":\"payload-wnam-p0\",\"productionUnchanged\":\"3046ffb1-b8ad-47ba-a373-9be5d0526c4b\"}"
+      ]
+    ],
+    "deployment": {
+      "id": "f442be59-5990-4518-81f7-2247c8ea896f",
+      "versions": [
+        {
+          "version_id": "d0eebff6-88ce-4a0c-9c1d-5e3e82b9f496",
+          "percentage": 100
+        }
+      ]
+    }
+  }
 }

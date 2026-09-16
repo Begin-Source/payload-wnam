@@ -65,6 +65,10 @@ for (const db of config.d1_databases) {
   run(['exec', 'payload', 'run', 'scripts/p0-migrate.ts'], maintenance)
   run(['exec', 'payload', 'run', 'scripts/p0-seed.ts'], maintenance)
 }
+execFileSync(process.execPath, ['scripts/ci-p0-memory.mjs'], {
+  stdio: 'inherit', timeout: 240000,
+  env: { ...env, PAYLOAD_SECRET: payloadSecret, P0_GATE_SECRET: gate, P0_TEST_PASSWORD: password },
+})
 run(['exec', 'opennextjs-cloudflare', 'deploy', '--config', 'wrangler.p0.json'])
 execFileSync('pnpm', ['exec', 'wrangler', 'secret', 'bulk', '--config', 'wrangler.p0.json'], {
   env, input: JSON.stringify({ PAYLOAD_SECRET: payloadSecret, P0_GATE_SECRET: gate }), stdio: ['pipe', 'inherit', 'inherit'],
