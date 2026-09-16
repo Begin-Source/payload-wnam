@@ -1,5 +1,5 @@
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
-import { defaultAmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
+import { amzConfigPatchSchema, amzConfigSchema, sanitizeAmzConfig, validateAmzConfig } from './configSchema'
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -8,6 +8,7 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
 export function deepMergeRecords(base: Record<string, unknown>, patch: Record<string, unknown>): void {
   for (const [k, v] of Object.entries(patch)) {
     if (v === undefined) continue
+    if (k === '__proto__' || k === 'prototype' || k === 'constructor') throw new Error('Unsupported config property')
     const prev = base[k]
     if (Array.isArray(v)) {
       base[k] = v
@@ -26,10 +27,9 @@ export function deepMergeRecords(base: Record<string, unknown>, patch: Record<st
  */
 export function mergePatchOntoAmzConfig(base: AmzSiteConfig, patch: unknown): AmzSiteConfig {
   const out = structuredClone(base) as unknown as Record<string, unknown>
-  if (isPlainObject(patch)) {
-    deepMergeRecords(out, patch)
-  }
-  return out as AmzSiteConfig
+  const validated = validateAmzConfig(amzConfigPatchSchema, patch)
+  deepMergeRecords(out, validated as Record<string, unknown>)
+  return validateAmzConfig(amzConfigSchema, out)
 }
 
 /**
@@ -37,7 +37,7 @@ export function mergePatchOntoAmzConfig(base: AmzSiteConfig, patch: unknown): Am
  */
 export function mergeAmzSiteConfigFromRaw(raw: unknown): AmzSiteConfig {
   let patch: unknown = {}
-  if (typeof raw === 'string' && raw.trim()) {
+  if (typeof raw === 'string' && raw.length <= 120_000 && raw.trim()) {
     try {
       patch = JSON.parse(raw) as unknown
     } catch {
@@ -46,9 +46,5 @@ export function mergeAmzSiteConfigFromRaw(raw: unknown): AmzSiteConfig {
   } else if (isPlainObject(raw)) {
     patch = raw
   }
-  const base = structuredClone(defaultAmzSiteConfig) as unknown as Record<string, unknown>
-  if (isPlainObject(patch)) {
-    deepMergeRecords(base, patch)
-  }
-  return base as AmzSiteConfig
+  return sanitizeAmzConfig(patch)
 }

@@ -37,6 +37,7 @@ export const syncBlueprintTenantFromSiteTenantFieldBeforeChange: FieldHook = asy
     const site = await req.payload.findByID({
       collection: 'sites',
       id: siteId,
+      select: { tenant: true, siteLayout: true },
       depth: 0,
       overrideAccess: true,
     })
@@ -69,6 +70,7 @@ export const syncMirroredLayoutFromSiteBeforeChange: CollectionBeforeChangeHook 
     const site = await req.payload.findByID({
       collection: 'sites',
       id: siteId,
+      select: { tenant: true, siteLayout: true },
       depth: 0,
       overrideAccess: true,
     })

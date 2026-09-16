@@ -63,7 +63,8 @@
     "payload": "3.82.1",
     "react": "19.2.1",
     "react-dom": "19.2.1",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "zod": "4.3.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

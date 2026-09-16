@@ -1,3 +1,4 @@
+import { validateBlueprintDesign } from '@/collections/hooks/validateBlueprintDesign'
 import type { CollectionConfig } from 'payload'
 
 import { blogChromeDesignFields } from '@/collections/shared/blogPublicFields'
@@ -22,6 +23,7 @@ import { userHasRole, userHasTenantGeneralManagerRole } from '@/utilities/userRo
 
 export const SiteBlueprints: CollectionConfig = {
   slug: 'site-blueprints',
+  versions: { maxPerDoc: 20, drafts: false },
   labels: { singular: '设计', plural: '设计' },
   admin: {
     group: adminGroups.website,
@@ -55,12 +57,16 @@ export const SiteBlueprints: CollectionConfig = {
   },
   hooks: {
     beforeChange: [
+      validateBlueprintDesign,
       requireSiteOnCreate,
       validateSiteFieldWithinVisibilityScope,
       syncMirroredLayoutFromSiteBeforeChange,
     ],
   },
-  access: siteScopedCollectionAccess('site-blueprints'),
+  access: {
+    ...siteScopedCollectionAccess('site-blueprints'),
+    readVersions: siteScopedCollectionAccess('site-blueprints')?.read,
+  },
   fields: [
     {
       name: 'name',

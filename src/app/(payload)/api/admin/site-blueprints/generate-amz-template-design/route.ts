@@ -195,8 +195,7 @@ export async function POST(request: Request): Promise<Response> {
   })
 
   if (!result.ok) {
-    const failed = result as { message: string; code?: string; status: number }
-    return Response.json({ error: failed.message, code: failed.code }, { status: failed.status })
+    return Response.json({ error: result.message, code: result.code, issues: result.issues }, { status: result.status })
   }
 
   return Response.json({ ok: true, blueprintId: result.blueprintId })

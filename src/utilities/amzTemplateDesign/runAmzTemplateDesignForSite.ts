@@ -1,3 +1,4 @@
+import { amzConfigSchema, AmzConfigValidationError, validateAmzConfig, type ConfigIssue } from '@/site-layouts/amz-template-1/configSchema'
 import type { Payload } from 'payload'
 
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
@@ -76,48 +77,14 @@ function parseJsonPatch(raw: string): unknown {
 
 /** After AI merge, restore slices that must stay identical to pre-merge (n8n workflow rules). */
 function reapplyLockedSlices(base: AmzSiteConfig, draft: AmzSiteConfig): AmzSiteConfig {
-  const out = structuredClone(draft) as unknown as Record<string, unknown>
-  const b = base as unknown as Record<string, unknown>
-
-  const nav = out.navigation as Record<string, unknown> | undefined
-  const bNav = b.navigation as Record<string, unknown> | undefined
-  if (nav && bNav && Array.isArray(bNav.main)) {
-    out.navigation = { ...nav, main: bNav.main }
-  }
-
-  const hp = out.homepage as Record<string, unknown> | undefined
-  const bHp = b.homepage as unknown as Record<string, unknown> | undefined
-  if (hp && bHp) {
-    const cat = hp.categories as Record<string, unknown> | undefined
-    const bCat = bHp.categories as Record<string, unknown> | undefined
-    if (cat && bCat && bCat.items !== undefined) {
-      hp.categories = { ...cat, items: bCat.items }
-      out.homepage = { ...hp }
-    }
-  }
-
-  const pages = out.pages as Record<string, unknown> | undefined
-  const bPages = b.pages as Record<string, unknown> | undefined
-  if (pages && bPages) {
-    const g = pages.guides as Record<string, unknown> | undefined
-    const bg = bPages.guides as Record<string, unknown> | undefined
-    if (g && bg && bg.categories !== undefined) {
-      pages.guides = { ...g, categories: bg.categories }
-      out.pages = { ...pages }
-    }
-  }
-
-  const foot = out.footer as Record<string, unknown> | undefined
-  const bFoot = b.footer as Record<string, unknown> | undefined
-  if (foot && bFoot) {
-    out.footer = {
-      ...foot,
-      resources: bFoot.resources,
-      legal: bFoot.legal,
-    }
-  }
-
-  return out as AmzSiteConfig
+  const out = structuredClone(draft)
+  out.navigation.main = structuredClone(base.navigation.main)
+  out.navigation.mainByLocale = structuredClone(base.navigation.mainByLocale)
+  out.homepage.categories.items = structuredClone(base.homepage.categories.items)
+  out.pages.guides.categories = structuredClone(base.pages.guides.categories)
+  out.footer.resources = structuredClone(base.footer.resources)
+  out.footer.legal = structuredClone(base.footer.legal)
+  return out
 }
 
 function enforceCanonicalIdentity(
@@ -235,7 +202,7 @@ export type RunAmzTemplateDesignForBlueprintArgs = {
 
 export type RunAmzTemplateDesignResult =
   | { ok: true; blueprintId: number }
-  | { ok: false; code: string; message: string; status: number }
+  | { ok: false; code: string; message: string; status: number; issues?: ConfigIssue[] }
 
 type AmzDesignWorkContext = {
   blueprint: SiteBlueprint
@@ -587,31 +554,38 @@ export async function runAmzTemplateDesignForBlueprint(
   }
 
   let merged: AmzSiteConfig
-  if (ctx.fillSlots) {
-    const flat = parseFillSlotsPatch(patch)
-    const draft = structuredClone(ctx.current)
-    const wrote = applyAllowedFillPatches(draft, flat)
-    if (wrote === 0) {
-      const detail = '模型未返回任何可写入的白名单字段（或全部为空白）'
-      await markBlueprintDesignWorkflowError(payload, blueprintId, {
-        code: 'FILL_EMPTY',
-        message: detail,
-      })
-      return { ok: false, code: 'FILL_EMPTY', message: detail, status: 422 }
+  try {
+    if (ctx.fillSlots) {
+      const flat = parseFillSlotsPatch(patch)
+      const draft = structuredClone(ctx.current)
+      const wrote = applyAllowedFillPatches(draft, flat)
+      if (wrote === 0) {
+        const detail = '模型未返回任何可写入的白名单字段（或全部为空白）'
+        await markBlueprintDesignWorkflowError(payload, blueprintId, {
+          code: 'FILL_EMPTY',
+          message: detail,
+        })
+        return { ok: false, code: 'FILL_EMPTY', message: detail, status: 422 }
+      }
+      merged = reapplyLockedSlices(ctx.current, draft)
+    } else {
+      merged = mergePatchOntoAmzConfig(ctx.current, patch)
+      merged = reapplyLockedSlices(ctx.current, merged)
     }
-    merged = reapplyLockedSlices(ctx.current, draft)
-  } else {
-    merged = mergePatchOntoAmzConfig(ctx.current, patch)
-    merged = reapplyLockedSlices(ctx.current, merged)
+    coerceBrandLogoLucideForNiche(
+      merged,
+      ctx.mainProduct,
+      ctx.site.nicheData,
+      ctx.canonicalSiteDomain,
+      typeof ctx.site.slug === 'string' ? ctx.site.slug : null,
+    )
+    enforceCanonicalIdentity(ctx.canonicalSiteName, ctx.canonicalSiteDomain, merged)
+    merged = validateAmzConfig(amzConfigSchema, merged)
+  } catch (error) {
+    if (!(error instanceof AmzConfigValidationError)) throw error
+    await markBlueprintDesignWorkflowError(payload, blueprintId, { code: error.code, message: error.message })
+    return { ok: false, code: error.code, message: error.message, issues: error.issues, status: 422 }
   }
-  coerceBrandLogoLucideForNiche(
-    merged,
-    ctx.mainProduct,
-    ctx.site.nicheData,
-    ctx.canonicalSiteDomain,
-    typeof ctx.site.slug === 'string' ? ctx.site.slug : null,
-  )
-  enforceCanonicalIdentity(ctx.canonicalSiteName, ctx.canonicalSiteDomain, merged)
 
   try {
     await payload.update({
