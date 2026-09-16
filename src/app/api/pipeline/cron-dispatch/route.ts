@@ -43,7 +43,7 @@ const PRESETS: Record<string, CronDispatchTaskId[]> = {
 }
 
 export async function GET(request: Request): Promise<Response> {
-  const g = requirePipelineJson(request, PATH)
+  const g = await requirePipelineJson(request, PATH)
   if (isPipelineUnauthorized(g)) {
     return g.response
   }
@@ -60,7 +60,7 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const g = requirePipelineJson(request, PATH)
+  const g = await requirePipelineJson(request, PATH)
   if (isPipelineUnauthorized(g)) {
     return g.response
   }

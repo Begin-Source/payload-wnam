@@ -1,3 +1,4 @@
+import * as migration_20260916_140000_pipeline_auth_nonces from './20260916_140000_pipeline_auth_nonces'
 import * as migration_20260916_130000_workflow_leases from './20260916_130000_workflow_leases'
 import * as migration_20260916_120000_blueprint_version_history from './20260916_120000_blueprint_version_history'
 import * as migration_20250929_111647 from './20250929_111647'
@@ -636,4 +637,5 @@ export const migrations = [
     down: migration_20260916_130000_workflow_leases.down,
     name: '20260916_130000_workflow_leases',
   },
+  { up: migration_20260916_140000_pipeline_auth_nonces.up, down: migration_20260916_140000_pipeline_auth_nonces.down, name: '20260916_140000_pipeline_auth_nonces' },
 ]

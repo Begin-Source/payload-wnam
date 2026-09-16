@@ -1,3 +1,5 @@
+import { up as migratePipelineNonces } from '@/migrations/20260916_140000_pipeline_auth_nonces'
+import { consumePipelineNonce } from '@/utilities/pipelineNonceStore'
 import { runnerRecoveryWhere } from '@/utilities/workflowRecoveryWhere'
 import { claimWorkflowJob, heartbeatWorkflowLease, patchLeasedWorkflowJob, releaseWorkflowLease, recoverExpiredWorkflowJobs, WorkflowLeaseLostError } from '@/utilities/workflowJobLease'
 import type { MigrateUpArgs } from '@payloadcms/db-d1-sqlite'
@@ -138,6 +140,16 @@ describe('API', () => {
       sort: 'updatedAt', limit: 1, depth: 0,
     })
     expect(candidates.docs.map(doc => doc.id)).toEqual([pending.id])
+  })
+
+  it('enforces single-use signatures with a real isolated D1 unique key', async () => {
+    if (process.env.PAYLOAD_TEST_MODE !== 'isolated') throw new Error('Nonce smoke requires isolated CI')
+    const db = (payload.db as unknown as { drizzle: MigrateUpArgs['db'] }).drizzle
+    await migratePipelineNonces({ db })
+    const now = Date.now()
+    const results = await Promise.all([consumePipelineNonce('ci-nonce', now + 1000, now), consumePipelineNonce('ci-nonce', now + 1000, now)])
+    expect(results.filter(Boolean)).toHaveLength(1)
+    expect(await consumePipelineNonce('ci-nonce', now + 3000, now + 2000)).toBe(true)
   })
 
 })

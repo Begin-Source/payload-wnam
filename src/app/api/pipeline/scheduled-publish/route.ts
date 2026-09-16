@@ -25,7 +25,7 @@ function numberOr(raw: unknown, fallback: number, min: number, max: number): num
  * Cron-safe publisher. Publishes due queued articles if they still pass checks and site daily caps.
  */
 export async function POST(request: Request): Promise<Response> {
-  const g = requirePipelineJson(request, PATH)
+  const g = await requirePipelineJson(request, PATH)
   if (isPipelineUnauthorized(g)) {
     return g.response
   }

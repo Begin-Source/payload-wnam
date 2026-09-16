@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 const PATH = '/api/pipeline/serp-audit'
 
 export async function POST(request: Request): Promise<Response> {
-  const g = requirePipelineJson(request, PATH)
+  const g = await requirePipelineJson(request, PATH)
   if (isPipelineUnauthorized(g)) {
     return g.response
   }

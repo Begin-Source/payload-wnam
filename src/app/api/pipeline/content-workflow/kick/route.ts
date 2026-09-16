@@ -44,7 +44,7 @@ function inputFromUnknown(raw: unknown, siteId: number): SiteContentRunnerInput 
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const auth = requirePipelineJson(request, PATH)
+  const auth = await requirePipelineJson(request, PATH)
   if (isPipelineUnauthorized(auth)) return auth.response
 
   const queue = getContentWorkflowQueueFromOpenNext()

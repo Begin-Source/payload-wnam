@@ -5,7 +5,7 @@ const PATH = '/api/pipeline/content-merge'
 
 /** Sprint 8：merge + 301 占位 — 后续写 redirects + pillar 更新。 */
 export async function POST(request: Request): Promise<Response> {
-  const g = requirePipelineJson(request, PATH)
+  const g = await requirePipelineJson(request, PATH)
   if (isPipelineUnauthorized(g)) {
     return g.response
   }

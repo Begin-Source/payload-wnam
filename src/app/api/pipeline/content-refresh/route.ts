@@ -5,7 +5,7 @@ const PATH = '/api/pipeline/content-refresh'
 
 /** Sprint 8：refresh 占位 — 后续接 content-refresher + schema-markup-generator。 */
 export async function POST(request: Request): Promise<Response> {
-  const g = requirePipelineJson(request, PATH)
+  const g = await requirePipelineJson(request, PATH)
   if (isPipelineUnauthorized(g)) {
     return g.response
   }

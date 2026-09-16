@@ -34,8 +34,8 @@ export const dynamic = 'force-dynamic'
 
 const PATH = '/api/pipeline/tick'
 
-function tickAuth(request: Request) {
-  const g = requirePipelineJson(request, PATH)
+async function tickAuth(request: Request) {
+  const g = await requirePipelineJson(request, PATH)
   if (isPipelineUnauthorized(g)) {
     return g.response
   }
@@ -76,7 +76,7 @@ async function peekPendingCore(
 }
 
 export async function GET(request: Request): Promise<Response> {
-  const unauthorized = tickAuth(request)
+  const unauthorized = await tickAuth(request)
   if (unauthorized) return unauthorized
   const parsed = parseConstrainedIdsFromCommaQuery(new URL(request.url).searchParams.get('ids'))
   if (!parsed.ok) {
@@ -88,7 +88,7 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const unauthorized = tickAuth(request)
+  const unauthorized = await tickAuth(request)
   if (unauthorized) return unauthorized
 
   const url = new URL(request.url)

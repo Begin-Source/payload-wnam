@@ -11,7 +11,7 @@ const PATH = '/api/pipeline/meta-ab-optimize'
  * 钉子 5：产出 2–3 组 title/description 候选并写入 `articles.metaVariants`。
  */
 export async function POST(request: Request): Promise<Response> {
-  const g = requirePipelineJson(request, PATH)
+  const g = await requirePipelineJson(request, PATH)
   if (isPipelineUnauthorized(g)) {
     return g.response
   }

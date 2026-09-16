@@ -25,7 +25,7 @@ async function d1ClientFromOpenNextContext(): Promise<D1Client | null> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const g = requirePipelineJson(request, PATH)
+  const g = await requirePipelineJson(request, PATH)
   if (isPipelineUnauthorized(g)) {
     return g.response
   }
