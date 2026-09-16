@@ -994,7 +994,7 @@ async function main(): Promise<void> {
   const alphaId = tenantBySlug.get('seed-alpha')!.id
   const betaId = tenantBySlug.get('seed-beta')!.id
 
-  let superList = await payload.find({
+  const superList = await payload.find({
     collection: 'users',
     where: { email: { equals: EMAILS.superadmin } },
     limit: 1,
@@ -1691,7 +1691,7 @@ async function main(): Promise<void> {
       console.info('[seed:dev] Created workflow job', p.workflowLabel)
     }
 
-    let platList = await payload.find({
+    const platList = await payload.find({
       collection: 'social-platforms',
       ...d0,
       where: whereTenantAndSlug(tenantId, p.socialPlatformSlug),
