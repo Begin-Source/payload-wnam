@@ -6,6 +6,8 @@ export type SiteContext = Readonly<{
   binding: D1Database
   routingVersion: number
   identity: SiteIdentity | null
+  /** Canonical URL hostname set only by trusted ingress, never forwarded headers. */
+  requestHost?: string
   /** Consult trusted routing state, never a client-supplied header. */
   currentRoutingVersion: () => number
 }>
