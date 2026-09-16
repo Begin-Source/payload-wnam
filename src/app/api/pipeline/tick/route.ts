@@ -237,6 +237,7 @@ export async function POST(request: Request): Promise<Response> {
       }
     }
 
+    if (lease.lost) throw new WorkflowLeaseLostError()
     const inner = await dispatchWorkflowJob(request, doc, payload)
     const { success, body: output, httpStatus } = await interpretJobResponse(inner)
 

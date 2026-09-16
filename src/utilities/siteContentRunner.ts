@@ -1,4 +1,4 @@
-import { claimWorkflowJob, patchLeasedWorkflowJob, releaseWorkflowLease, startWorkflowHeartbeat, runnerFailureCode, WorkflowLeaseLostError, type WorkflowLease } from './workflowJobLease'
+import { claimWorkflowJob, heartbeatWorkflowLease, patchLeasedWorkflowJob, releaseWorkflowLease, startWorkflowHeartbeat, runnerFailureCode, WorkflowLeaseLostError, type WorkflowLease } from './workflowJobLease'
 import type { Payload } from 'payload'
 
 import { enqueueArticlePipelineCatchup } from '@/app/api/pipeline/lib/articlePipelineChain'
@@ -211,6 +211,7 @@ async function runOwnedSiteContentRunner(args: SiteContentRunnerArgs, lease: Wor
   let noProgressRounds = 0
 
   for (let round = 0; round < input.maxBatches; round += 1) {
+    await heartbeatWorkflowLease(lease)
     const catchupBefore = await ensureDraftSectionCatchupForSite(args.payload, input.siteId)
     const pendingIds = await listPendingWorkflowJobIdsForSite(args.payload, input.siteId)
     pendingRemaining = pendingIds.length

@@ -23,6 +23,7 @@ vi.mock('@/utilities/workflowJobLease', () => ({
     await lease.payload.update({ collection: 'workflow-jobs', id: lease.id, data, overrideAccess: true })
   }),
   releaseWorkflowLease: vi.fn(async () => {}),
+  heartbeatWorkflowLease: vi.fn(async () => {}),
   startWorkflowHeartbeat: () => () => {},
   runnerFailureCode: () => 'RUNNER_FAILURE',
   WorkflowLeaseLostError: class extends Error {},

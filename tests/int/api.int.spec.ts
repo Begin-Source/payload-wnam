@@ -11,11 +11,13 @@ import config from '@/payload.config'
 import { describe, it, beforeAll, expect } from 'vitest'
 
 let payload: Payload
+let workflowTenantId: number
 
 describe('API', () => {
   beforeAll(async () => {
     const payloadConfig = await config
     payload = await getPayload({ config: payloadConfig })
+    workflowTenantId = (await payload.create({ collection: 'tenants', data: { name: 'Workflow CI', slug: 'workflow-ci', domain: 'workflow-ci.test' } })).id
   }, 60_000)
 
   it('creates blueprint version tables in isolated CI', async () => {
@@ -75,7 +77,7 @@ describe('API', () => {
 
   it('atomically claims jobs and fences writes from an expired owner', async () => {
     if (process.env.PAYLOAD_TEST_MODE !== 'isolated') throw new Error('Lease smoke requires isolated CI')
-    const job = await payload.create({ collection: 'workflow-jobs', data: { label: 'Lease CI', jobType: 'custom', status: 'pending' } })
+    const job = await payload.create({ collection: 'workflow-jobs', data: { tenant: workflowTenantId, label: 'Lease CI', jobType: 'custom', status: 'pending' } })
     const claims = await Promise.all([claimWorkflowJob(payload, job.id), claimWorkflowJob(payload, job.id)])
     expect(claims.filter(Boolean)).toHaveLength(1)
     const first = claims.find(claim => claim !== null)!
@@ -109,7 +111,7 @@ describe('API', () => {
 
   it('executes a constrained no-cost tick only once under concurrent requests', async () => {
     if (process.env.PAYLOAD_TEST_MODE !== 'isolated') throw new Error('Tick smoke requires isolated CI')
-    const job = await payload.create({ collection: 'workflow-jobs', data: { label: 'Tick CI', jobType: 'custom', status: 'pending' } })
+    const job = await payload.create({ collection: 'workflow-jobs', data: { tenant: workflowTenantId, label: 'Tick CI', jobType: 'custom', status: 'pending' } })
     const { POST } = await import('@/app/api/pipeline/tick/route')
     const request = () => new Request('https://ci.test/api/pipeline/tick', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-internal-token': process.env.PAYLOAD_SECRET! },
@@ -129,7 +131,7 @@ describe('API', () => {
       "INSERT INTO workflow_jobs (label, job_type, status, error_code, error_message, updated_at) VALUES (?, 'site_content_runner', 'failed', 'RUNNER_FAILURE', 'Permanent invalid input', '2000-01-01T00:00:00.000Z')",
     ).bind('Terminal CI ' + n)))
     const terminalIds = inserted.map(row => row.meta.last_row_id)
-    const pending = await payload.create({ collection: 'workflow-jobs', data: { label: 'Recoverable CI', jobType: 'site_content_runner', status: 'pending' } })
+    const pending = await payload.create({ collection: 'workflow-jobs', data: { tenant: workflowTenantId, label: 'Recoverable CI', jobType: 'site_content_runner', status: 'pending' } })
     const candidates = await payload.find({
       collection: 'workflow-jobs',
       where: { and: [runnerRecoveryWhere(), { id: { in: [...terminalIds, pending.id] } }] },

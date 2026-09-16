@@ -62,7 +62,7 @@ export async function claimWorkflowJob(
     `UPDATE workflow_jobs SET status = 'running', lease_token = ?, lease_expires_at = ?,
       heartbeat_at = ?, started_at = ?, updated_at = ?,
       attempt_count = COALESCE(attempt_count, 0) + 1, error_code = NULL, error_message = ''
-     WHERE id = ? AND ${eligible} ${runnerScope}`,
+     WHERE id = ? AND ${eligible} ${options.runner ? "AND job_type = 'site_content_runner'" : ''} ${runnerScope}`,
     [token, expires, timestamp, timestamp, timestamp, id,
       ...(options.runner ? [timestamp, legacyCutoff, timestamp, legacyCutoff] : [])],
   )
