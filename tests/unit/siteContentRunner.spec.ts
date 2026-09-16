@@ -1,3 +1,4 @@
+import { claimWorkflowJob } from '@/utilities/workflowJobLease'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -14,6 +15,17 @@ vi.mock('@/app/api/pipeline/lib/articlePipelineChain', () => ({
     ok: true,
     messages: [`入队 draft_section × 1 for ${articleId}`],
   })),
+}))
+
+vi.mock('@/utilities/workflowJobLease', () => ({
+  claimWorkflowJob: vi.fn(async (payload: { update: (args: unknown) => Promise<unknown> }, id: string | number) => ({ payload, id })),
+  patchLeasedWorkflowJob: vi.fn(async (lease: { payload: { update: (args: unknown) => Promise<unknown> }; id: string | number }, data: unknown) => {
+    await lease.payload.update({ collection: 'workflow-jobs', id: lease.id, data, overrideAccess: true })
+  }),
+  releaseWorkflowLease: vi.fn(async () => {}),
+  startWorkflowHeartbeat: () => () => {},
+  runnerFailureCode: () => 'RUNNER_FAILURE',
+  WorkflowLeaseLostError: class extends Error {},
 }))
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -227,4 +239,14 @@ describe('siteContentRunner', () => {
       }),
     )
   })
+})
+
+it('does not run catchup or ticks when another invocation owns the runner', async () => {
+  const payload = payloadMockWithPendingSequences([])
+  vi.mocked(claimWorkflowJob).mockResolvedValueOnce(null)
+  const fetchImpl = vi.fn()
+  const result = await runSiteContentRunner({ payload: payload as never, origin: 'https://ci.test', runnerJobId: 99, input: { siteId: 7 }, fetchImpl })
+  expect(result.stoppedReason).toBe('lease_busy')
+  expect(payload.find).not.toHaveBeenCalled()
+  expect(fetchImpl).not.toHaveBeenCalled()
 })

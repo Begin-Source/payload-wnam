@@ -1,3 +1,5 @@
+import { runnerRecoveryWhere } from '@/utilities/workflowRecoveryWhere'
+import { claimWorkflowJob, patchLeasedWorkflowJob, releaseWorkflowLease, recoverExpiredWorkflowJobs } from '@/utilities/workflowJobLease'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
@@ -8,24 +10,17 @@ import {
   getContentWorkflowQueueFromOpenNext,
   type ContentWorkflowQueueMessage,
 } from '@/utilities/contentWorkflowQueue'
-import { SITE_CONTENT_RUNNER_JOB_TYPE, type SiteContentRunnerInput } from '@/utilities/siteContentRunner'
+import { type SiteContentRunnerInput } from '@/utilities/siteContentRunner'
 
 export const dynamic = 'force-dynamic'
 
 const PATH = '/api/pipeline/content-workflow/kick'
-const RUNNER_STALE_MS = 5 * 60 * 1000
 
 function numberFromBody(value: unknown, fallback: number, min: number, max: number): number {
   const n =
     typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN
   if (!Number.isFinite(n)) return fallback
   return Math.min(max, Math.max(min, Math.floor(n)))
-}
-
-function timestampMs(raw: unknown): number | null {
-  if (typeof raw !== 'string' || !raw.trim()) return null
-  const ms = Date.parse(raw)
-  return Number.isFinite(ms) ? ms : null
 }
 
 function relationIdNumber(raw: unknown): number | null {
@@ -48,28 +43,6 @@ function inputFromUnknown(raw: unknown, siteId: number): SiteContentRunnerInput 
   }
 }
 
-function runnerNeedsKick(doc: {
-  status?: string | null
-  errorMessage?: string | null
-  updatedAt?: string | null
-  startedAt?: string | null
-  createdAt?: string | null
-}): boolean {
-  if (doc.status === 'pending') return true
-  if (
-    doc.status === 'failed' &&
-    typeof doc.errorMessage === 'string' &&
-    (doc.errorMessage.includes('error code: 1003') ||
-      doc.errorMessage.includes('tick 返回非 JSON（403）'))
-  ) {
-    return true
-  }
-  if (doc.status !== 'running') return false
-  const last =
-    timestampMs(doc.updatedAt) ?? timestampMs(doc.startedAt) ?? timestampMs(doc.createdAt)
-  return last == null || Date.now() - last > RUNNER_STALE_MS
-}
-
 export async function POST(request: Request): Promise<Response> {
   const auth = requirePipelineJson(request, PATH)
   if (isPipelineUnauthorized(auth)) return auth.response
@@ -82,14 +55,10 @@ export async function POST(request: Request): Promise<Response> {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
   const limit = numberFromBody(body.limit, 25, 1, 100)
   const payload = await getPayload({ config: configPromise })
+  const recoveredJobs = await recoverExpiredWorkflowJobs(payload)
   const jobs = await payload.find({
     collection: 'workflow-jobs',
-    where: {
-      and: [
-        { jobType: { equals: SITE_CONTENT_RUNNER_JOB_TYPE } },
-        { status: { in: ['pending', 'running', 'failed'] } },
-      ],
-    },
+    where: runnerRecoveryWhere(),
     limit,
     sort: 'updatedAt',
     depth: 0,
@@ -112,29 +81,19 @@ export async function POST(request: Request): Promise<Response> {
     createdAt?: string | null
   }>) {
     scanned += 1
-    if (doc.id == null || !runnerNeedsKick(doc)) {
+    if (doc.id == null) {
       skippedActive += 1
       continue
     }
 
     const siteId = relationIdNumber(doc.site) ?? relationIdNumber((doc.input as { siteId?: unknown } | null)?.siteId)
-    if (siteId == null) continue
-
-    if (doc.status === 'running' || doc.status === 'failed') {
-      await payload.update({
-        collection: 'workflow-jobs',
-        id: doc.id,
-        data: {
-          status: 'pending',
-          errorMessage: '',
-          output: {
-            ok: true,
-            recoveredFromStaleRunner: true,
-            recoveredAt: new Date().toISOString(),
-          },
-        },
-        overrideAccess: true,
-      })
+    if (siteId == null || siteId <= 0) {
+      const lease = await claimWorkflowJob(payload, doc.id, { runner: true })
+      if (lease) {
+        try { await patchLeasedWorkflowJob(lease, { status: 'failed', errorCode: 'INVALID_RUNNER_INPUT', errorMessage: 'Runner has no valid site ID', completedAt: new Date().toISOString() }) }
+        finally { await releaseWorkflowLease(lease) }
+      }
+      continue
     }
 
     const message: ContentWorkflowQueueMessage = {
@@ -151,6 +110,7 @@ export async function POST(request: Request): Promise<Response> {
   return Response.json({
     ok: true,
     scanned,
+    recoveredJobs,
     enqueued,
     skippedActive,
     jobIds,

@@ -1,3 +1,4 @@
+import { claimWorkflowJob, patchLeasedWorkflowJob, releaseWorkflowLease, startWorkflowHeartbeat, runnerFailureCode, WorkflowLeaseLostError, type WorkflowLease } from './workflowJobLease'
 import type { Payload } from 'payload'
 
 import { enqueueArticlePipelineCatchup } from '@/app/api/pipeline/lib/articlePipelineChain'
@@ -139,25 +140,7 @@ export async function ensureDraftSectionCatchupForSite(
   return { checked, enqueued, messages }
 }
 
-async function patchRunnerJob(
-  payload: Payload,
-  runnerJobId: string | number | null | undefined,
-  data: Record<string, unknown>,
-): Promise<void> {
-  if (runnerJobId == null) return
-  try {
-    await payload.update({
-      collection: 'workflow-jobs',
-      id: runnerJobId,
-      data,
-      overrideAccess: true,
-    })
-  } catch {
-    /* best-effort progress update */
-  }
-}
-
-export async function runSiteContentRunner(args: {
+type SiteContentRunnerArgs = {
   payload: Payload
   origin: string
   input: SiteContentRunnerInput
@@ -169,10 +152,44 @@ export async function runSiteContentRunner(args: {
    * the queue can re-deliver the next chunk instead of marking it failed.
    */
   partialAsRunning?: boolean
-}): Promise<SiteContentRunnerResult> {
+}
+
+export async function runSiteContentRunner(args: SiteContentRunnerArgs): Promise<SiteContentRunnerResult> {
+  const input = normalizeRunnerInput(args.input)
+  if (!Number.isSafeInteger(input.siteId) || input.siteId <= 0) throw new Error('Invalid runner site ID')
+  let runnerJobId = args.runnerJobId
+  if (runnerJobId == null) {
+    const site = await args.payload.findByID({ collection: 'sites', id: input.siteId, depth: 0, select: { tenant: true } })
+    const runner = await args.payload.create({
+      collection: 'workflow-jobs',
+      data: { label: 'Site content runner', jobType: SITE_CONTENT_RUNNER_JOB_TYPE, status: 'pending', site: input.siteId, tenant: relationIdNumber(site.tenant), input },
+      depth: 0,
+    })
+    runnerJobId = runner.id
+  }
+  const lease = await claimWorkflowJob(args.payload, runnerJobId, { runner: true })
+  if (!lease) return { ok: true, siteId: input.siteId, batches: 0, totalTicks: 0, stoppedReason: 'lease_busy', pendingRemaining: 0 }
+  const stopHeartbeat = startWorkflowHeartbeat(lease)
+  try {
+    return await runOwnedSiteContentRunner({ ...args, runnerJobId }, lease)
+  } catch (error) {
+    if (!(error instanceof WorkflowLeaseLostError)) {
+      const message = error instanceof Error ? error.message : String(error)
+      await patchLeasedWorkflowJob(lease, { status: 'failed', completedAt: new Date().toISOString(), errorMessage: message, errorCode: runnerFailureCode(message) })
+    }
+    throw error
+  } finally {
+    stopHeartbeat()
+    await releaseWorkflowLease(lease).catch(() => {
+      args.payload.logger.warn('[site-runner] Lease release failed; expiry recovery will retry')
+    })
+  }
+}
+
+async function runOwnedSiteContentRunner(args: SiteContentRunnerArgs, lease: WorkflowLease): Promise<SiteContentRunnerResult> {
   const input = normalizeRunnerInput(args.input)
 
-  await patchRunnerJob(args.payload, args.runnerJobId, {
+  await patchLeasedWorkflowJob(lease, {
     status: 'running',
     startedAt: new Date().toISOString(),
     errorMessage: '',
@@ -222,7 +239,7 @@ export async function runSiteContentRunner(args: {
     const pendingAfter = await listPendingWorkflowJobIdsForSite(args.payload, input.siteId)
     pendingRemaining = pendingAfter.length
 
-    await patchRunnerJob(args.payload, args.runnerJobId, {
+    await patchLeasedWorkflowJob(lease, {
       output: {
         ok: out.ok,
         state: 'running',
@@ -289,11 +306,12 @@ export async function runSiteContentRunner(args: {
     ...(failureSummary ? { failureSummary } : {}),
   }
 
-  await patchRunnerJob(args.payload, args.runnerJobId, {
+  await patchLeasedWorkflowJob(lease, {
     status: canContinuePartial ? 'running' : ok ? 'completed' : 'failed',
     completedAt: canContinuePartial ? null : new Date().toISOString(),
     output: result,
     errorMessage: ok ? '' : failureSummary || stoppedReason,
+    errorCode: ok ? null : runnerFailureCode(failureSummary || stoppedReason),
   })
 
   return result

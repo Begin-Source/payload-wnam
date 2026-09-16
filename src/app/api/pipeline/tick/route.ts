@@ -1,3 +1,4 @@
+import { claimWorkflowJob, patchLeasedWorkflowJob, releaseWorkflowLease, startWorkflowHeartbeat, WorkflowLeaseLostError, type WorkflowLease } from '@/utilities/workflowJobLease'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
@@ -114,33 +115,43 @@ export async function POST(request: Request): Promise<Response> {
   const jobs = await payload.find({
     collection: 'workflow-jobs',
     where: buildPendingConstrainedWhere(constrainedIds),
-    limit: 1,
+    limit: 10,
     sort: 'createdAt',
     depth: 1,
   })
-  const doc = jobs.docs[0] as WorkflowJobDoc | undefined
-  if (!doc) {
+  let selectedDoc: WorkflowJobDoc | undefined
+  let selectedLease: WorkflowLease | null = null
+  for (const candidate of jobs.docs as WorkflowJobDoc[]) {
+    // The site runner owns its own lease across queue and HTTP entry points.
+    if (candidate.jobType === 'site_content_runner') {
+      const inner = await dispatchWorkflowJob(request, candidate, payload)
+      const { success, body: output, httpStatus } = await interpretJobResponse(inner)
+      if (output && typeof output === 'object' && 'stoppedReason' in output && output.stoppedReason === 'lease_busy') continue
+      if (!success) {
+        const invalidLease = await claimWorkflowJob(payload, candidate.id)
+        if (invalidLease) {
+          try {
+            await patchLeasedWorkflowJob(invalidLease, { status: 'failed', errorCode: 'RUNNER_FAILURE', errorMessage: 'Runner request failed', output, completedAt: new Date().toISOString() })
+          } finally { await releaseWorkflowLease(invalidLease) }
+        }
+      }
+      return Response.json({ ok: true, executed: true, jobId: candidate.id, jobType: candidate.jobType, result: success ? 'completed' : 'failed', httpStatus, output })
+    }
+    selectedLease = await claimWorkflowJob(payload, candidate.id)
+    if (selectedLease) { selectedDoc = candidate; break }
+  }
+  const doc = selectedDoc
+  const lease = selectedLease
+  if (!doc || !lease) {
     return Response.json({
-      ok: true,
-      executed: false,
-      pending: 0,
-      message: 'No pending jobs',
-      cronDispatch: '/api/pipeline/cron-dispatch',
+      ok: true, executed: false, pending: jobs.docs.length,
+      message: jobs.docs.length ? 'Pending jobs are already claimed' : 'No pending jobs',
       ...(normalized.truncated ? { constrainedJobIdsTruncated: true } : {}),
-      ...(collectHints ? { bannerHints: ['tick: no pending job in constraint set'] } : {}),
+      ...(collectHints ? { bannerHints: ['tick: no claimable pending job in constraint set'] } : {}),
     })
   }
-
   const jobId = doc.id
-  await payload.update({
-    collection: 'workflow-jobs',
-    id: jobId,
-    data: {
-      status: 'running',
-      startedAt: new Date().toISOString(),
-      errorMessage: '',
-    },
-  })
+  const stopHeartbeat = startWorkflowHeartbeat(lease)
 
   const pipelineBannerHints: string[] = []
   const hint = (line: string) => {
@@ -157,16 +168,12 @@ export async function POST(request: Request): Promise<Response> {
           skipped: true,
           reason: 'together_image_disabled',
         }
-        await payload.update({
-          collection: 'workflow-jobs',
-          id: jobId,
-          data: {
+        await patchLeasedWorkflowJob(lease, {
             status: 'completed',
             completedAt: new Date().toISOString(),
             output: skippedOutput,
             errorMessage: '',
-          },
-        })
+          })
         try {
           await enqueueHandoffFollowUp(payload, {
             completedJob: {
@@ -246,16 +253,12 @@ export async function POST(request: Request): Promise<Response> {
           ? (output as Record<string, unknown>)
           : { result: output }
 
-      await payload.update({
-        collection: 'workflow-jobs',
-        id: jobId,
-        data: {
+      await patchLeasedWorkflowJob(lease, {
           status: 'failed',
           completedAt: new Date().toISOString(),
           output: outputDoc,
           errorMessage: errMsg,
-        },
-      })
+        })
       const errShort = errMsg.replace(/\s+/g, ' ').trim().slice(0, 72)
       hint(
         `tick jobType=${doc.jobType ?? '?'} result=failed jobId=${String(jobId)} http=${httpStatus}${errShort ? ` err=${errShort}` : ''}`,
@@ -280,10 +283,7 @@ export async function POST(request: Request): Promise<Response> {
     const handoffOut =
       outputDoc && typeof outputDoc === 'object' && 'handoff' in outputDoc ? outputDoc.handoff : undefined
 
-    await payload.update({
-      collection: 'workflow-jobs',
-      id: jobId,
-      data: {
+    await patchLeasedWorkflowJob(lease, {
         status: 'completed',
         completedAt: new Date().toISOString(),
         output: outputDoc,
@@ -291,8 +291,7 @@ export async function POST(request: Request): Promise<Response> {
         ...(handoffOut !== undefined && handoffOut !== null
           ? { handoff: handoffOut as Record<string, unknown> }
           : {}),
-      },
-    })
+      })
     try {
       await enqueueHandoffFollowUp(payload, {
         completedJob: {
@@ -489,16 +488,13 @@ export async function POST(request: Request): Promise<Response> {
       ...(collectHints && pipelineBannerHints.length > 0 ? { bannerHints: pipelineBannerHints } : {}),
     })
   } catch (e) {
+    if (e instanceof WorkflowLeaseLostError) return Response.json({ ok: false, error: 'Workflow lease lost', code: 'LEASE_LOST' }, { status: 409 })
     const msg = e instanceof Error ? e.message : String(e)
-    await payload.update({
-      collection: 'workflow-jobs',
-      id: jobId,
-      data: {
+    await patchLeasedWorkflowJob(lease, {
         status: 'failed',
         completedAt: new Date().toISOString(),
         errorMessage: msg,
-      },
-    })
+      })
     const errHints = collectHints ? [`tick exception jobId=${String(jobId)}: ${msg.slice(0, 160)}`] : []
     return Response.json({
       ok: true,
@@ -508,6 +504,11 @@ export async function POST(request: Request): Promise<Response> {
       result: 'failed',
       error: msg,
       ...(errHints.length > 0 ? { bannerHints: errHints } : {}),
+    })
+  } finally {
+    stopHeartbeat()
+    await releaseWorkflowLease(lease).catch(() => {
+      payload.logger.warn('[pipeline/tick] Lease release failed; expiry recovery will retry')
     })
   }
 }

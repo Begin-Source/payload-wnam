@@ -1,3 +1,4 @@
+import * as migration_20260916_130000_workflow_leases from './20260916_130000_workflow_leases'
 import * as migration_20260916_120000_blueprint_version_history from './20260916_120000_blueprint_version_history'
 import * as migration_20250929_111647 from './20250929_111647'
 import * as migration_20260420_084024_mcp_plugin from './20260420_084024_mcp_plugin'
@@ -629,5 +630,10 @@ export const migrations = [
     up: migration_20260916_120000_blueprint_version_history.up,
     down: migration_20260916_120000_blueprint_version_history.down,
     name: '20260916_120000_blueprint_version_history',
+  },
+  {
+    up: migration_20260916_130000_workflow_leases.up,
+    down: migration_20260916_130000_workflow_leases.down,
+    name: '20260916_130000_workflow_leases',
   },
 ]

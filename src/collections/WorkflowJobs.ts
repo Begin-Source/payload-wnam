@@ -1,3 +1,4 @@
+import { guardWorkflowLease } from '@/collections/hooks/guardWorkflowLease'
 import type { CollectionConfig } from 'payload'
 
 import {
@@ -25,12 +26,18 @@ export const WorkflowJobs: CollectionConfig = {
   access: siteScopedCollectionAccess('workflow-jobs'),
   hooks: {
     beforeChange: [
+      guardWorkflowLease,
       validateSiteFieldWithinVisibilityScope,
       applyWorkflowMatrixTemplate,
       guardWorkflowJobPipelineSpend,
     ],
   },
   fields: [
+    { name: 'leaseToken', access: { create: () => false, update: () => false }, type: 'text', hidden: true, admin: { readOnly: true } },
+    { name: 'leaseExpiresAt', access: { create: () => false, update: () => false }, type: 'date', admin: { readOnly: true } },
+    { name: 'heartbeatAt', access: { create: () => false, update: () => false }, type: 'date', admin: { readOnly: true } },
+    { name: 'attemptCount', access: { create: () => false, update: () => false }, type: 'number', defaultValue: 0, admin: { readOnly: true } },
+    { name: 'errorCode', type: 'text', admin: { readOnly: true } },
     {
       name: 'label',
       type: 'text',

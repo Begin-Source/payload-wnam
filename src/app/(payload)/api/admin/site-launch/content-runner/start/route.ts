@@ -1,3 +1,4 @@
+import { recoverUnleasedWorkflowJob } from '@/utilities/workflowJobLease'
 import configPromise from '@payload-config'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getPayload } from 'payload'
@@ -288,10 +289,7 @@ async function reviveStaleRunningSiteJobs(args: {
         })
         const brief = existingBrief.docs[0] as { id?: string | number } | undefined
         if (brief?.id != null) {
-          await args.payload.update({
-            collection: 'workflow-jobs',
-            id: doc.id,
-            data: {
+          if (!(await recoverUnleasedWorkflowJob(args.payload, doc.id, {
               status: 'completed',
               completedAt: new Date().toISOString(),
               errorMessage: '',
@@ -301,9 +299,7 @@ async function reviveStaleRunningSiteJobs(args: {
                 recoveredFromStaleRunning: true,
                 recoveredAt: new Date().toISOString(),
               },
-            },
-            overrideAccess: true,
-          })
+            }, args.force))) continue
           if (
             args.enqueueRecoveredBriefSkeletons ||
             (jobInput.chainAfterBrief !== false && jobInput.outlineOnly !== true)
@@ -320,10 +316,7 @@ async function reviveStaleRunningSiteJobs(args: {
       }
     }
 
-    await args.payload.update({
-      collection: 'workflow-jobs',
-      id: doc.id,
-      data: {
+    if (!(await recoverUnleasedWorkflowJob(args.payload, doc.id, {
         status: 'pending',
         errorMessage: '',
         output: {
@@ -331,9 +324,7 @@ async function reviveStaleRunningSiteJobs(args: {
           recoveredFromStaleRunning: true,
           recoveredAt: new Date().toISOString(),
         },
-      },
-      overrideAccess: true,
-    })
+      }, args.force))) continue
     revived += 1
   }
   return revived

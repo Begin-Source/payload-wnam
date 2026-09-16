@@ -1801,6 +1801,11 @@ export interface Ranking {
  * via the `definition` "workflow-jobs".
  */
 export interface WorkflowJob {
+  leaseToken?: string | null;
+  leaseExpiresAt?: string | null;
+  heartbeatAt?: string | null;
+  attemptCount?: number | null;
+  errorCode?: string | null;
   id: number;
   tenant?: (number | null) | Tenant;
   label: string;
@@ -4038,6 +4043,11 @@ export interface RankingsSelect<T extends boolean = true> {
  * via the `definition` "workflow-jobs_select".
  */
 export interface WorkflowJobsSelect<T extends boolean = true> {
+  leaseToken?: T;
+  leaseExpiresAt?: T;
+  heartbeatAt?: T;
+  attemptCount?: T;
+  errorCode?: T;
   tenant?: T;
   label?: T;
   matrixTemplate?: T;
