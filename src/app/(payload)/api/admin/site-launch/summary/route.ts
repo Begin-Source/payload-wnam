@@ -1,3 +1,4 @@
+import type { Where } from 'payload'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
@@ -31,7 +32,7 @@ function siteAccessible(scope: TenantScope, siteTenantId: number | null): boolea
 async function count(
   payload: Awaited<ReturnType<typeof getPayload>>,
   collection: 'articles' | 'content-briefs' | 'keywords' | 'workflow-jobs',
-  where: Record<string, unknown>,
+  where: Where,
 ): Promise<number> {
   const r = await payload.count({ collection, where, overrideAccess: true })
   return r.totalDocs

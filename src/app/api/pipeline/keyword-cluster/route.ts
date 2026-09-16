@@ -64,5 +64,5 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ ok: false, error: out.error }, { status: 400 })
   }
 
-  return Response.json({ ok: true, ...out })
+  return Response.json(out)
 }

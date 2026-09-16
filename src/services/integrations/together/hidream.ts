@@ -185,7 +185,7 @@ export async function togetherImageGenerateBytes(
     if (!buffer.length) {
       throw new Error('Together: empty b64 decode')
     }
-    const mimeRaw = typeof first.mime_type === 'string' ? first.mime_type.trim() : ''
+    const mimeRaw = typeof first?.mime_type === 'string' ? first.mime_type.trim() : ''
     const mimeType = mimeRaw || 'image/jpeg'
     return { buffer: new Uint8Array(buffer), mimeType, raw: data }
   }

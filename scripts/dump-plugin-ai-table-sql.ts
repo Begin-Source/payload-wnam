@@ -31,7 +31,7 @@ async function main(): Promise<void> {
       }
     }
   }
-  await payload.db.destroy()
+  await payload.db.destroy?.()
 }
 
 void main().catch((e) => {

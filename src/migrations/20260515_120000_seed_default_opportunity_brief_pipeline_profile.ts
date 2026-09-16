@@ -1,3 +1,4 @@
+import type { PipelineProfileFields } from '@/utilities/seoTheoryPipelineProfilePresets'
 import { MigrateDownArgs, MigrateUpArgs, sql } from '@payloadcms/db-d1-sqlite'
 
 import {
@@ -15,7 +16,7 @@ function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
 }
 
-export function getDefaultOpportunityBriefPipelineProfileFields(isDefault: boolean): Record<string, unknown> {
+export function getDefaultOpportunityBriefPipelineProfileFields(isDefault: boolean): PipelineProfileFields {
   return {
     name: 'SEO 方案 · 标准 Brief（推荐关键词：默认机会分）',
     slug: SEO_PIPELINE_DEFAULT_OPPORTUNITY_BRIEF_SLUG,
@@ -166,7 +167,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
         req,
       })
 
-      for (const tpl of templates.docs as Array<{ key?: string; body?: string }>) {
+      for (const tpl of templates.docs) {
         if (!tpl.key || !tpl.body) continue
         await payload.create({
           collection: 'tenant-prompt-templates',

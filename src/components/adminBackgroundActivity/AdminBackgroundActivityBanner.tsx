@@ -538,7 +538,7 @@ export function AdminBackgroundActivityBanner(): React.ReactElement | null {
         fontSize: '12px',
       }}
       type="button"
-      onClick={() => router.push(collectionHref(targetCollection, siteId))}
+      onClick={() => router.push(collectionHref(targetCollection ?? 'articles', siteId))}
     >
       打开相关表格
     </button>

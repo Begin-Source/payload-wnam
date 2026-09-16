@@ -28,7 +28,7 @@ type Props = {
   variant?: 'default' | 'related'
 }
 
-const readMoreLabel: Record<AppLocale, string> = {
+const readMoreLabel: Record<'en' | 'zh', string> = {
   en: 'Read more',
   zh: '阅读全文',
 }
@@ -74,7 +74,7 @@ export function PostCard(props: Props) {
         {date ? <div className="blogCardMeta">{date}</div> : null}
         {article.excerpt ? <p className="blogCardExcerpt blogCardExcerptClamp">{article.excerpt}</p> : null}
         <Link className="blogBtn" href={href}>
-          {readMoreLabel[locale]}
+          {readMoreLabel[locale === 'zh' ? 'zh' : 'en']}
         </Link>
       </div>
     </article>

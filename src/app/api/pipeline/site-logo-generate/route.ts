@@ -232,7 +232,7 @@ export async function POST(request: Request): Promise<Response> {
           assetClass: 'decorative',
         },
         file: {
-          data: buffer,
+          data: Buffer.from(buffer),
           mimetype: mimeType,
           name,
           size: buffer.byteLength,
@@ -275,7 +275,7 @@ export async function POST(request: Request): Promise<Response> {
         aiImagePromptSource: 'site_logo_auto',
       },
       file: {
-        data: buffer,
+        data: Buffer.from(buffer),
         mimetype: mimeType,
         name,
         size: buffer.byteLength,

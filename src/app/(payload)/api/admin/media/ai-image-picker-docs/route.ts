@@ -119,7 +119,7 @@ export async function GET(request: Request): Promise<Response> {
       id: doc.id as number,
       kind: collection,
       title: typeof (doc as { title?: string }).title === 'string' ? (doc as { title: string }).title : '',
-      featuredImageId: featuredImageIdFromDoc(doc as { featuredImage?: unknown }),
+      featuredImageId: featuredImageIdFromDoc(doc),
     }))
   }
 

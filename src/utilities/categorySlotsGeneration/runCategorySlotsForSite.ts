@@ -1,3 +1,4 @@
+import { isAppLocale, type AppLocale } from '@/i18n/config'
 import type { Payload } from 'payload'
 
 import { openrouterChatWithMeta } from '@/services/integrations/openrouter/chat'
@@ -16,10 +17,10 @@ import {
   syncCategorySlotsWorkflowToCategories,
 } from './syncCategorySlotsWorkflow'
 
-function resolveSlotLocale(site: Site, explicit?: string | null): string {
+function resolveSlotLocale(site: Site, explicit?: string | null): AppLocale {
   const { defaultPublicLocale } = normalizeSitePublicLocales(site)
   const t = typeof explicit === 'string' ? explicit.trim() : ''
-  return t || defaultPublicLocale
+  return isAppLocale(t) ? t : defaultPublicLocale
 }
 
 const JOB_TYPE = 'category_slots'
@@ -51,7 +52,7 @@ async function markCategorySlotsWorkflowErrorForSite(
 async function uniqueSlugForSiteLocale(
   payload: Payload,
   siteId: number,
-  locale: string,
+  locale: AppLocale,
   baseSlug: string,
   excludeCategoryId?: number,
 ): Promise<string> {
@@ -85,7 +86,7 @@ async function upsertSlotCategories(
   siteId: number,
   categoryNames: string[],
   siteTenantId: number,
-  locale: string,
+  locale: AppLocale,
 ): Promise<void> {
   for (let i = 1; i <= 5; i += 1) {
     const name =
@@ -170,7 +171,7 @@ export type CategorySlotsSyncRowResult = {
 async function fetchCategorySlotsSyncRowResults(
   payload: Payload,
   siteId: number,
-  locale: string,
+  locale: AppLocale,
 ): Promise<CategorySlotsSyncRowResult[]> {
   const rows: CategorySlotsSyncRowResult[] = []
   for (let slotIndex = 1; slotIndex <= 5; slotIndex += 1) {
@@ -243,7 +244,7 @@ function resolveMainProduct(site: Site, override?: string | null): string | null
 }
 
 async function loadContext(args: RunCategorySlotsArgs): Promise<
-  | RunCategorySlotsResult
+  | Extract<RunCategorySlotsResult, { ok: false }>
   | {
       ok: true
       site: Site

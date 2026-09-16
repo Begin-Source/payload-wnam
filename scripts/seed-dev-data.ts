@@ -5,11 +5,11 @@
  */
 import 'dotenv/config'
 
-import type { Payload } from 'payload'
+import type { Payload, Where } from 'payload'
 import type { PayloadRequest } from 'payload'
 import { getPayload } from 'payload'
 import type { SQLiteAdapter } from '@payloadcms/db-d1-sqlite'
-import type { User } from '../src/payload-types.js'
+import type { User, Page } from '../src/payload-types.js'
 import config from '../src/payload.config.js'
 
 const PASSWORD = 'SeedTest123!'
@@ -509,7 +509,7 @@ function textPara(line: string): {
   }
 }
 
-function minimalLexicalBody(lines: string | string[]): { root: Record<string, unknown> } {
+function minimalLexicalBody(lines: string | string[]): NonNullable<Page['body']> {
   const inputLines = Array.isArray(lines) ? lines : [lines]
   return {
     root: {
@@ -531,15 +531,15 @@ function superReq(user: SeedUserDoc): { req: Partial<PayloadRequest> } {
   }
 }
 
-function whereTenantSlug(slug: string) {
+function whereTenantSlug(slug: string): Where {
   return { slug: { equals: slug } }
 }
 
-function whereTenantAndSlug(tenantId: number, slug: string) {
+function whereTenantAndSlug(tenantId: number, slug: string): Where {
   return { and: [{ slug: { equals: slug } }, { tenant: { equals: tenantId } }] }
 }
 
-function whereTenantSlugLocale(tenantId: number, slug: string, locale: string) {
+function whereTenantSlugLocale(tenantId: number, slug: string, locale: string): Where {
   return {
     and: [
       { slug: { equals: slug } },
@@ -549,7 +549,7 @@ function whereTenantSlugLocale(tenantId: number, slug: string, locale: string) {
   }
 }
 
-function whereTenantSiteSlugLocale(tenantId: number, siteId: number, slug: string, locale: string) {
+function whereTenantSiteSlugLocale(tenantId: number, siteId: number, slug: string, locale: string): Where {
   return {
     and: [
       { slug: { equals: slug } },
@@ -1119,7 +1119,7 @@ async function main(): Promise<void> {
 
     async function ensureSite(spec: SiteSpec) {
       /** D1: `sites` is wide — avoid unbounded selects. */
-      const siteSelect = { id: true, blueprint: true } as const
+      const siteSelect = { slug: true } as const
       const found = await payload.find({
         collection: 'sites',
         where: whereTenantAndSlug(tenantId, spec.slug),
@@ -1148,6 +1148,8 @@ async function main(): Promise<void> {
         ...d0,
         data: {
           name: spec.name,
+          publicLocaleCodes: ['zh', 'en'],
+          defaultPublicLocale: 'zh',
           slug: spec.slug,
           primaryDomain: spec.primaryDomain,
           status: 'active',

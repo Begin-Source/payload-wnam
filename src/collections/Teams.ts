@@ -98,7 +98,6 @@ export const Teams: CollectionConfig = {
       type: 'ui',
       label: '团队绩效',
       admin: {
-        description: '按本记录的组长与成员口径统计关联站点与文章（不写入数据库）。',
         components: {
           Field: './components/TeamStatsField#TeamStatsField',
         },

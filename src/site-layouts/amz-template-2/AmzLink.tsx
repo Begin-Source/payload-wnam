@@ -1,12 +1,12 @@
 'use client'
 
-import NextLink, { type LinkProps } from 'next/link'
+import NextLink from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import React, { forwardRef } from 'react'
 
 import { appendAmzSite } from './appendAmzSite'
 
-export type AmzLinkProps = Omit<LinkProps, 'href'> & {
+export type AmzLinkProps = Omit<React.ComponentProps<typeof NextLink>, 'href'> & {
   href: string
   className?: string
 }

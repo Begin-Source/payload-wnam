@@ -173,7 +173,7 @@ export async function POST(request: Request): Promise<Response> {
     const aid = typeof body.articleId === 'number' ? body.articleId : Number(body.articleId)
     if (Number.isFinite(aid)) {
       const cfg = await resolvePipelineConfigForArticle(payload, aid, explicitPipelineProfileId)
-      if (!('ok' in cfg && cfg.ok === false)) {
+      if ('merged' in cfg) {
         merged = cfg.merged
         pipelineProfileIdForPrompts = cfg.profileId
       }

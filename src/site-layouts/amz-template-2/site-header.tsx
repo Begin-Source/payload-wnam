@@ -59,7 +59,7 @@ export function AmzSiteHeader({
     const logoType = logo.type as 'lucide' | 'svg' | 'image'
 
     if (logoType === 'lucide' && logo.icon) {
-      const IconComponent = (LucideIcons as Record<string, React.ComponentType<{ className?: string }>>)[
+      const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[
         logo.icon
       ]
       if (IconComponent) {

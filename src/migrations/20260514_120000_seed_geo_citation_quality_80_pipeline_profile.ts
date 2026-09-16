@@ -1,3 +1,4 @@
+import type { PipelineProfileFields } from '@/utilities/seoTheoryPipelineProfilePresets'
 import { MigrateDownArgs, MigrateUpArgs, sql } from '@payloadcms/db-d1-sqlite'
 
 import {
@@ -43,7 +44,7 @@ function geoCitationLlmBySection(): typeof pipelineSettingsDefaultLlmBySection {
   })
 }
 
-export function getGeoCitationQuality80PipelineProfileFields(isDefault: boolean): Record<string, unknown> {
+export function getGeoCitationQuality80PipelineProfileFields(isDefault: boolean): PipelineProfileFields {
   return {
     name: 'SEO 方案 · GEO 引用 80+（推荐关键词：GEO 引用选词）',
     slug: SEO_PIPELINE_GEO_CITATION_QUALITY_80_SLUG,

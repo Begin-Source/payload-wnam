@@ -1,3 +1,4 @@
+import type { Where } from 'payload'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
@@ -50,7 +51,7 @@ export async function GET(request: Request): Promise<Response> {
     siteIds = sites.docs.map((d) => (d as { id: string | number }).id)
   }
 
-  const kwWhere =
+  const kwWhere: Where =
     scope.mode === 'tenants' && siteIds.length === 0
       ? { id: { equals: 0 } }
       : scope.mode === 'tenants' && siteIds.length

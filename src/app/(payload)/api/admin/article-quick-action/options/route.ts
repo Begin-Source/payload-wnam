@@ -1,3 +1,4 @@
+import type { Where } from 'payload'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
@@ -132,7 +133,7 @@ export async function GET(request: Request): Promise<Response> {
       return {
         id: doc.id,
         name: doc.name,
-        slug: doc.slug,
+        slug: doc.slug ?? '',
         locale: (doc as { locale?: string | null }).locale ?? null,
         description: doc.description ?? null,
         slotIndex: row.slotIndex ?? null,
@@ -144,7 +145,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const q = (url.searchParams.get('q') ?? '').trim()
-  const searchWhere =
+  const searchWhere: Where | undefined =
     q.length > 0
       ? {
           or: [
@@ -173,8 +174,8 @@ export async function GET(request: Request): Promise<Response> {
     return {
       id: doc.id,
       name: doc.name,
-      slug: doc.slug,
-      primaryDomain: doc.primaryDomain,
+      slug: doc.slug ?? '',
+      primaryDomain: doc.primaryDomain ?? '',
       mainProduct: row.mainProduct ?? null,
       siteLayout: row.siteLayout ?? null,
       tenantId: tenantIdFromRelation(doc.tenant),

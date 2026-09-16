@@ -170,7 +170,7 @@ export async function POST(request: Request): Promise<Response> {
         assetClass: 'decorative',
       },
       file: {
-        data: buf,
+        data: Buffer.from(buf),
         mimetype: mime,
         name,
         size: buf.byteLength,

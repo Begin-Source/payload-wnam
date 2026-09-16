@@ -17,7 +17,7 @@ import { userHasTenantGeneralManagerRole } from '@/utilities/userRoles'
 const inheritLabel = '(继承全局默认)'
 const withInherit = <T extends string>(opts: readonly { label: string; value: T }[]) => [
   { label: inheritLabel, value: '' },
-  ...(opts as { label: string; value: string }[]),
+  ...opts,
 ]
 
 const profileOverrideFieldsDescription =

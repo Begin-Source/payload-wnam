@@ -201,7 +201,7 @@ export async function POST(request: Request): Promise<Response> {
           depth: 0,
           user: userArg,
           overrideAccess: false,
-        })) as typeof brief
+        }))
       } catch {
         brief = null
       }

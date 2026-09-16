@@ -35,7 +35,7 @@ export async function POST(request: Request): Promise<Response> {
   let article: Record<string, unknown> | null = null
   if (!baseTitle) {
     try {
-      article = (await payload.findByID({ collection: 'articles', id: String(id), depth: 1 })) as Record<
+      article = (await payload.findByID({ collection: 'articles', id: String(id), depth: 1 })) as unknown as Record<
         string,
         unknown
       >

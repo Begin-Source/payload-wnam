@@ -532,7 +532,7 @@ function parseTableBlock(
  * nested lists, tables, fenced code blocks, horizontal rules,
  * bold/italic/strikethrough/code text spans, inline links, and line breaks.
  */
-export function markdownToPageBodyLexical(md: string): Page['body'] {
+export function markdownToPageBodyLexical(md: string): NonNullable<Page['body']> {
   const lines = String(md || '')
     .replace(/\r\n/g, '\n')
     .split('\n')

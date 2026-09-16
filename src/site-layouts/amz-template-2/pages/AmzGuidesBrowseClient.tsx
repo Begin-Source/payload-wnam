@@ -65,7 +65,7 @@ function matchesSearch(article: Article, q: string): boolean {
   if (!n) return true
   const title = (article.title ?? '').toLowerCase()
   const excerpt = (article.excerpt ?? '').toLowerCase()
-  const by = authorSearchText(article).toLowerCase()
+  const by = authorSearchText(article.author).toLowerCase()
   return title.includes(n) || excerpt.includes(n) || by.includes(n)
 }
 

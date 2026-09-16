@@ -11,7 +11,7 @@ import type { Article, Category, Media } from '@/payload-types'
 function thumbUrl(article: Article): string | null {
   const img = article.featuredImage
   if (img != null && typeof img === 'object' && 'url' in img && typeof (img as Media).url === 'string') {
-    return (img as Media).url
+    return img.url ?? null
   }
   return null
 }
@@ -27,7 +27,7 @@ export function ArticleReviewSidebar({
   currentArticleId: number
   sidebarArticles: Article[]
 }) {
-  const related = sidebarArticles.filter((a) => a.id !== currentArticleId).slice(0, 4)
+  const related = sidebarArticles.filter((a) => a.id !== currentArticleId && a.slug).slice(0, 4)
 
   return (
     <div className="space-y-6 lg:sticky lg:top-24">
@@ -43,7 +43,7 @@ export function ArticleReviewSidebar({
             <div className="space-y-4">
               {related.map((article) => {
                 const img = thumbUrl(article)
-                const href = `/${locale}/posts/${encodeURIComponent(article.slug)}`
+                const href = `/${locale}/posts/${encodeURIComponent(article.slug ?? '')}`
                 return (
                   <div
                     key={article.id}

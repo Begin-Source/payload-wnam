@@ -40,7 +40,7 @@ function effectiveTenantId(args: {
   return null
 }
 
-async function findAllPages<T extends { id?: unknown }>(
+async function findAllPages<T extends object>(
   payload: Payload,
   opts: {
     collection: 'sites' | 'click-events' | 'commissions'
@@ -65,7 +65,7 @@ async function findAllPages<T extends { id?: unknown }>(
       limit: pageSize,
       page,
     })
-    out.push(...(res.docs as T[]))
+    out.push(...(res.docs as unknown as T[]))
     if (res.docs.length < pageSize) break
     page += 1
     if (page > 200) break

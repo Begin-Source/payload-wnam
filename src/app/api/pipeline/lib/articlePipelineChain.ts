@@ -475,7 +475,7 @@ export async function enqueueAvailableDraftSectionJobs(
   let wfTags: Record<string, string> = {}
   if ('ok' in cfgResult && cfgResult.ok === false) {
     const g = await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })
-    merged = normalizeGlobalPipelineDoc(g as Record<string, unknown>)
+    merged = normalizeGlobalPipelineDoc(g as unknown as Record<string, unknown>)
   } else {
     const cfg = cfgResult as ResolvedPipelineConfig
     merged = cfg.merged
@@ -805,7 +805,7 @@ export async function resolveTogetherImageEnabledForArticleJob(
   const cfg = await resolvePipelineConfigForArticle(payload, articleNum, ppExplicit)
   if ('ok' in cfg && cfg.ok === false) {
     const g = await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })
-    return normalizeGlobalPipelineDoc(g as Record<string, unknown>).togetherImageEnabled
+    return normalizeGlobalPipelineDoc(g as unknown as Record<string, unknown>).togetherImageEnabled
   }
   return (cfg as ResolvedPipelineConfig).merged.togetherImageEnabled
 }

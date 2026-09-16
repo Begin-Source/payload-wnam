@@ -79,7 +79,7 @@ export async function GET(request: Request): Promise<Response> {
       collection: 'keyword-batch-presets',
       id: pid,
       depth: 0,
-    })) as Record<string, unknown> | null
+    })) as unknown as Record<string, unknown> | null
   }
 
   if (!presetDoc || typeof presetDoc !== 'object') {

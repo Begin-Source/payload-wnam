@@ -122,7 +122,7 @@ export async function writeSectionIntoArticleBody(
   const md = typeof sectionMarkdown === 'string' ? sectionMarkdown.trim() : ''
   const fragmentDoc = markdownToPageBodyLexical(md.length ? md : ' ')
   const newNodes =
-    fragmentDoc.root &&
+    fragmentDoc?.root &&
       typeof fragmentDoc.root === 'object' &&
       'children' in fragmentDoc.root &&
       Array.isArray((fragmentDoc.root as { children?: unknown }).children)

@@ -1,7 +1,7 @@
 import type { AppLocale } from '@/i18n/config'
 import type { PublicSiteTheme } from '@/utilities/publicLandingTheme'
 import type { Category, Site } from '@/payload-types'
-import type { ReactNode } from 'react'
+import type { ReactNode, JSX } from 'react'
 
 /** Props passed from `[locale]/(frontend)/layout.tsx` into each layout’s `Shell`. */
 export type SiteLayoutShellProps = {

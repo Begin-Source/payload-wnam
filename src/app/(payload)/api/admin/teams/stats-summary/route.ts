@@ -61,7 +61,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const rows: TeamStatsSummaryRow[] = []
   for (const doc of findResult.docs) {
-    const record = doc as Record<string, unknown>
+    const record = doc as unknown as Record<string, unknown>
     const id = typeof record.id === 'number' ? record.id : Number(record.id)
     if (!Number.isFinite(id)) continue
     const name = typeof record.name === 'string' ? record.name : ''

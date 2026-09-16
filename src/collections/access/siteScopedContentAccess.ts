@@ -15,7 +15,7 @@ export function siteScopedCollectionAccess(
   collectionSlug: string,
   variant: SiteScopedContentVariant = 'single-site',
 ): CollectionConfig['access'] {
-  const scopedWhere: Access = tenantWideContentPasses(async ({ req }) => {
+  const scopedWhere: Access = tenantWideContentPasses(async ({ req }): Promise<boolean | Where> => {
     const ids = await resolveVisibleSiteIds(req.payload, req)
     if (ids === false) return false
     if (ids === true) return Boolean(req.user)

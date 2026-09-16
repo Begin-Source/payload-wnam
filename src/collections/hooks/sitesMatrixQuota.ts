@@ -48,7 +48,7 @@ export const enforceSitesMatrixQuota: CollectionBeforeChangeHook = async ({
     overrideAccess: true,
   })
 
-  if (count >= maxSitesPerTenant) {
+  if (count.totalDocs >= maxSitesPerTenant) {
     throw new Error(
       `已達租戶站點上限（${maxSitesPerTenant}）。請在「系統 → 配額規則」調整 maxSitesPerTenant 或聯繫管理員。`,
     )

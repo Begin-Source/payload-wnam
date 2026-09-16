@@ -90,12 +90,9 @@ export const Categories: CollectionConfig = {
       ...siteScopedSiteField,
       admin: {
         ...(siteScopedSiteField.admin ?? {}),
-        listView: {
-          ...(typeof siteScopedSiteField.admin === 'object' && siteScopedSiteField.admin?.listView
-            ? siteScopedSiteField.admin.listView
-            : {}),
+        custom: { listView: {
           label: '站点名称',
-        },
+        } },
       },
     },
     {
@@ -128,9 +125,9 @@ export const Categories: CollectionConfig = {
       admin: {
         description:
           '由「Together · 分类封面」快捷操作同步写入。也可手工调整。异步仅入队可用 admin `queue-ai-cover`（不写本列）。',
-        listView: {
+        custom: { listView: {
           label: 'Together 封面',
-        },
+        } },
         components: {
           Cell: './components/CategoryCoverWorkflowStatusCell#CategoryCoverWorkflowStatusCell',
         },
@@ -145,9 +142,9 @@ export const Categories: CollectionConfig = {
       admin: {
         description:
           '由「快捷操作 · 生成分类槽位」写入；也可在此手工纠正（idle / running / done / error）。同站点下各分类通常一致。',
-        listView: {
+        custom: { listView: {
           label: '槽位流程',
-        },
+        } },
         components: {
           Cell: './components/CategorySlotsWorkflowStatusCell#CategorySlotsWorkflowStatusCell',
         },
@@ -162,9 +159,9 @@ export const Categories: CollectionConfig = {
       admin: {
         description:
           'DataForSEO Merchant → Offers；快捷操作写入，也可在此手工调整（idle / running / done / error）。',
-        listView: {
+        custom: { listView: {
           label: 'Merchant 拉品',
-        },
+        } },
         components: {
           Cell: './components/CategoryMerchantOfferFetchWorkflowCell#CategoryMerchantOfferFetchWorkflowCell',
         },

@@ -188,7 +188,7 @@ async function runReplaceOnMedia(
         assetClass: 'decorative',
       },
       file: {
-        data: buffer,
+        data: Buffer.from(buffer),
         mimetype: mimeType,
         name,
         size: buffer.byteLength,
@@ -411,7 +411,7 @@ async function runArticleOrPageFeatured(
         aiImagePromptSource: 'article_page_featured_auto',
       },
       file: {
-        data: buffer,
+        data: Buffer.from(buffer),
         mimetype: mimeType,
         name,
         size: buffer.byteLength,

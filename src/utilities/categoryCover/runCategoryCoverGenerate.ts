@@ -237,7 +237,7 @@ export async function runCategoryCoverGenerate(
           assetClass: 'decorative',
         },
         file: {
-          data: buffer,
+          data: Buffer.from(buffer),
           mimetype: mimeType,
           name,
           size: buffer.byteLength,
@@ -314,7 +314,7 @@ export async function runCategoryCoverGenerate(
         aiImagePromptSource: 'category_cover_auto',
       },
       file: {
-        data: buffer,
+        data: Buffer.from(buffer),
         mimetype: mimeType,
         name,
         size: buffer.byteLength,

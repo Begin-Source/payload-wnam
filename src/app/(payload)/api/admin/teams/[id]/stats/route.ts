@@ -40,7 +40,7 @@ export async function GET(
       depth: 0,
       user: userArg,
       overrideAccess: false,
-    })) as Record<string, unknown> | null
+    })) as unknown as Record<string, unknown> | null
   } catch {
     return Response.json({ ok: false, error: 'Not found' } satisfies TeamAdminStatsJson, {
       status: 404,

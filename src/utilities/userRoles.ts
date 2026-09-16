@@ -15,18 +15,18 @@ export const APP_USER_ROLES = [
 
 export type AppUserRole = (typeof APP_USER_ROLES)[number]
 
-export function getUserRoles(user: User | null | undefined): string[] {
-  const roles = user?.roles
+export function getUserRoles(user: User | Config['user'] | null | undefined): string[] {
+  const roles = user && 'roles' in user ? user.roles : undefined
   if (!Array.isArray(roles)) return []
   return roles.map((r) => String(r))
 }
 
-export function userHasRole(user: User | null | undefined, role: AppUserRole | string): boolean {
+export function userHasRole(user: User | Config['user'] | null | undefined, role: AppUserRole | string): boolean {
   return getUserRoles(user).includes(role)
 }
 
 /** 总经理：租户内业务全权限；非全站超管（不用于 `userHasAllTenantAccess`）。 */
-export function userHasTenantGeneralManagerRole(user: User | null | undefined): boolean {
+export function userHasTenantGeneralManagerRole(user: User | Config['user'] | null | undefined): boolean {
   if (!isUsersCollection(user)) return false
   return userHasRole(user, 'general-manager')
 }

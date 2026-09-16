@@ -306,7 +306,7 @@ async function markBlueprintDesignWorkflowError(
 
 async function loadAmzTemplateDesignWorkContext(
   args: RunAmzTemplateDesignForBlueprintArgs,
-): Promise<RunAmzTemplateDesignResult | { ok: true; ctx: AmzDesignWorkContext }> {
+): Promise<Extract<RunAmzTemplateDesignResult, { ok: false }> | { ok: true; ctx: AmzDesignWorkContext }> {
   const { payload, blueprintId } = args
   const aiModel =
     typeof args.aiModel === 'string' && args.aiModel.trim()

@@ -61,7 +61,7 @@ function walkBlock(node: unknown, lines: string[], depth: number): void {
  * Lexical document → plain lines (joined with `\n\n` for finalize / embedding passes).
  */
 export function lexicalArticleBodyToPlainText(body: unknown): string {
-  const root = body && typeof body === 'object' && 'root' in (body as object) ? (body as Article['body']).root : null
+  const root = body && typeof body === 'object' && 'root' in (body as object) ? (body as { root?: unknown }).root : null
   if (!root || typeof root !== 'object') return ''
   const children = (root as { children?: unknown }).children
   if (!Array.isArray(children)) return ''

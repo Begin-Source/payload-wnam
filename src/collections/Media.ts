@@ -1,4 +1,4 @@
-import type { Access, CollectionConfig, Where } from 'payload'
+import type { Where, Access, CollectionConfig, Where } from 'payload'
 
 import { setContentCreatedByOnCreate } from '@/collections/hooks/setContentCreatedByOnCreate'
 import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'
@@ -58,7 +58,7 @@ export const Media: CollectionConfig = {
     beforeChange: [requireSiteOnCreate, setContentCreatedByOnCreate, validateSiteFieldWithinVisibilityScope],
   },
   access: {
-    read: async ({ req }) => {
+    read: async ({ req }): Promise<boolean | Where> => {
       if (announcementsPortalBlocksCollection(req.user, 'media')) return false
       if (financeOnlyBlocksCollection(req.user, 'media')) return false
       if (!req.user) return true

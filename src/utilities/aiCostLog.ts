@@ -34,7 +34,7 @@ export async function recordAiCost(args: {
       id,
       depth: 0,
       overrideAccess: true,
-    })) as typeof doc
+    }))
   } catch {
     return
   }

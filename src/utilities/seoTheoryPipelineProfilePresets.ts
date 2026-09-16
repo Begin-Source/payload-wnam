@@ -1,3 +1,6 @@
+import type { PipelineProfile } from '@/payload-types'
+
+export type PipelineProfileFields = Partial<PipelineProfile> & Pick<PipelineProfile, 'name' | 'slug'>
 import {
   pipelineSettingsDefaultEeatWeights,
   pipelineSettingsDefaultLlmBySection,
@@ -61,7 +64,7 @@ function qualityLlmBySection(): typeof pipelineSettingsDefaultLlmBySection {
 }
 
 /** Fields for `payload.create('pipeline-profiles')` excluding `tenant` (migration sets it). */
-export function getSeoTheoryGrowthPipelineProfileFields(isDefault: boolean): Record<string, unknown> {
+export function getSeoTheoryGrowthPipelineProfileFields(isDefault: boolean): PipelineProfileFields {
   return {
     name: 'SEO 预设 · 增长（联盟导向）',
     slug: SEO_THEORY_GROWTH_SLUG,
@@ -85,7 +88,7 @@ export function getSeoTheoryGrowthPipelineProfileFields(isDefault: boolean): Rec
 }
 
 /** Default `articleStrategy` for the quality preset — `seoWorkflow` is injected into brief/section/finalize prompts. */
-export function qualityPresetDefaultArticleStrategy(): Record<string, unknown> {
+export function qualityPresetDefaultArticleStrategy() {
   return {
     tocEnabled: true,
     seoWorkflow: {
@@ -111,7 +114,7 @@ export function qualityPresetDefaultArticleStrategy(): Record<string, unknown> {
   }
 }
 
-export function getSeoTheoryQualityPipelineProfileFields(): Record<string, unknown> {
+export function getSeoTheoryQualityPipelineProfileFields(): PipelineProfileFields {
   return {
     name: 'SEO 预设 · 稳健（质量门槛）',
     slug: SEO_THEORY_QUALITY_SLUG,
@@ -136,7 +139,7 @@ export function getSeoTheoryQualityPipelineProfileFields(): Record<string, unkno
 }
 
 /** 发布权威线：深 Brief、SERP top10 skeleton、逐章调研、EEAT finalize、严关键词口袋。 */
-export function getSeoPublishAuthorityFirstProfileFields(isDefault: boolean): Record<string, unknown> {
+export function getSeoPublishAuthorityFirstProfileFields(isDefault: boolean): PipelineProfileFields {
   return {
     name: 'SEO 方案 · 权威优先（EEAT finalize）',
     slug: SEO_PIPELINE_AUTHORITY_FIRST_SLUG,
@@ -178,7 +181,7 @@ export function getSeoPublishAuthorityFirstProfileFields(isDefault: boolean): Re
 }
 
 /** 显式 80 分发布线：权威优先策略 + 可机读质量门槛。 */
-export function getSeoPublishQuality80ProfileFields(isDefault: boolean): Record<string, unknown> {
+export function getSeoPublishQuality80ProfileFields(isDefault: boolean): PipelineProfileFields {
   const baseStrategy = qualityPresetDefaultArticleStrategy()
   return {
     name: 'SEO 方案 · 发布质量 80+（推荐关键词：Quick-win 商业词）',
@@ -244,7 +247,7 @@ export function getSeoPublishQuality80ProfileFields(isDefault: boolean): Record<
 }
 
 /** 规模化新鲜度线：标准 Brief、cluster 骨架、并行章节、fact-check finalize、略宽词袋 + 并行度。 */
-export function getSeoScaleFreshnessProfileFields(isDefault: boolean): Record<string, unknown> {
+export function getSeoScaleFreshnessProfileFields(isDefault: boolean): PipelineProfileFields {
   return {
     name: 'SEO 方案 · 时效规模化（并行 + fact-check）',
     slug: SEO_PIPELINE_SCALE_FRESH_SLUG,

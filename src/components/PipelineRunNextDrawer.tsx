@@ -298,8 +298,7 @@ export function PipelineRunNextDrawer(): React.ReactElement {
     const useDrainBatching =
       drainUntilNoPending &&
       runSelectedOnly &&
-      canOfferSelectedMode &&
-      selectAll !== SelectAllStatus.AllAvailable
+      canOfferSelectedMode
 
     let jobIdsPayload: (string | number)[] | undefined
 
@@ -489,8 +488,8 @@ export function PipelineRunNextDrawer(): React.ReactElement {
     Boolean(error) &&
     (error === MSG_PEEK_FORBIDDEN ||
       error === MSG_PEEK_UNAUTHORIZED ||
-      error.startsWith('无权限：') ||
-      error.startsWith('未登录'))
+      error?.startsWith('无权限：') ||
+      error?.startsWith('未登录'))
 
   const titleId = 'pipeline-run-next-title'
 

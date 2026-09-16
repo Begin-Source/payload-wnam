@@ -34,9 +34,9 @@ const CLONE_FIELD_KEYS = [
 export function buildPipelineProfileClonePayload(
   src: PipelineProfile,
   next: { name: string; slug: string; isDefault: boolean },
-): Record<string, unknown> {
+): Partial<PipelineProfile> & Pick<PipelineProfile, 'name' | 'slug'> {
   const tenantRel = src.tenant
-  const out: Record<string, unknown> = {
+  const out: Partial<PipelineProfile> & Pick<PipelineProfile, 'name' | 'slug'> = {
     tenant:
       typeof tenantRel === 'object' && tenantRel?.id != null ? tenantRel.id : tenantRel,
     name: next.name,
@@ -45,7 +45,7 @@ export function buildPipelineProfileClonePayload(
   }
   for (const key of CLONE_FIELD_KEYS) {
     const v = src[key]
-    if (v !== undefined) out[key] = v as unknown
+    if (v !== undefined) Object.assign(out, { [key]: v })
   }
   return out
 }

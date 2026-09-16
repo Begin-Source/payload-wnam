@@ -115,7 +115,7 @@ export async function POST(request: Request): Promise<Response> {
     id: String(articleId),
     depth: 0,
     overrideAccess: true,
-  })) as Record<string, unknown> | null
+  })) as unknown as Record<string, unknown> | null
   if (!article) {
     return Response.json({ error: 'article not found' }, { status: 404 })
   }
@@ -125,7 +125,7 @@ export async function POST(request: Request): Promise<Response> {
     'ok' in cfg && cfg.ok === false ?
       {
         merged: normalizeGlobalPipelineDoc(
-          (await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })) as Record<string, unknown>,
+          (await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })) as unknown as Record<string, unknown>,
         ),
         profileSlug: '',
         source: 'global_only',

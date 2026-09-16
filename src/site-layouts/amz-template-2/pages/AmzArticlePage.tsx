@@ -14,7 +14,7 @@ import { pickUiString } from '@/utilities/getLocalizedString'
 
 import { AmzArticleCards } from './AmzArticleCards'
 
-const breadcrumbHome: Record<AppLocale, string> = {
+const breadcrumbHome: Record<'en' | 'zh', string> = {
   zh: '首页',
   en: 'Home',
 }
@@ -67,7 +67,7 @@ export function AmzArticlePage({
   const relatedOthers = related.filter((a) => a.id !== article.id)
   /** Full-width grid below article — same first N as sidebar, matching amz-template-old (RELATED_REVIEWS_LIMIT = 4). */
   const relatedReviewsGrid = relatedOthers.slice(0, 4)
-  const p = (m: Partial<Record<AppLocale, string>>) =>
+  const p = (m: Partial<Record<'en' | 'zh', string>>) =>
     pickUiString(locale, defaultPublicLocale, m)
   const relatedReviewsTitle = p(AMZ_ARTICLE_RELATED_REVIEWS)
   const expertReviewLabel = p(AMZ_ARTICLE_EXPERT_REVIEW)
@@ -86,7 +86,7 @@ export function AmzArticlePage({
             <div className="order-1 lg:order-2 lg:col-span-6">
               <ArticleBreadcrumbs
                 locale={locale}
-                homeLabel={breadcrumbHome[locale]}
+                homeLabel={breadcrumbHome[locale === 'zh' ? 'zh' : 'en']}
                 category={firstCat}
                 currentTitle={article.title}
               />

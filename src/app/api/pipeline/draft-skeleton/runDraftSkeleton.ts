@@ -1,3 +1,4 @@
+import type { Where } from 'payload'
 import type { Payload } from 'payload'
 
 import type { Article } from '@/payload-types'
@@ -74,7 +75,7 @@ async function uniqueArticleSlug(
   args: { siteId?: number; locale: string; title: string },
 ): Promise<string> {
   const base = slugifyArticleTitle(args.title) || 'article'
-  const clauses = (slug: string) => [
+  const clauses = (slug: string): Where[] => [
     { slug: { equals: slug } },
     { locale: { equals: args.locale } },
     ...(typeof args.siteId === 'number' && Number.isFinite(args.siteId) ?

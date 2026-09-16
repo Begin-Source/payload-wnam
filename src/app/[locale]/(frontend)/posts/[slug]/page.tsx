@@ -73,17 +73,17 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   })
 }
 
-const breadcrumbHome: Record<AppLocale, string> = {
+const breadcrumbHome: Record<'en' | 'zh', string> = {
   zh: '首页',
   en: 'Home',
 }
 
-const relatedTitle: Record<AppLocale, string> = {
+const relatedTitle: Record<'en' | 'zh', string> = {
   zh: '继续阅读',
   en: 'Read next',
 }
 
-const readTimeLabel: Record<AppLocale, (n: number) => string> = {
+const readTimeLabel: Record<'en' | 'zh', (n: number) => string> = {
   zh: (n) => `约 ${n} 分钟阅读`,
   en: (n) => `${n} min read`,
 }
@@ -134,7 +134,7 @@ export default async function PostPage(props: Props) {
   const baseNorm = baseUrl.replace(/\/$/, '')
   const publisherUrl = baseNorm ? `${baseNorm}/${locale}/` : pageUrl
   const breadcrumbTrail: { name: string; url: string }[] = [
-    { name: breadcrumbHome[locale], url: `${baseNorm}/${locale}/` },
+    { name: breadcrumbHome[locale === 'zh' ? 'zh' : 'en'], url: `${baseNorm}/${locale}/` },
   ]
   if (firstCat?.slug) {
     breadcrumbTrail.push({
@@ -147,13 +147,13 @@ export default async function PostPage(props: Props) {
   const jsonLd = blogPostingJsonLdString({
     article,
     pageUrl,
-    featuredImageUrl: img,
+    featuredImageUrl: img ?? null,
     publisher: { name: theme.siteName, url: publisherUrl },
     breadcrumbItems: breadcrumbTrail,
   })
 
   const relatedEl = (
-    <ArticleRelated articles={related} locale={locale} title={relatedTitle[locale]} />
+    <ArticleRelated articles={related} locale={locale} title={relatedTitle[locale === 'zh' ? 'zh' : 'en']} />
   )
 
   const layout = article.affiliatePageLayout ?? 'default'
@@ -170,7 +170,7 @@ export default async function PostPage(props: Props) {
           locale={locale}
           defaultPublicLocale={theme.defaultPublicLocale}
           readMinutes={readMinutes}
-          readTimeLabel={readTimeLabel[locale]}
+          readTimeLabel={readTimeLabel[locale === 'zh' ? 'zh' : 'en']}
           related={related}
           titleAlt={titleAlt}
           config={theme.amzSiteConfig}
@@ -182,7 +182,7 @@ export default async function PostPage(props: Props) {
           locale={locale}
           defaultPublicLocale={theme.defaultPublicLocale}
           readMinutes={readMinutes}
-          readTimeLabel={readTimeLabel[locale]}
+          readTimeLabel={readTimeLabel[locale === 'zh' ? 'zh' : 'en']}
           related={related}
           titleAlt={titleAlt}
           config={theme.amzSiteConfig}
@@ -198,7 +198,7 @@ export default async function PostPage(props: Props) {
     >
       <ArticleBreadcrumbs
         locale={locale}
-        homeLabel={breadcrumbHome[locale]}
+        homeLabel={breadcrumbHome[locale === 'zh' ? 'zh' : 'en']}
         category={firstCat}
         currentTitle={article.title}
       />
@@ -206,7 +206,7 @@ export default async function PostPage(props: Props) {
       <div className="blogArticleMeta">
         {date ? <time dateTime={article.publishedAt ?? undefined}>{date}</time> : null}
         {date ? <span className="blogArticleMetaSep" aria-hidden /> : null}
-        <span className="blogArticleReadTime">{readTimeLabel[locale](readMinutes)}</span>
+        <span className="blogArticleReadTime">{readTimeLabel[locale === 'zh' ? 'zh' : 'en'](readMinutes)}</span>
       </div>
       {img ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -240,9 +240,9 @@ export default async function PostPage(props: Props) {
           article={article}
           html={html}
           locale={locale}
-          homeLabel={breadcrumbHome[locale]}
+          homeLabel={breadcrumbHome[locale === 'zh' ? 'zh' : 'en']}
           readMinutes={readMinutes}
-          readTimeLabel={readTimeLabel[locale]}
+          readTimeLabel={readTimeLabel[locale === 'zh' ? 'zh' : 'en']}
           related={relatedEl}
           titleAlt={titleAlt}
           variant="roundup"
@@ -252,9 +252,9 @@ export default async function PostPage(props: Props) {
           article={article}
           html={html}
           locale={locale}
-          homeLabel={breadcrumbHome[locale]}
+          homeLabel={breadcrumbHome[locale === 'zh' ? 'zh' : 'en']}
           readMinutes={readMinutes}
-          readTimeLabel={readTimeLabel[locale]}
+          readTimeLabel={readTimeLabel[locale === 'zh' ? 'zh' : 'en']}
           related={relatedEl}
           titleAlt={titleAlt}
           variant="comparison"
@@ -264,9 +264,9 @@ export default async function PostPage(props: Props) {
           article={article}
           html={html}
           locale={locale}
-          homeLabel={breadcrumbHome[locale]}
+          homeLabel={breadcrumbHome[locale === 'zh' ? 'zh' : 'en']}
           readMinutes={readMinutes}
-          readTimeLabel={readTimeLabel[locale]}
+          readTimeLabel={readTimeLabel[locale === 'zh' ? 'zh' : 'en']}
           related={relatedEl}
           titleAlt={titleAlt}
         />

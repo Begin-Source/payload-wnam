@@ -90,7 +90,6 @@ export const syncBlueprintsMirroredLayoutAfterSiteChange: CollectionAfterChangeH
   operation,
   req,
 }) => {
-  if (operation === 'delete') return
 
   const curr = doc as { id: string | number; siteLayout?: unknown }
   const prev = previousDoc as { siteLayout?: unknown } | undefined

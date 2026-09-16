@@ -1,3 +1,4 @@
+import type { Category } from '@/payload-types'
 import type { Payload } from 'payload'
 
 import { parseRelationshipId } from '@/utilities/parseRelationshipId'
@@ -10,7 +11,7 @@ import { parseRelationshipId } from '@/utilities/parseRelationshipId'
 export async function syncCategorySlotsWorkflowToCategories(
   payload: Payload,
   siteId: number,
-  status: string,
+  status: NonNullable<Category['categorySlotsWorkflowStatus']>,
   siteTenantId: number,
   /** When set, only categories for this site + locale are updated (per-locale slot runs). */
   locale?: string | null,

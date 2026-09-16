@@ -47,7 +47,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
       const profileId = profileRes.docs[0]?.id
       if (typeof profileId !== 'number') continue
 
-      for (const [key, body] of Object.entries(QUALITY_CONSTRAINED_TENANT_PROMPT_BODIES)) {
+      for (const [key, body] of Object.entries(QUALITY_CONSTRAINED_TENANT_PROMPT_BODIES) as Array<[keyof typeof QUALITY_CONSTRAINED_TENANT_PROMPT_BODIES, string]>) {
         if (!body) continue
         const existing = await payload.find({
           collection: 'tenant-prompt-templates',

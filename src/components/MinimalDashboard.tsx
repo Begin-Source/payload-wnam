@@ -36,7 +36,7 @@ export function MinimalDashboard(props: {
       {Boolean(beforeDashboard) &&
         RenderServerComponent({
           Component: beforeDashboard,
-          importMap: payload.importMap,
+          importMap: payload.importMap ?? {},
           serverProps: {
             i18n,
             locale,
@@ -50,7 +50,7 @@ export function MinimalDashboard(props: {
       {Boolean(afterDashboard) &&
         RenderServerComponent({
           Component: afterDashboard,
-          importMap: payload.importMap,
+          importMap: payload.importMap ?? {},
           serverProps: {
             i18n,
             locale,

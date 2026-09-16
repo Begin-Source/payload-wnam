@@ -161,7 +161,7 @@ export const Offers: CollectionConfig = {
           ],
           admin: {
             readOnly: true,
-            listView: { label: '槽位拉取' },
+            custom: { listView: { label: '槽位拉取' } },
             components: {
               Cell: './components/OfferMerchantSlotWorkflowCell#OfferMerchantSlotWorkflowCell',
             },
@@ -245,7 +245,7 @@ export const Offers: CollectionConfig = {
           ],
           admin: {
             readOnly: true,
-            listView: { label: 'Review MDX' },
+            custom: { listView: { label: 'Review MDX' } },
             components: {
               Cell: './components/OfferReviewDraftWorkflowCell#OfferReviewDraftWorkflowCell',
             },

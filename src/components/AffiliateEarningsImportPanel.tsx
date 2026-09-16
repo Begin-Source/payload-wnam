@@ -329,11 +329,11 @@ export function AffiliateEarningsImportPanel(props: AffiliateEarningsImportSlotP
                   onClick={() => fileRef.current?.click()}
                   size="small"
                   type="button"
-                  style={{ flexShrink: 0 }}
+                  className="affiliate-import-button"
                 >
                   选择文件…
                 </Button>
-                <Button type="submit" disabled={submitting} style={{ flexShrink: 0 }}>
+                <Button type="submit" disabled={submitting} className="affiliate-import-button">
                   {submitting ? '导入中…' : '导入'}
                 </Button>
               </div>

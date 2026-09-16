@@ -10,11 +10,11 @@ export type TenantScope =
 
 /** Normalize Payload relation `tenant` field to numeric id (sites, offers, etc.). */
 export function tenantIdFromRelation(
-  tenant: number | { id: number } | null | undefined,
+  tenant: unknown,
 ): number | null {
   if (tenant == null || tenant === undefined) return null
   if (typeof tenant === 'number') return tenant
-  if (typeof tenant === 'object' && typeof tenant.id === 'number') return tenant.id
+  if (typeof tenant === 'object' && 'id' in tenant && typeof tenant.id === 'number') return tenant.id
   return null
 }
 

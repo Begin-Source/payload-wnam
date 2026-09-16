@@ -90,9 +90,9 @@ export const SiteBlueprints: CollectionConfig = {
         readOnly: true,
         description:
           '只读，随关联「站点」的「站点布局」自动同步；用于在下方只展示当前壳层对应的文案区。',
-        listView: {
+        custom: { listView: {
           label: '布局',
-        },
+        } },
         components: {
           Field: './components/MirroredSiteLayoutField#MirroredSiteLayoutField',
         },
@@ -107,9 +107,9 @@ export const SiteBlueprints: CollectionConfig = {
       admin: {
         description:
           '由 AMZ 设计生成等快捷操作写入；也可在此手工调整（idle / running / done / error）。卡死时可改回 idle。',
-        listView: {
+        custom: { listView: {
           label: '流程',
-        },
+        } },
         components: {
           Cell: './components/DesignWorkflowStatusCell#DesignWorkflowStatusCell',
         },
@@ -134,9 +134,9 @@ export const SiteBlueprints: CollectionConfig = {
         hidden: true,
         readOnly: true,
         description: '由「快捷操作 · 生成 AMZ 设计」在失败时写入（如 OPENROUTER、QUOTA）。成功或重新运行时会清空。',
-        listView: {
+        custom: { listView: {
           label: '错误码',
-        },
+        } },
       },
     },
     {

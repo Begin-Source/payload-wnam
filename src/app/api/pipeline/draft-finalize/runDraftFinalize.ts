@@ -314,7 +314,7 @@ export async function runDraftFinalizeForArticle(
   let pipelineProfileId: number | null = null
   if ('ok' in cfg && cfg.ok === false) {
     merged = normalizeGlobalPipelineDoc(
-      (await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })) as Record<string, unknown>,
+      (await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })) as unknown as Record<string, unknown>,
     )
   } else {
     const resolved = cfg as ResolvedPipelineConfig

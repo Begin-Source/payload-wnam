@@ -46,7 +46,7 @@ export const TRUST_BUNDLE_LOCALE = 'en' as const
 export function isTrustBundleEnPage(s?: {
   slug?: string | null
   locale?: string | null
-}): boolean {
+} | null): boolean {
   if (s?.locale !== TRUST_BUNDLE_LOCALE) return false
   const slug = typeof s.slug === 'string' ? s.slug : ''
   return (TRUST_BUNDLE_SLUGS as readonly string[]).includes(slug)

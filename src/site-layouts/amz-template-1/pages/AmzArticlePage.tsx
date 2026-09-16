@@ -10,12 +10,12 @@ import type { Article, Media, Offer } from '@/payload-types'
 
 import { AmzOfferCard } from './AmzOfferCard'
 
-const breadcrumbHome: Record<AppLocale, string> = {
+const breadcrumbHome: Record<'en' | 'zh', string> = {
   zh: '首页',
   en: 'Home',
 }
 
-const relatedTitle: Record<AppLocale, string> = {
+const relatedTitle: Record<'en' | 'zh', string> = {
   zh: '继续阅读',
   en: 'Read next',
 }
@@ -73,7 +73,7 @@ export function AmzArticlePage({
       <article className="container mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
       <ArticleBreadcrumbs
         locale={locale}
-        homeLabel={breadcrumbHome[locale]}
+        homeLabel={breadcrumbHome[locale === 'zh' ? 'zh' : 'en']}
         category={firstCat}
         currentTitle={article.title}
       />
@@ -124,7 +124,7 @@ export function AmzArticlePage({
       ) : null}
 
       <section className="mt-12">
-        <ArticleRelated articles={related} locale={locale} title={relatedTitle[locale]} />
+        <ArticleRelated articles={related} locale={locale} title={relatedTitle[locale === 'zh' ? 'zh' : 'en']} />
       </section>
       </article>
     </main>

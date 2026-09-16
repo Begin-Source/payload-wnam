@@ -1,3 +1,4 @@
+import type { Where } from 'payload'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
@@ -35,7 +36,7 @@ export async function GET(request: Request): Promise<Response> {
   const scope = getTenantScopeForStats(user)
   const url = new URL(request.url)
   const q = (url.searchParams.get('q') ?? '').trim()
-  const searchWhere =
+  const searchWhere: Where | undefined =
     q.length > 0
       ? {
           or: [{ name: { contains: q } }, { slug: { contains: q } }],

@@ -5,9 +5,9 @@ import { getTenantIdsForUser } from '@/utilities/tenantScope'
 import { userHasUnscopedAdminAccess } from '@/utilities/superAdmin'
 
 export function isUsersCollection(
-  user: Config['user'] | null | undefined,
+  user: unknown,
 ): user is Config['user'] & { collection: 'users' } {
-  return Boolean(user && user.collection === 'users')
+  return Boolean(user && typeof user === 'object' && 'collection' in user && user.collection === 'users')
 }
 
 function teamLeadId(user: Config['user'] & { collection: 'users' }): number | null {

@@ -25,7 +25,7 @@ const sitePagesBundleFields = ((): CollectionConfig['fields'] => {
         condition,
         description:
           '「生成信任页包」快捷操作写入；也可在此手工调整（idle / running / done / error）。仅信任页包五个 slug 且 locale 为 en 时显示。列表「信任页包」列同步。',
-        listView: { label: '信任页包' },
+        custom: { listView: { label: '信任页包' } },
         components: {
           Cell: './components/SitePagesBundleWorkflowStatusCell#SitePagesBundleWorkflowStatusCell',
         },

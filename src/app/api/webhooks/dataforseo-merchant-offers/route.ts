@@ -1,3 +1,4 @@
+import type { Offer } from '@/payload-types'
 import configPromise from '@payload-config'
 import { gunzipSync } from 'node:zlib'
 import { getPayload } from 'payload'
@@ -109,7 +110,7 @@ export async function POST(request: Request): Promise<Response> {
 
   const { categoryId, batchUuid } = parsed
 
-  let category: Awaited<ReturnType<typeof payload.findByID>>
+  let category: Awaited<ReturnType<typeof payload.findByID>> | null
   try {
     category = await payload.findByID({
       collection: 'categories',
@@ -164,7 +165,7 @@ export async function POST(request: Request): Promise<Response> {
     })
   }
 
-  let siteRow: Awaited<ReturnType<typeof payload.findByID>>
+  let siteRow: Awaited<ReturnType<typeof payload.findByID>> | null
   try {
     siteRow = await payload.findByID({
       collection: 'sites',
@@ -327,7 +328,7 @@ export async function POST(request: Request): Promise<Response> {
             patch.amazon?.asin ?
               `https://www.amazon.com/dp/${String(patch.amazon.asin)}`
             : undefined,
-          amazon: amazonPayload,
+          amazon: JSON.parse(JSON.stringify(amazonPayload)) as Offer['amazon'],
           merchantSlot: {
             workflowStatus: 'done',
             batchId: batchUuid,

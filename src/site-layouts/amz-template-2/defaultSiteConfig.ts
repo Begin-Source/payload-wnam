@@ -44,7 +44,7 @@ export const defaultAmzSiteConfig = {
       // - "lucide": 使用 lucide-react 图标库中的图标
       // - "svg": 使用自定义 SVG 代码
       // - "image": 使用图片文件
-      type: "lucide" as const,
+      type: "lucide" as "lucide" | "svg" | "image",
 
       // 当 type 为 "lucide" 时，指定图标名称
       // 可用图标：https://lucide.dev/icons/

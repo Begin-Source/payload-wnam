@@ -1,3 +1,4 @@
+import type { Where } from 'payload'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
@@ -35,7 +36,7 @@ async function countScoped(
     | 'keywords'
     | 'commissions'
     | 'rankings',
-  extraWhere?: Record<string, unknown>,
+  extraWhere?: Where,
 ): Promise<number> {
   const where = combineTenantWhere(scope, extraWhere)
   const result = await payload.count({

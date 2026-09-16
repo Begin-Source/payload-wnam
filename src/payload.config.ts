@@ -453,7 +453,7 @@ export default buildConfig({
       },
       generateImage: ({ doc }) => {
         const id = seoUploadRelationId((doc as { featuredImage?: unknown }).featuredImage)
-        return id ?? undefined
+        return id ?? ''
       },
       generateURL: ({ doc, collectionSlug }) => {
         const d = doc as { slug?: string | null; locale?: string | null }

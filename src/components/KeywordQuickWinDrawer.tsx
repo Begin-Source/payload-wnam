@@ -465,7 +465,7 @@ export const KeywordQuickWinDrawer = forwardRef<KeywordDrawerRef>(function Keywo
       const extra =
         (data.enqueued === 0 && (data.errorsSample?.length ?? 0) > 0
           ? ` · ${(data.errorsSample ?? []).join(' ')}`
-          : '') ?? ''
+          : '')
       const dfs =
         typeof data.totalDfsCalls === 'number' ? ` · SERP API 调用 ${data.totalDfsCalls} 次` : ''
       setLastResult(
