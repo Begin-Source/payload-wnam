@@ -26,7 +26,7 @@ describe('API', () => {
 
   it('rejects invalid design writes and restores an earlier validated version', async () => {
     if (process.env.PAYLOAD_TEST_MODE !== 'isolated') throw new Error('Design smoke requires isolated CI')
-    const tenant = await payload.create({ collection: 'tenants', data: { name: 'Design CI', slug: 'design-ci' } })
+    const tenant = await payload.create({ collection: 'tenants', data: { name: 'Design CI', slug: 'design-ci', domain: 'design-ci.test' } })
     const site = await payload.create({
       collection: 'sites',
       data: { name: 'Design CI', slug: 'design-ci', tenant: tenant.id, publicLocaleCodes: ['en'], defaultPublicLocale: 'en', siteLayout: 'amz-template-1' },
