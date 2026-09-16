@@ -333,7 +333,7 @@ describe('articlePipelineChain', () => {
       expect(bind).toHaveBeenCalledWith(
         expect.stringContaining('"sectionParallelism":1'),
         'test-profile',
-        'profile',
+        'explicit',
         expect.any(String),
         1,
       )
