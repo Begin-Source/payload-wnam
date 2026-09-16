@@ -70,7 +70,7 @@ const nextConfig = {
   },
 
   // Your Next.js config here
-  webpack: (webpackConfig: any, { isServer }: { isServer: boolean }) => {
+  webpack: (webpackConfig: any, { isServer, webpack }: { isServer: boolean; webpack: any }) => {
     webpackConfig.resolve.extensionAlias = {
       '.cjs': ['.cts', '.cjs'],
       '.js': ['.ts', '.tsx', '.js', '.jsx'],
@@ -84,12 +84,17 @@ const nextConfig = {
     })
 
     if (isServer) {
+      webpackConfig.plugins.push(new webpack.NormalModuleReplacementPlugin(
+        /[\\/]payload[\\/]dist[\\/]utilities[\\/]dynamicImport\.js$/,
+        path.resolve(__dirname, 'src/utilities/workerDynamicImport.ts'),
+      ))
       if (process.env.CI) {
         webpackConfig.plugins.push({
           apply(compiler: any) {
             compiler.hooks.done.tap('P0ModuleSizes', (stats: any) => {
               const rows = [...stats.compilation.modules].map((module: any) => ({
-                module: module.identifier().split('?')[0], sourceBytes: module.size(),
+                module: (module.resource ?? module.rootModule?.resource ?? module.identifier().split('!').at(-1)).split('?')[0],
+                sourceBytes: module.size(),
               })).sort((a, b) => b.sourceBytes - a.sourceBytes)
               mkdirSync('.cloudflare-ci', { recursive: true })
               const name = String(compiler.name ?? 'server').replace(/[^a-zA-Z0-9_-]/g, '_')
