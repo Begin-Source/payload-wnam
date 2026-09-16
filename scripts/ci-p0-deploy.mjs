@@ -18,9 +18,13 @@ if (config.name !== WORKER || config.account_id !== ACCOUNT || config.d1_databas
   config.d1_databases.some((db, i) => db.database_id !== expectedDBs[i]) ||
   config.r2_buckets[0].bucket_name !== WORKER || config.queues || config.triggers) throw new Error('P0 resource configuration mismatch')
 const env = { ...process.env, CLOUDFLARE_ACCOUNT_ID: ACCOUNT, NODE_ENV: 'production', CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false' }
+if (env.WRANGLER_CI_MATCH_TAG && env.WRANGLER_CI_MATCH_TAG !== 'a53ec5c30f6f4623909113bf36ca914f') {
+  throw new Error('Unexpected source Worker build trigger')
+}
 // The existing branch trigger belongs to the production Worker. Override its
 // implicit name only after the explicit P0 account/resource allowlist passes.
 delete env.WRANGLER_CI_OVERRIDE_NAME
+delete env.WRANGLER_CI_MATCH_TAG
 delete env.PAYLOAD_TEST_MODE
 delete env.PAYLOAD_BUILD_PHASE
 const token = env.CLOUDFLARE_API_TOKEN
