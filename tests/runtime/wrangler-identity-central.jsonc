@@ -1,0 +1,6 @@
+{
+  "name": "payload-site-identity-central-test",
+  "main": "site-identity-central.ts",
+  "compatibility_date": "2025-08-15",
+  "compatibility_flags": ["nodejs_compat"]
+}

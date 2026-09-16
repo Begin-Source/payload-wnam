@@ -116,6 +116,17 @@ describe('central registry and single-use SSO on native D1', () => {
     await expect(broker.authenticate(session.session, 'a', registration().adminHost)).rejects.toThrow('denied')
   })
 
+  it('scopes logout to the target site and deletes sessions even after permissions are revoked', async () => {
+    const ticket = await broker.issueTicket('a', identity)
+    const session = await broker.redeemTicket(ticket.ticket, 'a', registration().adminHost)
+    await broker.revokeSiteSession(session.session, 'b', registration('b').adminHost)
+    expect((await broker.authenticate(session.session, 'a', registration().adminHost)).userId).toBe('7')
+    await database.prepare("DELETE FROM site_runtime_access WHERE site_id = 'a'").run()
+    await broker.revokeSiteSession(session.session, 'a', registration().adminHost)
+    expect((await database.prepare('SELECT COUNT(*) AS n FROM site_login_sessions').first<{ n: number }>())?.n).toBe(0)
+    await broker.revokeSiteSession(session.session, 'a', registration().adminHost)
+  })
+
   it('rolls ticket consumption back if session insertion fails', async () => {
     const ticket = await broker.issueTicket('a', identity)
     await database.exec("CREATE TRIGGER reject_session BEFORE INSERT ON site_login_sessions BEGIN SELECT RAISE(ABORT, 'injected storage failure'); END")

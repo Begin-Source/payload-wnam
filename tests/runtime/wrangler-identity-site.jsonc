@@ -1,0 +1,6 @@
+{
+  "name": "payload-site-identity-site-test",
+  "main": "site-identity-site.ts",
+  "compatibility_date": "2025-08-15",
+  "compatibility_flags": ["nodejs_compat"]
+}
