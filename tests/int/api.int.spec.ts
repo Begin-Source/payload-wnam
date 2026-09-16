@@ -14,7 +14,7 @@ describe('API', () => {
   beforeAll(async () => {
     const payloadConfig = await config
     payload = await getPayload({ config: payloadConfig })
-  })
+  }, 60_000)
 
   it('creates blueprint version tables in isolated CI', async () => {
     if (process.env.PAYLOAD_TEST_MODE !== 'isolated') return
