@@ -1,7 +1,8 @@
 import type { Payload } from 'payload'
-import { getCloudflareContext } from '@opennextjs/cloudflare'
+import { optionalSiteContext } from '../site-runtime/context'
+import { createSiteD1Proxy } from '../site-runtime/d1'
 
-import { getCloudflareD1Binding } from './cloudflareD1Binding'
+const siteDatabase = createSiteD1Proxy()
 
 type D1Prepared = {
   bind: (...args: unknown[]) => {
@@ -19,6 +20,12 @@ export function isD1Client(value: unknown): value is D1Client {
 }
 
 export function d1ClientFromPayload(payload: Payload, explicitClient?: D1Client | null): D1Client | null {
+  // Site scope always wins, including when a caller supplies a raw client.
+  // A guarded site config also keeps context-free calls on the strict proxy.
+  if (optionalSiteContext() || payload.config?.custom?.siteDatabaseIsolation === true) {
+    return siteDatabase
+  }
+
   if (isD1Client(explicitClient)) {
     return explicitClient
   }
@@ -44,21 +51,7 @@ export function d1ClientFromPayload(payload: Payload, explicitClient?: D1Client 
     return db.binding
   }
 
-  const configuredBinding = getCloudflareD1Binding()
-  if (isD1Client(configuredBinding)) {
-    return configuredBinding
-  }
-
-  try {
-    const ctx = getCloudflareContext()
-    const d1 = (ctx.env as { D1?: unknown }).D1
-    if (isD1Client(d1)) {
-      return d1
-    }
-  } catch {
-    // Non-Cloudflare runtimes/tests do not expose OpenNext context.
-  }
-
+  // The adapter owns legacy/central bindings; never guess a default database.
   return null
 }
 

@@ -3,6 +3,7 @@ import { assertSitePayloadRequest } from './payloadRequest'
 
 /** Payload adds preferences, locked documents and jobs during sanitization. */
 export function guardSanitizedSiteConfig(config: SanitizedConfig): SanitizedConfig {
+  config.custom = { ...config.custom, siteDatabaseIsolation: true }
   for (const collection of config.collections) {
     collection.hooks.beforeOperation = [
       ({ req }) => { assertSitePayloadRequest(req) },

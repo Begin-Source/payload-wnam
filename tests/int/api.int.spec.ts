@@ -1,10 +1,10 @@
 import { up as migratePipelineNonces } from '@/migrations/20260916_140000_pipeline_auth_nonces'
-import { consumePipelineNonce } from '@/utilities/pipelineNonceStore'
+import { createPipelineNonceStore } from '@/utilities/pipelineNonceStore'
 import { runnerRecoveryWhere } from '@/utilities/workflowRecoveryWhere'
 import { claimWorkflowJob, heartbeatWorkflowLease, patchLeasedWorkflowJob, releaseWorkflowLease, recoverExpiredWorkflowJobs, WorkflowLeaseLostError } from '@/utilities/workflowJobLease'
 import type { MigrateUpArgs } from '@payloadcms/db-d1-sqlite'
 import { up as migrateBlueprintVersions } from '@/migrations/20260916_120000_blueprint_version_history'
-import { getCloudflareD1Binding } from '@/utilities/cloudflareD1Binding'
+import { d1ClientFromPayload } from '@/utilities/d1NarrowUpdate'
 // @vitest-environment node
 
 import { getPayload, Payload } from 'payload'
@@ -24,7 +24,7 @@ describe('API', () => {
 
   it('creates blueprint version tables in isolated CI', async () => {
     if (process.env.PAYLOAD_TEST_MODE !== 'isolated') return
-    const d1 = getCloudflareD1Binding() as D1Database
+    const d1 = d1ClientFromPayload(payload) as D1Database
     const schema = await d1.prepare(
       "SELECT name, sql FROM sqlite_master WHERE name GLOB '_site_blueprints_v*' AND sql IS NOT NULL ORDER BY type DESC, name",
     ).all<{ name: string; sql: string }>()
@@ -45,7 +45,7 @@ describe('API', () => {
       depth: 0,
     })
     // Simulate an existing design created before versioning was enabled.
-    const d1 = getCloudflareD1Binding() as D1Database
+    const d1 = d1ClientFromPayload(payload) as D1Database
     await d1.prepare('DELETE FROM "_site_blueprints_v" WHERE parent_id = ?').bind(blueprint.id).run()
     const db = (payload.db as unknown as { drizzle: MigrateUpArgs['db'] }).drizzle
     await migrateBlueprintVersions({ db })
@@ -85,7 +85,7 @@ describe('API', () => {
     const first = claims.find(claim => claim !== null)!
     await heartbeatWorkflowLease(first)
     await expect(payload.update({ collection: 'workflow-jobs', id: job.id, data: { status: 'pending' } })).rejects.toThrow('任务正在执行')
-    const d1 = getCloudflareD1Binding() as D1Database
+    const d1 = d1ClientFromPayload(payload) as D1Database
     await d1.prepare('UPDATE workflow_jobs SET lease_expires_at = ? WHERE id = ?')
       .bind(new Date(Date.now() - 1000).toISOString(), job.id).run()
     expect(await recoverExpiredWorkflowJobs(payload)).toBe(1)
@@ -128,7 +128,7 @@ describe('API', () => {
 
   it('filters terminal failures before the runner recovery limit', async () => {
     if (process.env.PAYLOAD_TEST_MODE !== 'isolated') throw new Error('Recovery smoke requires isolated CI')
-    const d1 = getCloudflareD1Binding() as D1Database
+    const d1 = d1ClientFromPayload(payload) as D1Database
     const inserted = await d1.batch(Array.from({ length: 30 }, (_, n) => d1.prepare(
       "INSERT INTO workflow_jobs (label, job_type, status, error_code, error_message, updated_at) VALUES (?, 'site_content_runner', 'failed', 'RUNNER_FAILURE', 'Permanent invalid input', '2000-01-01T00:00:00.000Z')",
     ).bind('Terminal CI ' + n)))
@@ -146,6 +146,7 @@ describe('API', () => {
     if (process.env.PAYLOAD_TEST_MODE !== 'isolated') throw new Error('Nonce smoke requires isolated CI')
     const db = (payload.db as unknown as { drizzle: MigrateUpArgs['db'] }).drizzle
     await migratePipelineNonces({ db })
+    const consumePipelineNonce = createPipelineNonceStore(() => d1ClientFromPayload(payload) as D1Database)
     const now = Date.now()
     const results = await Promise.all([consumePipelineNonce('ci-nonce', now + 1000, now), consumePipelineNonce('ci-nonce', now + 1000, now)])
     expect(results.filter(Boolean)).toHaveLength(1)

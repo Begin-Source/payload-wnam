@@ -7,6 +7,8 @@ import { buildConfig, getPayload, type Payload, type PayloadRequest } from 'payl
 import { sqliteD1Adapter } from '@payloadcms/db-d1-sqlite'
 import { withSiteContext, type SiteContext } from '../../src/site-runtime/context'
 import { createSiteD1Proxy } from '../../src/site-runtime/d1'
+import { d1ClientFromPayload, d1NarrowUpdate } from '../../src/utilities/d1NarrowUpdate'
+import { createPipelineNonceStore } from '../../src/utilities/pipelineNonceStore'
 import { guardSanitizedSiteConfig } from '../../src/site-runtime/payloadPlugin'
 
 const require = createRequire(realpathSync(resolve('node_modules/wrangler/package.json')))
@@ -35,7 +37,8 @@ describe('one Payload instance with request-bound native D1 clients', () => {
     })
     contexts = await Promise.all(['A', 'B'].map(async siteId => {
       const binding = await mf.getD1Database(siteId)
-      await binding.exec('CREATE TABLE categories (id INTEGER PRIMARY KEY, name TEXT NOT NULL, slug TEXT NOT NULL, locale TEXT NOT NULL)')
+      await binding.exec('CREATE TABLE categories (id INTEGER PRIMARY KEY, name TEXT NOT NULL, slug TEXT NOT NULL, locale TEXT NOT NULL, updated_at TEXT)')
+      await binding.exec('CREATE TABLE pipeline_auth_nonces (nonce_hash TEXT PRIMARY KEY, expires_at TEXT NOT NULL)')
       await binding.exec('CREATE TABLE payload_preferences (id INTEGER PRIMARY KEY, key TEXT NOT NULL)')
       return { siteId, binding, routingVersion: 1, currentRoutingVersion: () => 1, identity: null }
     }))
@@ -71,6 +74,27 @@ describe('one Payload instance with request-bound native D1 clients', () => {
       expect((await payload.findByID({ collection: 'categories', id: 1 })).name).toBe('B-updated')
     })
   }, 30000)
+
+  it('routes raw SQL through the current site even when supplied the other database', async () => {
+    await Promise.all(contexts.map(context => withSiteContext(context, async () => {
+      const other = contexts.find(candidate => candidate !== context)!.binding
+      await d1ClientFromPayload(payload, other)!.prepare('INSERT OR REPLACE INTO categories (id, name, slug, locale) VALUES (?, ?, ?, ?)')
+        .bind(2, context.siteId, 'raw', 'en').run()
+      await d1NarrowUpdate(payload, 'categories', 2, [['name', context.siteId + '-narrow']])
+      expect((await context.binding.prepare('SELECT name FROM categories WHERE id = 2').first<{ name: string }>())?.name).toBe(context.siteId + '-narrow')
+    })))
+    expect(() => d1ClientFromPayload(payload, contexts[0].binding)!.prepare('SELECT 1')).toThrow('context required')
+  })
+
+  it('keeps nonce consumption atomic and independent across site databases', async () => {
+    const store = createPipelineNonceStore(() => { throw new Error('Default resolver must not run in site scope') })
+    const now = Date.now()
+    await Promise.all(contexts.map(context => withSiteContext(context, async () => {
+      const results = await Promise.all(Array.from({ length: 10 }, () => store('same-nonce', now + 1000, now)))
+      expect(results.filter(Boolean)).toHaveLength(1)
+      expect(await store('same-nonce', now + 3000, now + 2000)).toBe(true)
+    })))
+  })
 
   it('rejects a reused request and transplanted DataLoader before serving cached data', async () => {
     const req: Partial<PayloadRequest> = {}

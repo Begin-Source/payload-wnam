@@ -63,7 +63,6 @@ import { LlmPrompts } from './globals/LlmPrompts'
 import { PromptLibrary } from './globals/PromptLibrary'
 import { PublicLanding } from './globals/PublicLanding'
 import { PipelineSettings } from './globals/PipelineSettings'
-import { setCloudflareD1Binding } from './utilities/cloudflareD1Binding'
 import { createSiteD1Proxy } from './site-runtime/d1'
 import { guardSanitizedSiteConfig } from './site-runtime/payloadPlugin'
 import { Announcements } from './collections/Announcements'
@@ -165,7 +164,6 @@ const cloudflare =
 const payloadSecretFromBinding = (cloudflare.env as Cloudflare.Env).PAYLOAD_SECRET
 const isSiteIsolationP0 = (cloudflare.env as { SITE_ISOLATION_P0?: string }).SITE_ISOLATION_P0 === '1'
 const payloadDatabase = isSiteIsolationP0 ? createSiteD1Proxy() : cloudflare.env.D1
-setCloudflareD1Binding(payloadDatabase)
 
 const payloadSecret =
   process.env.PAYLOAD_SECRET?.trim() ||
