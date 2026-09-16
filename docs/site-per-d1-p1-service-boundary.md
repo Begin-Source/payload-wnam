@@ -17,7 +17,7 @@
 ## 浏览器路径
 
 1. 用户从 `https://hub.beginos.org` 同源 POST `/auth/enter-site`，表单只能包含 siteId。`centralIdentityFromPayload` 调用中央 `payload.auth`，禁用自动登录，只接受验证后的 users/local-jwt 与原 `_sid`；API key、匿名身份、客户端提供的 userId/sessionId 均不能签发。
-2. 中央 broker 再读原会话和当前站点权限。响应为自动提交的 POST 表单，目标是注册表对应的专用主机 `/auth/site-login`，另有无脚本时的继续按钮。票据在表单体中，不放进 URL；响应 no-store、no-referrer、禁止嵌入，CSP 只允许当前 nonce 脚本及目标表单 origin。
+2. 中央 broker 再读原会话和当前站点权限。响应为自动提交的 POST 表单，目标是注册表对应的专用主机 `/auth/site-login`，另有无脚本时的继续按钮。票据在表单体中，不放进 URL；响应 no-store、strict-origin（仅发送来源，不含路径/查询）、禁止嵌入，CSP 只允许当前 nonce 脚本及目标表单 origin。
 3. 站点入口必须先建立可信 SiteContext，再调用 `siteSessionGateway`。它验证 canonical URL 与上下文主机，拒绝查询参数，仅接受来自中央 origin 的 POST。表单流实际读取最多 512 bytes，不信任 Content-Length，不接受重复或额外字段。
 4. 通过 Service Binding 兑换成功后，站点设置 `__Host-site-session`（Secure、HttpOnly、SameSite=Strict、Path=/、无 Domain），并 303 到固定 `/admin`，不接受 returnTo/open redirect。
 5. `/auth/site-logout` 仅允许当前站点同源 POST。中央删除会话后清除 Cookie、303 到中央入口；中央不可用时返回 503 并清除本地 Cookie，不伪称远程撤销成功。
@@ -40,3 +40,5 @@
 依据：[Cloudflare Service Binding / WorkerEntrypoint](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/rpc/)。固定 Payload 3.82.1 的 `auth/strategies/jwt.js` 已核对：验证 JWT 后检查原 users.sessions 并将 sid 设置为 `_sid`；中央 broker 仍对 D1 原会话作二次实时核验。
 
 构建修复记录：`3c35cf7` 的构建 `30904bdc-627b-4797-bb63-9cd4e71952ba` 在首个 fixture POST 被 Miniflare 开发代理 Origin 校验拒绝，未进入发布。测试配置缺少 hub/站点 routes；补齐精确测试域名，使代理放行到应用的原有严格 Origin 检查，不放松应用校验。
+
+第二轮 `7b4ea01` / `3254fc5c-e870-429a-954e-41686566ed4b` 已通过原生 RPC 前半检查，但 Chromium 表单停留中央页。独立浏览器实验确认 `no-referrer` 会令导航 POST 的 Origin 变为 null；改用 strict-origin 的交接页和入口表单，继续拒绝 null Origin，且只披露原本已由 Origin 表示的来源，不披露路径或票据。正式中央站点选择页也必须采用兼容的策略。参见 [浏览器 Referrer-Policy 对 Origin 的影响](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy#effect_on_the_origin_header)。失败构建均未发布。

@@ -48,7 +48,7 @@ describe('central and site HTTP session boundaries', () => {
     expect(html).toContain(`name="ticket" value="${token}"`)
     expect(response.headers.get('location')).toBeNull()
     expect(response.headers.get('cache-control')).toContain('no-store')
-    expect(response.headers.get('referrer-policy')).toBe('no-referrer')
+    expect(response.headers.get('referrer-policy')).toBe('strict-origin')
     expect(response.headers.get('content-security-policy')).toContain('form-action https://cms-site-a.beginos.org')
     expect(response.headers.get('content-security-policy')).toContain("script-src 'nonce-")
   })

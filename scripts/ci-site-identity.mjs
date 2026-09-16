@@ -88,6 +88,8 @@ try {
   assert.equal((await site.fetch('https://cms-site-a.beginos.org/test/no-http')).status, 404)
   // Exercise actual Chromium form navigation, CSP, redirect and cookie rules.
   // Only the network edge is bridged to the isolated workers; RPC remains native.
+  console.log(JSON.stringify({ event: 'site_identity_rpc_transport_passed', concurrentRedemptions: 20, concurrentSiteRequests: 20 }))
+  const browserEvents = []
   const browser = await chromium.launch({ headless: true })
   try {
     const context = await browser.newContext()
@@ -99,17 +101,15 @@ try {
       const target = url.hostname === 'hub.beginos.org' ? central : site
       const response = await target.fetch(request.url(), { method: request.method(), headers: await request.allHeaders(),
         ...(request.postDataBuffer() ? { body: request.postDataBuffer() } : {}), redirect: 'manual' })
+      const requestHeaders = await request.allHeaders()
+      browserEvents.push({ host: url.hostname, path: url.pathname, method: request.method(), status: response.status, origin: requestHeaders.origin ?? null, referer: requestHeaders.referer ?? null })
       await route.fulfill({ status: response.status, headers: Object.fromEntries(response.headers), body: Buffer.from(await response.arrayBuffer()) })
     })
     for (const target of ['a', 'b']) {
       const page = await context.newPage()
       await page.goto('https://hub.beginos.org/')
-      await page.evaluate(target => {
-        const form = document.createElement('form')
-        form.method = 'POST'; form.action = '/auth/enter-site'
-        const input = document.createElement('input'); input.name = 'siteId'; input.value = target
-        form.append(input); document.body.append(form); form.submit()
-      }, target)
+      await page.locator('input[name=siteId]').fill(target)
+      await page.getByRole('button', { name: 'Open site' }).click()
       await page.waitForURL('https://cms-site-' + target + '.beginos.org/admin')
       assert.equal(JSON.parse(await page.locator('body').innerText()).siteId, target)
     }
@@ -120,9 +120,12 @@ try {
     assert.equal(cookiesA[0].name, '__Host-site-session')
     assert.equal(cookiesA[0].httpOnly, true)
     assert.equal(cookiesA[0].secure, true)
-    assert.notEqual(cookiesA[0].value, cookiesB[0].value)
-    assert.deepEqual(await context.cookies('https://public.example'), [])
+    assert.ok(cookiesA[0].value !== cookiesB[0].value, 'Site cookies must differ')
+    assert.equal((await context.cookies('https://public.example')).length, 0)
     await context.close()
+  } catch (error) {
+    console.log(JSON.stringify({ event: 'site_identity_browser_failure', exchanges: browserEvents }))
+    throw error
   } finally { await browser.close() }
   await db.prepare("UPDATE site_runtime_access SET role = 'viewer' WHERE site_id = 'a'").run()
   assert.equal((await (await me('a', cookieA)).json()).siteRole, 'viewer')

@@ -39,6 +39,9 @@ export async function centralSiteEntry(request: Request, options: {
     const nonce = crypto.randomUUID().replaceAll('-', '')
     const action = `${issued.adminOrigin}${SITE_LOGIN_PATH}`
     const response = privateResponse(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Opening site admin</title></head><body><form method="post" action="${action}"><input type="hidden" name="ticket" value="${issued.ticket}"><button type="submit">Continue to site admin</button></form><script nonce="${nonce}">document.forms[0].submit()</script></body></html>`, 200, { 'content-type': 'text/html; charset=utf-8' })
+    // no-referrer makes navigation POSTs carry Origin:null in Chromium.
+    // Send only the origin (never path/query); keep exact Origin validation.
+    response.headers.set('referrer-policy', 'strict-origin')
     response.headers.set('content-security-policy', `default-src 'none'; script-src 'nonce-${nonce}'; form-action ${issued.adminOrigin}; base-uri 'none'; frame-ancestors 'none'`)
     return response
   } catch (error) {
