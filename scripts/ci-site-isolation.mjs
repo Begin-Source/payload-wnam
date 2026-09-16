@@ -2,10 +2,10 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
-import { writeFileSync } from 'node:fs'
+import { realpathSync, writeFileSync } from 'node:fs'
 
 if (!process.env.CI) throw new Error('Runtime bundling/tests must run in Cloudflare Builds')
-const require = createRequire(resolve('node_modules/wrangler/package.json'))
+const require = createRequire(realpathSync(resolve('node_modules/wrangler/package.json')))
 const { Miniflare } = require('miniflare')
 execFileSync('pnpm', ['exec', 'wrangler', 'deploy', '--dry-run', '--config', 'tests/runtime/wrangler.jsonc', '--outdir', '.cloudflare-ci/site-isolation'], { stdio: 'inherit' })
 const mf = new Miniflare({
@@ -22,7 +22,7 @@ const start = Date.now()
 try {
   const databases = await Promise.all(['SITE_A', 'SITE_B'].map(name => mf.getD1Database(name)))
   await Promise.all(databases.map(async (db, i) => {
-    await db.exec('CREATE TABLE records (id INTEGER PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE jobs (id INTEGER PRIMARY KEY, value TEXT NOT NULL);')
+    await db.exec('CREATE TABLE records (id INTEGER PRIMARY KEY, value TEXT NOT NULL);\nCREATE TABLE jobs (id INTEGER PRIMARY KEY, value TEXT NOT NULL);')
     await db.prepare('INSERT INTO records VALUES (1, ?)').bind(i ? 'b' : 'a').run()
   }))
   const call = async path => {
