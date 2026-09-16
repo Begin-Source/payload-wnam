@@ -25,6 +25,8 @@ const secret = process.env.PAYLOAD_SECRET
 assert.ok(gate && password && secret, 'Missing ephemeral P0 profiling credentials')
 const worker = await unstable_startWorker({
   config: 'wrangler.p0.json', envFiles: [], sendMetrics: false,
+  // The low-level SDK does not infer the bundler's Node mode from compat flags.
+  build: { nodejsCompatMode: 'v2' },
   bindings: {
     P0_GATE_SECRET: { type: 'secret_text', value: gate },
     PAYLOAD_SECRET: { type: 'secret_text', value: secret },
