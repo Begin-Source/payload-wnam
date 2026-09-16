@@ -1,0 +1,51 @@
+{
+  "event": "p0_cloud_workerd_heap_profile",
+  "commit": "701325e6a9fa219fd9d20db411f23c8960cd78a3",
+  "at": "2026-09-16T18:56:32.668Z",
+  "snapshots": [
+    {
+      "phase": "before-payload-request",
+      "usedSize": 102690040,
+      "totalSize": 105111552,
+      "embedderHeapUsedSize": 257936,
+      "backingStorageSize": 1217658
+    },
+    {
+      "phase": "after-payload-login",
+      "usedSize": 137049100,
+      "totalSize": 146677760,
+      "embedderHeapUsedSize": 257936,
+      "backingStorageSize": 1233308
+    },
+    {
+      "phase": "after-read-batch-1",
+      "usedSize": 136074952,
+      "totalSize": 154542080,
+      "embedderHeapUsedSize": 257936,
+      "backingStorageSize": 1288757
+    },
+    {
+      "phase": "after-read-batch-2",
+      "usedSize": 128790004,
+      "totalSize": 154918912,
+      "embedderHeapUsedSize": 62184,
+      "backingStorageSize": 1288597
+    },
+    {
+      "phase": "after-read-batch-3",
+      "usedSize": 134895212,
+      "totalSize": 154918912,
+      "embedderHeapUsedSize": 257952,
+      "backingStorageSize": 1364469
+    },
+    {
+      "phase": "after-unconfirmed-gc-request",
+      "usedSize": 134895212,
+      "totalSize": 154918912,
+      "embedderHeapUsedSize": 257952,
+      "backingStorageSize": 1364469
+    }
+  ],
+  "garbageCollectionAcknowledged": false,
+  "scope": "Cloud CI workerd with full build and remote synthetic D1. Inspector affects runtime; an unacknowledged GC does not establish retained heap size. This report is diagnostic, not production headroom acceptance. No heap contents captured."
+}

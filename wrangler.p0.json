@@ -2,6 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": "src/worker.ts",
   "name": "payload-wnam-p0",
+  "minify": true,
   "account_id": "d487cf34c606620b442632a72272014d",
   "compatibility_date": "2025-08-15",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
