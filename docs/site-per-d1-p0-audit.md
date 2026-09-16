@@ -21,6 +21,23 @@
 - 现有 fixture 的 R2/缓存/队列验证是原生 runtime 行为验证，不代表产品中的对应入口已经完成改造。
 - 本机集成测试使用 Node 中的 Payload + workerd D1；云端 fixture 使用 workerd 中的 ALS + D1。两者组合也不能替代完整 Payload 在已部署 Worker + 两个测试 D1 的端到端验证。
 - 当前基线仅 3 个站点、2 篇文章、19 个任务，D1 9,236,480 bytes。不能用该样本证明吞吐、成本或生产质量。
+- [生产数据库外键图](site-per-d1-schema-graph.json)已通过只读 PRAGMA 提取：82 张用户/应用表、205 条外键。它仅覆盖实际 SQL 外键；Lexical、任务 JSON、插件多态引用和未建外键的 ID 仍需额外提取，不能把外键图当作完整迁移图。
+
+## 数据拆分中必须显式处理的关系
+
+- `articles.created_by_id`、`media.created_by_id` 指向中央用户。站点需要不含密码/会话的身份投影或显式跨库引用，不能为了保留外键复制中央凭据。
+- `articles` 同时引用作者、审核作者、生产 profile、brief、关键词、媒体、合并目标。作者副本又引用头像媒体；迁移必须闭合这些依赖。
+- `offers.merchant_slot_source_category_id` 指向站点分类。中央商品主数据和站点展示位置必须拆开，避免同步覆盖员工审定分类。
+- `sites` 引用中央 portfolio、用户、keyword preset、pipeline profile，并引用站点 logo/hero 媒体。中央注册表与站点展示配置副本需要分别定义，不能整行无条件双向覆盖。
+- 任务引用文章、页面、关键词、父任务等，且 JSON input/output 可能包含更多 ID。既有任务必须经过归属校验；未知引用应阻止迁移。
+
+## 下一轮已部署 P0 验证范围
+
+1. 在指定账户创建两个专用测试 D1，以操作 ID 和资源清单保证幂等；准备 schema 与合成数据，不复制生产密码或内容。
+2. 只在 Cloudflare Builds 中打包和部署隔离测试 Worker，保留提交匹配 marker、资源 preflight 和测试失败禁止扩大规则。
+3. 在同一个 Worker isolate 中让完整 Payload/Next 后台请求访问不同原生 D1。外层 Worker 与内层 Next 必须实际共享 ALS；不能仅凭单元测试假定分包行为。
+4. 用同 ID 的合成账户/文档覆盖后台 CRUD、关系、真实媒体上传、原始 SQL、nonce/租约、队列和异步回调；同时验证伪造站点头、缺上下文、路由失效和缓存边界。
+5. 测量冷启动、CPU、内存。完成这些后再判断 P0 能否放行；P1 仍需真正独立的中央/站点配置及中央实时认证，临时测试配置不算 P1 交付。
 
 ## 证据与下一门槛
 

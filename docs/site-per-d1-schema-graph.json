@@ -1,0 +1,1526 @@
+{
+  "capturedAt": "2026-09-16T14:43:49.769Z",
+  "databaseId": "f2aac41b-418d-47de-8bb3-edda485b1e2b",
+  "method": "Read-only sqlite_master table names + PRAGMA foreign_key_list in batches of 30",
+  "tables": [
+    "_site_blueprints_v",
+    "_workflows_v",
+    "_workflows_v_rels",
+    "_workflows_v_version_steps",
+    "_workflows_v_version_steps_dependencies",
+    "admin_branding",
+    "affiliate_earnings_imports",
+    "affiliate_earnings_rows",
+    "affiliate_networks",
+    "announcements",
+    "articles",
+    "articles_rels",
+    "audit_logs",
+    "authors",
+    "authors_rels",
+    "automation_steps",
+    "automation_triggers",
+    "categories",
+    "click_events",
+    "commission_rules",
+    "commission_statements",
+    "commissions",
+    "content_briefs",
+    "keyword_batch_presets",
+    "keywords",
+    "knowledge_base",
+    "knowledge_base_rels",
+    "llm_prompts",
+    "media",
+    "offers",
+    "offers_rels",
+    "operation_manuals",
+    "original_evidence",
+    "page_link_graph",
+    "pages",
+    "pages_rels",
+    "payload_jobs",
+    "payload_jobs_log",
+    "payload_kv",
+    "payload_locked_documents",
+    "payload_locked_documents_rels",
+    "payload_mcp_api_keys",
+    "payload_migrations",
+    "payload_preferences",
+    "payload_preferences_rels",
+    "pipeline_auth_nonces",
+    "pipeline_profiles",
+    "pipeline_settings",
+    "plugin_ai_instructions",
+    "plugin_ai_instructions_images",
+    "prompt_library",
+    "prompt_library_entries",
+    "public_landing",
+    "quota_rules",
+    "rankings",
+    "redirects",
+    "serp_snapshots",
+    "site_blueprints",
+    "site_layouts",
+    "site_portfolios",
+    "site_quotas",
+    "sites",
+    "sites_public_locale_codes",
+    "sites_rels",
+    "social_accounts",
+    "social_platforms",
+    "teams",
+    "teams_rels",
+    "tenant_prompt_templates",
+    "tenants",
+    "users",
+    "users_roles",
+    "users_sessions",
+    "users_tenants",
+    "workflow_jobs",
+    "workflow_runs",
+    "workflow_runs_logs",
+    "workflow_runs_step_results",
+    "workflows",
+    "workflows_rels",
+    "workflows_steps",
+    "workflows_steps_dependencies"
+  ],
+  "relations": [
+    {
+      "sourceTable": "_site_blueprints_v",
+      "sourceColumn": "version_design_about_image_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "_site_blueprints_v",
+      "sourceColumn": "version_site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "_site_blueprints_v",
+      "sourceColumn": "version_tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "_site_blueprints_v",
+      "sourceColumn": "parent_id",
+      "targetTable": "site_blueprints",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "_workflows_v",
+      "sourceColumn": "parent_id",
+      "targetTable": "workflows",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "_workflows_v_rels",
+      "sourceColumn": "automation_triggers_id",
+      "targetTable": "automation_triggers",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "_workflows_v_rels",
+      "sourceColumn": "parent_id",
+      "targetTable": "_workflows_v",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "_workflows_v_version_steps",
+      "sourceColumn": "_parent_id",
+      "targetTable": "_workflows_v",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "_workflows_v_version_steps",
+      "sourceColumn": "step_id",
+      "targetTable": "automation_steps",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "_workflows_v_version_steps_dependencies",
+      "sourceColumn": "_parent_id",
+      "targetTable": "_workflows_v_version_steps",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "admin_branding",
+      "sourceColumn": "logo_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "affiliate_earnings_imports",
+      "sourceColumn": "imported_by_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "affiliate_earnings_imports",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "affiliate_earnings_rows",
+      "sourceColumn": "recipient_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "affiliate_earnings_rows",
+      "sourceColumn": "batch_id",
+      "targetTable": "affiliate_earnings_imports",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "affiliate_earnings_rows",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "affiliate_networks",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "announcements",
+      "sourceColumn": "author_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "announcements",
+      "sourceColumn": "team_lead_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "announcements",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "articles",
+      "sourceColumn": "featured_image_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "articles",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "articles",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "articles",
+      "sourceColumn": "created_by_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "articles",
+      "sourceColumn": "pipeline_profile_id",
+      "targetTable": "pipeline_profiles",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "articles",
+      "sourceColumn": "reviewed_by_id",
+      "targetTable": "authors",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "articles",
+      "sourceColumn": "author_id",
+      "targetTable": "authors",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "articles",
+      "sourceColumn": "merged_into_id",
+      "targetTable": "articles",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "articles",
+      "sourceColumn": "source_brief_id",
+      "targetTable": "content_briefs",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "articles",
+      "sourceColumn": "primary_keyword_id",
+      "targetTable": "keywords",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "articles",
+      "sourceColumn": "meta_image_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "articles_rels",
+      "sourceColumn": "categories_id",
+      "targetTable": "categories",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "articles_rels",
+      "sourceColumn": "parent_id",
+      "targetTable": "articles",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "articles_rels",
+      "sourceColumn": "original_evidence_id",
+      "targetTable": "original_evidence",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "articles_rels",
+      "sourceColumn": "offers_id",
+      "targetTable": "offers",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "articles_rels",
+      "sourceColumn": "keywords_id",
+      "targetTable": "keywords",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "audit_logs",
+      "sourceColumn": "actor_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "audit_logs",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "authors",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "authors",
+      "sourceColumn": "headshot_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "authors_rels",
+      "sourceColumn": "categories_id",
+      "targetTable": "categories",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "authors_rels",
+      "sourceColumn": "parent_id",
+      "targetTable": "authors",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "authors_rels",
+      "sourceColumn": "sites_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "categories",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "categories",
+      "sourceColumn": "cover_image_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "categories",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "click_events",
+      "sourceColumn": "offer_id",
+      "targetTable": "offers",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "click_events",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "click_events",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "commission_statements",
+      "sourceColumn": "source_employee_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "commission_statements",
+      "sourceColumn": "recipient_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "commission_statements",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "commissions",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "commissions",
+      "sourceColumn": "offer_id",
+      "targetTable": "offers",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "commissions",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "commissions",
+      "sourceColumn": "recipient_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "content_briefs",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "content_briefs",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "content_briefs",
+      "sourceColumn": "primary_keyword_id",
+      "targetTable": "keywords",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "keyword_batch_presets",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "keywords",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "keywords",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "keywords",
+      "sourceColumn": "pillar_id",
+      "targetTable": "keywords",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "knowledge_base",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "knowledge_base",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "knowledge_base_rels",
+      "sourceColumn": "categories_id",
+      "targetTable": "categories",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "knowledge_base_rels",
+      "sourceColumn": "parent_id",
+      "targetTable": "knowledge_base",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "media",
+      "sourceColumn": "created_by_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "media",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "media",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "offers",
+      "sourceColumn": "network_id",
+      "targetTable": "affiliate_networks",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "offers",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "offers",
+      "sourceColumn": "merchant_slot_source_category_id",
+      "targetTable": "categories",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "offers_rels",
+      "sourceColumn": "sites_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "offers_rels",
+      "sourceColumn": "parent_id",
+      "targetTable": "offers",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "offers_rels",
+      "sourceColumn": "featured_on_home_for_sites_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "offers_rels",
+      "sourceColumn": "categories_id",
+      "targetTable": "categories",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "operation_manuals",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "original_evidence",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "original_evidence",
+      "sourceColumn": "verified_by_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "original_evidence",
+      "sourceColumn": "media_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "original_evidence",
+      "sourceColumn": "captured_by_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "original_evidence",
+      "sourceColumn": "article_id",
+      "targetTable": "articles",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "original_evidence",
+      "sourceColumn": "product_id",
+      "targetTable": "offers",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "page_link_graph",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "page_link_graph",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "pages",
+      "sourceColumn": "featured_image_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "pages",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "pages",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "pages",
+      "sourceColumn": "meta_image_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "pages_rels",
+      "sourceColumn": "categories_id",
+      "targetTable": "categories",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "pages_rels",
+      "sourceColumn": "parent_id",
+      "targetTable": "pages",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "payload_jobs",
+      "sourceColumn": "automation_trigger_id",
+      "targetTable": "automation_triggers",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "payload_jobs",
+      "sourceColumn": "automation_workflow_run_id",
+      "targetTable": "workflow_runs",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "payload_jobs",
+      "sourceColumn": "automation_workflow_id",
+      "targetTable": "workflows",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "payload_jobs_log",
+      "sourceColumn": "_parent_id",
+      "targetTable": "payload_jobs",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "payload_mcp_api_keys_id",
+      "targetTable": "payload_mcp_api_keys",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "tenants_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "site_blueprints_id",
+      "targetTable": "site_blueprints",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "sites_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "site_quotas_id",
+      "targetTable": "site_quotas",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "affiliate_networks_id",
+      "targetTable": "affiliate_networks",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "offers_id",
+      "targetTable": "offers",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "click_events_id",
+      "targetTable": "click_events",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "commissions_id",
+      "targetTable": "commissions",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "categories_id",
+      "targetTable": "categories",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "keywords_id",
+      "targetTable": "keywords",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "workflow_jobs_id",
+      "targetTable": "workflow_jobs",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "social_platforms_id",
+      "targetTable": "social_platforms",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "social_accounts_id",
+      "targetTable": "social_accounts",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "rankings_id",
+      "targetTable": "rankings",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "knowledge_base_id",
+      "targetTable": "knowledge_base",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "audit_logs_id",
+      "targetTable": "audit_logs",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "articles_id",
+      "targetTable": "articles",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "pages_id",
+      "targetTable": "pages",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "announcements_id",
+      "targetTable": "announcements",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "redirects_id",
+      "targetTable": "redirects",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "plugin_ai_instructions_id",
+      "targetTable": "plugin_ai_instructions",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "automation_triggers_id",
+      "targetTable": "automation_triggers",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "automation_steps_id",
+      "targetTable": "automation_steps",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "workflows_id",
+      "targetTable": "workflows",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "workflow_runs_id",
+      "targetTable": "workflow_runs",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "content_briefs_id",
+      "targetTable": "content_briefs",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "serp_snapshots_id",
+      "targetTable": "serp_snapshots",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "authors_id",
+      "targetTable": "authors",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "original_evidence_id",
+      "targetTable": "original_evidence",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "page_link_graph_id",
+      "targetTable": "page_link_graph",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "teams_id",
+      "targetTable": "teams",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "operation_manuals_id",
+      "targetTable": "operation_manuals",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "site_layouts_id",
+      "targetTable": "site_layouts",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "parent_id",
+      "targetTable": "payload_locked_documents",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "users_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "media_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "keyword_batch_presets_id",
+      "targetTable": "keyword_batch_presets",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "commission_statements_id",
+      "targetTable": "commission_statements",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "affiliate_earnings_rows_id",
+      "targetTable": "affiliate_earnings_rows",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "affiliate_earnings_imports_id",
+      "targetTable": "affiliate_earnings_imports",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "pipeline_profiles_id",
+      "targetTable": "pipeline_profiles",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "tenant_prompt_templates_id",
+      "targetTable": "tenant_prompt_templates",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_locked_documents_rels",
+      "sourceColumn": "site_portfolios_id",
+      "targetTable": "site_portfolios",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "payload_mcp_api_keys",
+      "sourceColumn": "user_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "payload_preferences_rels",
+      "sourceColumn": "users_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "payload_preferences_rels",
+      "sourceColumn": "parent_id",
+      "targetTable": "payload_preferences",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "payload_preferences_rels",
+      "sourceColumn": "payload_mcp_api_keys_id",
+      "targetTable": "payload_mcp_api_keys",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "pipeline_profiles",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "plugin_ai_instructions_images",
+      "sourceColumn": "image_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "plugin_ai_instructions_images",
+      "sourceColumn": "_parent_id",
+      "targetTable": "plugin_ai_instructions",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "prompt_library_entries",
+      "sourceColumn": "_parent_id",
+      "targetTable": "prompt_library",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "public_landing",
+      "sourceColumn": "about_image_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "rankings",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "rankings",
+      "sourceColumn": "keyword_id",
+      "targetTable": "keywords",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "rankings",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "redirects",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "redirects",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "serp_snapshots",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "serp_snapshots",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "serp_snapshots",
+      "sourceColumn": "keyword_id",
+      "targetTable": "keywords",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "site_blueprints",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "site_blueprints",
+      "sourceColumn": "design_about_image_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "site_blueprints",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "site_portfolios",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "site_quotas",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "site_quotas",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "sites",
+      "sourceColumn": "portfolio_id",
+      "targetTable": "site_portfolios",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "sites",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "sites",
+      "sourceColumn": "keyword_batch_preset_id",
+      "targetTable": "keyword_batch_presets",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "sites",
+      "sourceColumn": "created_by_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "sites",
+      "sourceColumn": "pipeline_profile_id",
+      "targetTable": "pipeline_profiles",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "sites",
+      "sourceColumn": "site_logo_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "sites",
+      "sourceColumn": "homepage_hero_banner_id",
+      "targetTable": "media",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "sites_public_locale_codes",
+      "sourceColumn": "parent_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "sites_rels",
+      "sourceColumn": "users_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "sites_rels",
+      "sourceColumn": "parent_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "social_accounts",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "social_accounts",
+      "sourceColumn": "platform_id",
+      "targetTable": "social_platforms",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "social_accounts",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "social_platforms",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "teams",
+      "sourceColumn": "lead_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "teams",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "teams_rels",
+      "sourceColumn": "users_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "teams_rels",
+      "sourceColumn": "parent_id",
+      "targetTable": "teams",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "tenant_prompt_templates",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "tenant_prompt_templates",
+      "sourceColumn": "pipeline_profile_id",
+      "targetTable": "pipeline_profiles",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "users",
+      "sourceColumn": "ops_manager_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "users",
+      "sourceColumn": "team_lead_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "NO ACTION"
+    },
+    {
+      "sourceTable": "users_roles",
+      "sourceColumn": "parent_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "users_sessions",
+      "sourceColumn": "_parent_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "users_tenants",
+      "sourceColumn": "_parent_id",
+      "targetTable": "users",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "users_tenants",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "workflow_jobs",
+      "sourceColumn": "page_id",
+      "targetTable": "pages",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "workflow_jobs",
+      "sourceColumn": "article_id",
+      "targetTable": "articles",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "workflow_jobs",
+      "sourceColumn": "site_id",
+      "targetTable": "sites",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "workflow_jobs",
+      "sourceColumn": "tenant_id",
+      "targetTable": "tenants",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "workflow_jobs",
+      "sourceColumn": "pipeline_keyword_id",
+      "targetTable": "keywords",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "workflow_jobs",
+      "sourceColumn": "parent_job_id",
+      "targetTable": "workflow_jobs",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "workflow_runs",
+      "sourceColumn": "fired_trigger_id",
+      "targetTable": "automation_triggers",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "workflow_runs",
+      "sourceColumn": "workflow_id",
+      "targetTable": "workflows",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "workflow_runs_logs",
+      "sourceColumn": "_parent_id",
+      "targetTable": "workflow_runs",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "workflow_runs_step_results",
+      "sourceColumn": "_parent_id",
+      "targetTable": "workflow_runs",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "workflow_runs_step_results",
+      "sourceColumn": "step_id",
+      "targetTable": "automation_steps",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "workflows_rels",
+      "sourceColumn": "automation_triggers_id",
+      "targetTable": "automation_triggers",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "workflows_rels",
+      "sourceColumn": "parent_id",
+      "targetTable": "workflows",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "workflows_steps",
+      "sourceColumn": "_parent_id",
+      "targetTable": "workflows",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    },
+    {
+      "sourceTable": "workflows_steps",
+      "sourceColumn": "step_id",
+      "targetTable": "automation_steps",
+      "targetColumn": "id",
+      "onDelete": "SET NULL"
+    },
+    {
+      "sourceTable": "workflows_steps_dependencies",
+      "sourceColumn": "_parent_id",
+      "targetTable": "workflows_steps",
+      "targetColumn": "id",
+      "onDelete": "CASCADE"
+    }
+  ]
+}
