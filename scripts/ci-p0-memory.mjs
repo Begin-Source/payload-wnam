@@ -68,7 +68,13 @@ try {
     pending.set(id, { resolve, reject, timer, method })
     socket.send(JSON.stringify({ id, method }))
   })
-  const measure = async phase => snapshots.push({ phase, ...await command('Runtime.getHeapUsage') })
+  const measure = async phase => {
+    const usage = await command('Runtime.getHeapUsage')
+    assert.ok(Number.isFinite(usage.usedSize) && usage.usedSize > 0, 'Invalid heap measurement')
+    const snapshot = { phase, ...usage }
+    snapshots.push(snapshot)
+    console.log(JSON.stringify({ event: 'p0_heap_measurement', ...snapshot }))
+  }
   await measure('before-payload-request')
   const loginResponse = await worker.fetch('https://p0-a.beginos.org/api/users/login', {
     method: 'POST', headers: { cookie: `__Host-p0-access=${gate}`, 'content-type': 'application/json' },
@@ -89,12 +95,20 @@ try {
     await measure(`after-read-batch-${batch + 1}`)
   }
   await command('HeapProfiler.enable')
-  await command('HeapProfiler.collectGarbage')
-  await measure('after-explicit-gc')
+  // workerd may collect promptly but delay the CDP acknowledgement for minutes:
+  // https://github.com/cloudflare/workerd/issues/6824. Never label an unconfirmed
+  // sample as post-GC, and never use this diagnostic as a memory acceptance gate.
+  let garbageCollectionAcknowledged = true
+  try { await command('HeapProfiler.collectGarbage') }
+  catch (error) {
+    if (error.message !== 'Inspector timeout: HeapProfiler.collectGarbage') throw error
+    garbageCollectionAcknowledged = false
+  }
+  await measure(garbageCollectionAcknowledged ? 'after-confirmed-gc' : 'after-unconfirmed-gc-request')
   const report = {
     event: 'p0_cloud_workerd_heap_profile', commit: process.env.WORKERS_CI_COMMIT_SHA,
-    at: new Date().toISOString(), snapshots,
-    scope: 'Cloud CI workerd with full build and remote synthetic D1. Inspector affects runtime; forced GC is diagnostic, not production headroom acceptance. No heap contents captured.',
+    at: new Date().toISOString(), snapshots, garbageCollectionAcknowledged,
+    scope: 'Cloud CI workerd with full build and remote synthetic D1. Inspector affects runtime; an unacknowledged GC does not establish retained heap size. This report is diagnostic, not production headroom acceptance. No heap contents captured.',
   }
   writeFileSync('.cloudflare-ci/p0-heap-profile.json', JSON.stringify(report, null, 2))
   console.log(JSON.stringify(report))
