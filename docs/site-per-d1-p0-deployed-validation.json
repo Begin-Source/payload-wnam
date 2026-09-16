@@ -74,7 +74,7 @@
       }
     }
   ],
-  "scope": "Deployed REST/admin/R2/queues/public React cache and streaming checks passed; memory headroom and remaining P0 faults pending",
+  "scope": "Full deployed P0 functional checks passed; memory P95 still exceeds documented limit, so P0 remains not passed",
   "goalComplete": false,
   "publicPathValidation": {
     "at": "2026-09-16T18:30:52.632Z",
@@ -110,5 +110,65 @@
         }
       ]
     }
+  },
+  "minifiedValidation": {
+    "at": "2026-09-16T19:06:42.665Z",
+    "build": "b51405fe-04c1-4a0c-95e4-4801b794877d",
+    "lines": [
+      [
+        1789585203239,
+        " Test Files  92 passed (92)"
+      ],
+      [
+        1789585203239,
+        "      Tests  447 passed (447)"
+      ],
+      [
+        1789585204796,
+        "Total Upload: 32.63 KiB / gzip: 8.17 KiB"
+      ],
+      [
+        1789585417716,
+        "{\"event\":\"p0_cloud_workerd_heap_profile\",\"commit\":\"6a94323bf1ac68cb6c5ffca0bcf0dea49631c994\",\"at\":\"2026-09-16T19:03:37.715Z\",\"snapshots\":[{\"phase\":\"before-payload-request\",\"usedSize\":77450288,\"totalSize\":79863808,\"embedderHeapUsedSize\":257936,\"backingStorageSize\":1217658},{\"phase\":\"after-payload-login\",\"usedSize\":113216112,\"totalSize\":123265024,\"embedderHeapUsedSize\":257936,\"backingStorageSize\":1233308},{\"phase\":\"after-read-batch-1\",\"usedSize\":112419432,\"totalSize\":130867200,\"embedderHeapUsedSize\":257936,\"backingStorageSize\":1288789},{\"phase\":\"after-read-batch-2\",\"usedSize\":119026552,\"totalSize\":133488640,\"embedderHeapUsedSize\":386896,\"backingStorageSize\":1364661},{\"phase\":\"after-read-batch-3\",\"usedSize\":114562116,\"totalSize\":139255808,\"embedderHeapUsedSize\":386896,\"backingStorageSize\":1290209},{\"phase\":\"after-unconfirmed-gc-request\",\"usedSize\":114562116,\"totalSize\":139255808,\"embedderHeapUsedSize\":386896,\"backingStorageSize\":1290209}],\"garbageCollectionAcknowledged\":false,\"scope\":\"Cloud CI workerd with full build and remote synthetic D1. Inspector affects runtime; an unacknowledged GC does not establish retained heap size. This report is diagnostic, not production headroom acceptance. No heap contents captured.\"}"
+      ],
+      [
+        1789585430621,
+        "Total Upload: 36200.08 KiB / gzip: 6064.00 KiB"
+      ],
+      [
+        1789585436937,
+        "Worker Startup Time: 42 ms"
+      ],
+      [
+        1789585509995,
+        "{\"event\":\"p0_deployed_smoke_passed\",\"commit\":\"6a94323bf1ac68cb6c5ffca0bcf0dea49631c994\",\"at\":\"2026-09-16T19:05:09.994Z\",\"scope\":\"Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending\",\"concurrentReads\":40,\"concurrentPublicPages\":12,\"isolatesServingBothSites\":5}"
+      ],
+      [
+        1789585510013,
+        "{\"event\":\"p0_release_passed\",\"commit\":\"6a94323bf1ac68cb6c5ffca0bcf0dea49631c994\",\"worker\":\"payload-wnam-p0\",\"productionUnchanged\":\"3046ffb1-b8ad-47ba-a373-9be5d0526c4b\"}"
+      ]
+    ],
+    "releases": [
+      {
+        "worker": "payload-wnam",
+        "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+        "versions": [
+          {
+            "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+            "percentage": 100
+          }
+        ]
+      },
+      {
+        "worker": "payload-wnam-p0",
+        "id": "5cd3d69b-d236-4c9a-99a6-6621ae85a27a",
+        "versions": [
+          {
+            "version_id": "0afc0d0b-5c59-4c57-b56a-da83501ba611",
+            "percentage": 100
+          }
+        ]
+      }
+    ]
   }
 }

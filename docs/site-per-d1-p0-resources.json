@@ -1,7 +1,7 @@
 {
   "operationId": "p0-two-d1-20260916",
   "accountId": "d487cf34c606620b442632a72272014d",
-  "verifiedAt": "2026-09-16T18:16:25.969Z",
+  "verifiedAt": "2026-09-16T19:06:42.665Z",
   "githubRepository": "Begin-Source/payload-wnam",
   "githubRepositoryId": 1224379860,
   "productionDatabaseId": "f2aac41b-418d-47de-8bb3-edda485b1e2b",
@@ -53,7 +53,7 @@
       "id": "a762370f446e456d9130dd754ea433f0"
     }
   ],
-  "workerState": "deployed REST/admin/R2/queue smoke passed in build e1e101c0-83dc-4b1e-bb0d-a7dcda0ba708; full P0 pending public/fault/resource gates",
-  "deploymentId": "f1c9f066-bea2-4820-ba45-c9be95031f04",
-  "versionId": "b01267a7-c413-4d2c-b8ae-e8dabbc84aef"
+  "workerState": "6a94323 deployed; full functional smoke passed; minified, but memory gate remains not passed",
+  "deploymentId": "5cd3d69b-d236-4c9a-99a6-6621ae85a27a",
+  "versionId": "0afc0d0b-5c59-4c57-b56a-da83501ba611"
 }

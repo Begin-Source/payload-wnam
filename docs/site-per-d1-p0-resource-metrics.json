@@ -48,5 +48,48 @@
   "sources": [
     "https://developers.cloudflare.com/workers/platform/limits/",
     "https://developers.cloudflare.com/workers/observability/metrics-and-analytics/"
-  ]
+  ],
+  "afterMinification": {
+    "capturedAt": "2026-09-16T19:06:42.665Z",
+    "commit": "6a94323bf1ac68cb6c5ffca0bcf0dea49631c994",
+    "window": {
+      "start": "2026-09-16T19:04:07Z",
+      "endExclusive": "2026-09-16T19:05:11Z"
+    },
+    "query": "{ viewer { accounts(filter: {accountTag: \"d487cf34c606620b442632a72272014d\"}) { workersInvocationsAdaptive(limit: 1, filter: {scriptName: \"payload-wnam-p0\", datetime_geq: \"2026-09-16T19:04:07Z\", datetime_lt: \"2026-09-16T19:05:11Z\"}) { sum { requests errors subrequests } quantiles { cpuTimeP50 cpuTimeP95 cpuTimeP99 requestDurationP50 requestDurationP95 memoryUsageBytesP50 memoryUsageBytesP95 memoryUsageBytesP99 memoryUsageBytesP999 } } } } }",
+    "analytics": {
+      "data": {
+        "viewer": {
+          "accounts": [
+            {
+              "workersInvocationsAdaptive": [
+                {
+                  "quantiles": {
+                    "cpuTimeP50": 11414,
+                    "cpuTimeP95": 158101,
+                    "cpuTimeP99": 1631317,
+                    "memoryUsageBytesP50": 125588670,
+                    "memoryUsageBytesP95": 137775000,
+                    "memoryUsageBytesP99": 138547550,
+                    "memoryUsageBytesP999": 139469710,
+                    "requestDurationP50": 352331,
+                    "requestDurationP95": 2245146
+                  },
+                  "sum": {
+                    "errors": 0,
+                    "requests": 194,
+                    "subrequests": 14
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "errors": null
+    },
+    "startupTimeMs": 42,
+    "passed": false,
+    "scope": "Full synthetic smoke now includes 12 concurrent public pages. Memory P95 remains above the documented limit; not P0 or capacity acceptance."
+  }
 }
