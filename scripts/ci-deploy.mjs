@@ -41,3 +41,5 @@ const run = args => execFileSync('pnpm', args, { stdio: 'inherit', env: process.
 run(['exec', 'wrangler', 'd1', 'time-travel', 'info', WORKER])
 run(['run', 'deploy:database'])
 run(['exec', 'opennextjs-cloudflare', 'deploy'])
+
+execFileSync(process.execPath, ['scripts/ci-smoke.mjs'], { stdio: 'inherit', env: process.env })

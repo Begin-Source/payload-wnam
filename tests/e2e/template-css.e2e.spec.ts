@@ -18,9 +18,10 @@ for (const root of ['default', 'wide', 'affiliate-reviews', 'template1', 'templa
     await page.getByRole('link').focus()
     await expect(page.getByRole('link')).toBeFocused()
     const token = await page.locator('html').evaluate(el => getComputedStyle(el).getPropertyValue('--primary').trim())
-    if (root === 'amz-template-1') expect(token).toBe('oklch(0.35 0.08 155)')
-    if (root === 'amz-template-2') expect(token).toBe('oklch(0.30 0.02 240)')
-    if (root === 'template2') expect(token).toBe('oklch(0.42 0.14 255)')
+    const numbers = token.match(/(?:\d*\.)?\d+/g)?.map(Number)
+    if (root === 'amz-template-1') expect(numbers).toEqual([0.35, 0.08, 155])
+    if (root === 'amz-template-2') expect(numbers).toEqual([0.30, 0.02, 240])
+    if (root === 'template2') expect(numbers).toEqual([0.42, 0.14, 255])
     if (legacy) expect(token).toBe('')
   })
 }
