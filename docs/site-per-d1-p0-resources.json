@@ -1,7 +1,7 @@
 {
   "operationId": "p0-two-d1-20260916",
   "accountId": "d487cf34c606620b442632a72272014d",
-  "verifiedAt": "2026-09-16T15:41:00Z",
+  "verifiedAt": "2026-09-16T18:16:25.969Z",
   "githubRepository": "Begin-Source/payload-wnam",
   "githubRepositoryId": 1224379860,
   "productionDatabaseId": "f2aac41b-418d-47de-8bb3-edda485b1e2b",
@@ -15,7 +15,7 @@
     "bucketName": "payload-wnam-p0",
     "createdAt": "2026-09-16T14:57:37.019Z",
     "location": "WNAM",
-    "state": "bound to deployed P0 Worker; upload checks blocked by login 500"
+    "state": "deployed upload/download/same-filename/delete isolation passed"
   },
   "databases": [
     {
@@ -27,7 +27,7 @@
       "readReplication": {
         "mode": "disabled"
       },
-      "state": "migrated and synthetic account seeded by cloud CI; full-app smoke pending",
+      "state": "107 migrations applied; deployed synthetic CRUD and queue isolation passed",
       "appliedMigrationCount": 107
     },
     {
@@ -39,7 +39,7 @@
       "readReplication": {
         "mode": "disabled"
       },
-      "state": "migrated and synthetic account seeded by cloud CI; full-app smoke pending",
+      "state": "107 migrations applied; deployed synthetic CRUD and queue isolation passed",
       "appliedMigrationCount": 107
     }
   ],
@@ -53,5 +53,7 @@
       "id": "a762370f446e456d9130dd754ea433f0"
     }
   ],
-  "workerState": "deployed by build 2552dec9-3986-46b8-a019-d3adc254d90a; login 500 from undefined global beforeOperation hook array; fix pending cloud validation"
+  "workerState": "deployed REST/admin/R2/queue smoke passed in build e1e101c0-83dc-4b1e-bb0d-a7dcda0ba708; full P0 pending public/fault/resource gates",
+  "deploymentId": "f1c9f066-bea2-4820-ba45-c9be95031f04",
+  "versionId": "b01267a7-c413-4d2c-b8ae-e8dabbc84aef"
 }

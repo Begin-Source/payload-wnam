@@ -54,7 +54,7 @@ for (const site of ['a', 'b']) {
   const record = await findOrCreate('sites', 'p0-isolation', { name: `P0 ${site}`, tenant: tenant.id, primaryDomain: `p0-${site}.beginos.org`, publicLocaleCodes: ['en'], defaultPublicLocale: 'en' })
   const category = await findOrCreate('categories', 'p0-same-slug', { name: `Site ${site}`, tenant: tenant.id, site: record.id, locale: 'en' })
   await json(`/api/categories/${category.id}`, 'PATCH', { name: `Site ${site}` })
-  fixtures.push({ site, origin, cookies, request, json, tenant, record, category })
+  fixtures.push({ site, origin, cookies, request, json, tenant, record, category, findOrCreate })
 }
 assert.equal(fixtures[0].category.id, fixtures[1].category.id, 'test must exercise identical document IDs')
 const crossedSession = await fetch(`${fixtures[1].origin}/api/users/me`, {
@@ -66,6 +66,40 @@ await Promise.all(Array.from({ length: 40 }, (_, i) => {
   return fixture.json(`/api/categories/${fixture.category.id}?depth=0`).then(doc => assert.equal(doc.name, `Site ${fixture.site}`))
 }))
 assert.ok([...isolates.values()].some(sites => sites.size === 2), 'No evidence that one deployed isolate served both databases')
+
+// Exercise actual React-cached theme/content queries and streamed Next HTML.
+for (const fixture of fixtures) {
+  for (const status of ['published', 'draft']) {
+    const title = `P0 ${status} content ${fixture.site}`
+    const page = await fixture.findOrCreate('pages', `p0-${status}-page`, {
+      title, tenant: fixture.tenant.id, site: fixture.record.id, locale: 'en', status,
+      body: { root: { type: 'root', version: 1, direction: 'ltr', format: '', indent: 0, children: [
+        { type: 'paragraph', version: 1, direction: 'ltr', format: '', indent: 0, children: [
+          { type: 'text', version: 1, text: title, detail: 0, format: 0, mode: 'normal', style: '' },
+        ] },
+      ] } },
+    })
+    if (status === 'published') fixture.publicPage = page
+  }
+}
+assert.equal(fixtures[0].publicPage.id, fixtures[1].publicPage.id, 'Public pages must use identical IDs')
+await Promise.all(Array.from({ length: 12 }, async (_, i) => {
+  const fixture = fixtures[i % 2]
+  const other = fixtures[(i + 1) % 2]
+  const response = await fixture.request('/en/pages/p0-published-page', { headers: {
+    cookie: `__Host-p0-access=${gate}`, 'x-forwarded-host': new URL(other.origin).host,
+    'x-site-id': `p0-${other.site}`, 'x-site-slug': 'untrusted',
+  } })
+  const html = await response.text()
+  assert.ok(html.includes(`P0 published content ${fixture.site}`), 'Public page lost its site context')
+  assert.ok(!html.includes(`P0 published content ${other.site}`), 'Public content leaked between sites')
+  assert.equal(response.headers.get('cache-control'), 'private, no-store', 'P0 gate must never be publicly cached')
+}))
+for (const fixture of fixtures) {
+  const response = await fetch(`${fixture.origin}/en/pages/p0-draft-page`, { headers: { cookie: `__Host-p0-access=${gate}` } })
+  assert.equal(response.status, 404, 'Draft pages must not appear in public routes')
+  assert.ok(!(await response.text()).includes(`P0 draft content ${fixture.site}`))
+}
 
 // Real Payload media endpoint -> storage plugin -> scoped R2 adapter.
 const uploadFilename = `p0-${randomUUID()}.txt`
@@ -133,7 +167,7 @@ try {
 } finally { await browser.close() }
 
 const report = { event: 'p0_deployed_smoke_passed', commit: process.env.WORKERS_CI_COMMIT_SHA, at: new Date().toISOString(),
-  scope: 'Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL; public cache/failure/performance gates still pending', concurrentReads: 40,
+  scope: 'Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending', concurrentReads: 40, concurrentPublicPages: 12,
   isolatesServingBothSites: [...isolates.values()].filter(sites => sites.size === 2).length }
 writeFileSync('.cloudflare-ci/p0-deployed-smoke.json', JSON.stringify(report, null, 2))
 console.log(JSON.stringify(report))

@@ -70,7 +70,13 @@ export async function p0Fetch<E extends P0Env>(
     identity: null, // The gate grants test access, not a Payload user identity.
   }, async () => {
     const scopedEnv = { ...env, D1: database, R2: createSiteR2Proxy(env.R2) }
-    const response = await next(request, scopedEnv, ctx)
+    // Downstream theme/SEO resolution must use the same trusted host as D1 routing.
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('host', url.host)
+    requestHeaders.set('x-forwarded-host', url.host)
+    requestHeaders.delete('x-site-id')
+    requestHeaders.delete('x-site-slug')
+    const response = await next(new Request(request, { headers: requestHeaders }), scopedEnv, ctx)
     // OpenNext may produce the stream after fetch resolves, outside its ALS scope.
     const reader = response.body?.getReader()
     const body = reader ? new ReadableStream<Uint8Array>({

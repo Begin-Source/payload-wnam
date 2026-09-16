@@ -16,7 +16,7 @@
 
 - 当前应用 `cloudflareD1Binding.ts` 仍保留可变全局 binding；`d1NarrowUpdate.ts`、`pipelineNonceStore.ts` 有默认库回退。新站点服务接入之前必须全部替换，当前原型未改变线上路径。
 - 当前 `payload.config.ts` 存在启动期表查询、AI 插件初始化和共享多租户配置，不能直接放入新的站点 isolate。需要独立中央/站点配置及显式建站初始化。
-- `publicSiteQueries.ts`、`publicLandingTheme.ts` 等 React cache 路径尚未全部改为明确的站点和配置版本键；尤其 `getOffersByIds(ids)` 当前没有站点参数。需要在实际 Next/workerd 路径验证。
+- `publicSiteQueries.ts`、`publicLandingTheme.ts` 已加入站点、路由版本及请求令牌作为 React cache 参数，包括 `getOffersByIds(ids)`；真实公开页面/流式响应检查待本轮云端执行。最终配置版本同步属于 P1/P3。
 - 认证、权限撤销、后台编辑器、真实上传、nonce、任务租约、公开/预览路由及 MCP 尚未在分库模式验证。
 - 现有 fixture 的 R2/缓存/队列验证是原生 runtime 行为验证，不代表产品中的对应入口已经完成改造。
 - 本机集成测试使用 Node 中的 Payload + workerd D1；云端 fixture 使用 workerd 中的 ALS + D1。两者组合也不能替代完整 Payload 在已部署 Worker + 两个测试 D1 的端到端验证。
@@ -41,6 +41,7 @@
 
 ## 证据与下一门槛
 
+- `c537c37` 的构建 `e1e101c0-83dc-4b1e-bb0d-a7dcda0ba708` 已完成部署与线上检查：447 项测试、14 项浏览器检查、真实后台/R2/队列均通过，6 个 isolate 同时处理两站。[部署证据](site-per-d1-p0-deployed-validation.json)。测试窗口 137 次请求、0 个执行错误、CPU P95 818.5 ms、内存 P95 150,440,850 bytes；[原始查询](site-per-d1-p0-resource-metrics.json)。内存指标高于官方限制，必须定位并形成余量证据后再判断 P0 可行性，不能将零错误当作内存通过。
 - `f7c53e9` 的构建 `2552dec9-3986-46b8-a019-d3adc254d90a` 通过 446 项测试（含全新数据库按 index 完整重放）、Next 打包与 14 项浏览器检查，完成两个库迁移并部署 P0 Worker。在线登录 500 使发布验收失败。仅对隔离 Worker 开启实时日志，定位为 `beforeOperation.unshift` 访问未初始化的全局钩子数组；修复保留已有钩子并初始化缺省数组，真实 adapter 测试增加全局配置。修复仍须云端重验，不代表 P0 通过。
 - 前次构建 `bdd0e73d-2d96-4d21-91cb-86a728c1f8f2` 在 B 库迁移时远程连接断开；核对迁移记录停止推进后取消构建。维护脚本现显式释放 Wrangler 平台代理，后续构建已按记录恢复完成全部迁移。
 - 新增专用测试队列和 P0 task-check 入口，调用现有 nonce、原子领取、心跳及任务状态 SQL 路径；重复投递必须只增加投递收据、不重复领取。这是 P0 隔离检查，未替代 P2 持久步骤链和故障恢复实现；云端运行待验证。

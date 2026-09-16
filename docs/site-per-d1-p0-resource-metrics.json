@@ -1,0 +1,52 @@
+{
+  "capturedAt": "2026-09-16T18:18:00Z",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "worker": "payload-wnam-p0",
+  "commit": "c537c377469a48fcf46e0d880cc1a040659231bf",
+  "window": {
+    "start": "2026-09-16T18:14:45Z",
+    "endExclusive": "2026-09-16T18:17:00Z"
+  },
+  "query": "{ viewer { accounts(filter: {accountTag: \"d487cf34c606620b442632a72272014d\"}) { workersInvocationsAdaptive(limit: 1, filter: {scriptName: \"payload-wnam-p0\", datetime_geq: \"2026-09-16T18:14:45Z\", datetime_lt: \"2026-09-16T18:17:00Z\"}) { sum { requests errors subrequests } quantiles { cpuTimeP50 cpuTimeP95 cpuTimeP99 requestDurationP50 requestDurationP95 memoryUsageBytesP50 memoryUsageBytesP95 } } } } }",
+  "analytics": {
+    "data": {
+      "viewer": {
+        "accounts": [
+          {
+            "workersInvocationsAdaptive": [
+              {
+                "quantiles": {
+                  "cpuTimeP50": 13729,
+                  "cpuTimeP95": 818500,
+                  "cpuTimeP99": 1200576,
+                  "memoryUsageBytesP50": 143106960,
+                  "memoryUsageBytesP95": 150440850,
+                  "requestDurationP50": 541964,
+                  "requestDurationP95": 2235162
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 137,
+                  "subrequests": 0
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "errors": null
+  },
+  "units": {
+    "cpuTime": "microseconds",
+    "requestDuration": "microseconds",
+    "memoryUsage": "bytes"
+  },
+  "startupTimeMs": 45,
+  "scope": "Small synthetic smoke only; not capacity acceptance. Memory P95 exceeds documented 128 MiB per-isolate budget; zero errors is not sufficient evidence of safe headroom.",
+  "passed": false,
+  "sources": [
+    "https://developers.cloudflare.com/workers/platform/limits/",
+    "https://developers.cloudflare.com/workers/observability/metrics-and-analytics/"
+  ]
+}

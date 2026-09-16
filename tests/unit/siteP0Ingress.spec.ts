@@ -30,7 +30,9 @@ describe('P0 trusted ingress', () => {
   it('isolates concurrent Next calls and deferred streams despite forged site headers', async () => {
     const responses = await Promise.all(['a', 'b'].map(site => p0Fetch(new Request(`https://p0-${site}.beginos.org/`, {
       headers: { cookie, 'x-site-id': 'attacker', 'x-forwarded-host': 'p0-b.beginos.org' },
-    }), env, ctx, async (_request, scoped) => {
+    }), env, ctx, async (request, scoped) => {
+      expect(request.headers.get('x-forwarded-host')).toBe(`p0-${site}.beginos.org`)
+      expect(request.headers.get('x-site-id')).toBeNull()
       expect(requireSiteContext().siteId).toBe(`p0-${site}`)
       expect(await scoped.D1.prepare('SELECT 1').first()).toBe(site)
       return new Response(site)

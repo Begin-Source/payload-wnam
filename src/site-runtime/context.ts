@@ -28,6 +28,11 @@ if (!runtimeGlobal[key]) {
 }
 const { storage, resourceOwners } = runtimeGlobal[key]!
 
+/** Legacy shared-database callers have no site scope; isolated callers validate it. */
+export function optionalSiteContext(): Scope | undefined {
+  return storage.getStore() ? requireSiteContext() : undefined
+}
+
 export function requireSiteContext(): Scope {
   const context = storage.getStore()
   if (!context) throw new Error('Site database context required')

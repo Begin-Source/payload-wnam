@@ -1,0 +1,79 @@
+{
+  "at": "2026-09-16T18:16:25.969Z",
+  "build": "e1e101c0-83dc-4b1e-bb0d-a7dcda0ba708",
+  "lines": [
+    [
+      1789582270394,
+      " Test Files  92 passed (92)"
+    ],
+    [
+      1789582270394,
+      "      Tests  447 passed (447)"
+    ],
+    [
+      1789582271937,
+      "Total Upload: 32.63 KiB / gzip: 8.17 KiB"
+    ],
+    [
+      1789582465278,
+      "Total Upload: 47360.07 KiB / gzip: 6785.45 KiB"
+    ],
+    [
+      1789582474514,
+      "Worker Startup Time: 45 ms"
+    ],
+    [
+      1789582476996,
+      "Current Version ID: d7604858-eda0-49e5-a671-fdf16dfe7517"
+    ],
+    [
+      1789582560893,
+      "{\"event\":\"p0_deployed_smoke_passed\",\"commit\":\"c537c377469a48fcf46e0d880cc1a040659231bf\",\"at\":\"2026-09-16T18:16:00.892Z\",\"scope\":\"Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL; public cache/failure/performance gates still pending\",\"concurrentReads\":40,\"isolatesServingBothSites\":6}"
+    ],
+    [
+      1789582560909,
+      "{\"event\":\"p0_release_passed\",\"commit\":\"c537c377469a48fcf46e0d880cc1a040659231bf\",\"worker\":\"payload-wnam-p0\",\"productionUnchanged\":\"3046ffb1-b8ad-47ba-a373-9be5d0526c4b\"}"
+    ]
+  ],
+  "releases": [
+    {
+      "worker": "payload-wnam",
+      "data": {
+        "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "annotations": {
+          "workers/triggered_by": "deployment"
+        },
+        "versions": [
+          {
+            "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-16T13:17:17.77796Z"
+      }
+    },
+    {
+      "worker": "payload-wnam-p0",
+      "data": {
+        "id": "f1c9f066-bea2-4820-ba45-c9be95031f04",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "annotations": {
+          "workers/message": "Automatic deployment on upload.",
+          "workers/triggered_by": "upload"
+        },
+        "versions": [
+          {
+            "version_id": "b01267a7-c413-4d2c-b8ae-e8dabbc84aef",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-16T18:14:38.817355Z"
+      }
+    }
+  ],
+  "scope": "Deployed P0 REST/admin/R2/queue isolation passed; remaining P0 public-cache, fault and resource gates pending",
+  "goalComplete": false
+}

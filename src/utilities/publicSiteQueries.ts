@@ -1,4 +1,4 @@
-import { cache } from 'react'
+import { cacheForSite as cache } from '@/site-runtime/cache'
 
 import { getPayload, type Payload, type Where } from 'payload'
 
