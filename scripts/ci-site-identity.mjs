@@ -19,10 +19,10 @@ for (const role of ['central', 'site']) {
 }
 const loginToken = randomBytes(32).toString('hex')
 const mf = new Miniflare({ workers: [
-  { name: 'site', modules: true, scriptPath: paths.site, compatibilityDate: '2025-08-15', compatibilityFlags: ['nodejs_compat'],
+  { name: 'site', routes: ['cms-site-a.beginos.org/*', 'cms-site-b.beginos.org/*', 'public.example/*'], modules: true, scriptPath: paths.site, compatibilityDate: '2025-08-15', compatibilityFlags: ['nodejs_compat'],
     serviceBindings: { IDENTITY: { name: 'central', entrypoint: 'SiteIdentityService' } },
     d1Databases: { SITE_A: 'identity-site-a', SITE_B: 'identity-site-b' } },
-  { name: 'central', modules: true, scriptPath: paths.central, compatibilityDate: '2025-08-15', compatibilityFlags: ['nodejs_compat'],
+  { name: 'central', routes: ['hub.beginos.org/*'], modules: true, scriptPath: paths.central, compatibilityDate: '2025-08-15', compatibilityFlags: ['nodejs_compat'],
     bindings: { FIXTURE_LOGIN_TOKEN: loginToken }, d1Databases: { CENTRAL_D1: 'identity-central' } },
 ] })
 try {
@@ -41,8 +41,8 @@ try {
       schemaVersion: 1, routingVersion: 1, migrationState: 'active', timezone: 'UTC', productionEnabled: false, operationId: `fixture-${site}` })
     await db.prepare('INSERT INTO site_runtime_access VALUES (?, ?, ?)').bind(site, '7', 'editor').run()
     const siteDB = await mf.getD1Database(`SITE_${site.toUpperCase()}`, 'site')
-    await siteDB.exec('CREATE TABLE users (id INTEGER PRIMARY KEY, central_user_id TEXT UNIQUE, display_name TEXT NOT NULL)')
-    await siteDB.prepare('INSERT INTO users VALUES (1, ?, ?)').bind('7', `Stored ${site}`).run()
+    await siteDB.exec('CREATE TABLE users (id INTEGER PRIMARY KEY, central_user_id TEXT UNIQUE, display_name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)')
+    await siteDB.prepare('INSERT INTO users VALUES (1, ?, ?, ?, ?)').bind('7', `Stored ${site}`, '2000-01-01', '2000-01-01').run()
   }
   const central = await mf.getWorker('central')
   const site = await mf.getWorker('site')

@@ -10,6 +10,10 @@
 
 `logout` 按会话摘要、siteId 和专用后台主机删除记录，幂等执行，不依赖当前授权仍然有效。用户已被撤权或站点暂停时仍可销毁原会话，另一站点不能借相同 token 删除本会话。
 
+## 身份投影同步
+
+`syncSiteIdentityProjection` 仅在可信站点上下文中接收新近核验的中央 principal；显式写入 centralUserId/displayName 和时间戳，不复制角色、密码、散列或会话。中央用户 ID 唯一键使并发首次访问只生成一条记录；刷新显示名保留原本地 ID 和创建时间，未变化时不写库。两座真实 workerd D1 的 3 项测试覆盖 ID 保留、字段白名单、并发唯一性、缺失上下文、跨站及过期路由。
+
 ## 浏览器路径
 
 1. 用户从 `https://hub.beginos.org` 同源 POST `/auth/enter-site`，表单只能包含 siteId。`centralIdentityFromPayload` 调用中央 `payload.auth`，禁用自动登录，只接受验证后的 users/local-jwt 与原 `_sid`；API key、匿名身份、客户端提供的 userId/sessionId 均不能签发。
@@ -34,3 +38,5 @@
 独立配置与字段级投影同步；中央角色挂载 authenticated entry 路由并导出 named 服务；站点分组绑定该服务并从可信注册表建立 ingress；普通后台写入 Origin 检查及完整自定义认证策略；真实中央登录/退出、权限管理、建站与 MCP 指定站点；云端部署后完整编辑和即时撤权验收。
 
 依据：[Cloudflare Service Binding / WorkerEntrypoint](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/rpc/)。固定 Payload 3.82.1 的 `auth/strategies/jwt.js` 已核对：验证 JWT 后检查原 users.sessions 并将 sid 设置为 `_sid`；中央 broker 仍对 D1 原会话作二次实时核验。
+
+构建修复记录：`3c35cf7` 的构建 `30904bdc-627b-4797-bb63-9cd4e71952ba` 在首个 fixture POST 被 Miniflare 开发代理 Origin 校验拒绝，未进入发布。测试配置缺少 hub/站点 routes；补齐精确测试域名，使代理放行到应用的原有严格 Origin 检查，不放松应用校验。

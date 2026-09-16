@@ -1,11 +1,10 @@
 import type { SiteIdentityService } from '../../src/site-control/identityService'
 import { withSiteContext } from '../../src/site-runtime/context'
-import { createSiteD1Proxy } from '../../src/site-runtime/d1'
+import { syncSiteIdentityProjection } from '../../src/site-runtime/identityProjection'
 import { siteIdentityAuthenticator } from '../../src/site-runtime/identityClient'
 import { centralSiteStrategy, assertSiteWriteOrigin } from '../../src/site-runtime/siteIdentity'
 import { siteSessionGateway } from '../../src/site-runtime/sessionGateway'
 
-const scopedDB = createSiteD1Proxy()
 export default {
   async fetch(request: Request, env: { IDENTITY: Service<typeof SiteIdentityService>; SITE_A: D1Database; SITE_B: D1Database }) {
     const url = new URL(request.url)
@@ -28,8 +27,7 @@ export default {
         assertSiteWriteOrigin(request.method, request.headers, url.hostname)
         const strategy = centralSiteStrategy({
           authenticateSession: siteIdentityAuthenticator(env.IDENTITY),
-          loadProjection: principal => scopedDB.prepare('SELECT id,central_user_id AS centralUserId,display_name AS displayName FROM users WHERE central_user_id = ?')
-            .bind(principal.userId).first(),
+          loadProjection: syncSiteIdentityProjection,
         })
         const { user } = await strategy.authenticate({ headers: request.headers } as Parameters<typeof strategy.authenticate>[0])
         if (!user) return new Response('Login required', { status: 401 })
