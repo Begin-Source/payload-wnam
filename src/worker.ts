@@ -10,7 +10,8 @@ import {
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment -- .open-next is generated after Next build in clean worktrees.
 // @ts-ignore .open-next is generated at build time.
 import nextWorker from '../.open-next/worker.js'
-import { p0Fetch, type P0Env } from './site-runtime/p0Ingress'
+import { p0Fetch, type P0Env, type P0Task } from './site-runtime/p0Ingress'
+import { p0Queue } from './site-runtime/p0Queue'
 
 type WorkerEnv = CloudflareEnv & P0Env &
   ContentWorkflowQueueEnv & {
@@ -113,7 +114,7 @@ const worker: ExportedHandler<WorkerEnv, ContentWorkflowQueueMessage> = {
 
   async queue(batch, env, ctx) {
     // The legacy scheduler is not a site-isolated task runner. P0 must never run it.
-    if (env.SITE_ISOLATION_P0 === '1') throw new Error('P0 legacy queue dispatch disabled')
+    if (env.SITE_ISOLATION_P0 === '1') return p0Queue(batch as unknown as MessageBatch<P0Task>, env, ctx, nextWorker.fetch.bind(nextWorker))
     for (const message of batch.messages) {
       try {
         if (!isSiteRunnerMessage(message.body)) {

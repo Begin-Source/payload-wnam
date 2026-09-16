@@ -20,6 +20,7 @@ const config = buildConfig({
   typescript: { autoGenerate: false },
   admin: { disable: true, importMap: { autoGenerate: false } },
   db: sqliteD1Adapter({ binding: createSiteD1Proxy(), push: false, allowIDOnCreate: true }),
+  globals: [{ slug: 'admin-branding', fields: [{ name: 'title', type: 'text' }] }],
   collections: [{
     slug: 'categories', timestamps: false, lockDocuments: false,
     fields: [{ name: 'name', type: 'text', required: true }, { name: 'slug', type: 'text', required: true }, { name: 'locale', type: 'text', required: true }],
@@ -45,8 +46,10 @@ describe('one Payload instance with request-bound native D1 clients', () => {
 
   it('initializes without a default binding and refuses context-free reads', async () => {
     expect(payload.config.collections.find(c => c.slug === 'payload-preferences')?.hooks.beforeOperation.length).toBeGreaterThan(0)
+    expect(payload.config.globals.find(g => g.slug === 'admin-branding')?.hooks.beforeOperation?.length).toBeGreaterThan(0)
     expect(await getPayload({ config, key: 'site-d1-isolation' })).toBe(payload)
     await expect(payload.find({ collection: 'categories' })).rejects.toThrow()
+    await expect(payload.findGlobal({ slug: 'admin-branding' })).rejects.toThrow('Site database context required')
   })
 
   it('creates identical IDs, finds, updates and deletes through the real adapter', async () => {

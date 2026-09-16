@@ -17,5 +17,10 @@
     { "binding": "SITE_D1_A", "database_name": "payload-wnam-p0-a", "database_id": "31d5906e-f276-4a61-87c1-31a13e7131e6", "remote": true },
     { "binding": "SITE_D1_B", "database_name": "payload-wnam-p0-b", "database_id": "20fd152f-7b7c-4bc6-be81-1a36ea720060", "remote": true }
   ],
-  "r2_buckets": [{ "binding": "R2", "bucket_name": "payload-wnam-p0" }]
+  "r2_buckets": [{ "binding": "R2", "bucket_name": "payload-wnam-p0" }],
+  "queues": {
+    "producers": [{ "binding": "P0_JOBS", "queue": "payload-wnam-p0-jobs" }],
+    "consumers": [{ "queue": "payload-wnam-p0-jobs", "max_batch_size": 1, "max_batch_timeout": 1,
+      "max_retries": 2, "retry_delay": 5, "max_concurrency": 2, "dead_letter_queue": "payload-wnam-p0-dlq" }]
+  }
 }

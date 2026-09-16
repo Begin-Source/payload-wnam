@@ -1,6 +1,7 @@
 import { getPayload } from 'payload'
 import type { MigrateDownArgs, MigrateUpArgs } from '@payloadcms/db-d1-sqlite'
 import { p0MaintenanceTarget } from './p0-maintenance'
+import { d1ClientFromPayload } from '../src/utilities/d1NarrowUpdate'
 
 const target = p0MaintenanceTarget()
 process.env.PAYLOAD_MIGRATING = 'true'
@@ -15,6 +16,9 @@ await payload.db.migrate({ migrations: migrations.map(migration => ({
   up: (args: unknown) => migration.up(args as MigrateUpArgs),
   down: (args: unknown) => migration.down(args as MigrateDownArgs),
 })) })
+const client = d1ClientFromPayload(payload)
+if (!client) throw new Error('P0 migration D1 client missing')
+await client.prepare('CREATE TABLE IF NOT EXISTS p0_queue_receipts (job_id INTEGER PRIMARY KEY, deliveries INTEGER NOT NULL)').bind().run()
 await payload.destroy()
 await disposeP0PlatformProxy()
 console.log(JSON.stringify({ event: 'p0_migrations_ready', database: target.d1_databases[0].database_id, migrations: migrations.length }))

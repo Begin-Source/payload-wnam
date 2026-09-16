@@ -7,8 +7,11 @@ export type P0Env = {
   SITE_D1_A?: D1Database
   SITE_D1_B?: D1Database
   P0_GATE_SECRET?: string
+  PAYLOAD_SECRET?: string
+  P0_JOBS?: Queue<P0Task>
   R2: R2Bucket
 }
+export type P0Task = { type: 'p0-isolation'; siteId: string; jobId: number; routingVersion: 1 }
 
 const hosts = new Map([
   ['p0-a.beginos.org', { siteId: 'p0-a', binding: 'SITE_D1_A' as const }],
@@ -17,6 +20,12 @@ const hosts = new Map([
 const database = createSiteD1Proxy()
 const cookieName = '__Host-p0-access'
 let isolateId: string | undefined
+
+export function p0HostForSite(siteId: string): string {
+  const host = [...hosts].find(([, route]) => route.siteId === siteId)?.[0]
+  if (!host) throw new Error('Unknown P0 queue site')
+  return host
+}
 
 async function matchesSecret(candidate: string, expected: string): Promise<boolean> {
   const digest = (value: string) => crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))

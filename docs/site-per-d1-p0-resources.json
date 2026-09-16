@@ -1,18 +1,21 @@
 {
   "operationId": "p0-two-d1-20260916",
   "accountId": "d487cf34c606620b442632a72272014d",
-  "verifiedAt": "2026-09-16T14:46:51.158Z",
+  "verifiedAt": "2026-09-16T15:41:00Z",
   "githubRepository": "Begin-Source/payload-wnam",
   "githubRepositoryId": 1224379860,
   "productionDatabaseId": "f2aac41b-418d-47de-8bb3-edda485b1e2b",
   "purpose": "P0 isolation tests only; no production data or passwords copied",
   "workerName": "payload-wnam-p0",
-  "hosts": ["p0-a.beginos.org", "p0-b.beginos.org"],
+  "hosts": [
+    "p0-a.beginos.org",
+    "p0-b.beginos.org"
+  ],
   "r2": {
     "bucketName": "payload-wnam-p0",
     "createdAt": "2026-09-16T14:57:37.019Z",
     "location": "WNAM",
-    "state": "created; deployment and upload checks pending"
+    "state": "bound to deployed P0 Worker; upload checks blocked by login 500"
   },
   "databases": [
     {
@@ -24,8 +27,8 @@
       "readReplication": {
         "mode": "disabled"
       },
-      "schemaVersion": 0,
-      "state": "partially migrated by build 9d627c97-7bc2-468d-a7c0-3c4556ead4dd; stopped before keyword_batch_presets ALTER; resume curated migration order"
+      "state": "migrated and synthetic account seeded by cloud CI; full-app smoke pending",
+      "appliedMigrationCount": 107
     },
     {
       "siteId": "p0-b",
@@ -36,8 +39,19 @@
       "readReplication": {
         "mode": "disabled"
       },
-      "schemaVersion": 0,
-      "state": "created-uninitialized"
+      "state": "migrated and synthetic account seeded by cloud CI; full-app smoke pending",
+      "appliedMigrationCount": 107
     }
-  ]
+  ],
+  "queues": [
+    {
+      "name": "payload-wnam-p0-jobs",
+      "id": "c35fa70b5ed24a078360c57d34ad2ac8"
+    },
+    {
+      "name": "payload-wnam-p0-dlq",
+      "id": "a762370f446e456d9130dd754ea433f0"
+    }
+  ],
+  "workerState": "deployed by build 2552dec9-3986-46b8-a019-d3adc254d90a; login 500 from undefined global beforeOperation hook array; fix pending cloud validation"
 }

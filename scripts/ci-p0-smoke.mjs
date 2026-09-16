@@ -86,6 +86,35 @@ const survivor = await fixtures[1].request(`/api/media/file/${encodeURIComponent
 assert.equal(await survivor.text(), 'P0 upload b')
 await fixtures[1].json(`/api/media/${fixtures[1].media.id}`, 'DELETE')
 
+const nonce = randomUUID()
+for (const fixture of fixtures) {
+  const created = await fixture.json('/api/workflow-jobs', 'POST', {
+    label: 'P0 isolation probe', tenant: fixture.tenant.id, site: fixture.record.id,
+    jobType: 'custom', status: 'pending', input: { p0Probe: true },
+  })
+  fixture.jobId = created.doc.id
+  const queued = await fixture.json('/api/p0/task-check', 'POST', { operation: 'enqueue', jobId: fixture.jobId, nonce })
+  assert.equal(queued.siteId, `p0-${fixture.site}`)
+  assert.equal(queued.nonceAccepted, true)
+  assert.equal(queued.replayAccepted, false)
+}
+assert.equal(fixtures[0].jobId, fixtures[1].jobId, 'Queue probes must exercise identical job IDs')
+const queueDeadline = Date.now() + 90000
+while (true) {
+  const jobs = await Promise.all(fixtures.map(fixture => fixture.json(`/api/workflow-jobs/${fixture.jobId}?depth=0`)))
+  const receipts = await Promise.all(fixtures.map(fixture => fixture.json('/api/p0/task-check', 'POST', { operation: 'inspect', jobId: fixture.jobId })))
+  if (jobs.every(job => job.status === 'completed') && receipts.every(receipt => receipt.deliveries >= 2)) {
+    jobs.forEach((job, i) => {
+      assert.equal(job.output.siteId, `p0-${fixtures[i].site}`)
+      assert.equal(job.attemptCount, 1, 'Duplicate queue messages must not claim the job twice')
+      assert.ok(Date.parse(job.heartbeatAt), 'The actual lease heartbeat must be persisted')
+    })
+    break
+  }
+  assert.ok(Date.now() < queueDeadline, 'P0 queue probes did not complete')
+  await new Promise(resolve => setTimeout(resolve, 1000))
+}
+
 const browser = await chromium.launch({ env: { ...process.env, ...browserLibraryEnvironment() } })
 try {
   for (const fixture of fixtures) {
@@ -104,7 +133,7 @@ try {
 } finally { await browser.close() }
 
 const report = { event: 'p0_deployed_smoke_passed', commit: process.env.WORKERS_CI_COMMIT_SHA, at: new Date().toISOString(),
-  scope: 'Full Next/Payload REST, admin browser, two remote D1, real R2 upload/delete; queue/cache/failure/performance gates still pending', concurrentReads: 40,
+  scope: 'Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL; public cache/failure/performance gates still pending', concurrentReads: 40,
   isolatesServingBothSites: [...isolates.values()].filter(sites => sites.size === 2).length }
 writeFileSync('.cloudflare-ci/p0-deployed-smoke.json', JSON.stringify(report, null, 2))
 console.log(JSON.stringify(report))

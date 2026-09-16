@@ -16,7 +16,11 @@ const config = JSON.parse(readFileSync('wrangler.p0.json', 'utf8'))
 const expectedDBs = ['31d5906e-f276-4a61-87c1-31a13e7131e6', '20fd152f-7b7c-4bc6-be81-1a36ea720060']
 if (config.name !== WORKER || config.account_id !== ACCOUNT || config.d1_databases.length !== 2 ||
   config.d1_databases.some((db, i) => db.database_id !== expectedDBs[i]) ||
-  config.r2_buckets[0].bucket_name !== WORKER || config.queues || config.triggers) throw new Error('P0 resource configuration mismatch')
+  config.r2_buckets[0].bucket_name !== WORKER || config.triggers ||
+  config.queues?.producers?.length !== 1 || config.queues.producers[0].binding !== 'P0_JOBS' ||
+  config.queues.producers[0].queue !== 'payload-wnam-p0-jobs' ||
+  config.queues.consumers?.length !== 1 || config.queues.consumers[0].queue !== 'payload-wnam-p0-jobs' ||
+  config.queues.consumers[0].dead_letter_queue !== 'payload-wnam-p0-dlq') throw new Error('P0 resource configuration mismatch')
 const env = { ...process.env, CLOUDFLARE_ACCOUNT_ID: ACCOUNT, NODE_ENV: 'production', CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false' }
 if (env.WRANGLER_CI_MATCH_TAG && env.WRANGLER_CI_MATCH_TAG !== 'a53ec5c30f6f4623909113bf36ca914f') {
   throw new Error('Unexpected source Worker build trigger')
@@ -43,6 +47,10 @@ for (const db of config.d1_databases) {
   if (actual.name !== db.database_name || actual.read_replication?.mode !== 'disabled') throw new Error('P0 D1 identity/replication mismatch')
 }
 await api(`r2/buckets/${WORKER}`)
+for (const [id, name] of [['c35fa70b5ed24a078360c57d34ad2ac8', 'payload-wnam-p0-jobs'], ['a762370f446e456d9130dd754ea433f0', 'payload-wnam-p0-dlq']]) {
+  const queue = await api(`queues/${id}`)
+  if (queue.queue_name !== name) throw new Error('P0 queue identity mismatch')
+}
 const run = (args, extra = {}) => execFileSync('pnpm', args, { stdio: 'inherit', env: { ...env, ...extra } })
 const password = randomBytes(32).toString('hex')
 const payloadSecret = randomBytes(32).toString('hex')
@@ -64,6 +72,10 @@ execFileSync('pnpm', ['exec', 'wrangler', 'secret', 'bulk', '--config', 'wrangle
 const settings = await api(`workers/scripts/${WORKER}/settings`)
 for (const db of config.d1_databases) {
   if (!settings.bindings.some(b => b.name === db.binding && b.type === 'd1' && b.id === db.database_id)) throw new Error('Deployed P0 binding mismatch')
+}
+if (!settings.bindings.some(b => b.name === 'R2' && b.type === 'r2_bucket' && b.bucket_name === WORKER) ||
+  !settings.bindings.some(b => b.name === 'P0_JOBS' && b.type === 'queue' && b.queue_name === 'payload-wnam-p0-jobs')) {
+  throw new Error('Deployed P0 storage/queue binding mismatch')
 }
 const after = await api('workers/scripts/payload-wnam/deployments')
 if (before.deployments[0].id !== after.deployments[0].id) throw new Error('Production deployment changed during P0 release')

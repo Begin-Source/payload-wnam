@@ -33,7 +33,7 @@
 
 ## 下一轮已部署 P0 验证范围
 
-1. 已在指定账户创建两个专用测试 D1（[操作和资源清单](site-per-d1-p0-resources.json)），均关闭读副本，目前为空库。下一步准备 schema 与合成数据，不复制生产密码或内容。
+1. 已在指定账户创建两个专用测试 D1（[操作和资源清单](site-per-d1-p0-resources.json)），均关闭读副本，已完成 107 项迁移及合成账号初始化；没有复制生产密码或内容。
 2. 只在 Cloudflare Builds 中打包和部署隔离测试 Worker，保留提交匹配 marker、资源 preflight 和测试失败禁止扩大规则。
 3. 在同一个 Worker isolate 中让完整 Payload/Next 后台请求访问不同原生 D1。外层 Worker 与内层 Next 必须实际共享 ALS；不能仅凭单元测试假定分包行为。
 4. 用同 ID 的合成账户/文档覆盖后台 CRUD、关系、真实媒体上传、原始 SQL、nonce/租约、队列和异步回调；同时验证伪造站点头、缺上下文、路由失效和缓存边界。
@@ -41,6 +41,9 @@
 
 ## 证据与下一门槛
 
+- `f7c53e9` 的构建 `2552dec9-3986-46b8-a019-d3adc254d90a` 通过 446 项测试（含全新数据库按 index 完整重放）、Next 打包与 14 项浏览器检查，完成两个库迁移并部署 P0 Worker。在线登录 500 使发布验收失败。仅对隔离 Worker 开启实时日志，定位为 `beforeOperation.unshift` 访问未初始化的全局钩子数组；修复保留已有钩子并初始化缺省数组，真实 adapter 测试增加全局配置。修复仍须云端重验，不代表 P0 通过。
+- 前次构建 `bdd0e73d-2d96-4d21-91cb-86a728c1f8f2` 在 B 库迁移时远程连接断开；核对迁移记录停止推进后取消构建。维护脚本现显式释放 Wrangler 平台代理，后续构建已按记录恢复完成全部迁移。
+- 新增专用测试队列和 P0 task-check 入口，调用现有 nonce、原子领取、心跳及任务状态 SQL 路径；重复投递必须只增加投递收据、不重复领取。这是 P0 隔离检查，未替代 P2 持久步骤链和故障恢复实现；云端运行待验证。
 - 完整 P0 提交 `f39f791` 的构建 `9d627c97-7bc2-468d-a7c0-3c4556ead4dd` 已通过打包/浏览器检查，但远程 A 库迁移在 `20260512_120000_keyword_batch_presets_strategy_fields` 停止。原因是 Payload CLI 按文件名排序，创建该表的 `20260819_120000_keyword_batch_presets` 尚未运行；仓库 index 原本已表达正确先后顺序。修正为受资源白名单保护的 `payload.db.migrate({ migrations })`，保留迁移记录并断点继续，不跳过失败迁移。生产部署 ID 核对仍为 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`。
 - 完整 P0 使用固定测试域名、独立测试 gate、R2 站点前缀代理；测试凭据由 CI 随机生成并以 stdin/进程环境传递，不写入仓库文件。`guardSanitizedSiteConfig` 在 Payload 添加内部集合后挂接所有 collection/global 的 beforeOperation；部署 smoke 还必须记录至少一个共同服务两个站点的 isolate ID。临时 P0 密码账户只存在测试库，不算最终 SSO 实现。
 
