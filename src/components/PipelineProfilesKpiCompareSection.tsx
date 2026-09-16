@@ -252,7 +252,7 @@ export function PipelineProfilesKpiCompareSection(
                       const r = await fetch(`/api/admin/pipeline-profiles/${p.id}/report?days=${days}`, {
                         credentials: 'include',
                       })
-                      const j = await r.json().catch(() => ({}))
+                      const j = await r.json().catch(() => ({})) as Record<string, unknown>
                       if (r.ok && j.report) console.info('[report]', j.report)
                       alert(r.ok ? '已在浏览器控制台输出 report 对象' : String(j.error || r.statusText))
                     } catch {
@@ -275,7 +275,7 @@ export function PipelineProfilesKpiCompareSection(
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({}),
                       })
-                      const j = await r.json().catch(() => ({}))
+                      const j = await r.json().catch(() => ({})) as Record<string, unknown>
                       alert(
                         r.ok
                           ? `克隆完成 id=${j.id} slug=${j.slug}`

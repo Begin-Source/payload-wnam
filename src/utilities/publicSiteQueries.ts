@@ -1,6 +1,6 @@
 import { cache } from 'react'
 
-import { getPayload, type Payload } from 'payload'
+import { getPayload, type Payload, type Where } from 'payload'
 
 import config from '@/payload.config'
 import type { Article, Author, Category, Media, Offer, Page } from '@/payload-types'
@@ -35,7 +35,7 @@ const categoryPublicSelect = {
   locale: true,
   description: true,
   kind: true,
-  coverImage: mediaPublicSelect,
+  coverImage: true,
 } as const
 
 const authorPublicSelect = {
@@ -56,9 +56,9 @@ const articlePublicSelect = {
   publishedAt: true,
   locale: true,
   status: true,
-  featuredImage: mediaPublicSelect,
-  author: authorPublicSelect,
-  categories: categoryPublicSelect,
+  featuredImage: true,
+  author: true,
+  categories: true,
 } as const
 
 const offerPublicSelect = {
@@ -68,23 +68,23 @@ const offerPublicSelect = {
   targetUrl: true,
   status: true,
   amazon: true,
-  network: { id: true, name: true, slug: true },
-  categories: categoryPublicSelect,
+  network: true,
+  categories: true,
 } as const
 
 /** Detail route: includes SEO meta + affiliate layout + embedded offers for AMZ article page */
 const articleDetailSelect = {
   ...articlePublicSelect,
-  reviewedBy: authorPublicSelect,
+  reviewedBy: true,
   meta: true,
   affiliatePageLayout: true,
-  relatedOffers: offerPublicSelect,
+  relatedOffers: true,
 } as const
 
 /** AMZ template-2 /reviews listing: articles + related offers (dual-CTA cards) without full detail fields */
 const articleReviewsListSelect = {
   ...articlePublicSelect,
-  relatedOffers: offerPublicSelect,
+  relatedOffers: true,
 } as const
 
 const pagePublicSelect = {
@@ -96,9 +96,18 @@ const pagePublicSelect = {
   publishedAt: true,
   locale: true,
   status: true,
-  featuredImage: mediaPublicSelect,
-  categories: categoryPublicSelect,
+  featuredImage: true,
+  categories: true,
   meta: true,
+} as const
+
+// Relationship projections belong in populate, not nested select fields.
+const publicPopulate = {
+  media: mediaPublicSelect,
+  authors: authorPublicSelect,
+  categories: categoryPublicSelect,
+  offers: offerPublicSelect,
+  'affiliate-networks': { name: true, slug: true },
 } as const
 
 /** Depth-1 list leaves `author.headshot` as a media id; resolve without touching `sites`. */
@@ -161,6 +170,7 @@ export const getGuideCategoriesForSite = cache(
       sort: 'name',
       depth: 0,
       select: categoryPublicSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     return res.docs as Category[]
@@ -184,6 +194,7 @@ export const getReviewCategoriesForSite = cache(
       sort: 'name',
       depth: 0,
       select: categoryPublicSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     return res.docs as Category[]
@@ -223,6 +234,7 @@ export const getPublishedArticlesForSite = cache(
       limit,
       depth: 1,
       select: articlePublicSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     const docs = res.docs as Article[]
@@ -255,6 +267,7 @@ export const getPublishedArticlesForReviewsListing = cache(
       limit,
       depth: 1,
       select: articleReviewsListSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     const docs = res.docs as Article[]
@@ -287,6 +300,7 @@ export const getPublishedArticlesForGuidesListing = cache(
       limit,
       depth: 1,
       select: articlePublicSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     const docs = res.docs as Article[]
@@ -312,6 +326,7 @@ export const getPublishedArticlesForSiteAndCategory = cache(
       limit,
       depth: 1,
       select: articlePublicSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     const docs = res.docs as Article[]
@@ -352,7 +367,7 @@ export const getCategoryBySlugForSite = cache(
 export const getActiveOffersForSite = cache(
   async (siteId: number, limit = 120, categoryId?: number | null): Promise<Offer[]> => {
     const payload = await getPayload({ config: await config })
-    const andClauses = [
+    const andClauses: Where[] = [
       { status: { equals: 'active' as const } },
       ...(categoryId != null && categoryId > 0
         ? [{ categories: { contains: categoryId } }]
@@ -365,6 +380,7 @@ export const getActiveOffersForSite = cache(
       limit: 500,
       depth: 1,
       select: offerPublicSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     const docs = res.docs as Offer[]
@@ -395,6 +411,7 @@ export const getFeaturedHomeOffersForSite = cache(
       limit: Math.min(limit, 48),
       depth: 1,
       select: offerPublicSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     return res.docs as Offer[]
@@ -485,6 +502,7 @@ export const getOffersByIds = cache(async (ids: number[]): Promise<Offer[]> => {
     limit: ids.length,
     depth: 1,
     select: offerPublicSelect,
+      populate: publicPopulate,
     overrideAccess: true,
   })
   return res.docs as Offer[]
@@ -504,6 +522,7 @@ export const getActiveOfferByAsinForSite = cache(
       limit: 40,
       depth: 1,
       select: offerPublicSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     for (const o of res.docs as Offer[]) {
@@ -520,6 +539,7 @@ export const getActiveOfferByAsinForSite = cache(
       limit: 40,
       depth: 1,
       select: offerPublicSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     for (const o of resLoose.docs as Offer[]) {
@@ -558,6 +578,7 @@ export const getRelatedArticlesForSite = cache(
         limit: 24,
         depth: 1,
         select: articlePublicSelect,
+      populate: publicPopulate,
         overrideAccess: true,
       })
       for (const doc of res.docs as Article[]) {
@@ -578,6 +599,7 @@ export const getRelatedArticlesForSite = cache(
       limit: 24,
       depth: 1,
       select: articlePublicSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     for (const doc of res2.docs as Article[]) {
@@ -607,6 +629,7 @@ export const getArticleBySlugForSite = cache(
       limit: 1,
       depth: 2,
       select: articleDetailSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     const doc = (res.docs[0] as Article | undefined) ?? null
@@ -631,6 +654,7 @@ export const getPageBySlugForSite = cache(
       limit: 1,
       depth: 1,
       select: pagePublicSelect,
+      populate: publicPopulate,
       overrideAccess: true,
     })
     return (res.docs[0] as Page | undefined) ?? null

@@ -97,7 +97,7 @@ export async function getStrictListingArticlesWhereForCategoryKind(
     limit: EXCLUDE_ARTICLES_PREFETCH_LIMIT,
     depth: 0,
     pagination: false,
-    select: { id: true },
+    select: { slug: true },
     overrideAccess: true,
   })
 

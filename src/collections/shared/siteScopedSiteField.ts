@@ -1,4 +1,4 @@
-import type { CollectionBeforeChangeHook, Field, FilterOptions } from 'payload'
+import type { CollectionBeforeChangeHook, RelationshipField, FilterOptions } from 'payload'
 
 import type { Config } from '@/payload-types'
 import { combineTenantWhere, getTenantScopeForStats } from '@/utilities/tenantScope'
@@ -28,7 +28,7 @@ export const requireSiteOnCreate: CollectionBeforeChangeHook = ({ data, operatio
 }
 
 /** 与文章/页面一致的 site 关系字段（新建由 hook 校验必填）。 */
-export const siteScopedSiteField: Field = {
+export const siteScopedSiteField: RelationshipField = {
   name: 'site',
   type: 'relationship',
   relationTo: 'sites',

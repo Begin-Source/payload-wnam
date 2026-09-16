@@ -109,7 +109,7 @@ const ZH: Template1LocaleBlock = {
   footerBottom: '本站可能参与联盟计划；正文与评测保持独立。',
 }
 
-export const TEMPLATE1_DEFAULTS: Record<AppLocale, Template1LocaleBlock> = {
+export const TEMPLATE1_DEFAULTS: Record<'en' | 'zh', Template1LocaleBlock> = {
   en: EN,
   zh: ZH,
 }
@@ -416,11 +416,11 @@ function mergeSiteT1Layers(base: SiteT1, override: SiteT1): SiteT1 {
  * Each source may be a Payload row with `t1LocaleJson` or the raw JSON object itself.
  */
 export function mergeTemplate1Layers(
-  templateT1: { t1LocaleJson?: unknown } | Record<string, unknown> | null | undefined,
-  siteT1: { t1LocaleJson?: unknown } | Record<string, unknown> | null | undefined,
+  templateT1: unknown,
+  siteT1: unknown,
 ): Template1Theme {
   const fromSource = (
-    source: { t1LocaleJson?: unknown } | Record<string, unknown> | null | undefined,
+    source: unknown,
   ): SiteT1 => {
     if (source && typeof source === 'object' && 't1LocaleJson' in source) {
       return siteT1FromLocaleJson(source as { t1LocaleJson?: unknown })

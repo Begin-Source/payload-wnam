@@ -30,9 +30,8 @@ export const publicSiteThemeSelectWithoutT1 = {
   siteLayout: true,
   publicLocaleCodes: true,
   defaultPublicLocale: true,
-  blueprint: true,
-  homepageHeroBanner: publicSiteHeroBannerMediaSelect,
-  siteLogo: publicSiteHeroBannerMediaSelect,
+  homepageHeroBanner: true,
+  siteLogo: true,
   mainProduct: true,
   nicheData: true,
 } as const

@@ -1,3 +1,4 @@
+import type { PipelineProfileFields } from '@/utilities/seoTheoryPipelineProfilePresets'
 import { MigrateDownArgs, MigrateUpArgs, sql } from '@payloadcms/db-d1-sqlite'
 
 import {
@@ -45,7 +46,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   const tenantId = tenants.docs[0]?.id
   if (typeof tenantId !== 'number') return
 
-  const seeds: Array<{ slug: string; fields: Record<string, unknown> }> = [
+  const seeds: Array<{ slug: string; fields: PipelineProfileFields }> = [
     { slug: SEO_PIPELINE_AUTHORITY_FIRST_SLUG, fields: getSeoPublishAuthorityFirstProfileFields(false) },
     { slug: SEO_PIPELINE_SCALE_FRESH_SLUG, fields: getSeoScaleFreshnessProfileFields(false) },
   ]

@@ -279,7 +279,7 @@ describe('articlePipelineChain', () => {
         },
         profileId: 1,
         profileSlug: 'test-profile',
-        source: 'profile',
+        source: 'explicit',
       })
 
       const run = vi.fn().mockResolvedValue({})

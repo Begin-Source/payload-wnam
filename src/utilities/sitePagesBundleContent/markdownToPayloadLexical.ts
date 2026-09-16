@@ -338,7 +338,7 @@ function tableNode(children: any[]): any {
   }
 }
 
-function rootNode(children: any[]): Page['body'] {
+function rootNode(children: any[]): NonNullable<Page['body']> {
   return {
     root: {
       type: 'root',

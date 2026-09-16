@@ -13,19 +13,19 @@ function mockFetch(impl: typeof fetch): void {
 
 describe('Together hidream request bodies', () => {
   beforeEach(() => {
-    delete process.env.TOGETHER_IMAGE_USE_SIZE
-    delete process.env.TOGETHER_IMAGE_STEPS
-    delete process.env.TOGETHER_BASE_URL
+    Reflect.deleteProperty(process.env, 'TOGETHER_IMAGE_USE_SIZE')
+    Reflect.deleteProperty(process.env, 'TOGETHER_IMAGE_STEPS')
+    Reflect.deleteProperty(process.env, 'TOGETHER_BASE_URL')
     process.env.TOGETHER_API_KEY = 'test-key'
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
     globalThis.fetch = ORIGINAL_FETCH
-    delete process.env.TOGETHER_IMAGE_USE_SIZE
-    delete process.env.TOGETHER_IMAGE_STEPS
-    delete process.env.TOGETHER_IMAGE_MODEL
-    delete process.env.TOGETHER_API_KEY
+    Reflect.deleteProperty(process.env, 'TOGETHER_IMAGE_USE_SIZE')
+    Reflect.deleteProperty(process.env, 'TOGETHER_IMAGE_STEPS')
+    Reflect.deleteProperty(process.env, 'TOGETHER_IMAGE_MODEL')
+    Reflect.deleteProperty(process.env, 'TOGETHER_API_KEY')
   })
 
   it('togetherImageGenerateBytes uses response_format base64 and width/height (not size or b64_json)', async () => {

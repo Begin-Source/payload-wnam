@@ -35,7 +35,7 @@ export function extractOrganicTopNormalizedUrls(raw: unknown, limit = 10): strin
     rank_group?: number
     url?: string
   }
-  const organic: { rank: number; norm: string | null }[] = []
+  const organic: { rank: number; norm: string }[] = []
   for (const it of items) {
     if (!it || typeof it !== 'object') continue
     const row = it as Row

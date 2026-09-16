@@ -1,4 +1,4 @@
-import { getPayload } from 'payload'
+import { getPayload, type Where } from 'payload'
 
 import config from '@/payload.config'
 import type { Redirect } from '@/payload-types'
@@ -21,7 +21,7 @@ export async function findRedirectForPath(pathname: string, requestHeaders: Head
     { fromPath: { equals: pathname } },
   ] as const
 
-  const tryFind = async (where: Record<string, unknown>): Promise<Redirect | null> => {
+  const tryFind = async (where: Where): Promise<Redirect | null> => {
     const res = await payload.find({
       collection: 'redirects',
       where: { and: [...baseAnd, where] },

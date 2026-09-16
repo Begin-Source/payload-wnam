@@ -330,9 +330,9 @@ export function mergePublicSiteTheme(
   const siteLogoUrl = publicUrlFromSiteLogo(site)
   if (amzSl && amzSiteConfig != null && site != null) {
     const bannerUrl = publicUrlFromSiteHeroBanner(site)
-    amzSiteConfig = applyHeroBannerToAmzSiteConfig(amzSiteConfig, bannerUrl)
-    amzSiteConfig = applySiteLogoToAmzSiteConfig(amzSiteConfig, siteLogoUrl)
-    amzSiteConfig = applySiteNameFallbackToAmzBrand(amzSiteConfig, site)
+    amzSiteConfig = applyHeroBannerToAmzSiteConfig(amzSiteConfig, bannerUrl) ?? amzSiteConfig
+    amzSiteConfig = applySiteLogoToAmzSiteConfig(amzSiteConfig, siteLogoUrl) ?? amzSiteConfig
+    amzSiteConfig = applySiteNameFallbackToAmzBrand(amzSiteConfig, site) ?? amzSiteConfig
     coerceBrandLogoLucideForNiche(
       amzSiteConfig,
       typeof site.mainProduct === 'string' ? site.mainProduct : null,

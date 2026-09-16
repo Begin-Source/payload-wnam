@@ -1,4 +1,4 @@
-import type { Where, Access, CollectionConfig, Where } from 'payload'
+import type { Access, CollectionConfig, Where } from 'payload'
 
 import { setContentCreatedByOnCreate } from '@/collections/hooks/setContentCreatedByOnCreate'
 import { validateSiteFieldWithinVisibilityScope } from '@/collections/hooks/validateSiteVisibilityScope'

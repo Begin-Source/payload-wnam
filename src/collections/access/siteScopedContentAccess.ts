@@ -24,7 +24,7 @@ export function siteScopedCollectionAccess(
       return { or: ids.map((id) => ({ sites: { contains: id } })) }
     }
     if (variant === 'original-evidence') {
-      return { article: { site: { in: ids } } }
+      return { 'article.site': { in: ids } }
     }
     return { site: { in: ids } }
   })

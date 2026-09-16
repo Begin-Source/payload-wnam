@@ -15,7 +15,7 @@ describe('runNextPendingJobs', () => {
   })
 
   it('sends x-pipeline-banner-hints when bannerHintsMode and merges tick bannerHints', async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       jsonResponse({
         ok: true,
         executed: false,
@@ -38,7 +38,7 @@ describe('runNextPendingJobs', () => {
   })
 
   it('stops with no_pending when tick returns executed false', async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       jsonResponse({ ok: true, executed: false, message: 'No pending jobs' }),
     )
     const r = await runNextPendingJobs({
@@ -57,7 +57,7 @@ describe('runNextPendingJobs', () => {
 
   it('caps maxRuns at 20', async () => {
     let n = 0
-    const fetchImpl = vi.fn(async () => {
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       n += 1
       return jsonResponse({
         ok: true,
@@ -79,7 +79,7 @@ describe('runNextPendingJobs', () => {
 
   it('stops on failure when stopOnFailure is true', async () => {
     let c = 0
-    const fetchImpl = vi.fn(async () => {
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       c += 1
       if (c <= 2) {
         return jsonResponse({
@@ -116,7 +116,7 @@ describe('runNextPendingJobs', () => {
 
   it('continues after failed tick when stopOnFailure is false', async () => {
     let c = 0
-    const fetchImpl = vi.fn(async () => {
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       c += 1
       if (c === 1) {
         return jsonResponse({
@@ -150,7 +150,7 @@ describe('runNextPendingJobs', () => {
   it('stops early on budget (getNow hook)', async () => {
     let time = 0
     const getNow = vi.fn(() => time)
-    const fetchImpl = vi.fn(async () => {
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       time = 2100
       return jsonResponse({
         ok: true,
@@ -173,7 +173,7 @@ describe('runNextPendingJobs', () => {
   })
 
   it('sends constrainedJobIds in tick body when provided', async () => {
-    const fetchImpl = vi.fn(async () =>
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       jsonResponse({ ok: true, executed: false, message: 'No pending jobs' }),
     )
     await runNextPendingJobs({
@@ -190,7 +190,7 @@ describe('runNextPendingJobs', () => {
   })
 
   it('stops on non-OK HTTP when stopOnFailure is true', async () => {
-    const fetchImpl = vi.fn(async () => jsonResponse({ error: 'Unauthorized' }, 401))
+    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => jsonResponse({ error: 'Unauthorized' }, 401))
     const r = await runNextPendingJobs({
       origin: 'http://localhost:3000',
       maxRuns: 5,

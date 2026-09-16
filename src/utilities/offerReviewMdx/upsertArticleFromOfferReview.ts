@@ -1,3 +1,4 @@
+import { isAppLocale } from '@/i18n/config'
 import type { Payload } from 'payload'
 
 import type { Article, Offer } from '@/payload-types'
@@ -43,6 +44,7 @@ export async function upsertArticleFromOfferReview(args: {
 }): Promise<UpsertArticleFromReviewResult> {
   const { payload, offer, extracted, reviewSlug } = args
   const locale = (args.locale || 'en').trim() || 'en'
+  if (!isAppLocale(locale)) throw new Error('Unsupported article locale')
 
   const siteId = firstSiteId(offer)
   if (siteId == null) {

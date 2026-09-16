@@ -1,3 +1,4 @@
+import type { User } from '@/payload-types'
 import { describe, expect, it } from 'vitest'
 
 import { usersReadWhere, usersUpdateWhere } from '@/utilities/usersAccess'
@@ -10,8 +11,8 @@ type MockUser = {
   tenants?: { tenant: number | { id: number } }[] | null
 }
 
-function u(partial: MockUser): MockUser {
-  return { ...partial }
+function u(partial: MockUser): User & { collection: 'users' } {
+  return { ...partial, updatedAt: '2026-01-01', createdAt: '2026-01-01' } as User & { collection: 'users' }
 }
 
 describe('usersReadWhere (用户列表：全站 vs 租户内)', () => {
@@ -44,7 +45,7 @@ describe('usersReadWhere (用户列表：全站 vs 租户内)', () => {
     })
     const where = usersReadWhere(viewer)
     expect(typeof where).toBe('object')
-    if (where === true) throw new Error('expected Where')
+    if (typeof where !== 'object') throw new Error('expected Where')
     expect('or' in where).toBe(true)
     const or = (where as { or: unknown[] }).or
     expect(or[0]).toEqual({ id: { equals: 7 } })

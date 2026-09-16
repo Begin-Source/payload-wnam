@@ -303,7 +303,7 @@ async function loadSeasonalRows(
   }
   scored.sort((a, b) => b.rank - a.rank)
   const rows = scored.map(({ doc, s }) => ({ ...doc, seasonalScore: s }))
-  return { rows: scored, applied: { minSeasonalScore: minScore } }
+  return { rows, applied: { minSeasonalScore: minScore } }
 }
 
 function toDate(v: unknown): Date | null {

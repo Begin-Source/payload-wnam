@@ -37,7 +37,7 @@ async function loadPipelineProfileDoc(
       depth: 0,
       overrideAccess: true,
     })
-    return doc && typeof doc === 'object' ? (doc as Record<string, unknown>) : null
+    return doc && typeof doc === 'object' ? (doc as unknown as Record<string, unknown>) : null
   } catch {
     return null
   }
@@ -80,7 +80,7 @@ export type ResolvePipelineConfigArgs = {
 export async function resolvePipelineConfig(args: ResolvePipelineConfigArgs): Promise<ResolvedPipelineConfig> {
   const { payload, tenantId } = args
   const globalRaw = await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })
-  const base = normalizeGlobalPipelineDoc(globalRaw as Record<string, unknown>)
+  const base = normalizeGlobalPipelineDoc(globalRaw as unknown as Record<string, unknown>)
 
   let profileId: number | null = null
   let source: ResolvedPipelineSource = 'global_only'
@@ -118,7 +118,7 @@ export async function resolvePipelineConfig(args: ResolvePipelineConfigArgs): Pr
         depth: 0,
         overrideAccess: true,
       })
-      const a = article as Record<string, unknown> | null
+      const a = article as unknown as Record<string, unknown> | null
       const pid = profileIdFromRelation(a?.pipelineProfile)
       if (await tryApply(pid, 'article')) {
         const doc = await loadPipelineProfileDoc(payload, profileId!)
@@ -138,7 +138,7 @@ export async function resolvePipelineConfig(args: ResolvePipelineConfigArgs): Pr
         depth: 0,
         overrideAccess: true,
       })
-      const s = site as Record<string, unknown> | null
+      const s = site as unknown as Record<string, unknown> | null
       const pid = profileIdFromRelation(s?.pipelineProfile)
       if (await tryApply(pid, 'site')) {
         const doc = await loadPipelineProfileDoc(payload, profileId!)
@@ -205,7 +205,7 @@ export async function resolvePipelineConfigForArticle(
       depth: 0,
       overrideAccess: true,
     })
-    const a = article as Record<string, unknown> | null
+    const a = article as unknown as Record<string, unknown> | null
     const tenantId = tenantIdFromRelation(a?.tenant as never)
     let siteId: number | null = null
     const rawSite = a?.site
@@ -278,7 +278,7 @@ export async function resolveMergedForPipelineRoute(
 
   const globalRaw = await payload.findGlobal({ slug: 'pipeline-settings', depth: 0 })
   return {
-    merged: normalizeGlobalPipelineDoc(globalRaw as Record<string, unknown>),
+    merged: normalizeGlobalPipelineDoc(globalRaw as unknown as Record<string, unknown>),
     profileId: null,
     profileSlug: null,
     source: 'global_only',

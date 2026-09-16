@@ -83,7 +83,7 @@ export async function payloadFindAllForSitemap<T extends { id: number | string }
       depth: 0,
       overrideAccess: true,
     })
-    all.push(...(res.docs as T[]))
+    all.push(...(res.docs as unknown as T[]))
     if (res.docs.length < SITEMAP_BATCH_LIMIT) break
     page += 1
   }

@@ -120,7 +120,7 @@ export function seoMetaForDocument(doc: SeoMetaDoc, args: SeoMetaForDocumentArgs
       : {}
 
   const twitterCard =
-    ogImages && ogImages.length > 0 ? ('summary_large_image' as const) : ('summary' as const)
+    ogImages && (!Array.isArray(ogImages) || ogImages.length > 0) ? ('summary_large_image' as const) : ('summary' as const)
 
   return {
     title,

@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   isComparisonDecisionTerm,
   isHighCommissionAffiliateTerm,
   parseKeywordBatchMode,
+  loadKeywordBatchCandidates,
 } from '@/utilities/keywordBatchModes'
+import type { Payload } from 'payload'
 import { affiliateSeoFlowForMode } from '@/utilities/affiliateSeoFlow'
 
 describe('keywordBatchModes', () => {
@@ -50,4 +52,19 @@ describe('keywordBatchModes', () => {
       recommendedPipeline: 'geo-citation-quality-80-v1',
     })
   })
+})
+
+it('returns seasonal keyword documents with IDs in priority order', async () => {
+  const now = new Date()
+  const trend = [0, 1, 2].map(offset => {
+    const date = new Date(now.getFullYear(), now.getMonth() - offset, 1)
+    return { year: date.getFullYear(), month: date.getMonth() + 1, search_volume: 100 }
+  })
+  const find = vi.fn().mockResolvedValue({ docs: [
+    { id: 1, keyword: 'lower priority', opportunityScore: 10, trend },
+    { id: 2, keyword: 'higher priority', opportunityScore: 80, trend },
+  ] })
+  const result = await loadKeywordBatchCandidates({ find } as unknown as Payload, 9, 'seasonal', {}, 20)
+  expect(result.rows.map(row => row.id)).toEqual([2, 1])
+  expect(result.rows[0]).toMatchObject({ keyword: 'higher priority', seasonalScore: 1 })
 })

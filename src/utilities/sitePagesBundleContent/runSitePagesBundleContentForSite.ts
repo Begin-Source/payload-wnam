@@ -263,6 +263,7 @@ export async function runSitePagesBundleContentForSite(
       ? args.aiModel.trim()
       : DEFAULT_TRUST_BUNDLE_MODEL
 
+  let chatResult: Awaited<ReturnType<typeof openrouterChatWithMeta>>
   let raw: string
   let finishReason: string
   try {
@@ -276,6 +277,7 @@ export async function runSitePagesBundleContentForSite(
       ],
       { responseFormatJson: true, temperature: 0.3, maxTokens: 6144 },
     )
+    chatResult = r
     raw = r.text
     finishReason = r.finishReason
   } catch (e) {
@@ -326,8 +328,8 @@ export async function runSitePagesBundleContentForSite(
       payload,
       target: { collection: 'sites', id: siteId },
       model,
-      usage: r.usage,
-      raw: r.raw,
+      usage: chatResult.usage,
+      raw: chatResult.raw,
       kind: 'site_pages_bundle_content',
     })
   } catch {

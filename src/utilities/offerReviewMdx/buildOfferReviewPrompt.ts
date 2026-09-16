@@ -12,7 +12,7 @@ export function buildOfferReviewMdxPromptVarsFromContext(
   const topFeatures = features.slice(0, 8)
   const featureText = topFeatures.length ? topFeatures.join('; ') : ''
   return buildOfferReviewMdxPromptVars({
-    template_mdx: templateMdx,
+    templateMdx,
     date: ctx.date,
     raw_product_title: ctx.title || '',
     asin: ctx.asin || '',

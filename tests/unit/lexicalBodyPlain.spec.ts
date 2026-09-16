@@ -10,7 +10,7 @@ import { markdownToPageBodyLexical } from '@/utilities/sitePagesBundleContent/ma
 
 describe('lexicalBodyPlain', () => {
   it('extracts paragraphs and headings then round-trips finalize', () => {
-    const body = markdownToPageBodyLexical('# One\n\nLine two.') as Article['body']
+    const body = markdownToPageBodyLexical('# One\n\nLine two.')
     const plain = lexicalArticleBodyToPlainText(body)
     expect(plain.includes('One')).toBe(true)
     const finalized = finalizeLexicalArticleBody(body)
@@ -19,7 +19,7 @@ describe('lexicalBodyPlain', () => {
 
   it('extracts text inside blockquote and bullet list', () => {
     const md = ['# Title', '', '> Quote line here.', '', '- Item one', '- Item two'].join('\n')
-    const body = markdownToPageBodyLexical(md) as Article['body']
+    const body = markdownToPageBodyLexical(md)
     const plain = lexicalArticleBodyToPlainText(body)
     expect(plain).toContain('Title')
     expect(plain).toContain('Quote line here')
@@ -30,7 +30,7 @@ describe('lexicalBodyPlain', () => {
   it('uses Payload-style list, link, and text-format nodes', () => {
     const body = markdownToPageBodyLexical(
       '## Title\n\n- one\n- two\n\nThis is **bold** and [link](https://example.com).',
-    ) as Article['body']
+    )
     const rootChildren = (body.root as { children?: unknown[] }).children ?? []
 
     const listNode = rootChildren.find((node) => node && typeof node === 'object' && (node as { type?: string }).type === 'list') as
@@ -63,7 +63,7 @@ describe('lexicalBodyPlain', () => {
       '---',
     ].join('\n')
 
-    const body = markdownToPageBodyLexical(md) as Article['body']
+    const body = markdownToPageBodyLexical(md)
     const rootChildren = (body.root as { children?: unknown[] }).children ?? []
 
     const listNode = rootChildren.find((node) => node && typeof node === 'object' && (node as { type?: string }).type === 'list') as
@@ -86,7 +86,7 @@ describe('lexicalBodyPlain', () => {
     const tableNode = rootChildren.find((node) => node && typeof node === 'object' && (node as { type?: string }).type === 'table') as
       | Record<string, unknown>
       | undefined
-    expect(tableNode?.children?.length).toBe(2)
+    expect((tableNode?.children as unknown[] | undefined)?.length).toBe(2)
     expect(JSON.stringify(tableNode)).toContain('"headerState":1')
 
     expect(rootChildren.some((node) => node && typeof node === 'object' && (node as { type?: string }).type === 'horizontalrule')).toBe(true)

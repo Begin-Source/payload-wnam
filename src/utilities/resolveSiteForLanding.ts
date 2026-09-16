@@ -7,7 +7,7 @@ import {
   normalizeHostForMatch,
   primaryDomainQueryVariants,
 } from '@/utilities/normalizeRequestHost'
-import { publicSiteThemeSelectWithoutT1 } from '@/utilities/publicSiteThemeSelect'
+import { publicSiteThemeSelectWithoutT1, publicSiteHeroBannerMediaSelect } from '@/utilities/publicSiteThemeSelect'
 
 function warnDuplicate(payload: Payload, msg: string, extra: Record<string, unknown>) {
   if (typeof payload.logger?.warn === 'function') {
@@ -24,6 +24,7 @@ async function findSiteBySlug(payload: Payload, slug: string): Promise<Site | nu
     limit: 10,
     depth: 1,
     select: publicSiteThemeSelectWithoutT1,
+    populate: { media: publicSiteHeroBannerMediaSelect },
     overrideAccess: true,
   })
   if (active.docs.length > 1) {
@@ -39,6 +40,7 @@ async function findSiteBySlug(payload: Payload, slug: string): Promise<Site | nu
     limit: 10,
     depth: 1,
     select: publicSiteThemeSelectWithoutT1,
+    populate: { media: publicSiteHeroBannerMediaSelect },
     overrideAccess: true,
   })
   if (anyStatus.docs.length > 1) {
@@ -61,6 +63,7 @@ async function findSiteByPrimaryDomain(payload: Payload, canonicalHost: string):
     limit: 10,
     depth: 1,
     select: publicSiteThemeSelectWithoutT1,
+    populate: { media: publicSiteHeroBannerMediaSelect },
     overrideAccess: true,
   })
   if (active.docs.length > 1) {
@@ -80,6 +83,7 @@ async function findSiteByPrimaryDomain(payload: Payload, canonicalHost: string):
     limit: 10,
     depth: 1,
     select: publicSiteThemeSelectWithoutT1,
+    populate: { media: publicSiteHeroBannerMediaSelect },
     overrideAccess: true,
   })
   if (anyStatus.docs.length > 1) {

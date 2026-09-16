@@ -73,8 +73,8 @@ export function lexicalArticleBodyToPlainText(body: unknown): string {
 }
 
 /** Run finalizeArticleBodyText and rebuild article Lexical body from plain text blocks. */
-export function finalizeLexicalArticleBody(body: unknown): Article['body'] {
+export function finalizeLexicalArticleBody(body: unknown): NonNullable<Article['body']> {
   const raw = lexicalArticleBodyToPlainText(body)
   const polished = finalizeArticleBodyText(raw)
-  return markdownToPageBodyLexical(polished) as Article['body']
+  return markdownToPageBodyLexical(polished)
 }

@@ -1,3 +1,4 @@
+import type { Payload } from 'payload'
 import { describe, expect, it, vi } from 'vitest'
 
 import { appendSerpSnapshot, findRecentSerpSnapshotRaw } from '@/utilities/serpSnapshotPersist'
@@ -6,7 +7,7 @@ function mockPayload(findResult: unknown) {
   return {
     find: vi.fn().mockResolvedValue(findResult),
     create: vi.fn().mockResolvedValue({}),
-  } as never
+  }
 }
 
 describe('serpSnapshotPersist', () => {
@@ -14,7 +15,7 @@ describe('serpSnapshotPersist', () => {
     const raw = { tasks: [] }
     const payload = mockPayload({ docs: [{ raw }] })
     const out = await findRecentSerpSnapshotRaw({
-      payload,
+      payload: payload as unknown as Payload,
       keywordId: 1,
       locationLabel: '2840',
       deviceLabel: 'mobile',
@@ -26,7 +27,7 @@ describe('serpSnapshotPersist', () => {
   it('findRecentSerpSnapshotRaw returns null when empty', async () => {
     const payload = mockPayload({ docs: [] })
     const out = await findRecentSerpSnapshotRaw({
-      payload,
+      payload: payload as unknown as Payload,
       keywordId: 1,
       locationLabel: '2840',
       deviceLabel: 'mobile',
@@ -38,7 +39,7 @@ describe('serpSnapshotPersist', () => {
     const create = vi.fn().mockResolvedValue({})
     const payload = { create } as never
     await appendSerpSnapshot({
-      payload,
+      payload: payload as unknown as Payload,
       keywordId: 5,
       siteId: 2,
       tenantId: 9,
