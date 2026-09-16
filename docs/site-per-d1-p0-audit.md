@@ -44,7 +44,7 @@
 - 单元测试 `tests/unit/siteD1Isolation.spec.ts`：6 项通过，含 100 个交错异步请求与分包注册表边界。
 - 实际 adapter 测试 `tests/int/sitePayloadD1.int.spec.ts`：3 项通过，含 40 个跨站并发列表查询。这是功能测试，未构成 P95 <2 秒性能验收。
 - 云端提交 `77f6bf7` 已通过 lint、类型检查和 436 项测试；随后测试打包入口定位失败，未产生成功 release marker。修复仍走同一云端链路。
-- 提交 `4cccddd` 已在云端通过 workerd fixture：2 个 D1，40 个并发请求，耗时 1,517 ms（整个 fixture 的墙钟时间，不是 CPU/P95 指标）。构建 `17ec00f2-842d-42e7-b1c2-8b0440951c48` 的完整 Next/浏览器检查仍在跟进。新增分包修复须重新通过相关云端检查。
+- 包含分包修复的提交 `c7cf614` 已通过完整云端构建 `94295b2e-5cf6-4218-a45e-4b13e5d107fa`：440 项单元/集成测试、Next 打包及 14 项浏览器测试。workerd fixture 使用 2 个 D1、40 个并发请求，耗时 1,744 ms（整个 fixture 的墙钟时间，不是 CPU/P95 指标）。[完整记录](site-per-d1-p0-validation.json)明确标注尚未部署完整分库应用。
 - [原始生产基线](site-per-d1-baseline.json) 保存明确的 UTC 24 小时窗口、GraphQL 查询和单位。Worker 3,654 次请求、0 个执行错误，CPU P95 955.429 ms；requestDuration P95 2,481.664 ms。D1 读取 185,508 行、写入 131 行。账本累计 $0.028495 未与供应商账单对账，不能据此计算真实每篇费用。
 - 下一门槛：在隔离的已部署测试环境完成完整 Payload/上传/后台/权限及资源测量。P0 未通过前不扩大生产范围。
 

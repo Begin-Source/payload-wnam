@@ -1,0 +1,56 @@
+{
+  "capturedAt": "2026-09-16T14:48:15.239Z",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "build": {
+    "id": "94295b2e-5cf6-4218-a45e-4b13e5d107fa",
+    "status": "stopped",
+    "outcome": "success",
+    "commit": "c7cf61483d695870912b6d600ad8e1a019629668",
+    "branch": "feat/site-per-d1",
+    "buildCommand": "pnpm run ci:build",
+    "deployCommand": "node -e \"console.log('Cloudflare validation complete')\"",
+    "started": "2026-09-16T14:41:29.512Z",
+    "stopped": "2026-09-16T14:47:33.438Z"
+  },
+  "evidence": [
+    [
+      1789569804683,
+      " Test Files  88 passed (88)"
+    ],
+    [
+      1789569804683,
+      "      Tests  440 passed (440)"
+    ],
+    [
+      1789569809171,
+      "{\"event\":\"site_d1_workerd_isolation\",\"commit\":\"c7cf61483d695870912b6d600ad8e1a019629668\",\"ok\":true,\"databases\":2,\"concurrentRequests\":40,\"elapsedMs\":1744,\"checks\":[\"CRUD\",\"same IDs\",\"batch rollback\",\"context guards\",\"stale routes\",\"streams\",\"R2 prefixes\",\"cache keys\",\"queue delivery and deduplication\"],\"scope\":\"Cloudflare Builds workerd with local D1/R2/Queues; not deployed D1 or full Payload/admin acceptance\"}"
+    ],
+    [
+      1789570045212,
+      "  14 passed (9.1s)"
+    ],
+    [
+      1789570045319,
+      "Success: Build command completed"
+    ],
+    [
+      1789570045789,
+      "Success: Deploy command completed"
+    ],
+    [
+      1789570051961,
+      "✨ Success! Build completed."
+    ]
+  ],
+  "productionDeployment": {
+    "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+    "versions": [
+      {
+        "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+        "percentage": 100
+      }
+    ],
+    "createdOn": "2026-09-16T13:17:17.77796Z"
+  },
+  "p0Gate": "incomplete: requires deployed full Payload/Next two-D1 admin, uploads, auth, tasks and resource verification; this build deploy command performs validation only"
+}
