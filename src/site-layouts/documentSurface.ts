@@ -84,6 +84,7 @@ export function resolveFrontendDocumentSurface(
     .join(' ')
 
   const htmlClassName = [
+    !isAmz && !tShell ? `${theme.siteLayout.replaceAll('_', '-')}-root` : undefined,
     isAmzTemplate2Layout(theme.siteLayout)
       ? 'amz-template-2-root'
       : isAmz

@@ -3,7 +3,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
+:where(html.amz-template-2-root) {
+  --site-font-sans: "Geist", "Geist Fallback";
   /* Static fallback: matches defaultSiteConfig.theme.colors + theme-generator (pre-injection / tooling) */
   --background: oklch(0.99 0 0);
   --foreground: oklch(0.25 0.02 240);
@@ -40,7 +41,7 @@
   --sidebar-ring: oklch(0.30 0.02 240);
 }
 
-.dark {
+:where(html.amz-template-2-root.dark) {
   --background: oklch(0.2 0.02 240);
   --foreground: oklch(0.95 0.01 240);
   --card: oklch(0.25 0.02 240);
@@ -76,8 +77,8 @@
 }
 
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback";
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --font-sans: var(--site-font-sans, system-ui), system-ui, sans-serif;
+  --font-mono: var(--site-font-mono, monospace), monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -117,10 +118,10 @@
 }
 
 @layer base {
-  * {
+  :where(html.amz-template-2-root) * {
     @apply border-border outline-ring/50;
   }
-  body {
+  :where(html.amz-template-2-root) body {
     @apply bg-background text-foreground;
   }
 }
@@ -137,56 +138,56 @@ html.amz-template-2-root {
     @apply px-5 sm:px-8 md:px-10 lg:px-14 xl:px-16 2xl:px-20;
   }
 
-  .prose {
+  :where(html.amz-template-2-root) .prose {
     @apply text-foreground leading-8;
   }
 
-  .prose h1,
-  .prose h2,
-  .prose h3,
-  .prose h4,
-  .prose h5,
-  .prose h6 {
+  :where(html.amz-template-2-root) .prose h1,
+  :where(html.amz-template-2-root) .prose h2,
+  :where(html.amz-template-2-root) .prose h3,
+  :where(html.amz-template-2-root) .prose h4,
+  :where(html.amz-template-2-root) .prose h5,
+  :where(html.amz-template-2-root) .prose h6 {
     @apply font-semibold text-foreground;
   }
 
-  .prose h2 {
+  :where(html.amz-template-2-root) .prose h2 {
     @apply text-3xl mt-10 mb-4;
   }
 
-  .prose h3 {
+  :where(html.amz-template-2-root) .prose h3 {
     @apply text-2xl mt-8 mb-3;
   }
 
-  .prose h4 {
+  :where(html.amz-template-2-root) .prose h4 {
     @apply text-xl mt-6 mb-2;
   }
 
-  .prose p {
+  :where(html.amz-template-2-root) .prose p {
     @apply my-4;
   }
 
-  .prose ul {
+  :where(html.amz-template-2-root) .prose ul {
     @apply list-disc pl-6 my-4;
   }
 
-  .prose ol {
+  :where(html.amz-template-2-root) .prose ol {
     @apply list-decimal pl-6 my-4;
   }
 
-  .prose li {
+  :where(html.amz-template-2-root) .prose li {
     @apply my-1;
   }
 
-  .prose blockquote {
+  :where(html.amz-template-2-root) .prose blockquote {
     @apply border-l-4 border-primary/40 pl-4 italic my-4;
   }
 
-  .prose a {
+  :where(html.amz-template-2-root) .prose a {
     @apply text-primary underline underline-offset-2;
   }
 
-  .prose strong {
+  :where(html.amz-template-2-root) .prose strong {
     @apply font-semibold;
   }
 }

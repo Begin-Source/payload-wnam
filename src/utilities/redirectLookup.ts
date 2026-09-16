@@ -1,4 +1,4 @@
-import { getPayload, type Where } from 'payload'
+import { getPayload, type Where, type Payload } from 'payload'
 
 import config from '@/payload.config'
 import type { Redirect } from '@/payload-types'
@@ -14,7 +14,10 @@ export async function findRedirectForPath(pathname: string, requestHeaders: Head
   const rawHost = getRequestHost(requestHeaders) ?? ''
   const siteSlug = requestHeaders.get('x-site-slug')?.trim() ?? ''
   const site = await resolveSiteForLanding(payload, { rawHost, siteSlugFromHeader: siteSlug })
-  const siteId = site?.id ?? null
+  return findRedirectForSite(payload, pathname, site?.id ?? null)
+}
+
+export async function findRedirectForSite(payload: Payload, pathname: string, siteId: number | null): Promise<Redirect | null> {
 
   const baseAnd = [
     { enabled: { equals: true } },

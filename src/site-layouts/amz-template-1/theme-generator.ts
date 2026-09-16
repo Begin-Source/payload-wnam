@@ -1,10 +1,11 @@
+import { sanitizeAmzConfig } from './configSchema'
 import type { AmzSiteConfig } from '@/site-layouts/amz-template-1/defaultSiteConfig'
 
 /**
  * Build CSS variables from merged AMZ config (replaces static import of site.config in amz-template-1).
  */
-export function generateThemeCSS(config: AmzSiteConfig): string {
-  const { colors } = config.theme
+export function generateThemeCSS(config: AmzSiteConfig, layout: 'amz-template-1' | 'amz-template-2' = 'amz-template-1'): string {
+  const { colors } = sanitizeAmzConfig(config).theme
 
   const lightVars = `
   --background: ${colors.light.background};
@@ -47,22 +48,27 @@ export function generateThemeCSS(config: AmzSiteConfig): string {
   `
 
   return `
-    :root {
+    html.${layout}-root {
       ${lightVars}
     }
 
-    .dark {
+    html.${layout}-root.dark {
       ${darkVars}
     }
   `
 }
 
-export function generateFontCSS(config: AmzSiteConfig): string {
-  const { fonts } = config
+export function generateFontCSS(config: AmzSiteConfig, layout: 'amz-template-1' | 'amz-template-2' = 'amz-template-1'): string {
+  const { fonts } = sanitizeAmzConfig(config)
   return `
-    :root {
-      --font-sans: "${fonts.sans}", system-ui, -apple-system, sans-serif;
-      --font-mono: "${fonts.mono}", monospace;
+    html.${layout}-root {
+      --site-font-sans: ${cssFontFamily(fonts.sans)}, system-ui, -apple-system, sans-serif;
+      --site-font-mono: ${cssFontFamily(fonts.mono)}, monospace;
     }
   `
+}
+
+/** Quoted CSS string: control characters, markup and delimiters cannot escape the style element. */
+function cssFontFamily(value: string): string {
+  return '"' + value.replace(/["\\<>\x00-\x1f\x7f]/g, char => '\\' + char.codePointAt(0)!.toString(16) + ' ') + '"'
 }

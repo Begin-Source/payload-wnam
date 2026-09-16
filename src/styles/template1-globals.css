@@ -6,7 +6,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
+:where(html.template1-root, html.template2-root) {
+  --site-font-sans: var(--font-inter), Inter;
   /* Brand: deep forest green primary, warm off-white background, slate neutrals (template1/app/globals.css) */
   --background: oklch(0.98 0.004 95);
   --foreground: oklch(0.18 0.01 260);
@@ -44,9 +45,9 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), 'Inter', system-ui, sans-serif;
+  --font-sans: var(--site-font-sans, system-ui), system-ui, sans-serif;
   --font-serif: var(--font-merriweather), 'Merriweather', Georgia, serif;
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback', ui-monospace, monospace;
+  --font-mono: var(--site-font-mono, monospace), monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -86,10 +87,10 @@
 }
 
 @layer base {
-  .template1-root * {
+  :where(.template1-root, .template2-root) * {
     @apply border-border outline-ring/50;
   }
-  .template1-root {
+  :where(.template1-root, .template2-root) {
     @apply bg-background text-foreground;
   }
 }

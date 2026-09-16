@@ -52,6 +52,7 @@ function redirectLookupSecret(): string {
 type SiteLocaleMeta = {
   publicLocales: string[]
   defaultPublicLocale: string
+  redirect?: { toPath: string; statusCode: number } | null
 }
 
 async function fetchSiteLocaleMeta(
@@ -59,7 +60,8 @@ async function fetchSiteLocaleMeta(
   forward: Headers,
 ): Promise<SiteLocaleMeta | null> {
   try {
-    const url = new URL('/api/site-locale-meta', request.url)
+    const url = new URL('/api/site-routing-meta', request.url)
+    url.searchParams.set('path', request.nextUrl.pathname)
     const res = await fetch(url.toString(), {
       headers: {
         'x-redirect-secret': redirectLookupSecret(),
@@ -68,12 +70,14 @@ async function fetchSiteLocaleMeta(
         'x-site-slug': forward.get('x-site-slug') ?? '',
       },
       cache: 'no-store',
+      signal: AbortSignal.timeout(2000),
     })
     if (!res.ok) return null
     const data = (await res.json()) as {
       ok?: boolean
       publicLocales?: string[]
       defaultPublicLocale?: string
+      redirect?: { toPath: string; statusCode: number } | null
     }
     if (
       !data.ok ||
@@ -85,6 +89,7 @@ async function fetchSiteLocaleMeta(
     return {
       publicLocales: data.publicLocales,
       defaultPublicLocale: data.defaultPublicLocale,
+      redirect: data.redirect,
     }
   } catch {
     return null
@@ -100,28 +105,6 @@ function defaultLocaleFromMeta(meta: SiteLocaleMeta | null): string {
     return meta.defaultPublicLocale
   }
   return defaultLocale
-}
-
-async function cmsRedirect(
-  pathname: string,
-  requestUrl: string,
-  forward: Headers,
-): Promise<{ toPath: string; statusCode: number } | null> {
-  const url = new URL('/api/redirect-lookup', requestUrl)
-  url.searchParams.set('path', pathname)
-  const res = await fetch(url.toString(), {
-    headers: {
-      'x-redirect-secret': redirectLookupSecret(),
-      host: forward.get('host') ?? '',
-      'x-forwarded-host': forward.get('x-forwarded-host') ?? '',
-      'x-site-slug': forward.get('x-site-slug') ?? '',
-    },
-    cache: 'no-store',
-  })
-  if (!res.ok) return null
-  const data = (await res.json()) as { hit?: boolean; toPath?: string; statusCode?: number }
-  if (!data.hit || !data.toPath) return null
-  return { toPath: data.toPath, statusCode: data.statusCode === 302 ? 302 : 301 }
 }
 
 export async function middleware(request: NextRequest) {
@@ -191,7 +174,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 308)
   }
 
-  const hit = await cmsRedirect(pathname, request.url, requestHeaders)
+  const hit = meta?.redirect
   if (hit) {
     const target = hit.toPath
     const dest = target.startsWith('http://') || target.startsWith('https://')
