@@ -11,6 +11,6 @@ export const consumePipelineNonce: PipelineNonceStore = async (nonceHash, expire
     .bind(new Date(now).toISOString()).run()
   const result = await db.prepare('INSERT INTO pipeline_auth_nonces (nonce_hash, expires_at) VALUES (?, ?) ON CONFLICT(nonce_hash) DO NOTHING')
     .bind(nonceHash, new Date(expiresAt).toISOString()).run()
-  if (result.success === false || typeof result.meta.changes !== 'number') throw new Error('Pipeline nonce store unavailable')
+  if (!result.success || typeof result.meta.changes !== 'number') throw new Error('Pipeline nonce store unavailable')
   return result.meta.changes === 1
 }
