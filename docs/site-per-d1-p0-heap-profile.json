@@ -98,5 +98,56 @@
     ],
     "garbageCollectionAcknowledged": false,
     "scope": "Cloud CI workerd with full build and remote synthetic D1. Inspector affects runtime; an unacknowledged GC does not establish retained heap size. This report is diagnostic, not production headroom acceptance. No heap contents captured."
+  },
+  "singleByteSourceProfile": {
+    "event": "p0_cloud_workerd_heap_profile",
+    "commit": "6f43fba53c442f4a94540f95e51493801d88a217",
+    "at": "2026-09-16T20:08:58.033Z",
+    "snapshots": [
+      {
+        "phase": "before-payload-request",
+        "usedSize": 40370072,
+        "totalSize": 42741760,
+        "embedderHeapUsedSize": 257936,
+        "backingStorageSize": 1217658
+      },
+      {
+        "phase": "after-payload-login",
+        "usedSize": 76724144,
+        "totalSize": 86888448,
+        "embedderHeapUsedSize": 257936,
+        "backingStorageSize": 1233308
+      },
+      {
+        "phase": "after-read-batch-1",
+        "usedSize": 76520040,
+        "totalSize": 94490624,
+        "embedderHeapUsedSize": 257936,
+        "backingStorageSize": 1288789
+      },
+      {
+        "phase": "after-read-batch-2",
+        "usedSize": 83740596,
+        "totalSize": 98160640,
+        "embedderHeapUsedSize": 386896,
+        "backingStorageSize": 1364661
+      },
+      {
+        "phase": "after-read-batch-3",
+        "usedSize": 79831296,
+        "totalSize": 102879232,
+        "embedderHeapUsedSize": 386896,
+        "backingStorageSize": 1293893
+      },
+      {
+        "phase": "after-unconfirmed-gc-request",
+        "usedSize": 79831296,
+        "totalSize": 102879232,
+        "embedderHeapUsedSize": 386896,
+        "backingStorageSize": 1293893
+      }
+    ],
+    "garbageCollectionAcknowledged": false,
+    "scope": "Cloud CI workerd with full build and remote synthetic D1. Inspector affects runtime; an unacknowledged GC does not establish retained heap size. This report is diagnostic, not production headroom acceptance. No heap contents captured."
   }
 }

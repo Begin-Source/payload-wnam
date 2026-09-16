@@ -1,6 +1,6 @@
 # P0：Payload / D1 隔离审计
 
-2026-09-16，锁定 Payload / D1 adapter 3.82.1、Drizzle 0.44.7、Wrangler 4.87.0，未升级依赖。结论：原型验证进行中，尚不允许迁移生产站点。
+2026-09-16，锁定 Payload / D1 adapter 3.82.1、Drizzle 0.44.7、Wrangler 4.87.0，未升级框架依赖。20:12Z 结论：P0 小规模原型可行性通过，可进入 P1；尚不允许迁移生产站点或宣称容量验收通过。
 
 ## 已确认的路径
 
@@ -16,7 +16,7 @@
 
 - 当前应用 `cloudflareD1Binding.ts` 仍保留可变全局 binding；`d1NarrowUpdate.ts`、`pipelineNonceStore.ts` 有默认库回退。新站点服务接入之前必须全部替换，当前原型未改变线上路径。
 - 当前 `payload.config.ts` 存在启动期表查询、AI 插件初始化和共享多租户配置，不能直接放入新的站点 isolate。需要独立中央/站点配置及显式建站初始化。
-- `publicSiteQueries.ts`、`publicLandingTheme.ts` 已加入站点、路由版本及请求令牌作为 React cache 参数，包括 `getOffersByIds(ids)`；真实公开页面/流式响应检查待本轮云端执行。最终配置版本同步属于 P1/P3。
+- `publicSiteQueries.ts`、`publicLandingTheme.ts` 已加入站点、路由版本及请求令牌作为 React cache 参数，包括 `getOffersByIds(ids)`；真实公开页面/流式响应检查已通过。最终配置版本同步属于 P1/P3。
 - 合成密码账号、后台列表、真实上传、nonce、任务租约/心跳及公开草稿隔离已通过已部署检查；最终中央 SSO、即时权限撤销、完整编辑流程和 MCP 目标校验属于仍待实施的 P1。
 - 现有 fixture 的 R2/缓存/队列验证是原生 runtime 行为验证，不代表产品中的对应入口已经完成改造。
 - 本机集成测试使用 Node 中的 Payload + workerd D1；云端 fixture 使用 workerd 中的 ALS + D1。两者组合也不能替代完整 Payload 在已部署 Worker + 两个测试 D1 的端到端验证。
@@ -31,7 +31,7 @@
 - `sites` 引用中央 portfolio、用户、keyword preset、pipeline profile，并引用站点 logo/hero 媒体。中央注册表与站点展示配置副本需要分别定义，不能整行无条件双向覆盖。
 - 任务引用文章、页面、关键词、父任务等，且 JSON input/output 可能包含更多 ID。既有任务必须经过归属校验；未知引用应阻止迁移。
 
-## 下一轮已部署 P0 验证范围
+## 已完成的已部署 P0 验证范围
 
 1. 已在指定账户创建两个专用测试 D1（[操作和资源清单](site-per-d1-p0-resources.json)），均关闭读副本，已完成 107 项迁移及合成账号初始化；没有复制生产密码或内容。
 2. 只在 Cloudflare Builds 中打包和部署隔离测试 Worker，保留提交匹配 marker、资源 preflight 和测试失败禁止扩大规则。
@@ -41,13 +41,16 @@
 
 ## 证据与下一门槛
 
-- 最新压缩版本 `6a94323` 的完整云端构建、堆诊断、部署和线上检查通过。相同诊断的初始堆从 97.93 MiB 降至 73.86 MiB，读取批次最高 113.51 MiB。线上包含公开页面的窗口仍录得内存 P95 131.39 MiB、P99 132.13 MiB（194 请求、0 执行错误），尚不能通过 P0 资源门槛。必须继续降低实际站点运行时占用。原始字段和查询已追加到资源指标与堆诊断 JSON；两次线上窗口的请求组合不同，不作严格同负载百分比比较。
+- 最新 `6f43fba` 构建 `bf043b0e-a6e4-4385-8256-ea9c54ed66f7` 通过 454 项测试、14 项浏览器检查、部署和完整线上 smoke。403 请求、0 执行错误；启动 30 ms、CPU P95 87.913 ms；实际内存 P95 104,548,730 bytes、P99.9 106,280,960 bytes。P0 资源可行性通过，P1–P5 的身份、故障恢复、规模与真实供应商验收仍未完成。[逐版原始证据](site-per-d1-p0-runtime-optimization.json)。
+- 定位到上传源码约 3,682 万个字符中仅 13,024 个超出 Latin-1。正则转义后仍剩一个模板字符时，初始堆仍约 77 MB；编译器在保留模板语义的情况下将最后一个字符转换后，上传源码非 Latin-1 为 0，初始堆降至 40,370,072 bytes，登录后 76,724,144 bytes，读取批次最高 83,740,596 bytes。这与 V8 单/双字节源码字符串的存储差异吻合。此处理仅在 Cloudflare Builds 的 P0 分支执行，不改写业务字符串、模板原始值或正则匹配结果。Acorn 8.16.0 已存在于原 lockfile，本轮仅将其显式声明为构建依赖。
+- Payload 动态导入替换与图标按使用初始化均通过语义验证，但未单独解决内存问题；不得将其写为主要内存改善来源。Drizzle schema 生成器仍有直接 eval 警告。GC 确认延迟仍存在，堆样本不是回收后的保留量；不同线上窗口不构成严格同负载百分比比较。
+- 历史压缩版本 `6a94323` 的完整云端构建、堆诊断、部署和线上检查通过，但线上内存 P95 131.39 MiB、P99 132.13 MiB（194 请求、0 执行错误），当时未通过资源门槛。
 - `701325e` 构建 `05489a8b-80c2-40f6-996b-e3073b598897` 已运行完整应用云端堆诊断，并通过部署和全部线上 smoke。[数值记录](site-per-d1-p0-heap-profile.json)：首个 Payload 请求前 JS 堆 102,690,040 bytes；登录后 137,049,100 bytes；三批读取后 134,895,212 bytes。诊断中的显式 GC 未收到确认，后续样本不代表回收后的保留量。下一步仅在 P0 启用代码压缩，并复测实际占用，尚未宣称优化成功。
 - 堆诊断曾因 inspector Origin 缺失（`9edf424`）、低层 SDK 未自动推断 Node 打包模式（`f297d84`）失败，均在部署前停止；相关客户端设置已修正。workerd GC 确认延迟有[公开问题记录](https://github.com/cloudflare/workerd/issues/6824)，诊断现在逐阶段保存数值并明确记录未确认状态，不将其作为内存通过依据。
 - `c537c37` 的构建 `e1e101c0-83dc-4b1e-bb0d-a7dcda0ba708` 已完成部署与线上检查：447 项测试、14 项浏览器检查、真实后台/R2/队列均通过，6 个 isolate 同时处理两站。[部署证据](site-per-d1-p0-deployed-validation.json)。测试窗口 137 次请求、0 个执行错误、CPU P95 818.5 ms、内存 P95 150,440,850 bytes；[原始查询](site-per-d1-p0-resource-metrics.json)。内存指标高于官方限制，必须定位并形成余量证据后再判断 P0 可行性，不能将零错误当作内存通过。
 - `f7c53e9` 的构建 `2552dec9-3986-46b8-a019-d3adc254d90a` 通过 446 项测试（含全新数据库按 index 完整重放）、Next 打包与 14 项浏览器检查，完成两个库迁移并部署 P0 Worker。在线登录 500 使发布验收失败。仅对隔离 Worker 开启实时日志，定位为 `beforeOperation.unshift` 访问未初始化的全局钩子数组；修复保留已有钩子并初始化缺省数组，真实 adapter 测试增加全局配置。修复仍须云端重验，不代表 P0 通过。
 - 前次构建 `bdd0e73d-2d96-4d21-91cb-86a728c1f8f2` 在 B 库迁移时远程连接断开；核对迁移记录停止推进后取消构建。维护脚本现显式释放 Wrangler 平台代理，后续构建已按记录恢复完成全部迁移。
-- 新增专用测试队列和 P0 task-check 入口，调用现有 nonce、原子领取、心跳及任务状态 SQL 路径；重复投递必须只增加投递收据、不重复领取。这是 P0 隔离检查，未替代 P2 持久步骤链和故障恢复实现；云端运行待验证。
+- 专用测试队列和 P0 task-check 入口已在云端验证，调用现有 nonce、原子领取、心跳及任务状态 SQL 路径；重复投递只增加投递收据、不重复领取。这是 P0 隔离检查，未替代 P2 持久步骤链和故障恢复实现。
 - 完整 P0 提交 `f39f791` 的构建 `9d627c97-7bc2-468d-a7c0-3c4556ead4dd` 已通过打包/浏览器检查，但远程 A 库迁移在 `20260512_120000_keyword_batch_presets_strategy_fields` 停止。原因是 Payload CLI 按文件名排序，创建该表的 `20260819_120000_keyword_batch_presets` 尚未运行；仓库 index 原本已表达正确先后顺序。修正为受资源白名单保护的 `payload.db.migrate({ migrations })`，保留迁移记录并断点继续，不跳过失败迁移。生产部署 ID 核对仍为 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`。
 - 完整 P0 使用固定测试域名、独立测试 gate、R2 站点前缀代理；测试凭据由 CI 随机生成并以 stdin/进程环境传递，不写入仓库文件。`guardSanitizedSiteConfig` 在 Payload 添加内部集合后挂接所有 collection/global 的 beforeOperation；部署 smoke 还必须记录至少一个共同服务两个站点的 isolate ID。临时 P0 密码账户只存在测试库，不算最终 SSO 实现。
 
@@ -56,6 +59,6 @@
 - 云端提交 `77f6bf7` 已通过 lint、类型检查和 436 项测试；随后测试打包入口定位失败，未产生成功 release marker。修复仍走同一云端链路。
 - 包含分包修复的提交 `c7cf614` 已通过完整云端构建 `94295b2e-5cf6-4218-a45e-4b13e5d107fa`：440 项单元/集成测试、Next 打包及 14 项浏览器测试。workerd fixture 使用 2 个 D1、40 个并发请求，耗时 1,744 ms（整个 fixture 的墙钟时间，不是 CPU/P95 指标）。[完整记录](site-per-d1-p0-validation.json)明确标注尚未部署完整分库应用。
 - [原始生产基线](site-per-d1-baseline.json) 保存明确的 UTC 24 小时窗口、GraphQL 查询和单位。Worker 3,654 次请求、0 个执行错误，CPU P95 955.429 ms；requestDuration P95 2,481.664 ms。D1 读取 185,508 行、写入 131 行。账本累计 $0.028495 未与供应商账单对账，不能据此计算真实每篇费用。
-- 下一门槛：在隔离的已部署测试环境完成完整 Payload/上传/后台/权限及资源测量。P0 未通过前不扩大生产范围。
+- 下一门槛：P1 独立中央/站点服务、站点注册表、无凭据身份投影、60 秒单次 SSO 票据及实时撤权。P0 的临时密码账号不作为正式身份方案；后续迁移和扩大仍须各自通过阶段门禁。
 
 官方依据：[AsyncLocalStorage](https://developers.cloudflare.com/workers/runtime-apis/nodejs/asynclocalstorage/)、[D1 限制](https://developers.cloudflare.com/d1/platform/limits/)。官方当前列出付费账户每库 10 GB、总存储 1 TB、数据库数 50,000；实际账户获批配额和各产品资源限制仍须上线前单独核验。

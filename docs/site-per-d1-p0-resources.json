@@ -1,7 +1,7 @@
 {
   "operationId": "p0-two-d1-20260916",
   "accountId": "d487cf34c606620b442632a72272014d",
-  "verifiedAt": "2026-09-16T19:06:42.665Z",
+  "verifiedAt": "2026-09-16T20:12:06.654Z",
   "githubRepository": "Begin-Source/payload-wnam",
   "githubRepositoryId": 1224379860,
   "productionDatabaseId": "f2aac41b-418d-47de-8bb3-edda485b1e2b",
@@ -53,7 +53,7 @@
       "id": "a762370f446e456d9130dd754ea433f0"
     }
   ],
-  "workerState": "6a94323 deployed; full functional smoke passed; minified, but memory gate remains not passed",
-  "deploymentId": "5cd3d69b-d236-4c9a-99a6-6621ae85a27a",
-  "versionId": "0afc0d0b-5c59-4c57-b56a-da83501ba611"
+  "workerState": "6f43fba deployed; full synthetic functional checks and small-scale P0 resource feasibility passed; P1-P5 remain pending",
+  "deploymentId": "4ebd6b54-64dc-4d1b-b8c5-62174990994c",
+  "versionId": "59deaf75-bc72-409e-9799-36d6832127c9"
 }

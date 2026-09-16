@@ -91,5 +91,49 @@
     "startupTimeMs": 42,
     "passed": false,
     "scope": "Full synthetic smoke now includes 12 concurrent public pages. Memory P95 remains above the documented limit; not P0 or capacity acceptance."
+  },
+  "afterSourceEncoding": {
+    "capturedAt": "2026-09-16T20:12:06.654Z",
+    "commit": "6f43fba53c442f4a94540f95e51493801d88a217",
+    "window": {
+      "start": "2026-09-16T20:09:26Z",
+      "endExclusive": "2026-09-16T20:11:18Z"
+    },
+    "query": "{ viewer { accounts(filter:{accountTag:\"d487cf34c606620b442632a72272014d\"}) { workersInvocationsAdaptive(limit:1,filter:{scriptName:\"payload-wnam-p0\",datetime_geq:\"2026-09-16T20:09:26Z\",datetime_lt:\"2026-09-16T20:11:18Z\"}) { sum { requests errors subrequests } quantiles { cpuTimeP50 cpuTimeP95 cpuTimeP99 requestDurationP50 requestDurationP95 memoryUsageBytesP50 memoryUsageBytesP95 memoryUsageBytesP99 memoryUsageBytesP999 } } } } }",
+    "analytics": {
+      "data": {
+        "viewer": {
+          "accounts": [
+            {
+              "workersInvocationsAdaptive": [
+                {
+                  "quantiles": {
+                    "cpuTimeP50": 8097,
+                    "cpuTimeP95": 87913,
+                    "cpuTimeP99": 1312342,
+                    "memoryUsageBytesP50": 93121470,
+                    "memoryUsageBytesP95": 104548730,
+                    "memoryUsageBytesP99": 105357900,
+                    "memoryUsageBytesP999": 106280960,
+                    "requestDurationP50": 234279,
+                    "requestDurationP95": 1747218
+                  },
+                  "sum": {
+                    "errors": 0,
+                    "requests": 403,
+                    "subrequests": 22
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "errors": null
+    },
+    "startupTimeMs": 30,
+    "p0FeasibilityPassed": true,
+    "capacityAccepted": false,
+    "scope": "Small synthetic P0 feasibility only. Includes four additional desktop/mobile configured-icon checks. Different request mixes are not a controlled percentage comparison. Supplier invoices remain unreconciled."
   }
 }

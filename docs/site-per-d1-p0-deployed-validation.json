@@ -170,5 +170,45 @@
         ]
       }
     ]
+  },
+  "latestValidation": {
+    "at": "2026-09-16T20:12:06.654Z",
+    "build": "bf043b0e-a6e4-4385-8256-ea9c54ed66f7",
+    "commit": "6f43fba53c442f4a94540f95e51493801d88a217",
+    "smoke": {
+      "event": "p0_deployed_smoke_passed",
+      "commit": "6f43fba53c442f4a94540f95e51493801d88a217",
+      "at": "2026-09-16T20:11:17.463Z",
+      "scope": "Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending",
+      "concurrentReads": 40,
+      "concurrentPublicPages": 12,
+      "isolatesServingBothSites": 5,
+      "configuredIconViews": 4
+    },
+    "releases": [
+      {
+        "worker": "payload-wnam",
+        "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+        "versions": [
+          {
+            "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+            "percentage": 100
+          }
+        ]
+      },
+      {
+        "worker": "payload-wnam-p0",
+        "id": "4ebd6b54-64dc-4d1b-b8c5-62174990994c",
+        "versions": [
+          {
+            "version_id": "59deaf75-bc72-409e-9799-36d6832127c9",
+            "percentage": 100
+          }
+        ]
+      }
+    ],
+    "p0FeasibilityPassed": true,
+    "capacityAccepted": false,
+    "evidence": "site-per-d1-p0-runtime-optimization.json"
   }
 }
