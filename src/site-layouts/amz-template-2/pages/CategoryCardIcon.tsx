@@ -1,9 +1,8 @@
-import * as LucideIcons from 'lucide-react'
+import { Image } from 'lucide-react'
+import { resolveLucideIcon } from '@/utilities/resolveLucideIcon'
 import React from 'react'
 
 export function CategoryCardIcon({ name, className }: { name: string; className?: string }) {
-  const Icon =
-    (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[name] ??
-    LucideIcons.Image
+  const Icon = resolveLucideIcon(name) ?? Image
   return <Icon className={className} />
 }

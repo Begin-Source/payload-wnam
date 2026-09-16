@@ -1,7 +1,7 @@
 'use client'
 
 import { Search, Menu, X } from 'lucide-react'
-import * as LucideIcons from 'lucide-react'
+import { resolveLucideIcon } from '@/utilities/resolveLucideIcon'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 
@@ -56,9 +56,7 @@ export function AmzSiteHeader({
     const logoType = logo.type as 'lucide' | 'svg' | 'image'
 
     if (logoType === 'lucide' && logo.icon) {
-      const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[
-        logo.icon
-      ]
+      const IconComponent = resolveLucideIcon(logo.icon)
       if (IconComponent) {
         return <IconComponent className="h-6 w-6 text-primary-foreground" />
       }

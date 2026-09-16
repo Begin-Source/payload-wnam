@@ -163,11 +163,38 @@ try {
     await page.getByText(`Site ${fixture.site}`, { exact: true }).first().waitFor()
     assert.equal(await page.getByText(`Site ${fixture.site === 'a' ? 'b' : 'a'}`, { exact: true }).count(), 0)
     await context.close()
+
+    // Exercise both configured-icon consumers in the deployed client bundle.
+    // Keep the earlier isolation workload unchanged, then restore the fixture's
+    // original layout even if the additional desktop/mobile check fails.
+    const layout = fixture.site === 'a' ? 'amz-template-1' : 'amz-template-2'
+    await fixture.json(`/api/sites/${fixture.record.id}`, 'PATCH', { siteLayout: layout })
+    try {
+      for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+        const publicContext = await browser.newContext({ viewport })
+        try {
+          await publicContext.addCookies([{ name: '__Host-p0-access', value: gate, url: fixture.origin, secure: true, httpOnly: true, sameSite: 'Strict' }])
+          const publicPage = await publicContext.newPage()
+          const errors = []
+          publicPage.on('pageerror', error => errors.push(error.message))
+          const response = await publicPage.goto(`${fixture.origin}/en/pages/p0-published-page`, { waitUntil: 'networkidle' })
+          assert.equal(response?.status(), 200)
+          const logo = publicPage.locator('header svg.lucide.text-primary-foreground').first()
+          await logo.waitFor({ state: 'visible' })
+          assert.ok(await logo.locator('path, rect, circle, line, polyline, polygon, ellipse').count(), 'Configured logo lost its SVG nodes')
+          assert.equal(errors.length, 0, `Public ${layout} hydration failed`)
+          await publicPage.screenshot({ path: `.cloudflare-ci/${layout}-${viewport.width}.png` })
+        } finally { await publicContext.close() }
+      }
+    } finally {
+      await fixture.json(`/api/sites/${fixture.record.id}`, 'PATCH', { siteLayout: fixture.record.siteLayout })
+    }
   }
 } finally { await browser.close() }
 
 const report = { event: 'p0_deployed_smoke_passed', commit: process.env.WORKERS_CI_COMMIT_SHA, at: new Date().toISOString(),
   scope: 'Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending', concurrentReads: 40, concurrentPublicPages: 12,
-  isolatesServingBothSites: [...isolates.values()].filter(sites => sites.size === 2).length }
+  isolatesServingBothSites: [...isolates.values()].filter(sites => sites.size === 2).length,
+  configuredIconViews: 4 }
 writeFileSync('.cloudflare-ci/p0-deployed-smoke.json', JSON.stringify(report, null, 2))
 console.log(JSON.stringify(report))
