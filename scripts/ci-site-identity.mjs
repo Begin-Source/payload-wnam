@@ -5,6 +5,7 @@ import { createRequire } from 'node:module'
 import { randomBytes } from 'node:crypto'
 import { resolve } from 'node:path'
 import { realpathSync, readdirSync, writeFileSync } from 'node:fs'
+import { verifySiteDataRPC } from './ci-site-data-fixture.mjs'
 
 if (process.env.WORKERS_CI !== '1') throw new Error('Identity runtime bundling/tests run only in Cloudflare Builds')
 const require = createRequire(realpathSync(resolve('node_modules/wrangler/package.json')))
@@ -20,10 +21,11 @@ for (const role of ['central', 'site']) {
 const loginToken = randomBytes(32).toString('hex')
 const mf = new Miniflare({ host: '127.0.0.1', port: 0, https: true, workers: [
   { name: 'site', routes: ['cms-site-a.beginos.org/*', 'cms-site-b.beginos.org/*', 'public.example/*'], modules: true, scriptPath: paths.site, compatibilityDate: '2025-08-15', compatibilityFlags: ['nodejs_compat'],
-    serviceBindings: { IDENTITY: { name: 'central', entrypoint: 'SiteIdentityService' } },
+    serviceBindings: { IDENTITY: { name: 'central', entrypoint: 'SiteIdentityService' },DATA: { name: 'central',entrypoint: 'SiteDataService' } },
+    r2Buckets: { SITE_PUBLIC: 'data-public',SITE_PRIVATE: 'data-private' },
     d1Databases: { SITE_A: 'identity-site-a', SITE_B: 'identity-site-b' } },
   { name: 'central', routes: ['hub.beginos.org/*'], modules: true, scriptPath: paths.central, compatibilityDate: '2025-08-15', compatibilityFlags: ['nodejs_compat'],
-    bindings: { FIXTURE_LOGIN_TOKEN: loginToken }, d1Databases: { CENTRAL_D1: 'identity-central' } },
+    bindings: { FIXTURE_LOGIN_TOKEN: loginToken }, d1Databases: { CENTRAL_D1: 'identity-central' },r2Buckets: { MASTER_ASSET_ARCHIVE: 'data-archive' } },
 ] })
 try {
   // Import schema-only TS in the CI orchestrator; no application configuration or boot hooks.
@@ -133,6 +135,7 @@ try {
     console.log(JSON.stringify({ event: 'site_identity_browser_failure', exchanges: browserEvents }))
     throw error
   } finally { await browser.close() }
+  await verifySiteDataRPC({ mf,db,site,cookieA,cookieB })
   await db.prepare("UPDATE site_runtime_access SET role = 'viewer' WHERE site_id = 'a'").run()
   assert.equal((await (await me('a', cookieA)).json()).siteRole, 'viewer')
   await db.prepare("DELETE FROM site_runtime_access WHERE site_id = 'a'").run()

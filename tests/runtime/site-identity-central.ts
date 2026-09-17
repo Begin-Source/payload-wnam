@@ -2,6 +2,7 @@ import { centralSiteEntry } from '../../src/site-control/centralSiteEntry'
 import { payloadSessionAuthority } from '../../src/site-control/payloadSessionAuthority'
 import { SiteLoginBroker } from '../../src/site-control/sso'
 export { SiteIdentityService } from '../../src/site-control/identityService'
+export { SiteDataService } from '../../src/site-control/dataService'
 
 /** Cloud-only synthetic fixture, never deployed. The real central HTTP role will
  * use centralIdentityFromPayload; only this fixture supplies a synthetic login.
