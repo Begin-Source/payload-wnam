@@ -14,7 +14,7 @@ const decode = (row: Row) => verifyAssetRelease({ ...JSON.parse(row.snapshot_jso
 function centralOnly() { if (optionalSiteContext()) throw new Error('Central asset capability inside site request') }
 function authorize(req: PayloadRequest, tenantId?: number) {
   centralOnly()
-  if (req.payload.config.custom.payloadRole !== 'central' || !req.user || !(userHasUnscopedAdminAccess(req.user) ||
+  if (req.payload.config.custom.payloadRole !== 'central' || !req.user || req.user.collection !== 'users' || !(userHasUnscopedAdminAccess(req.user) ||
     (userHasTenantGeneralManagerRole(req.user) && tenantId !== 0 && (tenantId === undefined || getTenantIdsForUser(req.user).includes(tenantId))))) {
     throw new Error('Central asset publisher permission required')
   }
