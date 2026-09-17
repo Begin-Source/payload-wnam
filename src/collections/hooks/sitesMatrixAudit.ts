@@ -1,12 +1,12 @@
 import type { CollectionAfterChangeHook } from 'payload'
 
 import { appendAuditLog } from '@/utilities/auditLogAppend'
-import { relationId } from '@/utilities/publicLandingTheme'
+import { parseRelationshipId } from '@/utilities/parseRelationshipId'
 import { isUsersCollection } from '@/utilities/announcementAccess'
 
 function portfolioFingerprint(doc: Record<string, unknown>): string | null {
   const p = doc.portfolio
-  const id = relationId(p)
+  const id = parseRelationshipId(p)
   return id != null ? String(id) : null
 }
 
