@@ -51,7 +51,7 @@ try {
   const report = {
     event: 'site_d1_workerd_isolation', commit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
     ok: true, databases: 2, concurrentRequests: 40, elapsedMs: Date.now() - start,
-    checks: ['CRUD', 'same IDs', 'batch rollback', 'context guards', 'stale routes', 'streams', 'R2 prefixes', 'cache keys', 'queue delivery and deduplication'],
+    checks: ['CRUD', 'same IDs', 'batch rollback', 'context guards', 'stale routes', 'streams', 'R2 prefixes', 'native R2 response metadata', 'cache keys', 'queue delivery and deduplication'],
     scope: 'Cloudflare Builds workerd with local D1/R2/Queues; not deployed D1 or full Payload/admin acceptance',
   }
   writeFileSync('.cloudflare-ci/site-isolation.json', JSON.stringify(report, null, 2))

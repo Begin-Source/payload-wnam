@@ -29,6 +29,7 @@ import { createSiteR2Proxy } from '../../src/site-runtime/r2'
 vi.mock('../../src/payload.config',() => { throw new Error('Shared Payload config imported') })
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
 const { Miniflare } = require('miniflare')
+const { Headers: MiniflareHeaders } = createRequire(require.resolve('miniflare'))('undici')
 let mf: { getD1Database: (name: string) => Promise<D1Database>;getR2Bucket: (name: string) => Promise<R2Bucket>;dispose: () => Promise<void> }
 let central: Payload,site: Payload,db: D1Database,contexts: SiteContext[],source: R2Bucket,archive: R2Bucket,storage: SiteAssetBuckets
 let admin: NonNullable<PayloadRequest['user']>
@@ -71,6 +72,10 @@ function failingPut(bucket: R2Bucket): R2Bucket {
 
 describe('versioned media across actual central/site Payload, native D1 and R2',() => {
   beforeAll(async () => {
+    // This pinned Miniflare bridge requires its own undici Headers instance in
+    // writeHttpMetadata. Keep Payload's production handler path enabled; the
+    // workerd fixture separately exercises genuine native Headers and R2.
+    vi.stubGlobal('Headers',MiniflareHeaders)
     mf = new Miniflare({ modules: true,script: 'export default {fetch(){return new Response("fixture")}}',compatibilityDate: '2025-08-15',
       d1Databases: { CENTRAL: 'asset-central',A: 'asset-a',B: 'asset-b' },r2Buckets: { SOURCE: 'asset-source',ARCHIVE: 'asset-archive',PUBLIC: 'asset-public',PRIVATE: 'asset-private' } })
     db = await mf.getD1Database('CENTRAL'); source = await mf.getR2Bucket('SOURCE'); archive = await mf.getR2Bucket('ARCHIVE')
@@ -102,7 +107,7 @@ describe('versioned media across actual central/site Payload, native D1 and R2',
       })
     }
   },120000)
-  afterAll(async () => { await mf?.dispose() })
+  afterAll(async () => { try { await mf?.dispose() } finally { vi.unstubAllGlobals() } })
 
   it('copies immutable bytes once under concurrent retries and remaps a real author headshot to a local media ID',async () => {
     const asset = await publish(5001),ref = assetReference(asset),delivery = await transfer(asset)
