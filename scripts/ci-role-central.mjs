@@ -72,9 +72,14 @@ try {
   page.on('requestfailed',request => browserErrors.push(`${new URL(request.url()).pathname}: ${request.failure()?.errorText}`))
   const login = await page.goto('https://hub.beginos.org/admin/login')
   assert.equal(login.status(),200,'Complete central login page must render')
+  // Payload exposes this readiness signal specifically for browser automation.
+  // Filling SSR fields before hydration can be discarded by REPLACE_STATE.
+  await page.locator('form[data-form-ready="true"]').waitFor()
   await page.locator('input[name=email]').fill('admin@example.invalid')
   await page.locator('input[name=password]').fill('native-central-test-only-password')
+  const authentication = page.waitForResponse(response => new URL(response.url()).pathname === '/api/users/login' && response.request().method() === 'POST')
   await page.locator('button[type=submit]').click()
+  assert.equal((await authentication).status(),200,'Browser password login must succeed')
   await page.waitForURL(url => url.pathname === '/admin',{ timeout: 45000 })
   await page.getByRole('navigation').first().waitFor()
   await page.screenshot({ path: '.cloudflare-ci/central-admin-desktop.png',fullPage: true })
