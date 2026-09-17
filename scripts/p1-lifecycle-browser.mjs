@@ -51,7 +51,7 @@ export async function checkLifecycleBrowser({ hub,siteId,otherSiteId,siteRequest
     const replay = await write(pauseOperation)
     assert.equal(replay.status,200); assert.equal(JSON.parse(replay.body).replayed,true)
     assert.equal((await write({ ...pauseOperation,operationId: crypto.randomUUID() })).status,409,'A different stale operation must fail')
-    if (siteRequest) assert.equal((await siteRequest()).status,403,'Pause must immediately deny an existing site session')
+    if (siteRequest) assert.equal((await siteRequest()).status,503,'Paused routing must immediately deny an existing site session')
     if (otherSiteRequest) assert.equal((await otherSiteRequest()).status,200,'Pause must not affect the other site')
     await row.getByRole('button',{ name: /^恢复网站 / }).click()
     const resuming = capture()
