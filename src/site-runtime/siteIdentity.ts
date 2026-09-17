@@ -84,6 +84,13 @@ export function siteIdentityCollection(strategy: AuthStrategy): CollectionConfig
     slug: 'users', admin: { useAsTitle: 'displayName' }, timestamps: true,
     auth: { disableLocalStrategy: true, useSessions: false, useAPIKey: false, strategies: [strategy] },
     access: { read: sitePermission('read'), create: () => false, update: () => false, delete: () => false },
+    hooks: { afterMe: [({ req, response }) => {
+      // Payload's default /me reloads the persisted projection and drops the
+      // live role/site fields. Return only this request's authenticated allowlist;
+      // never persist grants or mint a local JWT to satisfy the admin provider.
+      const user = authenticatedSiteUser(req.user)
+      return { ...response, user: user as unknown as TypedUser }
+    }] },
     fields: [
       { name: 'centralUserId', type: 'text', required: true, unique: true },
       { name: 'displayName', type: 'text', required: true },

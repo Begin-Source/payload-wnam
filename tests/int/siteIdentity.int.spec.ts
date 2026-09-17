@@ -67,6 +67,18 @@ describe('site Payload uses central authentication and credential-free identity 
     expect(loadProjection).not.toHaveBeenCalled()
   })
 
+  it('keeps the admin me response tied to the live strategy instead of stored grants', async () => {
+    await withSiteContext(context, async () => {
+      const { user } = await payload.auth({ headers })
+      const hook = payload.collections.users.config.hooks.afterMe[0]
+      const response = await hook({ collection: payload.collections.users.config, context: {}, req: { user } as PayloadRequest,
+        response: { user: { id: 7, displayName: 'Stored name', roles: ['super-admin'] } as never } })
+      expect(response?.user).toMatchObject({ siteId: 'a', siteRole: 'editor', displayName: 'Staff' })
+      expect(response?.user).not.toHaveProperty('roles')
+      expect(response).not.toHaveProperty('token')
+    })
+  })
+
   it('rejects duplicate cookies and cross-origin writes including sibling subdomains', () => {
     expect(() => siteSessionFromHeaders(new Headers({ cookie: `__Host-site-session=${token}; __Host-site-session=${token}` }))).toThrow()
     expect(() => assertSiteWriteOrigin('POST', new Headers({ origin: 'https://cms-site-b.beginos.org' }), context.requestHost!)).toThrow()

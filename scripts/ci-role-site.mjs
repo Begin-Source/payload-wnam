@@ -1,13 +1,28 @@
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { chromium } from '@playwright/test'
 
 if (process.env.WORKERS_CI !== '1') throw new Error('Complete role checks require Cloudflare Builds')
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
-const { Miniflare } = require('miniflare')
+const { Miniflare, Log, LogLevel } = require('miniflare')
 const shared = { compatibilityDate: '2025-08-15', compatibilityFlags: ['nodejs_compat','global_fetch_strictly_public'] }
+// Pinned Miniflare 4.20260430.0 names its assets disk service globally (without
+// workerName). Multiple asset roots therefore alias the first root. Use a
+// collision-checked union of the already-built PUBLIC assets for this fixture;
+// each role's production artifact and component map remain separate.
+const assetRoot = resolve('.cloudflare-ci/combined-role-assets')
+rmSync(assetRoot,{ recursive: true,force: true }); mkdirSync(assetRoot,{ recursive: true })
+for (const role of ['central','site']) {
+  const source = resolve('.cloudflare-ci/roles',role,'.open-next/assets')
+  for (const name of readdirSync(source,{ recursive: true })) {
+    const from = resolve(source,name), to = resolve(assetRoot,name)
+    if (!statSync(from).isFile()) continue
+    if (existsSync(to)) assert.ok(readFileSync(from).equals(readFileSync(to)),`Public asset path collision: ${name}`)
+    else { mkdirSync(dirname(to),{ recursive: true }); cpSync(from,to) }
+  }
+}
 function application(role) {
   const cwd = resolve('.cloudflare-ci/roles',role), bundle = resolve(cwd,'.cloudflare-ci/bundle')
   const entries = readdirSync(bundle).filter(name => /\.m?js$/.test(name))
@@ -16,13 +31,13 @@ function application(role) {
   return { name: role, ...shared, modulesRoot: bundle,
     modules: [entries[0],...files.filter(name => name !== entries[0])].map(name => ({
       type: name.endsWith('.wasm') ? 'CompiledWasm' : /\.(?:html|txt)$/.test(name) ? 'Text' : 'ESModule', path: resolve(bundle,name),
-    })), assets: { directory: resolve(cwd,'.open-next/assets'), binding: 'ASSETS', routerConfig: { has_user_worker: true } } }
+    })), assets: { directory: assetRoot, binding: 'ASSETS', routerConfig: { has_user_worker: true } } }
 }
 const siteConfig = JSON.parse(readFileSync('.cloudflare-ci/roles/site/wrangler.jsonc','utf8'))
 // Default Service Bindings pass through Miniflare's native assets router;
 // named bindings retain the central RPC entrypoints. Host routes on the raw
 // application Worker would bypass Static Assets in the pinned runtime.
-const mf = new Miniflare({ host: '127.0.0.1', port: 0, https: true, workers: [
+const mf = new Miniflare({ host: '127.0.0.1', port: 0, https: true, log: new Log(LogLevel.WARN), workers: [
   { name: 'front', ...shared, modules: true,
     script: `export default { fetch(request,env) { const host=new URL(request.url).hostname;
       if(host==='hub.beginos.org')return env.CENTRAL.fetch(request);
@@ -64,7 +79,8 @@ try {
     for (const extension of ['.js','.css']) {
       const file = files.find(name => name.startsWith('_next/') && name.endsWith(extension))
       assert.ok(file)
-      assert.equal((await mf.dispatchFetch(`https://${host}/${file}`)).status,200,`${role} native assets route`)
+      const response = await mf.dispatchFetch(`https://${host}/${file}`)
+      assert.equal(response.status,200,`${role} native assets route: ${response.status === 200 ? '' : (await response.text()).slice(0,1200)}`)
     }
   }
   console.log(JSON.stringify({ event: 'site_application_assets_passed' }))
