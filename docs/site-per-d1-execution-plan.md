@@ -212,16 +212,16 @@ flowchart TD
 
 P0 是硬门槛，后续不能先默认通过。每阶段实现和检查通过 Cloudflare Builds 执行，不在本地做生产构建。真实供应商验证与模拟负载验证分别报告。
 
-### 待实现的运维命令
+### 运维命令
 
-- `site:provision`：分配站点、创建 D1、初始化 schema、登记分组与绑定。
+- `site:provision`：分配站点、创建 D1、初始化 schema、登记分组与绑定。[云端命令](site-per-d1-provision-command.md)已接通 `--request`、`--dry-run`、`--apply` 与六步恢复；首次通用新站的真实 API 验收和分组发布协调仍待完成。
 - `site:migrate --dry-run`：只检查数据归属、关系和目标准备情况。
 - `site:migrate --apply`：按单站冻结流程复制、核验和切换。
 - `db:fleet-migrate`：按分组、schema 版本渐进迁移。
 - `site:verify`：校验内容、关系、媒体、任务和路由。
 - `site:resume`：检查完成后恢复单站写入与生产。
 
-以上是待开发接口，不应当作当前已经存在的可执行命令。所有操作记录操作 ID、schema 版本和断点；重复执行不得重复创建资源。初始运维并发 4，遵守 Cloudflare API 退避。
+除已接通的云端 `site:provision` 外，其余列出的命令仍是待开发接口，不应当作现有可执行命令。所有操作记录操作 ID、schema 版本和断点；重复执行不得重复创建资源。初始运维并发 4，遵守 Cloudflare API 退避。
 
 ## 9. 单站迁移流程
 
