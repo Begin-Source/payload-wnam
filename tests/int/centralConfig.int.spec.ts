@@ -9,6 +9,7 @@ import { migrateCentralCosts } from '../../src/site-control/costSchema'
 import { centralCommissionGuardSchema } from '../../src/site-control/commissionStatement'
 import { costSourceDigest, ingestSiteCost, reconcileEmployeeCosts, type CostRecord } from '../../src/site-control/costLedger'
 import { registerSite } from '../../src/site-control/registry'
+import { writeRoleFixture } from '../runtime/writeRoleFixture'
 import { withSiteContext } from '../../src/site-runtime/context'
 import { OpenAIConfig } from '../../src/utilities/aiOpenAIConfigImport'
 import { Users } from '../../src/collections/Users'
@@ -70,6 +71,7 @@ describe('independent central Payload configuration and native finance path', ()
       await payload.create({ collection: 'sites', user: admin, data: { id, name: `Site ${siteId}`, tenant, runtimeSiteId: siteId, primaryDomain: `${siteId}.example.invalid`,
         publicLocaleCodes: ['en'], defaultPublicLocale: 'en' } as never })
     }
+    await writeRoleFixture(database,'central')
   }, 60000)
   afterAll(async () => { await mf?.dispose() })
 

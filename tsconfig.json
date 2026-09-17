@@ -41,6 +41,8 @@
     "tests/**/*.ts",
     "scripts/**/*.ts",
     "src/**/*.tsx",
+    "roles/**/*.ts",
+    "roles/**/*.tsx",
     ".next/types/**/*.ts"
   ],
   "exclude": [
