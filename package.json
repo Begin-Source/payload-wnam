@@ -103,7 +103,8 @@
     "patchedDependencies": {
       "@payloadcms/plugin-mcp@3.82.1": "patches/@payloadcms__plugin-mcp@3.82.1.patch",
       "mcp-handler@1.1.0": "patches/mcp-handler@1.1.0.patch",
-      "@ai-stack/payloadcms@3.2.27": "patches/@ai-stack__payloadcms@3.2.27.patch"
+      "@ai-stack/payloadcms@3.2.27": "patches/@ai-stack__payloadcms@3.2.27.patch",
+      "miniflare@4.20260430.0": "patches/miniflare@4.20260430.0.patch"
     }
   },
   "cloudflare": {

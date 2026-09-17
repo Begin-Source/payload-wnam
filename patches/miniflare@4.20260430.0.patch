@@ -1,0 +1,62 @@
+--- a/dist/src/index.js
++++ b/dist/src/index.js
+@@ -77228,7 +77228,7 @@
+       port.postMessage({ id, error: new Error(String(error)) });
+     }
+   } finally {
+-    Atomics.store(notifyHandle, /* index */ 0, /* value */ 1);
++    Atomics.store(notifyHandle, /* index */ 0, /* generation */ (id + 1) | 0);
+     Atomics.notify(notifyHandle, /* index */ 0);
+   }
+ });
+@@ -77236,6 +77236,17 @@
+ port.start();
+ `
+ );
++// Backport cloudflare/workers-sdk@6f3d7b58b1f6cd036aca3e5946807bba37776065.
++// A notification from the preceding request must not consume this reply.
++function receiveSynchronousReply(notifyHandle, port, id) {
++  const generation = (id + 1) | 0;
++  for (let seen = Atomics.load(notifyHandle, 0); seen !== generation; seen = Atomics.load(notifyHandle, 0)) {
++    Atomics.wait(notifyHandle, 0, seen);
++  }
++  const message = (0, import_node_worker_threads.receiveMessageOnPort)(port)?.message;
++  (0, import_node_assert13.default)(message?.id === id);
++  return message;
++}
+ var SynchronousFetcher = class {
+   #channel;
+   #notifyHandle;
+@@ -77259,13 +77270,6 @@
+   }
+   fetch(url38, init2) {
+     this.#ensureWorker();
+-    Atomics.store(
+-      this.#notifyHandle,
+-      /* index */
+-      0,
+-      /* value */
+-      0
+-    );
+     const id = this.#nextId++;
+     this.#channel.port1.postMessage({
+       id,
+@@ -77274,17 +77278,7 @@
+       headers: init2.headers,
+       body: init2.body
+     });
+-    Atomics.wait(
+-      this.#notifyHandle,
+-      /* index */
+-      0,
+-      /* value */
+-      0
+-    );
+-    const message = (0, import_node_worker_threads.receiveMessageOnPort)(
+-      this.#channel.port1
+-    )?.message;
+-    (0, import_node_assert13.default)(message?.id === id);
++    const message = receiveSynchronousReply(this.#notifyHandle, this.#channel.port1, id);
+     if ("response" in message) {
+       const { status: status2, headers: rawHeaders, body } = message.response;
+       const headers = new import_undici5.Headers(rawHeaders);

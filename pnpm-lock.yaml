@@ -14,6 +14,9 @@ patchedDependencies:
   mcp-handler@1.1.0:
     hash: bfa27c44dbc1273bdbac59719bf3dae74c137f21d25742c034a38bf5008d5e65
     path: patches/mcp-handler@1.1.0.patch
+  miniflare@4.20260430.0:
+    hash: 2e8992a6bae1db9635d0d0cd01d45beec175e8f61953a7c261178350c3d4c8ee
+    path: patches/miniflare@4.20260430.0.patch
 
 importers:
 
@@ -12661,7 +12664,7 @@ snapshots:
 
   mimic-fn@2.1.0: {}
 
-  miniflare@4.20260430.0:
+  miniflare@4.20260430.0(patch_hash=2e8992a6bae1db9635d0d0cd01d45beec175e8f61953a7c261178350c3d4c8ee):
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
       sharp: 0.34.5
@@ -14109,7 +14112,7 @@ snapshots:
       '@cloudflare/unenv-preset': 2.16.1(unenv@2.0.0-rc.24)(workerd@1.20260430.1)
       blake3-wasm: 2.1.5
       esbuild: 0.27.3
-      miniflare: 4.20260430.0
+      miniflare: 4.20260430.0(patch_hash=2e8992a6bae1db9635d0d0cd01d45beec175e8f61953a7c261178350c3d4c8ee)
       path-to-regexp: 6.3.0
       unenv: 2.0.0-rc.24
       workerd: 1.20260430.1
