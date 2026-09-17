@@ -1,0 +1,136 @@
+{
+  "capturedAt": "2026-09-17T02:13:02.918Z",
+  "phase": "P1 implementation — not accepted",
+  "commit": "cbcfc2e95ae592fbbfad61aeb668dffe13e3917d",
+  "buildId": "2a9c3ea2-6a7b-449e-a0d2-fca91f11eed0",
+  "buildOutcome": "success",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "repository": "Begin-Source/payload-wnam",
+  "validation": {
+    "unitAndIntegrationTests": 492,
+    "existingBrowserChecks": 14,
+    "focusedTests": 31,
+    "heapDiagnostic": {
+      "at": "2026-09-17T02:10:08.609Z",
+      "beforePayloadRequestBytes": 40374816,
+      "afterPayloadLoginBytes": 76519600,
+      "readBatchBytes": [75423896, 81741184, 77282004],
+      "garbageCollectionAcknowledged": false,
+      "scope": "Cloud CI full workerd diagnostic, not retained heap or production capacity acceptance"
+    },
+    "identityRuntime": {
+      "at": "2026-09-17T02:08:10.076Z",
+      "value": {
+        "event": "site_identity_workerd_rpc",
+        "ok": true,
+        "commit": "cbcfc2e95ae592fbbfad61aeb668dffe13e3917d",
+        "workers": 2,
+        "databases": 3,
+        "concurrentRedemptions": 20,
+        "concurrentSiteRequests": 20,
+        "checks": [
+          "named RPC capability",
+          "no RPC issuer",
+          "HTTP capability denied",
+          "POST handoff",
+          "Chromium form/CSP/cookie navigation",
+          "single-use ticket",
+          "host/origin binding",
+          "explicit local site ID mapping",
+          "credential-free projections",
+          "live role changes",
+          "immediate revocation",
+          "site logout",
+          "central logout",
+          "central outage fails closed",
+          "independent public response"
+        ],
+        "scope": "Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance"
+      }
+    },
+    "deployedP0": {
+      "at": "2026-09-17T02:12:36.884Z",
+      "value": {
+        "event": "p0_deployed_smoke_passed",
+        "commit": "cbcfc2e95ae592fbbfad61aeb668dffe13e3917d",
+        "at": "2026-09-17T02:12:36.882Z",
+        "scope": "Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending",
+        "concurrentReads": 40,
+        "concurrentPublicPages": 12,
+        "isolatesServingBothSites": 5,
+        "configuredIconViews": 4
+      }
+    },
+    "release": {
+      "at": "2026-09-17T02:12:36.907Z",
+      "value": {
+        "event": "p0_release_passed",
+        "commit": "cbcfc2e95ae592fbbfad61aeb668dffe13e3917d",
+        "worker": "payload-wnam-p0",
+        "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+      }
+    },
+    "sourceEncoding": [
+      {
+        "at": "2026-09-17T02:07:37.761Z",
+        "value": {
+          "event": "p0_source_encoding",
+          "file": ".open-next/server-functions/default/handler.mjs",
+          "regexCount": 1996,
+          "remainingTokenTypes": {
+            "template": 1
+          },
+          "nonLatin1Before": 13024,
+          "nonLatin1After": 0
+        }
+      },
+      {
+        "at": "2026-09-17T02:07:37.810Z",
+        "value": {
+          "event": "p0_source_encoding",
+          "file": ".open-next/middleware/handler.mjs",
+          "regexCount": 0,
+          "remainingTokenTypes": {},
+          "nonLatin1Before": 0,
+          "nonLatin1After": 0
+        }
+      }
+    ]
+  },
+  "deployments": [
+    {
+      "worker": "payload-wnam",
+      "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+      "versions": [
+        {
+          "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "worker": "payload-wnam-p0",
+      "id": "0c7c76c7-5ab8-4753-a917-740f5815ca99",
+      "versions": [
+        {
+          "version_id": "85613ac8-8736-4ac5-a839-a3e12feeae5c",
+          "percentage": 100
+        }
+      ]
+    }
+  ],
+  "changes": [
+    "Required explicit preserved numeric localSiteId in central registry",
+    "Mapping consistency checked by RPC client, Payload custom authentication and identity projection synchronization",
+    "Mapped site visibility resolves only the current numeric ID without querying teams or enumerating sites",
+    "Relationship containment enforced for staff and trusted internal content, author and original-evidence writes",
+    "Quality veto hot-cache retains numeric or populated site attribution"
+  ],
+  "limitations": [
+    "Control schema remains an undeployed initial schema; no production or remote P0 control-table migration",
+    "Identity runtime uses synthetic central login and minimal identity collections, not complete independent Payload configurations",
+    "Content-hook tests exercise real hooks with stubbed Payload operations; complete editor and relation-graph D1 acceptance remains pending",
+    "P0 deployment still uses the shared configuration and temporary password accounts, not the new central identity strategy",
+    "No production rollout or capacity acceptance; P1 through P5 remain incomplete"
+  ]
+}

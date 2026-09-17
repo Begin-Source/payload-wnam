@@ -21,7 +21,7 @@
 | P0 完整 Payload、后台、上传、内部缓存审计 | `6f43fba` 的 454 项测试、14 项浏览器检查、部署及线上 REST/后台/R2/队列/公开缓存/流式响应检查通过；5 个 isolate 共同服务两站；[最新证据](site-per-d1-p0-runtime-optimization.json) | 可行性通过 |
 | P0 现有用量基线 | [生产基线](site-per-d1-baseline.json)含 CPU、D1 读写/存储与账本用量；供应商账单未对账，不能作为真实单篇成本 | 基线已记录，成本验收待后续 |
 | P0 冷启动、CPU 与内存 | `6f43fba` 启动 30 ms；403 请求无执行错误；CPU P95 87.913 ms；内存 P95 104,548,730 bytes、P99.9 106,280,960 bytes；[原始查询及边界](site-per-d1-p0-runtime-optimization.json) | 小规模原型通过；非容量验收 |
-| P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用、无凭据身份投影及同步已实现；独立配置与共享主数据同步未接入；[进度](site-per-d1-p1-identity.md) | 实施中，未通过 |
+| P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用、身份投影及原数字站点 ID 映射已实现；内容归属 hook 已适配；独立配置与共享主数据同步未接入；[进度](site-per-d1-p1-identity.md) | 实施中，未通过 |
 | P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；485 项测试和 P0 线上回归通过；独立完整角色部署和真实中央登录尚未接入 | 实施中，未通过 |
 | P1 建站、进入、暂停/恢复、MCP 明确 siteId | 未实现 | 待实施 |
 | P2 持久步骤链、公平调度、独立发布队列 | 未实现 | 待实施 |
@@ -66,3 +66,4 @@
 - [身份与验证边界](site-per-d1-p1-identity.md)及[独立配置拆分清单](site-per-d1-p1-config-boundaries.md)记录当前实现和全部 37 个业务集合的归属。独立配置、共享主数据同步、正式角色的服务绑定/浏览器 SSO、建站及 MCP 明确 siteId 尚未完成，P1 保持未通过。
 
 - `4208e39` 的构建 `c59fe93c-f449-4124-b5e1-c51ecfd7f9c9` 最终通过 485 项测试、14 项既有浏览器检查、新增 workerd RPC/Chromium HTTPS 双站身份检查及部署后回归。最新 P0 deployment `01264593-495f-4564-afac-1dc9dee79f58`，生产未变；[验证证据及范围](site-per-d1-p1-service-validation.json)。此前三次构建失败均未发布，原因与修复见 [服务边界记录](site-per-d1-p1-service-boundary.md)。下一步为独立完整配置、正式入口/内置登录退出接入、主数据同步及建站/MCP，P1 不通过。
+- `cbcfc2e` 的构建 `2a9c3ea2-6a7b-449e-a0d2-fca91f11eed0` 通过 492 项测试、原生 RPC/Chromium 身份检查及部署后回归；中央与站点数字 ID 映射不一致的故障注入被拒绝。2026-09-17T02:12:36Z P0 发布检查通过，deployment `0c7c76c7-5ab8-4753-a917-740f5815ca99`，version `85613ac8-8736-4ac5-a839-a3e12feeae5c`；生产 deployment 保持 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`。[本轮证据](site-per-d1-p1-local-id-validation.json)分别标明 hook 替身测试、身份 runtime fixture 与 P0 线上回归的范围。完整独立配置及权限包装替换仍待实现，P1 不通过。

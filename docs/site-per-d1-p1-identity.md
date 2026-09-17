@@ -6,6 +6,7 @@
 
 - `src/site-control/schema.ts`：显式中央初始化，建立站点注册表、用户站点授权、一次性票据及站点会话表。必须先建立中央 Payload Users schema；不在请求或 `onInit` 中自动迁移。
 - `registry.ts`：稳定 siteId、D1 ID/binding/分组、schema/routing 版本、迁移状态、时区及生产开关。相同操作可重试，不能借重试把现有站点指向另一库。状态变更使用期望版本 CAS 并递增 routingVersion。跨库引用包含 `{ siteId, collection, recordId }`。
+- `localSiteId` 保存原数字 `sites.id`，注册时必填，不能从稳定字符串 siteId 推断。不同 D1 可以保留相同数字 ID；同一注册操作不能改写既有映射。中央身份响应携带映射，RPC 客户端、认证策略及身份投影同步逐层核对可信上下文。旧 P0 上下文保留兼容分支，完整站点配置必须要求显式映射。
 - `payloadSessionAuthority.ts`：每次读取原中央 `users_sessions` 及用户锁定状态，只选择必要字段。中央退出登录、会话过期、用户删除和锁定不会被站点缓存遮蔽。
 - `sso.ts`：256 位随机票据，最长 60 秒，只保存 SHA-256 摘要；绑定站点、专用后台主机和路由版本。原子 D1 batch 将消费票据与会话写入一起提交。写入失败回滚消费，并发兑换只有一个成功。
 - 站点会话不长于原中央会话，每次认证重新读取中央会话、站点状态和当前授权。授权降级/撤销即时生效，中央读取失败不会使用旧授权。中央用户删除会级联清除授权，避免数字 ID 复用继承权限。
@@ -13,6 +14,7 @@
 - 写入 Origin 校验拒绝包括同站不同子域在内的跨源写入；中央/站点 POST 交接已有严格 Origin 检查，并通过真实浏览器验证。普通后台写入仍必须由正式站点 ingress 接入，不能把 fixture 当作现有部署的 CSRF 防护。
 - 原始 SQL 与 nonce 存储已移除可变全局 D1 引用。站点上下文优先于调用方提供的原始 client；已标记的站点配置在缺失上下文时仍走严格代理，不会选择默认库。旧共享配置/CLI 从各自 adapter 获取绑定，nonce 测试使用显式 resolver。
 - 云端源码编码检查现在遇到非 Latin-1 回归会停止构建，保留 P0 已验证的内存条件。
+- 站点可见范围工具识别新身份，仅返回本站数字 ID，不查询中央团队或遍历站点；内容、作者、原创证据 hook 也约束可信内部任务的站点归属。质量否决 hot-cache 保留数字或 populated 关系中的站点 ID。collection/global 的旧角色 access 包装仍须由独立配置替换，不能仅凭此工具更新声称完整编辑权限已接通。
 
 ## 验证与范围
 
@@ -37,3 +39,5 @@
 依据：[Payload 自定义认证策略](https://payloadcms.com/docs/authentication/custom-strategies)。固定版本 3.82.1 的 `payload/dist/index.js` 也已核对：任意 auth collection 未禁用本地策略都可能重新启用 JWT，因此必须在插件 sanitize 后检查所有 auth collections。
 
 后续 `4208e39` 已完成云端原生身份服务/浏览器链路及身份投影同步验证，并通过 485 项测试、14 项既有浏览器检查与部署后回归；见 [本轮完整证据](site-per-d1-p1-service-validation.json)。当前 P0 仍为临时登录，正式配置接入与 P1 验收尚未完成。
+
+`cbcfc2e` 随后加入数字站点 ID 映射及内容归属校验，通过 31 项定向测试、云端 492 项全套测试、14 项既有浏览器检查、原生 RPC/Chromium 映射故障注入和 P0 线上回归。[验证记录](site-per-d1-p1-local-id-validation.json)含部署身份与明确测试范围。生产部署未变；完整独立配置、真实编辑链路及 P1 放行仍待完成。

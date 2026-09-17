@@ -62,6 +62,7 @@
 5. `siteScopedCollectionAccess`、`resolveVisibleSiteIds`、tenant/GM 权限、field.filterOptions 依赖旧用户 roles/tenants。站点身份不包含这些字段；需替换权限及站点字段选择，但继续执行 locale、作者归属、GDPR、设计合法性与质量验证。
 6. MinimalDashboard、团队绩效、StrategyPanel 等管理视图使用共享库统计。中央应读取汇总，本站应只展示本地编辑操作；不要在独立中央配置中保留会查询缺失集合的原 dashboard。
 7. 公开文章/页面/媒体读取与后台读取需要不同 access 条件；不能把所有 read 一律改成 `sitePermission('read')`，从而使匿名公开页面失效，也不能公开草稿和身份投影。
+8. 固定版本 automation 插件的 `WorkflowRunsCollection` 默认 CRUD 全部放行，通用文档 task 调用 Local API 未显式设置 `overrideAccess: false`。独立站点配置必须覆盖插件生成集合的权限，并对 task 的目标集合、动作和实时授权施加约束；仅在手写 collection 上换 access 无法覆盖这些路径。其 `onInit` 在不传 `seedWorkflows` 时只初始化日志；站点不得传启动 seed。
 
 ## 配置实现与验证顺序
 
