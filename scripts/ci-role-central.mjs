@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs'
-import { extname, resolve, sep } from 'node:path'
+import { resolve } from 'node:path'
 import { chromium } from '@playwright/test'
 
 if (process.env.WORKERS_CI !== '1') throw new Error('Complete role checks require Cloudflare Builds')
@@ -16,19 +16,14 @@ const modules = [entries[0],...moduleFiles.filter(name => name !== entries[0])].
   type: name.endsWith('.wasm') ? 'CompiledWasm' : /\.(?:html|txt)$/.test(name) ? 'Text' : 'ESModule',path: resolve(bundle,name),
 }))
 const assets = resolve(cwd,'.open-next/assets')
-const mime = { '.js': 'application/javascript','.css': 'text/css','.svg': 'image/svg+xml','.png': 'image/png','.ico': 'image/x-icon','.woff2': 'font/woff2','.json': 'application/json' }
 const mf = new Miniflare({ host: '127.0.0.1',port: 0,https: true,
   name: 'central',routes: ['hub.beginos.org/*'],modules,modulesRoot: bundle,
   compatibilityDate: '2025-08-15',compatibilityFlags: ['nodejs_compat','global_fetch_strictly_public'],
   bindings: { PAYLOAD_SECRET: 'central-config-isolated-test-only' },
   d1Databases: { CENTRAL_D1: 'complete-central-app' },
   r2Buckets: { CENTRAL_MEDIA: 'central-app-media',MASTER_ASSET_ARCHIVE: 'central-app-archive' },
-  serviceBindings: { ASSETS: async request => {
-    const file = resolve(assets,'.' + decodeURIComponent(new URL(request.url).pathname))
-    if (!file.startsWith(assets + sep)) return new Response('Not found',{ status: 404 })
-    try { return new Response(readFileSync(file),{ headers: { 'content-type': mime[extname(file)] ?? 'application/octet-stream' } }) }
-    catch { return new Response('Not found',{ status: 404 }) }
-  } },
+  // Match Workers Static Assets routing, not only an ASSETS fetch binding.
+  assets: { directory: assets,binding: 'ASSETS',routerConfig: { has_user_worker: true } },
 })
 let browser, page
 const assetResponses = [], browserErrors = []
@@ -50,8 +45,11 @@ try {
     body: JSON.stringify({ email: 'anonymous@example.invalid',password: 'must-not-register-automatically' }) })
   assert.equal(anonymous.status,403,'Central anonymous signup must remain closed')
   const listener = await mf.ready
-  browser = await chromium.launch({ headless: true,args: ['--no-proxy-server',`--host-resolver-rules=MAP hub.beginos.org:443 127.0.0.1:${listener.port}`] })
+  browser = await chromium.launch({ headless: true,args: ['--no-proxy-server','--ignore-certificate-errors','--disable-background-networking',`--host-resolver-rules=MAP hub.beginos.org:443 127.0.0.1:${listener.port}`] })
   const context = await browser.newContext({ ignoreHTTPSErrors: true,serviceWorkers: 'block',viewport: { width: 1365,height: 900 } })
+  // This browser is confined to the disposable HTTPS listener with a self-signed
+  // certificate; it cannot contact the actual production host or third parties.
+  await context.route('**/*',route => new URL(route.request().url()).hostname === 'hub.beginos.org' ? route.continue() : route.abort())
   page = await context.newPage()
   page.on('pageerror',error => browserErrors.push(error.message.slice(0,240)))
   const failedAssets = []
