@@ -1,0 +1,257 @@
+{
+  "capturedAt": "2026-09-17T09:26:29.241Z",
+  "phase": "P1 implementation — not accepted",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "repository": "Begin-Source/payload-wnam",
+  "commit": "7d739ecb63dc043f75d8f3cd455e4d54f903dd56",
+  "buildId": "b6ea36f8-2c46-4ecc-8129-c2277cffb90f",
+  "buildOutcome": "success",
+  "localChecks": [
+    "git diff --check passed",
+    "No local dependency installation, application build or test run; validation performed by Cloudflare CI"
+  ],
+  "changes": [
+    "Immutable raster media releases with private archives, explicit tenant/global authorization, durable publication intent and revision CAS",
+    "Version-specific site public/private R2 objects, content validation, immutable local media IDs and retryable copy receipts",
+    "Author format 2 headshots and admin-branding format 2 logos require pinned local media copies; no automatic changes to reviewed choices",
+    "Irreversible withdrawal records, retryable zero-byte R2 tombstones, preserved relationship identity and no resurrection by delayed create-only copies",
+    "Readonly media storage prefix and reserved-path R2 write protection"
+  ],
+  "validation": {
+    "unitAndIntegrationTests": 550,
+    "testFiles": 110,
+    "existingBrowserChecks": 14,
+    "nativeAssetSyncTests": 7,
+    "scope": "Full independent central/site Payload factories, three native D1 databases and four R2 buckets in cloud CI. Actual author/branding references and upload file handler; authorization, isolation, concurrent retries, R2/D1 failure recovery, withdrawals and copy/withdrawal race. Supplied internal transport fixture; not an independently deployed asset service.",
+    "nodeFixtureHeaders": "Pinned Miniflare Node bridge cannot serialize Node Headers. Fixture uses the same undici Headers constructor as Miniflare while retaining production Payload file-handler logic. Additional cloud workerd test verifies genuine native Headers/R2 metadata.",
+    "events": [
+      {
+        "at": "2026-09-17T09:19:08.301Z",
+        "value": {
+          "event": "site_d1_workerd_isolation",
+          "commit": "7d739ecb63dc043f75d8f3cd455e4d54f903dd56",
+          "ok": true,
+          "databases": 2,
+          "concurrentRequests": 40,
+          "elapsedMs": 1025,
+          "checks": [
+            "CRUD",
+            "same IDs",
+            "batch rollback",
+            "context guards",
+            "stale routes",
+            "streams",
+            "R2 prefixes",
+            "native R2 response metadata",
+            "cache keys",
+            "queue delivery and deduplication"
+          ],
+          "scope": "Cloudflare Builds workerd with local D1/R2/Queues; not deployed D1 or full Payload/admin acceptance"
+        }
+      },
+      {
+        "at": "2026-09-17T09:21:17.472Z",
+        "value": {
+          "event": "p0_source_encoding",
+          "file": ".open-next/server-functions/default/handler.mjs",
+          "regexCount": 1996,
+          "remainingTokenTypes": {
+            "template": 1
+          },
+          "nonLatin1Before": 13024,
+          "nonLatin1After": 0
+        }
+      },
+      {
+        "at": "2026-09-17T09:21:17.508Z",
+        "value": {
+          "event": "p0_source_encoding",
+          "file": ".open-next/middleware/handler.mjs",
+          "regexCount": 0,
+          "remainingTokenTypes": {},
+          "nonLatin1Before": 0,
+          "nonLatin1After": 0
+        }
+      },
+      {
+        "at": "2026-09-17T09:21:47.752Z",
+        "value": {
+          "event": "site_identity_workerd_rpc",
+          "ok": true,
+          "commit": "7d739ecb63dc043f75d8f3cd455e4d54f903dd56",
+          "workers": 2,
+          "databases": 3,
+          "concurrentRedemptions": 20,
+          "concurrentSiteRequests": 20,
+          "checks": [
+            "named RPC capability",
+            "no RPC issuer",
+            "HTTP capability denied",
+            "POST handoff",
+            "Chromium form/CSP/cookie navigation",
+            "single-use ticket",
+            "host/origin binding",
+            "explicit local site ID mapping",
+            "credential-free projections",
+            "live role changes",
+            "immediate revocation",
+            "site logout",
+            "central logout",
+            "central outage fails closed",
+            "independent public response"
+          ],
+          "scope": "Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance"
+        }
+      },
+      {
+        "at": "2026-09-17T09:21:59.973Z",
+        "value": {
+          "event": "p0_migrations_ready",
+          "database": "31d5906e-f276-4a61-87c1-31a13e7131e6",
+          "migrations": 107
+        }
+      },
+      {
+        "at": "2026-09-17T09:22:20.243Z",
+        "value": {
+          "event": "p0_migrations_ready",
+          "database": "20fd152f-7b7c-4bc6-be81-1a36ea720060",
+          "migrations": 107
+        }
+      },
+      {
+        "at": "2026-09-17T09:23:14.257Z",
+        "value": {
+          "event": "p0_cloud_workerd_heap_profile",
+          "commit": "7d739ecb63dc043f75d8f3cd455e4d54f903dd56",
+          "at": "2026-09-17T09:23:14.257Z",
+          "snapshots": [
+            {
+              "phase": "before-payload-request",
+              "usedSize": 40405432,
+              "totalSize": 42778624,
+              "embedderHeapUsedSize": 257936,
+              "backingStorageSize": 1217658
+            },
+            {
+              "phase": "after-payload-login",
+              "usedSize": 76418216,
+              "totalSize": 85876736,
+              "embedderHeapUsedSize": 257936,
+              "backingStorageSize": 1233308
+            },
+            {
+              "phase": "after-read-batch-1",
+              "usedSize": 75281840,
+              "totalSize": 94527488,
+              "embedderHeapUsedSize": 257936,
+              "backingStorageSize": 1288725
+            },
+            {
+              "phase": "after-read-batch-2",
+              "usedSize": 81606524,
+              "totalSize": 96100352,
+              "embedderHeapUsedSize": 386896,
+              "backingStorageSize": 1364597
+            },
+            {
+              "phase": "after-read-batch-3",
+              "usedSize": 77190920,
+              "totalSize": 102129664,
+              "embedderHeapUsedSize": 386896,
+              "backingStorageSize": 1288981
+            },
+            {
+              "phase": "after-unconfirmed-gc-request",
+              "usedSize": 77190920,
+              "totalSize": 102129664,
+              "embedderHeapUsedSize": 386896,
+              "backingStorageSize": 1288981
+            }
+          ],
+          "garbageCollectionAcknowledged": false,
+          "scope": "Cloud CI workerd with full build and remote synthetic D1. Inspector affects runtime; an unacknowledged GC does not establish retained heap size. This report is diagnostic, not production headroom acceptance. No heap contents captured."
+        }
+      },
+      {
+        "at": "2026-09-17T09:24:23.297Z",
+        "value": {
+          "event": "p0_deployed_smoke_passed",
+          "commit": "7d739ecb63dc043f75d8f3cd455e4d54f903dd56",
+          "at": "2026-09-17T09:24:23.296Z",
+          "scope": "Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending",
+          "concurrentReads": 40,
+          "concurrentPublicPages": 12,
+          "isolatesServingBothSites": 5,
+          "configuredIconViews": 4
+        }
+      },
+      {
+        "at": "2026-09-17T09:24:23.321Z",
+        "value": {
+          "event": "p0_release_passed",
+          "commit": "7d739ecb63dc043f75d8f3cd455e4d54f903dd56",
+          "worker": "payload-wnam-p0",
+          "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+        }
+      }
+    ]
+  },
+  "failedBuilds": [
+    {
+      "id": "0584a517-3e6e-4b7c-869f-72b908d71f56",
+      "commit": "5d35e18f833c072f44e01df29238d8bf340f1ca6",
+      "reason": "Typecheck TS2345: asset publisher must narrow user auth collection before tenant access.",
+      "deployed": false
+    },
+    {
+      "id": "2a3774f7-b690-405d-90e2-554d4cc4be1c",
+      "commit": "d28aa6fb2c4d377c251e294fca94d3a60bfccae7",
+      "reason": "546/550 tests passed; 4 media copy tests failed because independent media schema lacked prefix column.",
+      "deployed": false
+    },
+    {
+      "id": "3faa20e0-75d8-4125-a811-40aba11d7935",
+      "commit": "02d8564ff9ba7114adb4a22f4b5b3b20fe481203",
+      "reason": "549/550 tests passed; actual versioned media file endpoint returned 500 instead of 200. Investigating metadata boundary.",
+      "deployed": false
+    },
+    {
+      "id": "6cd08ce2-c71e-4fca-a1a7-f27abecbc8d2",
+      "commit": "297945429c1d959ef09948799a51e88afee7b721",
+      "reason": "549/550 tests passed; diagnostic isolated file 500 to pinned Miniflare failing to serialize Node Headers (DevalueError). Use its undici Headers in Node fixture and add native workerd metadata coverage.",
+      "deployed": false
+    }
+  ],
+  "deployments": [
+    {
+      "worker": "payload-wnam",
+      "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+      "versions": [
+        {
+          "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "worker": "payload-wnam-p0",
+      "id": "4494ed07-fd3e-4a5f-822b-c65d29eb8a32",
+      "versions": [
+        {
+          "version_id": "c90ce9e0-440c-4133-af71-6a3d8a7f25e1",
+          "percentage": 100
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Authenticated transport, queues/receipts and asset review UI remain unmounted",
+    "Independent role builds, types, import maps, schema migrations, provisioning and browser acceptance remain pending; P0 uses shared configuration",
+    "Asset DDL only ran in isolated native D1 fixtures, not remote role databases",
+    "Only PNG/JPEG/GIF/WebP/AVIF up to 5 MiB; SVG, other attachments and embedded rich-text relationships remain pending",
+    "Public R2 CDN delivery/purge policy remains P3 work; binding tombstones are not proof of instant global cache withdrawal",
+    "Cross-resource copy is retryable, not an R2/D1 atomic transaction; uncompleted intents and orphan archive maintenance remain pending",
+    "P1 through P5 remain incomplete"
+  ]
+}

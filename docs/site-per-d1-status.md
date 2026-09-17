@@ -21,8 +21,8 @@
 | P0 完整 Payload、后台、上传、内部缓存审计 | `6f43fba` 的 454 项测试、14 项浏览器检查、部署及线上 REST/后台/R2/队列/公开缓存/流式响应检查通过；5 个 isolate 共同服务两站；[最新证据](site-per-d1-p0-runtime-optimization.json) | 可行性通过 |
 | P0 现有用量基线 | [生产基线](site-per-d1-baseline.json)含 CPU、D1 读写/存储与账本用量；供应商账单未对账，不能作为真实单篇成本 | 基线已记录，成本验收待后续 |
 | P0 冷启动、CPU 与内存 | `6f43fba` 启动 30 ms；403 请求无执行错误；CPU P95 87.913 ms；内存 P95 104,548,730 bytes、P99.9 106,280,960 bytes；[原始查询及边界](site-per-d1-p0-runtime-optimization.json) | 小规模原型通过；非容量验收 |
-| P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用和身份映射已实现；[站点 factory](site-per-d1-p1-site-config.md)、[中央 factory/成本账本](site-per-d1-p1-central-config.md)及[主数据发布/候选接收](site-per-d1-p1-master-sync.md)有原生 D1 验证；[副本应用/提示词选择](site-per-d1-p1-master-copies.md)已实现；[运行 Global/配额版本](site-per-d1-p1-config-sync.md)已实现；资产、来源投递、正式入口/界面和角色部署尚未接入 | 实施中，未通过 |
-| P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；最新 543 项测试和 P0 线上回归通过；独立完整角色部署和真实中央登录尚未接入 | 实施中，未通过 |
+| P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用和身份映射已实现；[站点 factory](site-per-d1-p1-site-config.md)、[中央 factory/成本账本](site-per-d1-p1-central-config.md)及[主数据发布/候选接收](site-per-d1-p1-master-sync.md)有原生 D1 验证；[副本应用/提示词选择](site-per-d1-p1-master-copies.md)已实现；[运行 Global/配额版本](site-per-d1-p1-config-sync.md)已实现；[媒体复制/撤回、头像与品牌图](site-per-d1-p1-assets.md)已通过原生验证；来源投递、正式入口/界面和角色部署尚未接入 | 实施中，未通过 |
+| P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；最新 550 项测试和 P0 线上回归通过；独立完整角色部署和真实中央登录尚未接入 | 实施中，未通过 |
 | P1 建站、进入、暂停/恢复、MCP 明确 siteId | 未实现 | 待实施 |
 | P2 持久步骤链、公平调度、独立发布队列 | 未实现 | 待实施 |
 | P2 供应商 DO 配额、预算、429、结果不明核查 | 未实现 | 待实施 |
@@ -74,3 +74,5 @@
 - `5f21e30` 实现[八类主数据原子副本应用与提示词明确选择](site-per-d1-p1-master-copies.md)，保存稳定版本映射并保护员工改动、已发布文章和 Offer 展示位置。构建 `477d8aaa-fb62-414a-a693-834e91e35405` 成功，通过 536 项测试、14 项浏览器检查、身份 RPC/HTTPS 与 P0 线上回归。2026-09-17T05:30:58Z 发布检查通过；P0 deployment `391fe575-1ba5-49cf-b5bf-615bd16911c0`，version `a2c7af74-1e21-4395-b06e-e23304167e4d`，生产未变。[证据](site-per-d1-p1-master-copies-validation.json)不代表独立角色已部署；资产、Global/配额版本、正式传输/界面/入口和远程迁移仍待完成，P1 未验收。
 
 - `604e005` 实现[运行 Global 与配额政策版本](site-per-d1-p1-config-sync.md)：实际中央权限发布、本站候选接收、按数据库内容审阅、原子应用/数组替换及用量保留。构建 `dac96ae3-1a43-49da-bed3-f9c80c075f8e` 成功，通过 543 项测试、14 项浏览器检查、身份 RPC/HTTPS 与 P0 线上回归。2026-09-17T05:56:41Z 发布检查通过；P0 deployment `72e68720-d0a1-4aaf-84f8-f257c895cd91`，version `217105df-04f7-4bbe-a69d-9ff2bd22f68f`，生产未变。[证据](site-per-d1-p1-config-sync-validation.json)不代表预算已执行或独立角色已部署；品牌/资产、正式传输/界面/入口和远程迁移仍待完成，P1 未验收。
+
+- `7d739ec` 完成[版本媒体、头像与品牌图](site-per-d1-p1-assets.md)的原生验证：固定元数据/字节、私有归档、站内 ID 映射、并发去重、失败重试和撤回 tombstone。构建 `b6ea36f8-2c46-4ecc-8129-c2277cffb90f` 成功，通过 550 项测试（含 7 项资产同步）、14 项浏览器检查、原生 R2 响应头及身份 RPC/HTTPS；2026-09-17T09:24:23Z P0 线上回归通过。P0 deployment `4494ed07-fd3e-4a5f-822b-c65d29eb8a32`，version `c90ce9e0-440c-4133-af71-6a3d8a7f25e1`，生产未变。[证据](site-per-d1-p1-assets-validation.json)记录四次部署前失败及修复。本轮未安装本地依赖，所有测试/构建均在 Cloudflare。正式传输/界面/角色、远程迁移、SVG/内嵌资源及 P1 其余验收仍待完成。
