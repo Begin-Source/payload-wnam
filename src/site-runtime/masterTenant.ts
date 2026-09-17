@@ -1,4 +1,4 @@
-import type { CollectionBeforeValidateHook, PayloadRequest, Where } from 'payload'
+import type { CollectionBeforeValidateHook, Field, PayloadRequest, Where } from 'payload'
 import { requireLocalSiteId } from './context'
 import { parseRelationshipId } from '../utilities/parseRelationshipId'
 
@@ -21,4 +21,17 @@ export const validateMasterTenant: CollectionBeforeValidateHook = async ({ data,
 
 export async function masterTenantWhere(req: PayloadRequest): Promise<Where> {
   return { tenant: { equals: await localMasterTenant(req) } }
+}
+
+/** Content forms cannot supply the readonly tenant field. Resolve every local
+ * profile/preset picker against the provisioned site, including Articles. */
+export function scopeMasterRelationships(fields: Field[]): void {
+  for (const field of fields) {
+    if (field.type === 'relationship' && ['pipeline-profiles','keyword-batch-presets'].includes(String(field.relationTo))) {
+      field.filterOptions = ({ req }) => masterTenantWhere(req)
+    }
+    if ('fields' in field) scopeMasterRelationships(field.fields)
+    if (field.type === 'tabs') for (const tab of field.tabs) scopeMasterRelationships(tab.fields)
+    if (field.type === 'blocks') for (const block of field.blocks) if (typeof block !== 'string') scopeMasterRelationships(block.fields)
+  }
 }

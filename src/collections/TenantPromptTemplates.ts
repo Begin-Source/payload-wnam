@@ -39,7 +39,7 @@ function relationshipId(v: unknown): number | null {
   return null
 }
 
-const ensureUniqueTenantPromptKey: CollectionBeforeValidateHook = async ({
+export const ensureUniqueTenantPromptKey: CollectionBeforeValidateHook = async ({
   data,
   originalDoc,
   req,

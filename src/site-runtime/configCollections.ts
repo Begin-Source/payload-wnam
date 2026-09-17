@@ -19,7 +19,7 @@ import { Rankings } from '../collections/Rankings'
 import { WorkflowJobs } from '../collections/WorkflowJobs'
 import { SiteQuotas } from '../collections/SiteQuotas'
 import { ClickEvents } from '../collections/ClickEvents'
-import { TenantPromptTemplates, enforceTenantPromptTemplatesTenant } from '../collections/TenantPromptTemplates'
+import { TenantPromptTemplates, enforceTenantPromptTemplatesTenant, ensureUniqueTenantPromptKey } from '../collections/TenantPromptTemplates'
 import { PipelineProfiles, enforcePipelineProfilesTenant } from '../collections/PipelineProfiles'
 import { KeywordBatchPresets, enforceKeywordBatchPresetsTenant } from '../collections/KeywordBatchPresets'
 import { KnowledgeBase } from '../collections/KnowledgeBase'
@@ -37,7 +37,8 @@ import { enforceSitesMatrixQuota } from '../collections/hooks/sitesMatrixQuota'
 import { syncBlueprintTenantFromSiteTenantFieldBeforeChange } from '../collections/hooks/syncBlueprintMirroredLayout'
 import { requireLocalSiteId } from './context'
 import { siteIdentityCollection } from './siteIdentity'
-import { masterTenantWhere, validateMasterTenant } from './masterTenant'
+import { masterTenantWhere, scopeMasterRelationships, validateMasterTenant } from './masterTenant'
+import { preventMasterCopyDeletion, validateActiveTemplate } from './masterCopyAccess'
 import { denySiteWrite, onlyCurrentSite, scopeDocumentAccess, scopeSiteFields, siteDocumentAccess, siteManage, siteRead, siteReadOnlyAccess,
   validateLocalSiteRecord, validateSitePublication } from './configAccess'
 
@@ -107,7 +108,22 @@ export function siteCollections(strategy: AuthStrategy): CollectionConfig[] {
     collection.custom = { ...collection.custom, siteOwnership: copies.has(collection.slug) ? 'versioned-copy' : 'site' }
     collection.fields.push(tenantField(collection.slug === 'site-blueprints'))
     if (copies.has(collection.slug)) collection.fields.push(sourceField())
+    if (copies.has(collection.slug)) collection.hooks = { ...collection.hooks,
+      beforeDelete: [preventMasterCopyDeletion,...(collection.hooks?.beforeDelete ?? [])] }
+    if (collection.slug === 'site-layouts') {
+      // The runtime selects a layout key, not this descriptive catalog row.
+      // Keep historical catalog revisions without changing any site's key.
+      const key = collection.fields.find(field => 'name' in field && field.name === 'layoutKey')
+      if (key?.type === 'select') key.unique = false
+    }
+    if (collection.slug === 'tenant-prompt-templates') {
+      collection.fields.push({ name: 'masterEnabled',label: '当前启用',type: 'checkbox',defaultValue: true,
+        admin: { readOnly: true,description: '接收的新模板默认关闭；通过版本选择操作启用。' } })
+      collection.hooks = { ...collection.hooks,beforeValidate: [validateActiveTemplate,
+        ...(collection.hooks?.beforeValidate ?? []).filter(hook => hook !== ensureUniqueTenantPromptKey)] }
+    }
     scopeSiteFields(collection.fields)
+    scopeMasterRelationships(collection.fields)
     protectFields(collection.fields, new Set())
     if (readOnly.has(collection.slug)) collection.access = siteReadOnlyAccess
     if (managed.has(collection.slug)) {
@@ -122,11 +138,6 @@ export function siteCollections(strategy: AuthStrategy): CollectionConfig[] {
       collection.hooks = { ...collection.hooks, beforeChange: [validateSitePublication, ...(collection.hooks?.beforeChange ?? [])] }
     }
     if (collection.slug === 'sites') {
-      for (const field of collection.fields) if (field.type === 'relationship' && ['pipelineProfile','keywordBatchPreset'].includes(field.name)) {
-        // These are already selected, local copies; the old tenant-role picker
-        // cannot resolve the new credential-free site principal.
-        field.filterOptions = () => true
-      }
       collection.access = { read: ({ req }) => onlyCurrentSite(req), create: denySiteWrite, delete: denySiteWrite,
         update: async args => await siteManage(args) ? { id: { equals: requireLocalSiteId() } } : false }
       protectFields(collection.fields, siteMetadata)

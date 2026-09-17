@@ -1,3 +1,4 @@
+import { loadTenantPromptTemplateBody } from '@/utilities/openRouterTenantPrompts/loadTenantPromptTemplateBody'
 import type { Payload } from 'payload'
 
 import {
@@ -15,18 +16,7 @@ async function loadTemplateBody(
   tenantId: number,
   key: CategorySlotsPromptKey,
 ): Promise<string | null> {
-  const { docs } = await payload.find({
-    collection: 'tenant-prompt-templates',
-    where: {
-      and: [{ tenant: { equals: tenantId } }, { key: { equals: key } }],
-    },
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  })
-  const row = docs[0] as { body?: string } | undefined
-  const body = String(row?.body ?? '').trim()
-  return body.length ? body : null
+  return loadTenantPromptTemplateBody(payload, tenantId, key)
 }
 
 function pickPromptPart(

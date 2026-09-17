@@ -7,7 +7,8 @@ import { substitutePromptPlaceholders } from '@/utilities/domainGeneration/subst
 async function readTemplateBody(payload: Payload, where: Where): Promise<string | null> {
   const { docs } = await payload.find({
     collection: 'tenant-prompt-templates',
-    where,
+    where: payload.config?.custom?.payloadRole === 'site'
+      ? { and: [where,{ masterEnabled: { equals: true } }] } : where,
     limit: 1,
     depth: 0,
     overrideAccess: true,

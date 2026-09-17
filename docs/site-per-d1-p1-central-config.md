@@ -50,4 +50,4 @@ Payload schema 增加只读 `costReconciliationId` 和 `settlementEndExclusive`�
 
 测试在内存中生成并执行隔离 schema SQL，不生成应用部署产物。正式中央/站点服务尚未部署，控制与成本表尚未迁入远程库，P1–P5 完整要求继续见 [执行方案](site-per-d1-execution-plan.md)。
 
-后续[主数据版本工作](site-per-d1-p1-master-sync.md)已移除中央 `KeywordBatchPresets.pillarKeywordId`，并在独立站点配置中用可信 Site.tenant 归属替换 profile/preset/template 的旧用户租户 hook；完整原生站点测试覆盖 manager 创建、选择和编辑带 tenant 的方案、预设与模板，以及外租户导入拒绝。不可变发布和候选接收已实现，候选应用为 Payload 关系副本仍待接入。
+后续[主数据版本工作](site-per-d1-p1-master-sync.md)已移除中央 `KeywordBatchPresets.pillarKeywordId`，并在独立站点配置中用可信 Site.tenant 归属替换 profile/preset/template 的旧用户租户 hook；完整原生站点测试覆盖 manager 创建、选择和编辑带 tenant 的方案、预设与模板，以及外租户导入拒绝。不可变发布和候选接收已实现，后续[副本应用与提示词选择](site-per-d1-p1-master-copies.md)已在原生 D1 中实现，正式服务入口和界面仍待接入。

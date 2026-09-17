@@ -49,10 +49,11 @@ export function canonicalMasterJSON(value: unknown, depth = 0): string {
   throw new Error('Master snapshot must contain finite JSON values')
 }
 export function assertMasterCollection(collection: string): asserts collection is MasterCollection {
-  if (!Object.hasOwn(masterFields,collection)) throw new Error('Unsupported master collection')
+  if (typeof collection !== 'string' || !Object.hasOwn(masterFields,collection)) throw new Error('Unsupported master collection')
 }
 export function assertMasterReference(ref: MasterReference): void {
   if (!ref || typeof ref !== 'object') throw new Error('Invalid master reference')
+  if (Object.keys(ref).length !== 4 || Object.keys(ref).some(key => !['collection','recordId','revision','digest'].includes(key))) throw new Error('Invalid master reference fields')
   assertMasterCollection(ref.collection)
   if (!/^[1-9][0-9]*$/.test(ref.recordId) || !Number.isSafeInteger(Number(ref.recordId)) || typeof ref.recordId !== 'string' ||
     !Number.isSafeInteger(ref.revision) || ref.revision < 1 || !/^[0-9a-f]{64}$/.test(ref.digest)) throw new Error('Invalid master reference')
@@ -93,7 +94,7 @@ export function projectMasterData(collection: MasterCollection, source: Record<s
   return JSON.parse(canonicalMasterJSON(data)) as Record<string,unknown>
 }
 export function snapshotJSON(snapshot: MasterSnapshot): string {
-  assertMasterReference({ ...snapshot, digest: '0'.repeat(64) })
+  assertMasterReference({ collection: snapshot.collection,recordId: snapshot.recordId,revision: snapshot.revision,digest: '0'.repeat(64) })
   if (snapshot.format !== 1 || !Number.isSafeInteger(snapshot.tenantId) || snapshot.tenantId < 0 ||
     (snapshot.collection === 'site-layouts' ? snapshot.tenantId !== 0 : snapshot.tenantId < 1) ||
     new Date(snapshot.sourceUpdatedAt).toISOString() !== snapshot.sourceUpdatedAt) throw new Error('Invalid master snapshot identity')

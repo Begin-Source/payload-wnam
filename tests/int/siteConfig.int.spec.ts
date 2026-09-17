@@ -13,6 +13,7 @@ import { validateDocLocaleAgainstSite } from '../../src/collections/hooks/valida
 import { authorsGdprValidate } from '../../src/collections/hooks/authorsGdprValidate'
 import { syncSiteIdentityProjection } from '../../src/site-runtime/identityProjection'
 import { migrateSiteMasters } from '../../src/site-control/masterSchema'
+import { migrateSiteMasterCopies } from '../../src/site-runtime/masterCopySchema'
 import { masterDigest, masterReference, projectMasterData, snapshotJSON, type MasterSnapshot } from '../../src/site-control/masterSnapshot'
 import { receiveMasterRelease } from '../../src/site-runtime/masterReceiver'
 
@@ -67,6 +68,7 @@ describe('independent complete site Payload configuration', () => {
       const binding = await mf.getD1Database(name)
       for (let offset = 0; offset < sql.length; offset += 25) await binding.batch(sql.slice(offset, offset + 25).map(statement => binding.prepare(statement)))
       await migrateSiteMasters(binding)
+      await migrateSiteMasterCopies(binding)
       return { ...scope, siteId: name.toLowerCase(), localSiteId: index ? 82 : 37, binding, requestHost: `cms-site-${name.toLowerCase()}.beginos.org` }
     }))
     for (const context of contexts) await withSiteContext(context, async () => {
