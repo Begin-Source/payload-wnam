@@ -45,7 +45,7 @@
   @media (max-width: 600px) {
     &__search {
       label { flex-basis: 100%; }
-      input { flex: 1; font-size: 1rem; }
+      input { flex: 1; font-size: max(1rem, 16px); }
     }
     &__row { grid-template-columns: 3rem minmax(0, 1fr) auto; gap: .75rem; }
     &__identity { grid-column: 1 / -1; }

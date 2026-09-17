@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createRequire } from 'node:module'
 import { realpathSync } from 'node:fs'
 import { migrateSiteControl } from '../../src/site-control/schema'
-import { centralSiteDirectory, listGrantedSites } from '../../src/site-control/siteDirectory'
+import { centralSiteDirectory, listGrantedSites, type SiteDirectoryPage } from '../../src/site-control/siteDirectory'
 
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
 const { Miniflare } = require('miniflare')
@@ -64,7 +64,7 @@ describe('central granted site directory on native D1', () => {
     const response = await centralSiteDirectory(new Request(url),options)
     expect(response.status).toBe(200)
     expect(response.headers.get('cache-control')).toBe('private, no-store')
-    expect((await response.json()).sites).toHaveLength(50)
+    expect((await response.json() as SiteDirectoryPage).sites).toHaveLength(50)
     for (const query of ['?userId=8','?after=invalid/value','?q=a&q=b',`?q=${'x'.repeat(121)}`]) {
       expect((await centralSiteDirectory(new Request(url+query),options)).status).toBe(400)
     }
