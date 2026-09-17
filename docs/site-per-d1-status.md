@@ -22,7 +22,7 @@
 | P0 现有用量基线 | [生产基线](site-per-d1-baseline.json)含 CPU、D1 读写/存储与账本用量；供应商账单未对账，不能作为真实单篇成本 | 基线已记录，成本验收待后续 |
 | P0 冷启动、CPU 与内存 | `6f43fba` 启动 30 ms；403 请求无执行错误；CPU P95 87.913 ms；内存 P95 104,548,730 bytes、P99.9 106,280,960 bytes；[原始查询及边界](site-per-d1-p0-runtime-optimization.json) | 小规模原型通过；非容量验收 |
 | P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用和身份映射已实现；[站点 factory](site-per-d1-p1-site-config.md)及[中央 factory/成本账本](site-per-d1-p1-central-config.md)有原生 D1 验证；来源投递、主数据同步和正式角色尚未接入 | 实施中，未通过 |
-| P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；最新 503 项测试和 P0 线上回归通过；独立完整角色部署和真实中央登录尚未接入 | 实施中，未通过 |
+| P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 先前云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；最新 517 项测试和 P0 线上回归通过；独立完整角色部署和真实中央登录尚未接入 | 实施中，未通过 |
 | P1 建站、进入、暂停/恢复、MCP 明确 siteId | 未实现 | 待实施 |
 | P2 持久步骤链、公平调度、独立发布队列 | 未实现 | 待实施 |
 | P2 供应商 DO 配额、预算、429、结果不明核查 | 未实现 | 待实施 |
@@ -68,3 +68,4 @@
 - `4208e39` 的构建 `c59fe93c-f449-4124-b5e1-c51ecfd7f9c9` 最终通过 485 项测试、14 项既有浏览器检查、新增 workerd RPC/Chromium HTTPS 双站身份检查及部署后回归。最新 P0 deployment `01264593-495f-4564-afac-1dc9dee79f58`，生产未变；[验证证据及范围](site-per-d1-p1-service-validation.json)。此前三次构建失败均未发布，原因与修复见 [服务边界记录](site-per-d1-p1-service-boundary.md)。下一步为独立完整配置、正式入口/内置登录退出接入、主数据同步及建站/MCP，P1 不通过。
 - `cbcfc2e` 的构建 `2a9c3ea2-6a7b-449e-a0d2-fca91f11eed0` 通过 492 项测试、原生 RPC/Chromium 身份检查及部署后回归；中央与站点数字 ID 映射不一致的故障注入被拒绝。2026-09-17T02:12:36Z P0 发布检查通过，deployment `0c7c76c7-5ab8-4753-a917-740f5815ca99`，version `85613ac8-8736-4ac5-a839-a3e12feeae5c`；生产 deployment 保持 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`。[本轮证据](site-per-d1-p1-local-id-validation.json)分别标明 hook 替身测试、身份 runtime fixture 与 P0 线上回归的范围。完整独立配置及权限包装替换仍待实现，P1 不通过。
 - `d8537b3` 新增[独立站点配置](site-per-d1-p1-site-config.md)、本站权限及插件任务边界、公开/私有 R2 分离和 D1 宽行更新适配。构建 `4a9bc191-870e-4451-ac91-07b26acd09c3` 通过 503 项测试（含双 D1/R2 完整 schema 编辑）、14 项浏览器检查、原生身份 RPC/HTTPS 及 P0 线上回归。2026-09-17T03:08:50Z 发布通过，P0 deployment `77495c2e-ede9-403b-ad42-66c2d00fbba8`，version `aefc5c3b-9972-4f69-ba4c-960a6c30a08a`；生产未变。[证据](site-per-d1-p1-site-config-validation.json)区分独立 factory 测试与仍使用共享配置的 P0 发布；中央配置、主数据同步、正式角色及完整 P1 验收仍待完成。
+- `9ea8909` 新增独立中央 factory、成本账本与结算证明；`1dd4b13` 补齐账号分成/组织和运行字段写权限。最终构建 `be29eb4e-6ab2-4343-a58e-a287a2a2c442` 成功，通过 517 项测试；2026-09-17T04:02:43Z P0 部署后回归与发布检查通过，deployment `fb04e31e-8801-42af-bb29-a9b7c7e0df94`，version `0925d201-9a8d-407e-a491-21ecd20842f4`，生产未变。[本轮证据](site-per-d1-p1-central-config-validation.json)与[实现边界](site-per-d1-p1-central-config.md)区分原生完整中央配置测试、仍使用共享配置的 P0 发布及未恢复的独立日志标记。历史转岗结算、来源投递、主数据同步、正式角色仍待实现，P1 未验收。

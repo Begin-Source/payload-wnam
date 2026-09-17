@@ -39,9 +39,15 @@ Payload schema 增加只读 `costReconciliationId` 和 `settlementEndExclusive`�
 
 这是中央成本依赖改造，不代表收益导入去重、最终供应商账单确认或完整 P3 财务对账已验收。旧共享配置继续使用原结算路径，没有自动修改线上结算结果。
 
+当前 hook 校验用户的现有租户及收款关系，因此员工转岗后可能无法直接创建旧租户期间的结算草稿。正式财务切换前须处理并验证这一情况，明确沿用的期间归属与分成依据；现有测试不能证明该历史归属流程。已付款记录的只读金额与依据保护不替代这项迁移工作。
+
 ## 验证
+
+`9ea8909` 首次发布及 `1dd4b13` 权限补发均成功。最终构建 `be29eb4e-6ab2-4343-a58e-a287a2a2c442` 通过 517 项测试，2026-09-17T04:02:43Z 部署后回归与发布检查通过。P0 deployment 为 `fb04e31e-8801-42af-bb29-a9b7c7e0df94`，version 为 `0925d201-9a8d-407e-a491-21ecd20842f4`；生产 deployment 仍为 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`。[发布证据](site-per-d1-p1-central-config-validation.json)记录直接捕获的日志、原生测试范围与尚未完成的边界；本次未从最终分页日志中恢复浏览器、身份 RPC 和源码编码的独立标记，不另行宣称这些标记已捕获。
 
 - `centralConfig.int.spec.ts`：完整中央 schema 原生 D1 初始化、重复 sanitize、零启动 SQL/AI、真实密码登录、匿名注册拒绝、站点上下文拒绝、租户作者隔离与 GDPR、站点元数据 PATCH、真实收益行与结算草稿/批准及修订后拒绝付款。
 - `centralCostLedger.int.spec.ts`：原生 D1 并发重复/冲突/乱序、跨站同 ID、员工/租户/成本类型隔离、缺失/零值/未确认来源、修订失效、原子回滚、快照 CAS 竞争、完整收益分页及写入时费用证明校验。收益分页部分使用 Payload 替身；完整 Payload 财务路径由上一文件覆盖。
 
 测试在内存中生成并执行隔离 schema SQL，不生成应用部署产物。正式中央/站点服务尚未部署，控制与成本表尚未迁入远程库，P1–P5 完整要求继续见 [执行方案](site-per-d1-execution-plan.md)。
+
+后续主数据同步须同时处理两项源码中已确认的边界：`KeywordBatchPresets.pillarKeywordId` 是本站关键词数字 ID，不能作为中央通用模板值复制；profile/preset/template 的原 `enforceAssignedTenantOnly` hook 依赖旧用户 `tenants`，而站点身份没有该属性。接入带 tenant 的副本时需改为可信站点归属校验，并覆盖 manager 修改本站选定副本的真实测试，不能把此前分类/作者测试外推到此路径。

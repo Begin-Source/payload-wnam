@@ -1,0 +1,141 @@
+{
+  "capturedAt": "2026-09-17T04:05:51.710Z",
+  "phase": "P1 implementation — not accepted",
+  "commit": "1dd4b13abf8dc24cc820e52848d245dbee9d5f03",
+  "buildId": "be29eb4e-6ab2-4343-a58e-a287a2a2c442",
+  "buildOutcome": "success",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "repository": "Begin-Source/payload-wnam",
+  "validation": {
+    "unitAndIntegrationTests": 517,
+    "testFiles": 106,
+    "focusedTests": 14,
+    "independentCentralConfig": {
+      "integrationTests": 6,
+      "costLedgerTests": 8,
+      "scope": "Full independent central Payload configuration in Node with native workerd D1/R2; explicit in-memory schema provisioning; no local application build. Real login, organization and financial field permissions, tenant isolation, full earnings/commission writes and SQL reconciliation guards. Ledger fixture source proofs are not a deployed authenticated cost flow."
+    },
+    "events": [
+      {
+        "at": "2026-09-17T04:01:13.711Z",
+        "value": {
+          "event": "p0_cloud_workerd_heap_profile",
+          "commit": "1dd4b13abf8dc24cc820e52848d245dbee9d5f03",
+          "at": "2026-09-17T04:01:13.710Z",
+          "snapshots": [
+            {
+              "phase": "before-payload-request",
+              "usedSize": 40382896,
+              "totalSize": 42774528,
+              "embedderHeapUsedSize": 257936,
+              "backingStorageSize": 1217658
+            },
+            {
+              "phase": "after-payload-login",
+              "usedSize": 76502172,
+              "totalSize": 85872640,
+              "embedderHeapUsedSize": 257936,
+              "backingStorageSize": 1233308
+            },
+            {
+              "phase": "after-read-batch-1",
+              "usedSize": 75546544,
+              "totalSize": 95309824,
+              "embedderHeapUsedSize": 257936,
+              "backingStorageSize": 1288693
+            },
+            {
+              "phase": "after-read-batch-2",
+              "usedSize": 82215112,
+              "totalSize": 97144832,
+              "embedderHeapUsedSize": 386896,
+              "backingStorageSize": 1364565
+            },
+            {
+              "phase": "after-read-batch-3",
+              "usedSize": 77724736,
+              "totalSize": 102649856,
+              "embedderHeapUsedSize": 386896,
+              "backingStorageSize": 1288981
+            },
+            {
+              "phase": "after-unconfirmed-gc-request",
+              "usedSize": 77724736,
+              "totalSize": 102649856,
+              "embedderHeapUsedSize": 386896,
+              "backingStorageSize": 1288981
+            }
+          ],
+          "garbageCollectionAcknowledged": false,
+          "scope": "Cloud CI workerd with full build and remote synthetic D1. Inspector affects runtime; an unacknowledged GC does not establish retained heap size. This report is diagnostic, not production headroom acceptance. No heap contents captured."
+        }
+      },
+      {
+        "at": "2026-09-17T04:02:43.014Z",
+        "value": {
+          "event": "p0_deployed_smoke_passed",
+          "commit": "1dd4b13abf8dc24cc820e52848d245dbee9d5f03",
+          "at": "2026-09-17T04:02:43.013Z",
+          "scope": "Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending",
+          "concurrentReads": 40,
+          "concurrentPublicPages": 12,
+          "isolatesServingBothSites": 5,
+          "configuredIconViews": 4
+        }
+      },
+      {
+        "at": "2026-09-17T04:02:43.033Z",
+        "value": {
+          "event": "p0_release_passed",
+          "commit": "1dd4b13abf8dc24cc820e52848d245dbee9d5f03",
+          "worker": "payload-wnam-p0",
+          "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+        }
+      }
+    ],
+    "logEvidenceLimit": "Final build status, test count, deployed smoke and release markers directly captured. Dedicated browser, identity RPC and source-encoding markers were not recovered from the final paginated log response; do not treat them as separately observed evidence for this commit. The cloud release chain passed without bypass.",
+    "localChecks": [
+      "TypeScript noEmit passed",
+      "Targeted ESLint passed",
+      "Native central configuration 6 tests passed",
+      "Native cost ledger 8 tests passed"
+    ]
+  },
+  "deployments": [
+    {
+      "worker": "payload-wnam",
+      "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+      "versions": [
+        {
+          "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "worker": "payload-wnam-p0",
+      "id": "fb04e31e-8801-42af-bb29-a9b7c7e0df94",
+      "versions": [
+        {
+          "version_id": "0925d201-9a8d-407e-a491-21ecd20842f4",
+          "percentage": 100
+        }
+      ]
+    }
+  ],
+  "changes": [
+    "Independent central configuration with explicit bindings and no startup SQL, seeds, automatic migrations or shared config import",
+    "Atomic revisioned central cost ledger and independently compared per-site cost proofs; no missing-cost fallback to zero",
+    "Central commission hook and SQL guards reject stale cost evidence at approval/payment; paid financial snapshots remain immutable",
+    "Self-service users cannot raise commission rates or alter organization membership; managed site runtime metadata protected"
+  ],
+  "limitations": [
+    "Central factory is not mounted as a formal Worker role; production and P0 still use shared configuration",
+    "Control/cost schema is not migrated to remote central storage; cost exporter, authenticated transport and reconciliation scheduler are pending",
+    "Current employee/recipient membership checks need historical tenant and assignment handling before financial rollout",
+    "Versioned master synchronization, local keyword reference exclusion and tenant hooks for the new site principal remain pending",
+    "Formal role builds, service ingress, central login UI, provisioning and complete P1 acceptance remain pending",
+    "Heap profile is diagnostic with unacknowledged garbage collection; no production capacity acceptance",
+    "No production migration; P1 through P5 remain incomplete"
+  ]
+}
