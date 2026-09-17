@@ -82,7 +82,8 @@ describe('central site management MCP with real SDK client and native D1',() => 
       const [first,second] = await Promise.all([1,2].map(() => value.callTool({ name: 'pause_site',arguments: operation })))
       expect(first.structuredContent).toMatchObject({ routingVersion: 2 })
       expect(second.structuredContent).toMatchObject({ routingVersion: 2 })
-      expect([first.structuredContent,second.structuredContent].filter(item => item?.replayed === false)).toHaveLength(1)
+      expect([first.structuredContent,second.structuredContent].filter(item =>
+        item && typeof item === 'object' && 'replayed' in item && item.replayed === false)).toHaveLength(1)
       expect((await value.callTool({ name: 'pause_site',arguments: { ...operation,siteId: 'b' } })).structuredContent).toMatchObject({ status: 403 })
       expect((await value.callTool({ name: 'resume_site',arguments: { ...operation,expectedRoutingVersion: 2 } })).structuredContent).toMatchObject({ status: 409 })
       expect((await value.callTool({ name: 'resume_site',arguments: { ...operation,expectedRoutingVersion: 2,operationId: crypto.randomUUID() } })).structuredContent).toMatchObject({ routingVersion: 3 })
