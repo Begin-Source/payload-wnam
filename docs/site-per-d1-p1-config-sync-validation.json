@@ -1,0 +1,234 @@
+{
+  "capturedAt": "2026-09-17T05:57:30.170Z",
+  "phase": "P1 implementation — not accepted",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "repository": "Begin-Source/payload-wnam",
+  "localChecks": [
+    "Project TypeScript noEmit passed",
+    "Targeted ESLint passed",
+    "17 native D1 tests passed: 7 configuration synchronization and 10 master-copy regression tests"
+  ],
+  "changes": [
+    "Immutable versioned releases for llm-prompts, prompt-library, pipeline-settings, quota-rules and site-quotas",
+    "Actual central Payload source authorization, stable site and tenant qualification, revision CAS and exact operation retries",
+    "Destination-scoped candidate receipt; reception does not change active configuration",
+    "Manager review hashes actual SQL fields and array children; SQL compare-and-swap prevents edits racing the final commit",
+    "Atomic parent/array/receipt writes, failure rollback, competing selection handling and retries that do not reactivate superseded versions",
+    "Quota policy changes preserve local identity, usage and notes; foreign tenant policies are denied",
+    "Restricted field transport excludes source array IDs, provider routing notes and local usage; credential keys and invalid numeric quotas are rejected"
+  ],
+  "limitations": [
+    "Transport still uses a supplied fixture; authenticated services, queues and review UI are not mounted",
+    "Asset export/copy/withdrawal, author headshots, embedded media and admin-branding remain pending",
+    "Configuration DDL only ran in isolated native D1 databases; no remote configuration migration",
+    "Independent role builds/entrypoints/provisioning and browser acceptance remain pending; P0 uses shared configuration",
+    "A versioned quota policy is not budget enforcement or the P2 scheduler; current shared defaults were not changed",
+    "Existing duplicate site quota rows must be reviewed in migration before the unique site policy index is installed",
+    "P1 through P5 remain incomplete",
+    "Locally selected policy versions are not spending authorization; P2 must enforce current central budgets even when local selection is older or replication is delayed"
+  ],
+  "commit": "604e0053d602c302d992dc2449e3728b70844b3e",
+  "buildId": "dac96ae3-1a43-49da-bed3-f9c80c075f8e",
+  "buildOutcome": "success",
+  "validation": {
+    "unitAndIntegrationTests": 543,
+    "testFiles": 109,
+    "existingBrowserChecks": 14,
+    "nativeConfigurationSyncTests": 7,
+    "nativeMasterCopyRegressionTests": 10,
+    "scope": "Full independent central and site Payload factories and three native D1 databases. Actual Global/array/quota rows, source authorization, isolation, atomic review/apply, race fences, failure rollback, preserved local usage and operation retries. Transport is a supplied fixture; no independent role deployment or production budget execution.",
+    "events": [
+      {
+        "at": "2026-09-17T05:51:22.473Z",
+        "value": {
+          "event": "site_d1_workerd_isolation",
+          "commit": "604e0053d602c302d992dc2449e3728b70844b3e",
+          "ok": true,
+          "databases": 2,
+          "concurrentRequests": 40,
+          "elapsedMs": 1179,
+          "checks": [
+            "CRUD",
+            "same IDs",
+            "batch rollback",
+            "context guards",
+            "stale routes",
+            "streams",
+            "R2 prefixes",
+            "cache keys",
+            "queue delivery and deduplication"
+          ],
+          "scope": "Cloudflare Builds workerd with local D1/R2/Queues; not deployed D1 or full Payload/admin acceptance"
+        }
+      },
+      {
+        "at": "2026-09-17T05:53:33.057Z",
+        "value": {
+          "event": "p0_source_encoding",
+          "file": ".open-next/server-functions/default/handler.mjs",
+          "regexCount": 1996,
+          "remainingTokenTypes": {
+            "template": 1
+          },
+          "nonLatin1Before": 13024,
+          "nonLatin1After": 0
+        }
+      },
+      {
+        "at": "2026-09-17T05:53:33.095Z",
+        "value": {
+          "event": "p0_source_encoding",
+          "file": ".open-next/middleware/handler.mjs",
+          "regexCount": 0,
+          "remainingTokenTypes": {},
+          "nonLatin1Before": 0,
+          "nonLatin1After": 0
+        }
+      },
+      {
+        "at": "2026-09-17T05:54:00.284Z",
+        "value": {
+          "event": "site_identity_workerd_rpc",
+          "ok": true,
+          "commit": "604e0053d602c302d992dc2449e3728b70844b3e",
+          "workers": 2,
+          "databases": 3,
+          "concurrentRedemptions": 20,
+          "concurrentSiteRequests": 20,
+          "checks": [
+            "named RPC capability",
+            "no RPC issuer",
+            "HTTP capability denied",
+            "POST handoff",
+            "Chromium form/CSP/cookie navigation",
+            "single-use ticket",
+            "host/origin binding",
+            "explicit local site ID mapping",
+            "credential-free projections",
+            "live role changes",
+            "immediate revocation",
+            "site logout",
+            "central logout",
+            "central outage fails closed",
+            "independent public response"
+          ],
+          "scope": "Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance"
+        }
+      },
+      {
+        "at": "2026-09-17T05:54:13.433Z",
+        "value": {
+          "event": "p0_migrations_ready",
+          "database": "31d5906e-f276-4a61-87c1-31a13e7131e6",
+          "migrations": 107
+        }
+      },
+      {
+        "at": "2026-09-17T05:54:34.009Z",
+        "value": {
+          "event": "p0_migrations_ready",
+          "database": "20fd152f-7b7c-4bc6-be81-1a36ea720060",
+          "migrations": 107
+        }
+      },
+      {
+        "at": "2026-09-17T05:55:27.150Z",
+        "value": {
+          "event": "p0_cloud_workerd_heap_profile",
+          "commit": "604e0053d602c302d992dc2449e3728b70844b3e",
+          "at": "2026-09-17T05:55:27.148Z",
+          "snapshots": [
+            {
+              "phase": "before-payload-request",
+              "usedSize": 40396116,
+              "totalSize": 42778624,
+              "embedderHeapUsedSize": 257936,
+              "backingStorageSize": 1217658
+            },
+            {
+              "phase": "after-payload-login",
+              "usedSize": 76472604,
+              "totalSize": 86401024,
+              "embedderHeapUsedSize": 257936,
+              "backingStorageSize": 1233308
+            },
+            {
+              "phase": "after-read-batch-1",
+              "usedSize": 75625420,
+              "totalSize": 94003200,
+              "embedderHeapUsedSize": 257936,
+              "backingStorageSize": 1288757
+            },
+            {
+              "phase": "after-read-batch-2",
+              "usedSize": 82296072,
+              "totalSize": 96886784,
+              "embedderHeapUsedSize": 386896,
+              "backingStorageSize": 1364629
+            },
+            {
+              "phase": "after-read-batch-3",
+              "usedSize": 77909204,
+              "totalSize": 102916096,
+              "embedderHeapUsedSize": 386896,
+              "backingStorageSize": 1290209
+            },
+            {
+              "phase": "after-unconfirmed-gc-request",
+              "usedSize": 77909204,
+              "totalSize": 102916096,
+              "embedderHeapUsedSize": 386896,
+              "backingStorageSize": 1290209
+            }
+          ],
+          "garbageCollectionAcknowledged": false,
+          "scope": "Cloud CI workerd with full build and remote synthetic D1. Inspector affects runtime; an unacknowledged GC does not establish retained heap size. This report is diagnostic, not production headroom acceptance. No heap contents captured."
+        }
+      },
+      {
+        "at": "2026-09-17T05:56:41.132Z",
+        "value": {
+          "event": "p0_deployed_smoke_passed",
+          "commit": "604e0053d602c302d992dc2449e3728b70844b3e",
+          "at": "2026-09-17T05:56:41.131Z",
+          "scope": "Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending",
+          "concurrentReads": 40,
+          "concurrentPublicPages": 12,
+          "isolatesServingBothSites": 5,
+          "configuredIconViews": 4
+        }
+      },
+      {
+        "at": "2026-09-17T05:56:41.155Z",
+        "value": {
+          "event": "p0_release_passed",
+          "commit": "604e0053d602c302d992dc2449e3728b70844b3e",
+          "worker": "payload-wnam-p0",
+          "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+        }
+      }
+    ]
+  },
+  "deployments": [
+    {
+      "worker": "payload-wnam",
+      "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+      "versions": [
+        {
+          "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "worker": "payload-wnam-p0",
+      "id": "72e68720-d0a1-4aaf-84f8-f257c895cd91",
+      "versions": [
+        {
+          "version_id": "217105df-04f7-4bbe-a69d-9ff2bd22f68f",
+          "percentage": 100
+        }
+      ]
+    }
+  ]
+}

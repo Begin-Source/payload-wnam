@@ -22,7 +22,7 @@
 | P0 现有用量基线 | [生产基线](site-per-d1-baseline.json)含 CPU、D1 读写/存储与账本用量；供应商账单未对账，不能作为真实单篇成本 | 基线已记录，成本验收待后续 |
 | P0 冷启动、CPU 与内存 | `6f43fba` 启动 30 ms；403 请求无执行错误；CPU P95 87.913 ms；内存 P95 104,548,730 bytes、P99.9 106,280,960 bytes；[原始查询及边界](site-per-d1-p0-runtime-optimization.json) | 小规模原型通过；非容量验收 |
 | P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用和身份映射已实现；[站点 factory](site-per-d1-p1-site-config.md)、[中央 factory/成本账本](site-per-d1-p1-central-config.md)及[主数据发布/候选接收](site-per-d1-p1-master-sync.md)有原生 D1 验证；[副本应用/提示词选择](site-per-d1-p1-master-copies.md)已实现；[运行 Global/配额版本](site-per-d1-p1-config-sync.md)已实现；资产、来源投递、正式入口/界面和角色部署尚未接入 | 实施中，未通过 |
-| P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；最新 536 项测试和 P0 线上回归通过；独立完整角色部署和真实中央登录尚未接入 | 实施中，未通过 |
+| P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；最新 543 项测试和 P0 线上回归通过；独立完整角色部署和真实中央登录尚未接入 | 实施中，未通过 |
 | P1 建站、进入、暂停/恢复、MCP 明确 siteId | 未实现 | 待实施 |
 | P2 持久步骤链、公平调度、独立发布队列 | 未实现 | 待实施 |
 | P2 供应商 DO 配额、预算、429、结果不明核查 | 未实现 | 待实施 |
@@ -72,3 +72,5 @@
 - `6e9ccb3` 新增[主数据版本发布和候选接收](site-per-d1-p1-master-sync.md)，修正站点管理模板的租户权限，移除中央预设的本站关键词 ID。构建 `e2fc2ca4-348f-404d-a524-236aa1658308` 成功，通过 526 项测试、14 项浏览器检查、身份 RPC/HTTPS 和 P0 线上回归；2026-09-17T04:41:04Z 发布检查通过。P0 deployment `8ae6bbf4-4890-4eb0-a179-0f0ed1ea5776`，version `30bbe1eb-18f9-4f6f-938f-1b56e9b9dc94`，生产未变。[本轮证据](site-per-d1-p1-master-sync-validation.json)不代表候选已应用为 Payload 副本；应用/选择、传输认证、资产与正式角色仍待完成，P1 未验收。
 
 - `5f21e30` 实现[八类主数据原子副本应用与提示词明确选择](site-per-d1-p1-master-copies.md)，保存稳定版本映射并保护员工改动、已发布文章和 Offer 展示位置。构建 `477d8aaa-fb62-414a-a693-834e91e35405` 成功，通过 536 项测试、14 项浏览器检查、身份 RPC/HTTPS 与 P0 线上回归。2026-09-17T05:30:58Z 发布检查通过；P0 deployment `391fe575-1ba5-49cf-b5bf-615bd16911c0`，version `a2c7af74-1e21-4395-b06e-e23304167e4d`，生产未变。[证据](site-per-d1-p1-master-copies-validation.json)不代表独立角色已部署；资产、Global/配额版本、正式传输/界面/入口和远程迁移仍待完成，P1 未验收。
+
+- `604e005` 实现[运行 Global 与配额政策版本](site-per-d1-p1-config-sync.md)：实际中央权限发布、本站候选接收、按数据库内容审阅、原子应用/数组替换及用量保留。构建 `dac96ae3-1a43-49da-bed3-f9c80c075f8e` 成功，通过 543 项测试、14 项浏览器检查、身份 RPC/HTTPS 与 P0 线上回归。2026-09-17T05:56:41Z 发布检查通过；P0 deployment `72e68720-d0a1-4aaf-84f8-f257c895cd91`，version `217105df-04f7-4bbe-a69d-9ff2bd22f68f`，生产未变。[证据](site-per-d1-p1-config-sync-validation.json)不代表预算已执行或独立角色已部署；品牌/资产、正式传输/界面/入口和远程迁移仍待完成，P1 未验收。

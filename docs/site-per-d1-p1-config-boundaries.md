@@ -78,3 +78,5 @@
 6. 接通中央服务绑定、可信 ingress、SSO 浏览器流程和新测试站 provision；云端构建、上线编辑与即时撤权全部通过后才判断 P1。
 
 证据来源：现有 `src/payload.config.ts`、上述 collection/global/hook 源码及 [生产外键图](site-per-d1-schema-graph.json)。外键图用于核对真实迁移范围，不替代运行时插件 sanitize 后的审计。
+
+主数据后续进展：[版本发布与候选接收](site-per-d1-p1-master-sync.md)、[原子副本应用与明确选择](site-per-d1-p1-master-copies.md)、[运行 Global 与配额政策](site-per-d1-p1-config-sync.md)已通过完整配置和原生 D1 测试。资产/品牌媒体、正式传输和界面、角色构建及远程迁移尚未完成；预算执行另属 P2，不能以政策副本选择替代中央授权。
