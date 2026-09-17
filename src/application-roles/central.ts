@@ -20,4 +20,4 @@ const config = await createCentralPayloadConfig({ database: env.CENTRAL_D1, buck
 })
 config.serverURL = CENTRAL_ORIGIN
 config.csrf = [CENTRAL_ORIGIN]
-export default config
+export default Promise.resolve(config)

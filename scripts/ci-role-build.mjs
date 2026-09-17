@@ -13,6 +13,9 @@ for (const role of ['central']) {
   rmSync(cwd,{ recursive: true,force: true }); mkdirSync(cwd,{ recursive: true })
   cpSync('src',resolve(cwd,'src'),{ recursive: true,filter: path => !['src/app','src/middleware.ts','src/worker.ts','src/payload.config.ts'].map(value => resolve(value)).includes(resolve(path)) })
   cpSync(`roles/${role}/app`,resolve(cwd,'src/app'),{ recursive: true })
+  // Shared writing helpers currently live beneath app/ but contain no routes.
+  // Preserve their import paths without mounting the shared HTTP controllers.
+  cpSync('src/app/api/pipeline/lib',resolve(cwd,'src/app/api/pipeline/lib'),{ recursive: true })
   mkdirSync(resolve(cwd,'src/app-styles'),{ recursive: true })
   cpSync('src/app/(payload)/custom.scss',resolve(cwd,'src/app-styles/central-admin.scss'))
   cpSync('public',resolve(cwd,'public'),{ recursive: true })
@@ -35,17 +38,17 @@ for (const role of ['central']) {
   delete env.WRANGLER_CI_OVERRIDE_NAME; delete env.WRANGLER_CI_MATCH_TAG
   const run = args => execFileSync('pnpm',args,{ cwd,env,stdio: 'inherit' })
   console.log(JSON.stringify({ event: 'role_build_start',role }))
-  run(['exec','wrangler','types','cloudflare-role-env.d.ts','--env-interface','CentralRoleEnv'])
+  run(['exec','wrangler','types','cloudflare-role-env.d.ts','--env-interface','CentralRoleEnv','--config',resolve(cwd,'wrangler.jsonc')])
   run(['exec','payload','generate:importmap'])
   const map = readFileSync(resolve(cwd,'src/app/(payload)/admin/importMap.js'),'utf8')
   assert.ok(map.includes('@payloadcms/'), 'Role component map must be generated')
   run(['exec','tsc','--noEmit','--pretty','false'])
-  run(['exec','opennextjs-cloudflare','build'])
+  run(['exec','opennextjs-cloudflare','build','--config',resolve(cwd,'wrangler.jsonc')])
   const file = resolve(cwd,'.open-next/server-functions/default/handler.mjs')
   const source = readFileSync(file,'utf8')
   const encoded = await encodeWorkerSource(source)
   assert.ok(!/[^\u0000-\u00ff]/.test(encoded.code),'Role source must retain the verified one-byte source invariant')
   writeFileSync(file,encoded.code)
-  run(['exec','wrangler','deploy','--dry-run','--outdir','.cloudflare-ci/bundle'])
+  run(['exec','wrangler','deploy','--dry-run','--outdir','.cloudflare-ci/bundle','--config',resolve(cwd,'wrangler.jsonc')])
   console.log(JSON.stringify({ event: 'role_build_passed',role }))
 }
