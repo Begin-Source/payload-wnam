@@ -108,6 +108,10 @@ export function siteCollections(strategy: AuthStrategy): CollectionConfig[] {
     collection.custom = { ...collection.custom, siteOwnership: copies.has(collection.slug) ? 'versioned-copy' : 'site' }
     collection.fields.push(tenantField(collection.slug === 'site-blueprints'))
     if (copies.has(collection.slug) || collection.slug === 'media') collection.fields.push(sourceField())
+    // R2 only inserts this field when a collection-wide prefix is configured.
+    // Versioned assets need a per-document prefix alongside ordinary uploads.
+    if (collection.slug === 'media') collection.fields.push({ name: 'prefix',type: 'text',
+      admin: { readOnly: true,hidden: true },access: { create: () => false,update: () => false } })
     if (collection.slug === 'media') collection.hooks = { ...collection.hooks,
       beforeValidate: [args => {
         if (args.originalDoc?.centralSource?.recordId) throw new Error('Versioned asset media is immutable')
