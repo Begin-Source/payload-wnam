@@ -30,7 +30,7 @@ for (const site of ['a', 'b']) {
     })
     if (!response.ok) {
       const detail = await response.json().catch(() => ({}))
-      throw new Error(`P0 ${site} ${init.method ?? 'GET'} ${path}: HTTP ${response.status}; ${detail.errors?.map(e => e.message).join('; ') ?? 'no JSON error'}`)
+      throw new Error(`P0 ${site} ${init.method ?? 'GET'} ${path}: HTTP ${response.status} at ${new URL(response.url).origin}${new URL(response.url).pathname}; ${detail.errors?.map(e => e.message).join('; ') ?? 'no JSON error'}`)
     }
     const isolate = response.headers.get('x-p0-isolate-id')
     assert.ok(isolate, 'P0 isolate identity missing')

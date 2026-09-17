@@ -83,5 +83,28 @@ if (!settings.bindings.some(b => b.name === 'R2' && b.type === 'r2_bucket' && b.
 }
 const after = await api('workers/scripts/payload-wnam/deployments')
 if (before.deployments[0].id !== after.deployments[0].id) throw new Error('Production deployment changed during P0 release')
+// Secret rotation creates a new deployment. One successful gate POST does not
+// establish that subsequent requests on both domains see the new credential.
+// Wait for consecutive authenticated, anonymous-admin reads before any smoke
+// writes. This is readiness only: the full smoke still runs and gates release.
+let consecutiveReady = 0
+const readinessStarted = Date.now()
+for (let attempt = 1; Date.now() - readinessStarted < 90_000; attempt++) {
+  const statuses = await Promise.all(['a','b'].map(async site => {
+    try {
+      const response = await fetch(`https://p0-${site}.beginos.org/admin/login`,{
+        headers: { cookie: `__Host-p0-access=${gate}` },redirect: 'manual',signal: AbortSignal.timeout(10000),
+      })
+      const ready = response.status === 200 && Boolean(response.headers.get('x-p0-isolate-id'))
+      await response.body?.cancel()
+      return { site,status: response.status,ready }
+    } catch { return { site,status: null,ready: false } }
+  }))
+  consecutiveReady = statuses.every(result => result.ready) ? consecutiveReady + 1 : 0
+  console.log(JSON.stringify({ event: 'p0_deployment_readiness',attempt,consecutiveReady,statuses }))
+  if (consecutiveReady >= 4) break
+  await new Promise(resolve => setTimeout(resolve,2500))
+}
+if (consecutiveReady < 4) throw new Error('P0 deployment/secret propagation did not become ready; online smoke not started')
 execFileSync(process.execPath, ['scripts/ci-p0-smoke.mjs'], { stdio: 'inherit', env: { ...env, P0_GATE_SECRET: gate, P0_TEST_PASSWORD: password } })
 console.log(JSON.stringify({ event: 'p0_release_passed', commit, worker: WORKER, productionUnchanged: before.deployments[0].id }))
