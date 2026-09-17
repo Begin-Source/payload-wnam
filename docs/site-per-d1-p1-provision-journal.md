@@ -1,6 +1,6 @@
 # P1 通用建站：持久计划与操作日志
 
-实现待 Cloudflare 验证。这是通用建站执行器的持久状态部分；尚未接通 D1 创建、站点初始化、分组部署、实际新站验收及 `site:provision` 命令，不能据此宣布建站工具完成。
+提交 `1f8c90f` 已通过 Cloudflare 验证，并于 2026-09-17T17:22:54Z 完成独立 P1 发布。这是通用建站执行器的持久状态部分；尚未接通 D1 创建、站点初始化、分组部署、实际新站验收及 `site:provision` 命令，不能据此宣布建站工具完成。[完整证据](site-per-d1-p1-provision-journal-validation.json)。
 
 ## 计划和资源占位
 
@@ -31,5 +31,13 @@
 云端原生 D1 集成测试覆盖只读预览、并发占位和领取、容量、上下文边界、租约到期/更换执行器、结果不明、SQL 约束回滚、提交后响应丢失以及实际注册表的最终一致性要求。测试的外部资源回执是固定输入，不代表创建了真实新站；远程迁移检查也只能证明日志 schema 已安装。全部依赖安装、构建及测试在 Cloudflare 进行。
 
 资源适配器的实现依据包括 [Cloudflare D1 创建 API](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/create/)、[D1 限制](https://developers.cloudflare.com/d1/platform/limits/)和 [Wrangler 配置](https://developers.cloudflare.com/workers/wrangler/configuration/)。配额须在执行时按目标账户核验，文档上限不能替代实际账户授权。
+
+## 已验证结果
+
+- 构建 `c1d8904b-5fde-4d26-947e-6deda373efb0` 最终成功：119 个文件、609 项测试，含 9 项日志测试及 6 项 schema 测试；14 项既有浏览器检查、完整中央/双站后台和原生 RPC 全部通过。
+- 真实中央 D1 于 17:20:22Z 以一笔增量迁移从 v2 升至 v3，总对象 263，本轮仅新增 5 个。v3 摘要为 `a97d4714d6af58802fc39203f4e1ae29609330e7c66b047bc6a336410de034db`。两个站点库摘要不变，新建对象均为零。
+- 中央 deployment `37badf26-e568-4dc1-b355-8c2fb552d71f`；站点 deployment `b6d4f7c9-cd96-4fb4-ae3c-8465e4dba533`。实际 HTTPS 双站编辑、生命周期、MCP、即时撤权和原生退出通过，浏览器错误为零。
+- 17:23:58Z 直接 API 核验五个日志对象和两次迁移历史均存在；日志操作及步骤数为零，未创建新站。原生命周期回执保留且本轮回归后共 16 条。A/B 均 active、版本 17/1；经理授权恢复、站点会话和可兑换票据为零。
+- 生产 deployment 保持 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`，`hub.beginos.org` 归属未变。全部安装、构建、测试和部署在 Cloudflare 执行。
 
 下一步将这套日志接入云端 `site:provision --dry-run/--apply`、资源 API 退避、明确 schema 初始化、分组配置合并和新站实际 SSO/隔离验收；其后继续 P1 其他缺口及 P2–P5。
