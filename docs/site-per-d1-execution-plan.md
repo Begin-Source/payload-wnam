@@ -214,7 +214,7 @@ P0 是硬门槛，后续不能先默认通过。每阶段实现和检查通过 C
 
 ### 运维命令
 
-- `site:provision`：分配站点、创建 D1、初始化 schema、登记分组与绑定。[云端命令](site-per-d1-provision-command.md)已接通 `--request`、`--dry-run`、`--apply` 与六步恢复；首次通用新站的真实 API 验收和分组发布协调仍待完成。
+- `site:provision`：分配站点、创建 D1、初始化 schema、登记分组与绑定。[云端命令](site-per-d1-provision-command.md)已接通 `--request`、`--dry-run`、`--apply` 与六步恢复；[首次通用 D 站真实创建和单组普通发布](site-per-d1-p1-provision-d.md)已通过云端四站验收、上传中断恢复和完成后只读重入。中央建站入口、多组/多请求管理和扩组后的历史站点通用核验仍待完成。
 - `site:migrate --dry-run`：只检查数据归属、关系和目标准备情况。
 - `site:migrate --apply`：按单站冻结流程复制、核验和切换。
 - `db:fleet-migrate`：按分组、schema 版本渐进迁移。

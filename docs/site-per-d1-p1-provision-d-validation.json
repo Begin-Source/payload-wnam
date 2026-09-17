@@ -1,0 +1,1120 @@
+{
+  "objective": "payload-wnam/docs/site-per-d1-execution-plan.md 完整执行",
+  "scope": "Fresh generic real Cloudflare D provisioning, durable single-group ordinary release, upload-interruption reconciliation and real four-site acceptance. Full P1 and P2–P5 remain incomplete.",
+  "repository": {
+    "name": "Begin-Source/payload-wnam",
+    "id": 1224379860,
+    "branch": "feat/site-per-d1"
+  },
+  "commit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+  "build": {
+    "id": "ced02adf-34ae-4565-9252-d3b7ebe5eb6b",
+    "status": "stopped",
+    "outcome": "success",
+    "startedAt": "2026-09-17T20:23:59.399Z",
+    "stoppedAt": "2026-09-17T20:44:02.902Z"
+  },
+  "localExecution": "Only source/document reads and edits, diff/static syntax checks. Dependencies, all tests, builds and deployments executed in Cloudflare Builds.",
+  "cloudChecks": {
+    "files": 125,
+    "tests": 641,
+    "newGroupReleaseTests": 6,
+    "existingBrowserChecks": 14,
+    "evidence": [
+      [
+        1789676723574,
+        " ✓ tests/int/groupRelease.int.spec.ts (6 tests) 1594ms"
+      ],
+      [
+        1789676756697,
+        " Test Files  125 passed (125)"
+      ],
+      [
+        1789676756697,
+        "      Tests  641 passed (641)"
+      ],
+      [
+        1789677070807,
+        "  14 passed (5.0s)"
+      ]
+    ],
+    "boundaries": [
+      "Native D1 group tests use controlled deploy effects; real API upload and deliberate post-upload exception are separately recorded.",
+      "The interruption is explicitly injected after a successful upload, not an observed network loss.",
+      "The complete four-site browser smoke ran once for this release. Completed repetition verifies receipt and deployment without re-uploading or repeating accepted browser writes.",
+      "P1 release selection currently supports one reviewed additional-site request. Historical C request does not include D and fails closed after this group expansion; general site:verify/multi-request fleet management remain unimplemented."
+    ]
+  },
+  "failedBuildAttempts": [],
+  "events": [
+    {
+      "at": "2026-09-17T20:35:10.545Z",
+      "event": "p1_schema_ready",
+      "role": "central",
+      "operationId": "p1-central-schema-v4",
+      "digest": "a7c3aadae00b64d214635f59147438ad9b44798f5b8fd241483b5f10728c539f",
+      "objects": 266,
+      "created": 3,
+      "upgradedFrom": "a97d4714d6af58802fc39203f4e1ae29609330e7c66b047bc6a336410de034db"
+    },
+    {
+      "at": "2026-09-17T20:35:13.244Z",
+      "event": "p1_schema_ready",
+      "role": "site-a",
+      "operationId": "p1-site-a-schema-v1",
+      "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "objects": 504,
+      "created": 0,
+      "upgradedFrom": null
+    },
+    {
+      "at": "2026-09-17T20:35:16.681Z",
+      "event": "p1_schema_ready",
+      "role": "site-b",
+      "operationId": "p1-site-b-schema-v1",
+      "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "objects": 504,
+      "created": 0,
+      "upgradedFrom": null
+    },
+    {
+      "at": "2026-09-17T20:35:22.404Z",
+      "event": "p1_bootstrap_passed",
+      "commit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+      "checkedAt": "2026-09-17T20:35:22.403Z",
+      "schemas": [
+        {
+          "role": "central",
+          "operationId": "p1-central-schema-v4",
+          "digest": "a7c3aadae00b64d214635f59147438ad9b44798f5b8fd241483b5f10728c539f",
+          "objects": 266,
+          "created": 3,
+          "upgradedFrom": "a97d4714d6af58802fc39203f4e1ae29609330e7c66b047bc6a336410de034db"
+        },
+        {
+          "role": "site-a",
+          "operationId": "p1-site-a-schema-v1",
+          "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+          "objects": 504,
+          "created": 0,
+          "upgradedFrom": null
+        },
+        {
+          "role": "site-b",
+          "operationId": "p1-site-b-schema-v1",
+          "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+          "objects": 504,
+          "created": 0,
+          "upgradedFrom": null
+        }
+      ],
+      "siteIds": [
+        "p1-a",
+        "p1-b"
+      ],
+      "syntheticUserId": 7
+    },
+    {
+      "at": "2026-09-17T20:36:19.138Z",
+      "event": "site_provision_completed",
+      "commit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+      "mode": "dry-run",
+      "checkedAt": "2026-09-17T20:36:19.137Z",
+      "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+      "siteId": "p1-d",
+      "checkpoint": 0,
+      "complete": false,
+      "mutations": false,
+      "remaining": [
+        "database",
+        "schema",
+        "seed",
+        "deploy",
+        "verify",
+        "activate"
+      ],
+      "current": {
+        "mode": "dry-run",
+        "siteId": "p1-d",
+        "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+        "checkpoint": 0,
+        "databaseId": null,
+        "createsDatabase": true,
+        "mutations": false
+      }
+    },
+    {
+      "at": "2026-09-17T20:38:21.946Z",
+      "event": "provision_browser_acceptance_passed",
+      "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+      "siteId": "p1-d",
+      "checks": [
+        "real-tls",
+        "owner-login",
+        "chooser-ticket",
+        "site-principal",
+        "native-site-editor",
+        "host-only-cookie",
+        "mobile",
+        "logout"
+      ]
+    },
+    {
+      "at": "2026-09-17T20:38:26.651Z",
+      "event": "site_provision_completed",
+      "commit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+      "mode": "apply",
+      "checkedAt": "2026-09-17T20:38:26.650Z",
+      "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+      "siteId": "p1-d",
+      "checkpoint": 6,
+      "complete": true,
+      "mutations": true,
+      "resumed": false,
+      "result": {
+        "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+        "checkpoint": 6,
+        "mutations": true,
+        "complete": true,
+        "deployment": {
+          "deploymentId": "8dbcc449-a55a-4b0f-af74-689d8fcc15ed",
+          "versionId": "3ac3c55d-f033-4648-aec9-908be2ca76d2",
+          "manifestDigest": "29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2",
+          "commit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910"
+        },
+        "routingVersion": 2
+      }
+    },
+    {
+      "at": "2026-09-17T20:39:28.737Z",
+      "event": "p1_group_upload_interrupted",
+      "releaseId": "552d810a8c9395ad42ce75ca295d26fbee1e6edf359bb683b572467861d0c91f",
+      "workerGroup": "p1-group-1"
+    },
+    {
+      "at": "2026-09-17T20:39:43.998Z",
+      "event": "p1_group_binding_verified",
+      "attempt": 1,
+      "siteId": "p1-d",
+      "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+      "releaseCommit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+      "databaseId": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+      "bindingName": "SITE_D1_D",
+      "localSiteId": 104,
+      "tenantId": 2,
+      "centralTenantId": "2",
+      "ownerUserId": "7",
+      "schemaDigest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "schemaVersion": 1,
+      "routingVersion": 2,
+      "state": "active",
+      "releaseId": "552d810a8c9395ad42ce75ca295d26fbee1e6edf359bb683b572467861d0c91f",
+      "deploymentId": "9375c118-760a-4481-a54b-539b04dde48c"
+    },
+    {
+      "at": "2026-09-17T20:41:46.497Z",
+      "event": "p1_new_site_revocation_passed",
+      "siteId": "p1-c",
+      "otherSitesUnaffected": [
+        "p1-a",
+        "p1-b",
+        "p1-d"
+      ]
+    },
+    {
+      "at": "2026-09-17T20:41:52.236Z",
+      "event": "p1_new_site_revocation_passed",
+      "siteId": "p1-d",
+      "otherSitesUnaffected": [
+        "p1-a",
+        "p1-b",
+        "p1-c"
+      ]
+    },
+    {
+      "at": "2026-09-17T20:42:39.974Z",
+      "event": "p1_remote_smoke_passed",
+      "checkedAt": "2026-09-17T20:42:39.973Z",
+      "remoteDeployment": true,
+      "sites": [
+        "p1-a",
+        "p1-b",
+        "p1-c",
+        "p1-d"
+      ],
+      "checks": [
+        "real-dns-tls",
+        "independent-central-site-workers",
+        "real-d1-schemas",
+        "central-password-login",
+        "chooser-sso-group",
+        "new-site-live-revocation",
+        "host-only-cookies",
+        "native-editors",
+        "same-id-20-concurrent-reads",
+        "isolated-create-update",
+        "site-password-denied",
+        "manager-pause-resume",
+        "ambiguous-lifecycle-retry",
+        "routing-version-cookie-revocation",
+        "live-grant-revocation",
+        "native-logout-central-revocation",
+        "desktop-mobile",
+        "real-sdk-mcp",
+        "explicit-site-mcp",
+        "mcp-lifecycle",
+        "mcp-grant-revocation",
+        "mcp-central-logout"
+      ],
+      "browserErrors": []
+    },
+    {
+      "at": "2026-09-17T20:42:43.947Z",
+      "event": "p1_group_binding_verified",
+      "attempt": 1,
+      "siteId": "p1-d",
+      "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+      "releaseCommit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+      "databaseId": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+      "bindingName": "SITE_D1_D",
+      "localSiteId": 104,
+      "tenantId": 2,
+      "centralTenantId": "2",
+      "ownerUserId": "7",
+      "schemaDigest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "schemaVersion": 1,
+      "routingVersion": 2,
+      "state": "active",
+      "releaseId": "552d810a8c9395ad42ce75ca295d26fbee1e6edf359bb683b572467861d0c91f",
+      "deploymentId": "9375c118-760a-4481-a54b-539b04dde48c"
+    },
+    {
+      "at": "2026-09-17T20:42:57.810Z",
+      "event": "p1_group_binding_verified",
+      "attempt": 1,
+      "siteId": "p1-d",
+      "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+      "releaseCommit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+      "databaseId": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+      "bindingName": "SITE_D1_D",
+      "localSiteId": 104,
+      "tenantId": 2,
+      "centralTenantId": "2",
+      "ownerUserId": "7",
+      "schemaDigest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "schemaVersion": 1,
+      "routingVersion": 2,
+      "state": "active",
+      "releaseId": "552d810a8c9395ad42ce75ca295d26fbee1e6edf359bb683b572467861d0c91f",
+      "deploymentId": "9375c118-760a-4481-a54b-539b04dde48c"
+    },
+    {
+      "at": "2026-09-17T20:42:58.356Z",
+      "event": "p1_group_release_passed",
+      "checkedAt": "2026-09-17T20:42:58.355Z",
+      "releaseId": "552d810a8c9395ad42ce75ca295d26fbee1e6edf359bb683b572467861d0c91f",
+      "workerGroup": "p1-group-1",
+      "commit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+      "uploaded": false,
+      "reused": false,
+      "receipt": {
+        "deploymentId": "9375c118-760a-4481-a54b-539b04dde48c",
+        "versionId": "411a0c34-cf49-4cfe-b1e8-b8cfa58df433",
+        "manifestDigest": "29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2",
+        "commit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+        "releaseId": "552d810a8c9395ad42ce75ca295d26fbee1e6edf359bb683b572467861d0c91f"
+      },
+      "completedAt": "2026-09-17T20:42:44.183Z",
+      "resumedAfterInjectedUpload": true,
+      "repeatReceiptUnchanged": true,
+      "provisionOperationUnchanged": "d31f541a-f160-48dc-a992-57bf9da70344",
+      "members": [
+        "p1-a",
+        "p1-b",
+        "p1-c",
+        "p1-d"
+      ]
+    },
+    {
+      "at": "2026-09-17T20:43:28.390Z",
+      "event": "site_provision_completed",
+      "commit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+      "mode": "dry-run",
+      "checkedAt": "2026-09-17T20:43:28.390Z",
+      "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+      "siteId": "p1-d",
+      "checkpoint": 6,
+      "complete": true,
+      "mutations": false,
+      "verification": {
+        "siteId": "p1-d",
+        "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+        "releaseCommit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+        "databaseId": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+        "bindingName": "SITE_D1_D",
+        "localSiteId": 104,
+        "tenantId": 2,
+        "centralTenantId": "2",
+        "ownerUserId": "7",
+        "schemaDigest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+        "schemaVersion": 1,
+        "routingVersion": 2,
+        "state": "active",
+        "deploymentId": "9375c118-760a-4481-a54b-539b04dde48c"
+      }
+    },
+    {
+      "at": "2026-09-17T20:43:54.914Z",
+      "event": "site_provision_completed",
+      "commit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+      "mode": "apply",
+      "checkedAt": "2026-09-17T20:43:54.913Z",
+      "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+      "siteId": "p1-d",
+      "checkpoint": 6,
+      "complete": true,
+      "mutations": false,
+      "verification": {
+        "siteId": "p1-d",
+        "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+        "releaseCommit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+        "databaseId": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+        "bindingName": "SITE_D1_D",
+        "localSiteId": 104,
+        "tenantId": 2,
+        "centralTenantId": "2",
+        "ownerUserId": "7",
+        "schemaDigest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+        "schemaVersion": 1,
+        "routingVersion": 2,
+        "state": "active",
+        "deploymentId": "9375c118-760a-4481-a54b-539b04dde48c"
+      }
+    },
+    {
+      "at": "2026-09-17T20:43:55.467Z",
+      "event": "p1_release_passed",
+      "commit": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+      "checkedAt": "2026-09-17T20:43:55.466Z",
+      "deployed": [
+        {
+          "role": "central",
+          "worker": "payload-wnam-p1-central",
+          "deployment": "51b316e6-da60-41a5-82a5-62b2e4ccbff6",
+          "versions": [
+            {
+              "version_id": "46edf2b1-3177-4acc-88fd-9bdc7c9ae75e",
+              "percentage": 100
+            }
+          ]
+        },
+        {
+          "role": "site",
+          "worker": "payload-wnam-p1-sites",
+          "deployment": "9375c118-760a-4481-a54b-539b04dde48c",
+          "versions": [
+            {
+              "version_id": "411a0c34-cf49-4cfe-b1e8-b8cfa58df433",
+              "percentage": 100
+            }
+          ]
+        }
+      ],
+      "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+    }
+  ],
+  "assertions": {
+    "dReceiptsUnchanged": true,
+    "cReceiptsUnchanged": true,
+    "dOperationUnchanged": true,
+    "dDatabaseUnique": true,
+    "dSixReceipts": true,
+    "releasedMembers": true,
+    "releaseMatchesDeployment": true,
+    "noPendingGroupRelease": true,
+    "leasesReleased": true,
+    "productionUnchanged": true,
+    "activeTestSites": true,
+    "privateP1Entrypoints": true,
+    "ownerGrantsRestored": true,
+    "siteIdentityNoCredentials": true
+  },
+  "directVerification": {
+    "checkedAt": "2026-09-17T20:44:24.357Z",
+    "accountId": "d487cf34c606620b442632a72272014d",
+    "centralSchema": [
+      {
+        "role": "central",
+        "digest": "a7c3aadae00b64d214635f59147438ad9b44798f5b8fd241483b5f10728c539f",
+        "operation_id": "p1-central-schema-v4",
+        "completed": 1,
+        "completed_at": "2026-09-17T20:35:07.981Z"
+      }
+    ],
+    "centralMigrations": [
+      {
+        "operation_id": "p1-central-schema-v2",
+        "from_digest": "32d9ac67f25b2dec5326ed868a1e98c5b06e0de87d5312c3b69d8591507604a3",
+        "to_digest": "a0e7820413a25bad42da857f7a60d96fb7f2997f8bf8f71e997d73e4eae97641",
+        "applied_at": "2026-09-17T16:01:31.285Z"
+      },
+      {
+        "operation_id": "p1-central-schema-v3",
+        "from_digest": "a0e7820413a25bad42da857f7a60d96fb7f2997f8bf8f71e997d73e4eae97641",
+        "to_digest": "a97d4714d6af58802fc39203f4e1ae29609330e7c66b047bc6a336410de034db",
+        "applied_at": "2026-09-17T17:20:22.752Z"
+      },
+      {
+        "operation_id": "p1-central-schema-v4",
+        "from_digest": "a97d4714d6af58802fc39203f4e1ae29609330e7c66b047bc6a336410de034db",
+        "to_digest": "a7c3aadae00b64d214635f59147438ad9b44798f5b8fd241483b5f10728c539f",
+        "applied_at": "2026-09-17T20:35:07.976Z"
+      }
+    ],
+    "centralObjects": [
+      {
+        "count": 266
+      }
+    ],
+    "groupReleases": [
+      {
+        "release_id": "552d810a8c9395ad42ce75ca295d26fbee1e6edf359bb683b572467861d0c91f",
+        "worker_group": "p1-group-1",
+        "commit_sha": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+        "manifest_digest": "29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2",
+        "expected_deployment_id": "8dbcc449-a55a-4b0f-af74-689d8fcc15ed",
+        "receipt_json": "{\"releaseId\":\"552d810a8c9395ad42ce75ca295d26fbee1e6edf359bb683b572467861d0c91f\",\"deploymentId\":\"9375c118-760a-4481-a54b-539b04dde48c\",\"versionId\":\"411a0c34-cf49-4cfe-b1e8-b8cfa58df433\",\"manifestDigest\":\"29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2\",\"commit\":\"a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910\"}",
+        "created_at": "2026-09-17T20:39:00.450Z",
+        "completed_at": "2026-09-17T20:42:44.183Z"
+      }
+    ],
+    "groupLeases": [
+      {
+        "worker_group": "p1-group-1",
+        "lease_epoch": 3,
+        "lease_until": 0
+      }
+    ],
+    "cReceipts": [
+      {
+        "step": 1,
+        "intent_digest": "7f525b641e4db9fb9efaae092783acf6c1727cb7fdf952288dc68dc7b1d62d4d",
+        "receipt_json": "{\"databaseId\":\"02e8be38-7dfb-4c48-86e1-30e586961fc9\",\"databaseName\":\"payload-p1-c-f8d779c312a4491cb36800f274be2bfd\",\"readReplication\":\"disabled\"}",
+        "started_at": "2026-09-17T17:52:11.914Z",
+        "completed_at": "2026-09-17T17:52:15.259Z"
+      },
+      {
+        "step": 2,
+        "intent_digest": "3f3a3e20097bb6eea70b620c52bfe565bf5d9143ec6ef98953c03765f4d267d1",
+        "receipt_json": "{\"databaseId\":\"02e8be38-7dfb-4c48-86e1-30e586961fc9\",\"schemaDigest\":\"43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e\",\"schemaVersion\":1,\"objects\":504}",
+        "started_at": "2026-09-17T17:52:16.836Z",
+        "completed_at": "2026-09-17T17:52:27.224Z"
+      },
+      {
+        "step": 3,
+        "intent_digest": "ba240a48492382ef7b34d7dc1adf18b4f5cc23146a6cb3e00a0c888c2ae4754f",
+        "receipt_json": "{\"databaseId\":\"02e8be38-7dfb-4c48-86e1-30e586961fc9\",\"siteId\":\"p1-c\",\"localSiteId\":103,\"tenantId\":1,\"ownerUserId\":7,\"contentDigest\":\"10aa6755cbef8c5a842f89017de00c4513d895c0c0a7a0fcb0640fe1a4dad92a\"}",
+        "started_at": "2026-09-17T18:35:33.140Z",
+        "completed_at": "2026-09-17T18:35:46.294Z"
+      },
+      {
+        "step": 4,
+        "intent_digest": "8664d11df2dd1761ea1011a44cfa4408acb8ab67f5164e7b4ca0599d7f3366bf",
+        "receipt_json": "{\"deploymentId\":\"895b9f03-5a60-4d66-a951-9ba2d7a2d013\",\"versionId\":\"254dc418-e216-4fb8-891a-17f83005e870\",\"manifestDigest\":\"34873e43930b78d20bfff67d22c6972a77ec832236632a7226f863023ee791b0\",\"commit\":\"cd09e7dd879fa1125fea081ea6b5e7c9800bfe95\"}",
+        "started_at": "2026-09-17T19:06:11.984Z",
+        "completed_at": "2026-09-17T19:06:35.225Z"
+      },
+      {
+        "step": 5,
+        "intent_digest": "2a5b69ff143566eb611d07be9c8086e9813ce7701a6e4bb94cbabace5d5fd3ff",
+        "receipt_json": "{\"deploymentId\":\"895b9f03-5a60-4d66-a951-9ba2d7a2d013\",\"reportDigest\":\"9ad7da4e1c9ac8c4abfec40a69394707d0e6a451657f0a2300fb0221bc94557d\",\"checkedAt\":\"2026-09-17T19:06:40.599Z\"}",
+        "started_at": "2026-09-17T19:06:35.502Z",
+        "completed_at": "2026-09-17T19:06:40.914Z"
+      },
+      {
+        "step": 6,
+        "intent_digest": "32f01ca235cb7db4c8fc4859fb83a2e639645363ca6cea0519077c993f2fdd3b",
+        "receipt_json": "{\"siteId\":\"p1-c\",\"routingVersion\":2}",
+        "started_at": "2026-09-17T19:06:41.194Z",
+        "completed_at": "2026-09-17T19:24:07.827Z"
+      }
+    ],
+    "liveSessions": [
+      {
+        "site_id": "p1-b",
+        "stored": 1,
+        "unexpired": 1
+      },
+      {
+        "site_id": "p1-c",
+        "stored": 1,
+        "unexpired": 1
+      }
+    ],
+    "siteObjects": [
+      {
+        "count": 504
+      }
+    ],
+    "databaseCount": [
+      {
+        "uuid": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+        "name": "payload-p1-d-d31f541af16048dca99257bf9da70344",
+        "created_at": "2026-09-17T20:36:43.416Z",
+        "version": "production",
+        "num_tables": 0,
+        "file_size": 8192,
+        "jurisdiction": null
+      }
+    ],
+    "operation": [
+      {
+        "operation_id": "d31f541a-f160-48dc-a992-57bf9da70344",
+        "site_id": "p1-d",
+        "database_id": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+        "checkpoint": 6,
+        "lease_epoch": 3,
+        "lease_until": 0,
+        "completed_at": "2026-09-17T20:38:26.039Z"
+      }
+    ],
+    "receipts": [
+      {
+        "step": 1,
+        "intent_digest": "1bc7a0b081ba45fcc837a17572e83c13d69b38d38cf608e62cf4755134bbe6fa",
+        "receipt_json": "{\"databaseId\":\"40885d2c-87a7-4801-91cd-73f3d760c9f9\",\"databaseName\":\"payload-p1-d-d31f541af16048dca99257bf9da70344\",\"readReplication\":\"disabled\"}",
+        "started_at": "2026-09-17T20:36:42.150Z",
+        "completed_at": "2026-09-17T20:36:44.326Z"
+      },
+      {
+        "step": 2,
+        "intent_digest": "3b6c2bece258aacccd87d420942198b2d4121fbdeffb36fb9ada69d437eebf85",
+        "receipt_json": "{\"databaseId\":\"40885d2c-87a7-4801-91cd-73f3d760c9f9\",\"schemaDigest\":\"43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e\",\"schemaVersion\":1,\"objects\":504}",
+        "started_at": "2026-09-17T20:36:46.247Z",
+        "completed_at": "2026-09-17T20:37:01.198Z"
+      },
+      {
+        "step": 3,
+        "intent_digest": "314b0024edd50ef7010aaa9cbf778a40ddd785bec5717448a4e7c7fd54c57b11",
+        "receipt_json": "{\"databaseId\":\"40885d2c-87a7-4801-91cd-73f3d760c9f9\",\"siteId\":\"p1-d\",\"localSiteId\":104,\"tenantId\":2,\"ownerUserId\":7,\"contentDigest\":\"467f5afc5d70435487f4b6ee24ab9516b6863dece13f6b98a103bf343cdd6dda\"}",
+        "started_at": "2026-09-17T20:37:07.756Z",
+        "completed_at": "2026-09-17T20:37:15.441Z"
+      },
+      {
+        "step": 4,
+        "intent_digest": "5d1cb5cf8a3e1f608d0cf84feaa15d5d0e380244f65c875dddc4ddca6c99bafc",
+        "receipt_json": "{\"deploymentId\":\"8dbcc449-a55a-4b0f-af74-689d8fcc15ed\",\"versionId\":\"3ac3c55d-f033-4648-aec9-908be2ca76d2\",\"manifestDigest\":\"29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2\",\"commit\":\"a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910\"}",
+        "started_at": "2026-09-17T20:37:18.473Z",
+        "completed_at": "2026-09-17T20:37:48.140Z"
+      },
+      {
+        "step": 5,
+        "intent_digest": "4a1937f1515975ee9c591541bd347f400923c579f87a670bd8f012f0319ab960",
+        "receipt_json": "{\"deploymentId\":\"8dbcc449-a55a-4b0f-af74-689d8fcc15ed\",\"reportDigest\":\"06aea8e5892bcecaf23b2c6c1a2b7dd441e5a9522e59bd83c8e2bd5f2443cca3\",\"checkedAt\":\"2026-09-17T20:37:53.618Z\"}",
+        "started_at": "2026-09-17T20:37:48.430Z",
+        "completed_at": "2026-09-17T20:37:53.942Z"
+      },
+      {
+        "step": 6,
+        "intent_digest": "4e52a5431e105c6879415a8d443334a00670787b6a610ec2b4bd98ddda1691b2",
+        "receipt_json": "{\"siteId\":\"p1-d\",\"routingVersion\":2}",
+        "started_at": "2026-09-17T20:37:54.256Z",
+        "completed_at": "2026-09-17T20:38:26.039Z"
+      }
+    ],
+    "registry": [
+      {
+        "site_id": "p1-a",
+        "local_site_id": 37,
+        "database_id": "6daecf80-30f5-4010-add6-d67bb556cc42",
+        "binding_name": "SITE_D1_A",
+        "worker_group": "p1-group-1",
+        "admin_host": "cms-site-p1-a.beginos.org",
+        "schema_version": 1,
+        "routing_version": 47,
+        "migration_state": "active",
+        "production_enabled": 0,
+        "operation_id": "p1-provision-p1-a-v1"
+      },
+      {
+        "site_id": "p1-b",
+        "local_site_id": 82,
+        "database_id": "b2a1a340-681a-4581-8817-b2f9629a6ed4",
+        "binding_name": "SITE_D1_B",
+        "worker_group": "p1-group-1",
+        "admin_host": "cms-site-p1-b.beginos.org",
+        "schema_version": 1,
+        "routing_version": 1,
+        "migration_state": "active",
+        "production_enabled": 0,
+        "operation_id": "p1-provision-p1-b-v1"
+      },
+      {
+        "site_id": "p1-c",
+        "local_site_id": 103,
+        "database_id": "02e8be38-7dfb-4c48-86e1-30e586961fc9",
+        "binding_name": "SITE_D1_C",
+        "worker_group": "p1-group-1",
+        "admin_host": "cms-site-p1-c.beginos.org",
+        "schema_version": 1,
+        "routing_version": 2,
+        "migration_state": "active",
+        "production_enabled": 0,
+        "operation_id": "f8d779c3-12a4-491c-b368-00f274be2bfd"
+      },
+      {
+        "site_id": "p1-d",
+        "local_site_id": 104,
+        "database_id": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+        "binding_name": "SITE_D1_D",
+        "worker_group": "p1-group-1",
+        "admin_host": "cms-site-p1-d.beginos.org",
+        "schema_version": 1,
+        "routing_version": 2,
+        "migration_state": "active",
+        "production_enabled": 0,
+        "operation_id": "d31f541a-f160-48dc-a992-57bf9da70344"
+      }
+    ],
+    "grants": [
+      {
+        "site_id": "p1-a",
+        "user_id": "7",
+        "role": "manager"
+      },
+      {
+        "site_id": "p1-b",
+        "user_id": "7",
+        "role": "manager"
+      },
+      {
+        "site_id": "p1-c",
+        "user_id": "7",
+        "role": "manager"
+      },
+      {
+        "site_id": "p1-d",
+        "user_id": "7",
+        "role": "manager"
+      }
+    ],
+    "sessions": [
+      {
+        "sessions": 2,
+        "redeemableTickets": 0
+      }
+    ],
+    "siteContent": [
+      {
+        "id": 104,
+        "slug": "p1-d",
+        "tenant_id": 2
+      }
+    ],
+    "siteCategories": [
+      {
+        "id": 990001,
+        "name": "Remote site p1-d",
+        "slug": "p1-remote-isolation-probe",
+        "site_id": 104
+      }
+    ],
+    "siteIdentities": [
+      {
+        "id": 1,
+        "central_user_id": "7",
+        "display_name": "p1-isolation@example.invalid"
+      }
+    ],
+    "siteIdentityColumns": [
+      {
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "central_user_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "display_name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')",
+        "pk": 0
+      }
+    ],
+    "ownership": [
+      {
+        "operation_id": "d31f541a-f160-48dc-a992-57bf9da70344",
+        "site_id": "p1-d",
+        "database_id": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+        "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+        "schema_version": 1,
+        "completed": 1
+      }
+    ],
+    "database": {
+      "uuid": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+      "name": "payload-p1-d-d31f541af16048dca99257bf9da70344",
+      "created_at": "2026-09-17T20:36:43.416Z",
+      "version": "production",
+      "num_tables": 82,
+      "file_size": 2056192,
+      "running_in_region": "WNAM",
+      "read_replication": {
+        "mode": "disabled"
+      },
+      "jurisdiction": null
+    },
+    "domains": [
+      {
+        "id": "c167e7cd229ceeee3554b16fb07d1366d3cd2880",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "hub.beginos.org",
+        "service": "payload-wnam",
+        "environment": "production",
+        "cert_id": "0c568e5e-3094-42f0-870d-330a748f905d",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "5d19eb5020f84f6828256c6be39b9a589996b35b",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "p1-hub.beginos.org",
+        "service": "payload-wnam-p1-central",
+        "environment": "production",
+        "cert_id": "f1ac56f1-da12-4131-aefc-0570cfc0fce0",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "2fe6d57c5fb83cbe583b10dca688bd3ca4b1eac4",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "cms-site-p1-a.beginos.org",
+        "service": "payload-wnam-p1-sites",
+        "environment": "production",
+        "cert_id": "2d08cd26-63ab-410a-b2da-654f662ee0d4",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "19bf0f14464d689c226c4873bbad99c09fd93135",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "cms-site-p1-b.beginos.org",
+        "service": "payload-wnam-p1-sites",
+        "environment": "production",
+        "cert_id": "4fcc1bcd-d7a4-42db-8e01-9644c1c9c08e",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "d06f6c3fc50659a877e9ccac3f19946f142a0dc2",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "cms-site-p1-c.beginos.org",
+        "service": "payload-wnam-p1-sites",
+        "environment": "production",
+        "cert_id": "fcfd2776-fcd2-43f4-ab81-950f91b9ddb6",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "7a3bc50dd7e85ae22ae09127607ac18f25f2ed69",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "cms-site-p1-d.beginos.org",
+        "service": "payload-wnam-p1-sites",
+        "environment": "production",
+        "cert_id": "61d342dd-e94b-4db1-9cf1-346152dfc337",
+        "previews_enabled": false,
+        "enabled": true
+      }
+    ],
+    "payload-wnam": {
+      "deployment": {
+        "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+        "versions": [
+          {
+            "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-16T13:17:17.77796Z"
+      },
+      "subdomain": {
+        "enabled": true,
+        "previews_enabled": true
+      },
+      "bindings": [
+        {
+          "name": "ASSETS",
+          "type": "assets"
+        },
+        {
+          "name": "CONTENT_WORKFLOW_QUEUE",
+          "type": "queue"
+        },
+        {
+          "name": "D1",
+          "type": "d1",
+          "id": "f2aac41b-418d-47de-8bb3-edda485b1e2b"
+        },
+        {
+          "name": "DATAFORSEO_LOGIN",
+          "type": "secret_text"
+        },
+        {
+          "name": "DATAFORSEO_PASSWORD",
+          "type": "secret_text"
+        },
+        {
+          "name": "NEXT_PUBLIC_ADMIN_BRAND_NAME",
+          "type": "secret_text"
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "OPENAI_BASE_URL",
+          "type": "secret_text"
+        },
+        {
+          "name": "PAYLOAD_SECRET",
+          "type": "secret_text"
+        },
+        {
+          "name": "PAYLOAD_SUPER_ADMIN_EMAILS",
+          "type": "secret_text"
+        },
+        {
+          "name": "PIPELINE_BASE_URL",
+          "type": "plain_text"
+        },
+        {
+          "name": "R2",
+          "type": "r2_bucket",
+          "bucket_name": "payload-wnam"
+        },
+        {
+          "name": "SPACESHIP_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "SPACESHIP_API_SECRET",
+          "type": "secret_text"
+        },
+        {
+          "name": "TOGETHER_API_KEY",
+          "type": "secret_text"
+        },
+        {
+          "name": "TOGETHER_BASE_URL",
+          "type": "secret_text"
+        },
+        {
+          "name": "TOGETHER_IMAGE_MODEL",
+          "type": "secret_text"
+        },
+        {
+          "name": "TOGETHER_IMAGE_USE_SIZE",
+          "type": "secret_text"
+        }
+      ]
+    },
+    "payload-wnam-p1-central": {
+      "deployment": {
+        "id": "51b316e6-da60-41a5-82a5-62b2e4ccbff6",
+        "versions": [
+          {
+            "version_id": "46edf2b1-3177-4acc-88fd-9bdc7c9ae75e",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-17T20:35:39.633049Z"
+      },
+      "subdomain": {
+        "enabled": false,
+        "previews_enabled": false
+      },
+      "bindings": [
+        {
+          "name": "ASSETS",
+          "type": "assets"
+        },
+        {
+          "name": "CENTRAL_D1",
+          "type": "d1",
+          "id": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d"
+        },
+        {
+          "name": "CENTRAL_MEDIA",
+          "type": "r2_bucket",
+          "bucket_name": "payload-wnam-p1-central-media"
+        },
+        {
+          "name": "CENTRAL_ORIGIN",
+          "type": "plain_text",
+          "text": "https://p1-hub.beginos.org"
+        },
+        {
+          "name": "MASTER_ASSET_ARCHIVE",
+          "type": "r2_bucket",
+          "bucket_name": "payload-wnam-p1-master-archive"
+        },
+        {
+          "name": "PAYLOAD_SECRET",
+          "type": "secret_text"
+        }
+      ]
+    },
+    "payload-wnam-p1-sites": {
+      "deployment": {
+        "id": "9375c118-760a-4481-a54b-539b04dde48c",
+        "versions": [
+          {
+            "version_id": "411a0c34-cf49-4cfe-b1e8-b8cfa58df433",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-17T20:39:25.62771Z"
+      },
+      "subdomain": {
+        "enabled": false,
+        "previews_enabled": false
+      },
+      "bindings": [
+        {
+          "name": "ASSETS",
+          "type": "assets"
+        },
+        {
+          "name": "CENTRAL_ORIGIN",
+          "type": "plain_text",
+          "text": "https://p1-hub.beginos.org"
+        },
+        {
+          "name": "DATA",
+          "type": "service",
+          "service": "payload-wnam-p1-central",
+          "entrypoint": "SiteDataService"
+        },
+        {
+          "name": "IDENTITY",
+          "type": "service",
+          "service": "payload-wnam-p1-central",
+          "entrypoint": "SiteIdentityService"
+        },
+        {
+          "name": "PAYLOAD_SECRET",
+          "type": "secret_text"
+        },
+        {
+          "name": "PROVISION_COMMIT",
+          "type": "plain_text",
+          "text": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910"
+        },
+        {
+          "name": "PROVISION_MANIFEST",
+          "type": "plain_text",
+          "text": "29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2"
+        },
+        {
+          "name": "PROVISION_OPERATION",
+          "type": "plain_text",
+          "text": "d31f541a-f160-48dc-a992-57bf9da70344"
+        },
+        {
+          "name": "RELEASE_OPERATION",
+          "type": "plain_text",
+          "text": "552d810a8c9395ad42ce75ca295d26fbee1e6edf359bb683b572467861d0c91f"
+        },
+        {
+          "name": "ROUTING",
+          "type": "service",
+          "service": "payload-wnam-p1-central",
+          "entrypoint": "SiteRoutingService"
+        },
+        {
+          "name": "SITE_D1_A",
+          "type": "d1",
+          "id": "6daecf80-30f5-4010-add6-d67bb556cc42"
+        },
+        {
+          "name": "SITE_D1_B",
+          "type": "d1",
+          "id": "b2a1a340-681a-4581-8817-b2f9629a6ed4"
+        },
+        {
+          "name": "SITE_D1_C",
+          "type": "d1",
+          "id": "02e8be38-7dfb-4c48-86e1-30e586961fc9"
+        },
+        {
+          "name": "SITE_D1_D",
+          "type": "d1",
+          "id": "40885d2c-87a7-4801-91cd-73f3d760c9f9"
+        },
+        {
+          "name": "SITE_PRIVATE",
+          "type": "r2_bucket",
+          "bucket_name": "payload-wnam-p1-site-private"
+        },
+        {
+          "name": "SITE_PUBLIC",
+          "type": "r2_bucket",
+          "bucket_name": "payload-wnam-p1-site-public"
+        },
+        {
+          "name": "SITE_ROUTES",
+          "type": "plain_text",
+          "text": "[{\"siteId\":\"p1-a\",\"localSiteId\":37,\"bindingName\":\"SITE_D1_A\",\"databaseId\":\"6daecf80-30f5-4010-add6-d67bb556cc42\",\"schemaVersion\":1},{\"siteId\":\"p1-b\",\"localSiteId\":82,\"bindingName\":\"SITE_D1_B\",\"databaseId\":\"b2a1a340-681a-4581-8817-b2f9629a6ed4\",\"schemaVersion\":1},{\"siteId\":\"p1-c\",\"localSiteId\":103,\"bindingName\":\"SITE_D1_C\",\"databaseId\":\"02e8be38-7dfb-4c48-86e1-30e586961fc9\",\"schemaVersion\":1},{\"siteId\":\"p1-d\",\"localSiteId\":104,\"bindingName\":\"SITE_D1_D\",\"databaseId\":\"40885d2c-87a7-4801-91cd-73f3d760c9f9\",\"schemaVersion\":1}]"
+        },
+        {
+          "name": "WORKER_GROUP",
+          "type": "plain_text",
+          "text": "p1-group-1"
+        }
+      ]
+    }
+  },
+  "sessionBoundary": "Two historical B/C synthetic site sessions remain stored and unexpired at 20:44:24Z, associated with an earlier canceled test; redeemable tickets zero. Current four-site logout passed and D has no residual site sessions. No claim that all historical sessions are absent.",
+  "remaining": [
+    "Central provisioning UI and generic multi-group/multi-request orchestration",
+    "Explicit deployment correction and remaining operational commands",
+    "Remaining P1 master review/publish UI, queue/outbox delivery, SVG/embedded assets, email and human account handoff",
+    "P2 durable production/publishing queues, vendor quota enforcement and scheduling",
+    "P3 caches, summaries, archive and operational alerts",
+    "P4 full migration, rollback and real 72h run",
+    "P5 staged capacity and sustained acceptance, all manuals and final requirement audit"
+  ]
+}

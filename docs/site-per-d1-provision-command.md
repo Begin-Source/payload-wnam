@@ -4,7 +4,7 @@
 
 ## 输入与运行
 
-`operations/provision/p1-c.json` 是已完成 C 站原操作的可核对输入，不是新站模板。重复使用其 operationId 会核对原操作，不会创建另一站。
+`operations/p1-release.json` 当前选择 `operations/provision/p1-d.json`，它是固定 D 站操作，不是可重复创建新站的模板。`operations/provision/p1-c.json` 保留 C 的历史输入；四站清单上线后，旧 C 请求不包含 D，会因清单/来源不匹配而拒绝执行。不能通过修改旧计划或回执绕过检查。历史站点在后续扩组后的通用核验仍需独立的 `site:verify` 接口。
 
 计划 JSON 严格包含以下字段，不接受密码、Token、任意执行命令或部署代码路径：
 
@@ -16,8 +16,8 @@
 仅在通过检查后的 Cloudflare 部署阶段调用：
 
 ```sh
-pnpm run site:provision --request operations/provision/p1-c.json --dry-run
-pnpm run site:provision --request operations/provision/p1-c.json --apply
+pnpm run site:provision --request operations/provision/p1-d.json --dry-run
+pnpm run site:provision --request operations/provision/p1-d.json --apply
 ```
 
 新操作需要把 `SITE_PROVISION_EMAIL` / `SITE_PROVISION_PASSWORD` 通过云端环境提供给真实负责人登录验收；命令不重置人员密码。负责人邮件必须对应计划 ownerUserId。账户 API 凭据沿用受限 Cloudflare Builds 环境，不传入普通 Worker、数据库记录或浏览器。
@@ -32,7 +32,7 @@ pnpm run site:provision --request operations/provision/p1-c.json --apply
 
 checkpoint 6 的 `--apply` 也只读：核验当前部署/绑定、实际远程检查服务、域名、原站点归属及 active 路由，返回 `mutations: false`，不重跑 seed、不重传、不更改原六步回执。后续正常发布可能使用新 Worker 版本；历史建站 deployment 仍保留在回执中，不伪装成最新发布。
 
-部署使用本提交已构建的共享站点产物，增加目标绑定和域名并保留原组全部成员。云端生成 `.cloudflare-ci/provision/<operationId>/target.json` 和对应模式的报告。新站实际加入后，应将目标清单纳入后续发布源配置；现有普通发布遇到不一致会拒绝覆盖，不能把旧清单强行上传。跨组清单自动管理与中央建站界面仍需继续接通。
+部署使用本提交已构建的共享站点产物，增加目标绑定和域名并保留原组全部成员。云端生成 `.cloudflare-ci/provision/<operationId>/target.json` 和对应模式的报告。P1 的[普通分组发布](site-per-d1-p1-provision-d.md)从明确选择的 D 请求和持久建库回执生成四站有效清单，逐项核对登记成员后上传；建站预约和普通发布通过中央日志互斥。后续同一发布入口继续保留 D，不能把旧三站清单强行上传。跨组/多请求清单管理与中央建站界面仍需继续接通。
 
 ## 激活验收与边界
 
@@ -47,7 +47,7 @@ checkpoint 6 的 `--apply` 也只读：核验当前部署/绑定、实际远程�
 参考：[Wrangler 程序化 API](https://developers.cloudflare.com/workers/wrangler/api/)、[配置与原生绑定](https://developers.cloudflare.com/workers/wrangler/configuration/)、[Payload Local API 脚本](https://payloadcms.com/docs/local-api/overview)。依赖和兼容日期保持现有固定版本。
 
 
-## 实际云端验证
+## 前轮实际验证：C 站只读重入
 
 提交 `0848d185ab407247a9c8359359a8717468fb2eeb` / 构建 `798ef56b-1d64-45fa-a09b-62e9f4839b25` 于 `2026-09-17T20:01:13.034Z` 成功结束。124 个文件、635 项测试（新增四项输入/清单检查、一项完整原生 D1/Payload 命令恢复检查）、14 项既有浏览器检查、角色构建和三站 HTTPS 回归通过。
 
@@ -57,4 +57,4 @@ checkpoint 6 的 `--apply` 也只读：核验当前部署/绑定、实际远程�
 
 A/B/C 均 active，路由版本为 41/1/2、生产开关均关闭，经理权限完整；生产 deployment `3046ffb1-b8ad-47ba-a373-9be5d0526c4b` 未变。历史取消轮的 B/C 合成会话仍各一条，可兑换票据为 0；当前验收主动退出已通过。
 
-下一步仍需真实运行一个全新操作，接通生成清单与后续普通发布之间的分组协调、中央建站入口，以及其余 P1 和 P2–P5。上述已完成操作重入证据不能替代首次新站的真实 API 创建/部署验收。
+上述是 C 已完成操作的重入证据。后续[真实 D 站创建与分组发布](site-per-d1-p1-provision-d.md)单独记录首次 API 创建、六步执行及发布协调结果；中央建站入口、通用多组管理、其余 P1 和 P2–P5 继续实施。

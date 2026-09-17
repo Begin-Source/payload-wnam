@@ -21,9 +21,9 @@
 | P0 完整 Payload、后台、上传、内部缓存审计 | `6f43fba` 的 454 项测试、14 项浏览器检查、部署及线上 REST/后台/R2/队列/公开缓存/流式响应检查通过；5 个 isolate 共同服务两站；[最新证据](site-per-d1-p0-runtime-optimization.json) | 可行性通过 |
 | P0 现有用量基线 | [生产基线](site-per-d1-baseline.json)含 CPU、D1 读写/存储与账本用量；供应商账单未对账，不能作为真实单篇成本 | 基线已记录，成本验收待后续 |
 | P0 冷启动、CPU 与内存 | `6f43fba` 启动 30 ms；403 请求无执行错误；CPU P95 87.913 ms；内存 P95 104,548,730 bytes、P99.9 106,280,960 bytes；[原始查询及边界](site-per-d1-p0-runtime-optimization.json) | 小规模原型通过；非容量验收 |
-| P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用和身份映射已实现；[站点 factory](site-per-d1-p1-site-config.md)、[中央 factory/成本账本](site-per-d1-p1-central-config.md)及[主数据发布/候选接收](site-per-d1-p1-master-sync.md)有原生 D1 验证；[副本应用/提示词选择](site-per-d1-p1-master-copies.md)已实现；[运行 Global/配额版本](site-per-d1-p1-config-sync.md)已实现；[媒体复制/撤回、头像与品牌图](site-per-d1-p1-assets.md)已通过原生验证；[交互式内部数据服务](site-per-d1-p1-data-service.md)已通过原生 RPC 验证；[完整中央应用](site-per-d1-p1-central-application.md)已接入并通过云端完整 Worker/后台检查；[完整站点应用](site-per-d1-p1-site-application.md)也已通过云端双站后台检查；[中央站点选择器](site-per-d1-p1-site-chooser.md)已通过实际点击进入验证；[独立远程角色](site-per-d1-p1-remote-roles.md)已部署并通过实际双站后台/SSO；队列投递、其余管理界面和通用建站尚未接入 | 实施中，未通过 |
-| P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；真实中央 Payload 密码登录、JWT 签发站点票据与会话撤销已在完整中央 Worker 中通过；最新 576 项测试通过；完整站点后台、中央选择器实际点击、真实双站 SSO、实时撤权和原生退出已通过云端验证；独立远程中央和双站后台已部署，真实 HTTPS 撤权/退出通过；其余 P1 要求仍待完成 | 实施中，未通过 |
-| P1 建站、进入、暂停/恢复、MCP 明确 siteId | 中央选择器、进入 API 和完整站点接收入口已接入；[经理暂停/恢复与明确目标 API](site-per-d1-p1-lifecycle.md)及[中央 MCP](site-per-d1-p1-mcp.md)已部署并通过真实 HTTPS 验收；[建站日志](site-per-d1-p1-provision-journal.md)和[真实 D1 创建/恢复/schema 准备](site-per-d1-p1-provision-prepare.md)已验证，[资料初始化与跨库恢复](site-per-d1-p1-provision-seed.md)已在原库完成，[分组部署、实际三站 SSO/隔离和 C 激活](site-per-d1-p1-provision-activation.md)已通过云端验证，原操作达到 checkpoint 6；[云端建站命令](site-per-d1-provision-command.md)已接通，已完成站点重入通过实际验证；首次通用新站创建、分组发布协调与中央建站入口仍待完成 | 实施中，未通过 |
+| P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用和身份映射已实现；[站点 factory](site-per-d1-p1-site-config.md)、[中央 factory/成本账本](site-per-d1-p1-central-config.md)及[主数据发布/候选接收](site-per-d1-p1-master-sync.md)有原生 D1 验证；[副本应用/提示词选择](site-per-d1-p1-master-copies.md)已实现；[运行 Global/配额版本](site-per-d1-p1-config-sync.md)已实现；[媒体复制/撤回、头像与品牌图](site-per-d1-p1-assets.md)已通过原生验证；[交互式内部数据服务](site-per-d1-p1-data-service.md)已通过原生 RPC 验证；[完整中央应用](site-per-d1-p1-central-application.md)已接入并通过云端完整 Worker/后台检查；[完整站点应用](site-per-d1-p1-site-application.md)也已通过云端双站后台检查；[中央站点选择器](site-per-d1-p1-site-chooser.md)已通过实际点击进入验证；[独立远程角色](site-per-d1-p1-remote-roles.md)已部署并通过实际双站后台/SSO；[通用 D 建站与四站普通发布](site-per-d1-p1-provision-d.md)已实际通过；队列投递、其余管理界面和通用多组管理待接入 | 实施中，未通过 |
+| P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；真实中央 Payload 密码登录、JWT 签发站点票据与会话撤销已在完整中央 Worker 中通过；最新 641 项测试通过；完整站点后台、中央选择器实际点击、真实双站 SSO、实时撤权和原生退出已通过云端验证；独立远程中央和双站后台已部署，真实 HTTPS 撤权/退出通过；其余 P1 要求仍待完成 | 实施中，未通过 |
+| P1 建站、进入、暂停/恢复、MCP 明确 siteId | 中央选择器、进入 API 和完整站点接收入口已接入；[经理暂停/恢复与明确目标 API](site-per-d1-p1-lifecycle.md)及[中央 MCP](site-per-d1-p1-mcp.md)已部署并通过真实 HTTPS 验收；[建站日志](site-per-d1-p1-provision-journal.md)和[真实 D1 创建/恢复/schema 准备](site-per-d1-p1-provision-prepare.md)已验证，[资料初始化与跨库恢复](site-per-d1-p1-provision-seed.md)已在原库完成，[分组部署、实际三站 SSO/隔离和 C 激活](site-per-d1-p1-provision-activation.md)已通过云端验证，原操作达到 checkpoint 6；[云端建站命令](site-per-d1-provision-command.md)已接通，已完成站点重入通过实际验证；[首次通用 D 站创建与单组发布协调](site-per-d1-p1-provision-d.md)已通过实际四站验收和上传中断恢复；中央建站入口、多组编排仍待完成 | 实施中，未通过 |
 | P2 持久步骤链、公平调度、独立发布队列 | 未实现 | 待实施 |
 | P2 供应商 DO 配额、预算、429、结果不明核查 | 未实现 | 待实施 |
 | P2 180 秒租约/30 秒心跳、版本检查、Outbox、最多 5 次尝试、死信 | 未实现 | 待实施 |
@@ -31,7 +31,7 @@
 | P3 可信域名路由、缓存策略/清理、公开/私有 R2 | fixture 不是产品实现 | 待实施 |
 | P3 五分钟汇总、事件去重、每日对账、无跨库扫描 | 未实现 | 待实施 |
 | P3 30 天归档、日志脱敏和采样、存储/预算/队列告警 | 未实现 | 待实施 |
-| 运维命令：provision/migrate/fleet-migrate/verify/resume | `site:provision` 已接通云端六步编排、预览及恢复，实际 C 重入和通用浏览器验收通过；首次通用新站创建、分组发布协调和其余命令仍待完成 | 实施中，未通过 |
+| 运维命令：provision/migrate/fleet-migrate/verify/resume | `site:provision` 已接通云端六步编排、预览及恢复，实际 C 历史重入、D 首次创建、单组发布协调与四站浏览器验收通过；多组编排、扩组后的历史站点核验和其余命令仍待完成 | 实施中，未通过 |
 | P4 单站冻结、数据图复制、校验、原子路由切换和恢复 | 未执行，目标冻结 ≤15 分钟、最多 5 站 | 待实施 |
 | P4 回退、兼容应用回滚、恢复对账、旧库 30 天保留 | 未演练 | 待实施 |
 | P4 真实站与真实供应商连续 72 小时 | 未开始；模拟不可替代 | 待实施 |
@@ -42,7 +42,17 @@
 | 配额、计费和年度成本按实测修订 | 未完成；不得将规划预算写成验证结果 | 待实施 |
 | 交付：迁移/容量/试运行报告、员工手册、故障恢复手册、发布清单 | 本文仅为证据索引，完整交付待完成 | 待实施 |
 
-## P1 最新发布：云端建站命令
+## P1 最新发布：真实 D 站与普通分组发布
+
+`a1c1ca1` / 构建 `ced02adf-34ae-4565-9252-d3b7ebe5eb6b` 于 `2026-09-17T20:44:02.902Z` 成功结束，通过 641 项测试（125 个文件）、14 项既有浏览器检查、完整角色及实际四站回归。[通用 D 建站和单组普通发布](site-per-d1-p1-provision-d.md)已完成真实建库、schema、资料、上传、核验、激活六步；首次预览 checkpoint 0/无写入，实际 apply checkpoint 6。D 数据库 `40885d2c-87a7-4801-91cd-73f3d760c9f9` 唯一、WNAM、读副本关闭。
+
+中央兼容迁移到 v4 仅新增 3 个对象，总计 266 个；新站预约和普通发布通过中央 D1 原子互斥、合计四个运维租约。普通发布在实际上传成功、回执保存前注入异常，恢复识别同一版本而不重传；四站同 ID 并发读取/隔离更新、C/D 分别即时撤权、生命周期/MCP/手机/退出全部通过，重复执行回执不变。完成后的 D `--dry-run` 和 `--apply` 均实际核验最新普通发布，返回 `mutations: false`。
+
+[20:44:24Z 直接核验](site-per-d1-p1-provision-d-validation.json)确认 C/D 历史建站回执未改写、租约释放、无 pending 发布；A/B/C/D active、路由版本 47/1/2/2、生产关闭、经理权限恢复。中央 deployment `51b316e6-da60-41a5-82a5-62b2e4ccbff6`、站点 deployment `9375c118-760a-4481-a54b-539b04dde48c`；生产 deployment 未变。历史 B/C 两条合成会话仍存储且未到期，可兑换票据为 0，当前四站退出通过。全部安装/测试/构建/部署均在 Cloudflare。
+
+中央建站界面、多组/多请求编排、扩组后的历史站点通用核验和部署纠偏、其余 P1 与 P2–P5 继续实施。当前 D 请求保留四站，旧 C 请求不包含 D 会拒绝执行，不把历史请求文件当作当前通用核验工具。完整目标保持未完成。
+
+## P1 前轮发布：云端建站命令
 
 `0848d18` / 构建 `798ef56b-1d64-45fa-a09b-62e9f4839b25` 成功，通过 635 项测试、14 项既有浏览器检查、完整角色及真实三站回归。[`site:provision`](site-per-d1-provision-command.md) 接通严格计划/清单输入、六步断点编排和只读重入；原生 D1/Payload 命令测试覆盖跨库 seed 和上传回执两处中断，建库/上传各一次。真实通用浏览器验收也已通过。
 
