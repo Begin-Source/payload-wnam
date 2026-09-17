@@ -12,7 +12,7 @@ const schema: RoleSchema = { role: 'central',objects: [
 ] }
 describe('P1 new database schema bootstrap',() => {
   beforeAll(async () => { mf = new Miniflare({ modules: true,script: 'export default { fetch() { return new Response("ok") } }',
-    compatibilityDate: '2025-08-15',d1Databases: ['A','B','C','D','E','F'] }) })
+    compatibilityDate: '2025-08-15',d1Databases: ['A','B','C','D','E','F','G'] }) })
   afterAll(async () => { await mf?.dispose() })
   it('retries without replacing data, rejects changed schemas and detects drift',async () => {
     const db = await mf.getD1Database('A')
@@ -82,5 +82,19 @@ describe('P1 new database schema bootstrap',() => {
     await db.prepare('DROP INDEX items_value').run()
     await expect(applyP1Schema(db,target,'p1-central-schema-v2',migration)).rejects.toThrow('source schema drift')
     expect(await db.prepare("SELECT name FROM sqlite_master WHERE name='new_operations'").first()).toBeNull()
+  })
+  it('appends another reviewed migration while preserving the existing migration history table and data',async () => {
+    const db = await mf.getD1Database('G')
+    await applyP1Schema(db,schema,'p1-central-schema-v1')
+    await applyP1Schema(db,target,'p1-central-schema-v2',migration)
+    await db.prepare("INSERT INTO new_operations VALUES ('preserved-operation')").run()
+    const nextObject = { name: 'provision_operations',type: 'table',sql: 'CREATE TABLE provision_operations (id TEXT PRIMARY KEY,checkpoint INTEGER)' }
+    const next = { ...target,objects: [...target.objects,nextObject] }
+    const nextMigration = { fromDigest: roleSchemaDigest(target.objects),fromOperationId: 'p1-central-schema-v2',addedObjects: [nextObject.name] }
+    expect(await applyP1Schema(db,next,'p1-central-schema-v3',nextMigration)).toMatchObject({ created: 1,upgradedFrom: nextMigration.fromDigest })
+    expect((await applyP1Schema(db,next,'p1-central-schema-v3',nextMigration)).created).toBe(0)
+    expect(await db.prepare('SELECT id FROM new_operations').first('id')).toBe('preserved-operation')
+    expect(await db.prepare('SELECT COUNT(*) AS n FROM site_control_schema_migrations').first('n')).toBe(2)
+    await expect(applyP1Schema(db,target,'p1-central-schema-v2',migration)).rejects.toThrow('operation conflict')
   })
 })

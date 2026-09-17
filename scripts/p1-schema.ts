@@ -46,7 +46,7 @@ export async function applyP1Schema(database: D1Database, schema: RoleSchema, op
     // Pin the entire old schema, not just the added table's name. Reject edits,
     // deletions, unknown additions and an incomplete or drifted old database.
     if (!additions.size || newObjects.length !== additions.size || roleSchemaDigest(oldTarget) !== migration.fromDigest ||
-      !additions.has('site_control_schema_migrations') || operationId === migration.fromOperationId) throw new Error('Invalid reviewed additive migration')
+      !schema.objects.some(item => item.name === 'site_control_schema_migrations' && item.type === 'table') || operationId === migration.fromOperationId) throw new Error('Invalid reviewed additive migration')
     const old = existing.filter(item => item.name !== receiptName)
     if (old.length !== oldTarget.length || old.some(item => {
       const target = oldTarget.find(target => target.name === item.name)

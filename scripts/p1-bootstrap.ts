@@ -8,11 +8,11 @@ import { migrateCentralRoleState, migrateSiteRoleState } from '../src/applicatio
 import { createCentralPayloadConfig } from '../src/site-control/config'
 import { createSitePayloadConfig } from '../src/site-runtime/config'
 import { readSiteRegistration, registerSite } from '../src/site-control/registry'
-import { siteLifecycleSchemaObjects } from '../src/site-control/lifecycleSchema'
 import { withSiteContext } from '../src/site-runtime/context'
 import { syncSiteIdentityProjection } from '../src/site-runtime/identityProjection'
 import { OpenAIConfig } from '../src/utilities/aiOpenAIConfigImport'
 import { applyP1Schema, type RoleSchema } from './p1-schema'
+import { applyP1CentralSchema } from './p1-central-schema'
 import { p1Manifests, P1_ACCOUNT, P1_EMAIL } from './p1-manifests.mjs'
 
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
@@ -44,11 +44,8 @@ try {
   for (const [role,binding] of [['central','CENTRAL_D1'],['site-a','SITE_D1_A'],['site-b','SITE_D1_B']] as const) {
     const schema = JSON.parse(readFileSync(`.cloudflare-ci/role-${role}-schema.json`,'utf8')) as RoleSchema
     assert.equal(schema.role,role)
-    const operationId = `p1-${role}-schema-v${role === 'central' ? 2 : 1}`
-    receipts.push(await applyP1Schema(env[binding],schema,operationId,role === 'central' ? {
-      fromDigest: '32d9ac67f25b2dec5326ed868a1e98c5b06e0de87d5312c3b69d8591507604a3',
-      fromOperationId: 'p1-central-schema-v1',addedObjects: siteLifecycleSchemaObjects,
-    } : undefined))
+    const operationId = `p1-${role}-schema-v${role === 'central' ? 3 : 1}`
+    receipts.push(role === 'central' ? await applyP1CentralSchema(env[binding],schema) : await applyP1Schema(env[binding],schema,operationId))
     if (role === 'central') await migrateCentralRoleState(env[binding])
     else await migrateSiteRoleState(env[binding])
     // Validate that all explicit runtime migrations were represented by the
