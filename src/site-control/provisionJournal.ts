@@ -47,6 +47,22 @@ export class ProvisionJournal {
       (SELECT step FROM site_provision_steps s WHERE s.operation_id=o.operation_id AND s.receipt_json IS NULL) AS pendingStep
       FROM site_provision_operations o WHERE operation_id=?`).bind(operationId).first<ProvisionOperation>()
   }
+  async plan(operationId: string): Promise<ProvisionPlan | null> {
+    this.assertCentral(); provisionUuidSchema.parse(operationId)
+    const row = await this.database.prepare('SELECT plan_json,plan_digest FROM site_provision_operations WHERE operation_id=?')
+      .bind(operationId).first<{ plan_json: string; plan_digest: string }>()
+    if (!row) return null
+    const plan = JSON.parse(row.plan_json) as ProvisionPlan
+    if (this.validate(plan).digest !== row.plan_digest) throw new Error('Stored provision plan digest mismatch')
+    return Object.freeze(plan)
+  }
+  async step(operationId: string,step: ProvisionStep) {
+    this.assertCentral(); provisionUuidSchema.parse(operationId)
+    const row = await this.database.prepare(`SELECT intent_digest AS intentDigest,started_at AS startedAt,receipt_json AS receipt
+      FROM site_provision_steps WHERE operation_id=? AND step=?`).bind(operationId,stepNumber(step))
+      .first<{ intentDigest: string; startedAt: string; receipt: string | null }>()
+    return row ? { ...row,receipt: row.receipt ? JSON.parse(row.receipt) as Record<string,unknown> : null } : null
+  }
   /** Read-only preview. It reserves nothing and may become stale immediately. */
   async preview(plan: ProvisionPlan) {
     const { digest } = this.validate(plan), existing = await this.read(plan.operationId)

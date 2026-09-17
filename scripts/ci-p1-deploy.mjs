@@ -111,6 +111,9 @@ assert.ok(ready >= 3,'P1 HTTPS deployment did not become ready; forward recovery
 execFileSync(process.execPath,['scripts/ci-p1-smoke.mjs'],{
   env: { ...env,...browserLibraryEnvironment(),P1_TEST_PASSWORD: password },stdio: 'inherit',
 })
+execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-provision-prepare.ts'],{
+  env: { ...env,P1_SITE_PREPARE: '1' },stdio: 'inherit',
+})
 assert.equal((await api('workers/scripts/payload-wnam/deployments')).deployments[0].id,production)
 const report = { event: 'p1_release_passed',commit,checkedAt: new Date().toISOString(),deployed,productionUnchanged: production }
 writeFileSync('.cloudflare-ci/p1-release.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
