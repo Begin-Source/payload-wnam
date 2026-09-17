@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { chromium } from '@playwright/test'
+import { z } from 'zod'
 import type { ProvisionPlan } from '../../src/site-control/provisionPlan'
 
 /** Owner credentials remain in cloud environment memory. This exercises the
@@ -30,13 +31,16 @@ export async function provisionBrowserAcceptance(plan: ProvisionPlan,credentials
     await hub.locator('button[type=submit]').click(); assert.equal((await authenticated).status(),200); centralLogin = true
     await hub.waitForURL(url => url.pathname === '/admin')
     const owner = await hub.evaluate(async () => { const r = await fetch('/api/users/me'); return { status: r.status,body: await r.json() } })
-    assert.equal(owner.status,200); assert.equal(owner.body.user.id,plan.ownerUserId)
+    assert.equal(owner.status,200)
+    assert.equal(z.object({ user: z.object({ id: z.number() }) }).parse(owner.body).user.id,plan.ownerUserId)
     await site.goto(`${plan.centralOrigin}/admin`)
     await site.locator(`[data-site-id="${plan.siteId}"]`).getByRole('button',{ name: /^进入网站 / }).click()
     await site.waitForURL(url => url.hostname === plan.adminHost && url.pathname === '/admin'); siteLogin = true
     await site.getByRole('navigation').first().waitFor(); await site.waitForLoadState('networkidle')
     const identity = await site.evaluate(async () => { const r = await fetch('/api/users/me'); return { status: r.status,body: await r.json() } })
-    assert.equal(identity.status,200); assert.equal(identity.body.user.siteId,plan.siteId); assert.equal(identity.body.user.centralUserId,String(plan.ownerUserId))
+    assert.equal(identity.status,200)
+    const principal = z.object({ user: z.object({ siteId: z.string(),centralUserId: z.string() }) }).parse(identity.body).user
+    assert.equal(principal.siteId,plan.siteId); assert.equal(principal.centralUserId,String(plan.ownerUserId))
     await site.goto(`https://${plan.adminHost}/admin/collections/sites/${plan.localSiteId}`)
     await site.locator('form[data-form-ready="true"]').waitFor()
     await site.setViewportSize({ width: 390,height: 844 })
