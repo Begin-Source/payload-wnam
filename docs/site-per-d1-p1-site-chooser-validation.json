@@ -1,0 +1,184 @@
+{
+  "objective": "payload-wnam/docs/site-per-d1-execution-plan.md 完整执行",
+  "stage": "P1 in progress; this is not full-plan acceptance",
+  "repository": {
+    "name": "Begin-Source/payload-wnam",
+    "id": 1224379860,
+    "branch": "feat/site-per-d1"
+  },
+  "account": {
+    "id": "d487cf34c606620b442632a72272014d",
+    "name": "基源科技"
+  },
+  "commit": "6258b5ab6f7669f13367e10df8dedcceb00a7da7",
+  "build": {
+    "id": "d9193102-6974-4449-b947-6d62c988f271",
+    "status": "stopped",
+    "outcome": "success",
+    "createdOn": "2026-09-17T13:09:04.102Z",
+    "stoppedOn": "2026-09-17T13:19:25.933Z"
+  },
+  "checks": {
+    "testFiles": 115,
+    "unitAndIntegrationTests": 576,
+    "existingBrowserChecks": 14,
+    "nativeDirectoryTests": 4,
+    "centralApplication": {
+      "event": "central_application_passed",
+      "checkedAt": "2026-09-17T13:14:11.922Z",
+      "checks": [
+        "complete-worker",
+        "canonical-host",
+        "closed-signup",
+        "browser-password-login",
+        "native-admin-assets",
+        "master-create-read",
+        "no-site-content-api",
+        "real-session-ticket",
+        "site-grant-denial",
+        "desktop-mobile",
+        "session-revocation",
+        "granted-site-chooser",
+        "site-search-empty",
+        "paused-site-disabled",
+        "directory-retry"
+      ],
+      "remoteDeployment": false
+    },
+    "siteApplication": {
+      "event": "site_application_passed",
+      "checkedAt": "2026-09-17T13:14:33.154Z",
+      "remoteDeployment": false,
+      "checks": [
+        "complete-central-site-workers",
+        "native-assets",
+        "browser-central-password-login",
+        "central-chooser-click",
+        "real-ticket-post-handoff",
+        "two-host-only-cookies",
+        "native-site-admin-editors",
+        "same-id-concurrent-reads",
+        "site-isolated-create-update",
+        "no-site-password-login",
+        "desktop-mobile",
+        "live-grant-revocation",
+        "native-logout-revokes-session",
+        "revoked-grant-logout"
+      ],
+      "browserErrors": []
+    },
+    "identityRPC": {
+      "event": "site_identity_workerd_rpc",
+      "ok": true,
+      "commit": "6258b5ab6f7669f13367e10df8dedcceb00a7da7",
+      "workers": 2,
+      "databases": 3,
+      "concurrentRedemptions": 20,
+      "concurrentSiteRequests": 20,
+      "checks": [
+        "named RPC capability",
+        "no RPC issuer",
+        "HTTP capability denied",
+        "POST handoff",
+        "Chromium form/CSP/cookie navigation",
+        "single-use ticket",
+        "host/origin binding",
+        "explicit local site ID mapping",
+        "credential-free projections",
+        "live role changes",
+        "immediate revocation",
+        "site logout",
+        "central logout",
+        "central outage fails closed",
+        "independent public response"
+      ],
+      "scope": "Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance"
+    },
+    "dataRPC": {
+      "event": "site_data_workerd_rpc",
+      "ok": true,
+      "commit": "6258b5ab6f7669f13367e10df8dedcceb00a7da7",
+      "workers": 2,
+      "databases": 3,
+      "r2Buckets": 3,
+      "concurrentAssetCopies": 5,
+      "checks": [
+        "named read-only RPC",
+        "HTTP and publishing denied",
+        "live manager grant",
+        "forged destination denied",
+        "tenant-private master and asset isolation",
+        "global configuration to two sites",
+        "candidate persistence",
+        "binary asset transport and local media mapping",
+        "concurrent copy deduplication",
+        "withdrawal and retry",
+        "live revocation"
+      ],
+      "scope": "Cloudflare Builds native service bindings with minimal role schemas. Full independent Payload behavior has separate native integration tests; formal roles, UI and queue delivery are not deployed."
+    },
+    "remoteP0Smoke": {
+      "event": "p0_deployed_smoke_passed",
+      "commit": "6258b5ab6f7669f13367e10df8dedcceb00a7da7",
+      "at": "2026-09-17T13:19:13.561Z",
+      "scope": "Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending",
+      "concurrentReads": 40,
+      "concurrentPublicPages": 12,
+      "isolatesServingBothSites": 6,
+      "configuredIconViews": 4
+    },
+    "release": {
+      "event": "p0_release_passed",
+      "commit": "6258b5ab6f7669f13367e10df8dedcceb00a7da7",
+      "worker": "payload-wnam-p0",
+      "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+    }
+  },
+  "deployment": {
+    "checkedAt": "2026-09-17T13:18:57.118Z",
+    "p0": {
+      "id": "9768ffe2-870e-4dcf-92bf-9c914ad58b0f",
+      "createdOn": "2026-09-17T13:18:15.557292Z",
+      "versions": [
+        {
+          "version_id": "75da535a-352e-41d2-8293-79fdb66baf65",
+          "percentage": 100
+        }
+      ]
+    },
+    "production": {
+      "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+      "createdOn": "2026-09-16T13:17:17.77796Z",
+      "versions": [
+        {
+          "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+          "percentage": 100
+        }
+      ]
+    }
+  },
+  "failedBuilds": [
+    {
+      "id": "63a2181f-556c-4d46-8e1e-7231cc6c9d99",
+      "commit": "009a0b2",
+      "phase": "lint",
+      "reason": "Use Next Link for the central login navigation; no deployment",
+      "deployed": false
+    },
+    {
+      "id": "453f3a4d-bdd2-4383-a99a-f022f0e877b8",
+      "commit": "ed96a19",
+      "phase": "typecheck",
+      "reason": "Response.json is unknown in the native directory test; annotate the directory response type",
+      "deployed": false
+    }
+  ],
+  "executionPolicy": "Dependency installation, typechecks, all tests and builds ran in Cloudflare Builds. Local actions were source edits/inspection and static syntax/diff checks.",
+  "schemaChange": "Explicit migrateSiteControl adds a backward-compatible index on site_runtime_access(user_id,site_id). No request-time migration.",
+  "limits": [
+    "The actual chooser UI, central login, ticket handoff and two full site Workers were tested with Chromium and disposable native D1/R2 in Cloudflare Builds.",
+    "The remote P0 deployment still serves the shared application. Formal independent central/site roles and the new chooser have not been deployed to the production hub.",
+    "Provisioning and lifecycle/MCP interfaces, formal role migrations, master publication UI and delivery queues, email capability and remaining P1 requirements are incomplete.",
+    "P2-P5, production migration, real-vendor trials, fleet expansion, capacity/cost gates and final deliverables remain required by the complete execution plan."
+  ]
+}
