@@ -75,13 +75,20 @@ try {
   // Payload exposes this readiness signal specifically for browser automation.
   // Filling SSR fields before hydration can be discarded by REPLACE_STATE.
   await page.locator('form[data-form-ready="true"]').waitFor()
+  await page.waitForLoadState('networkidle')
   await page.locator('input[name=email]').fill('admin@example.invalid')
   await page.locator('input[name=password]').fill('native-central-test-only-password')
+  // Match Payload's upstream login helper: allow field validation (150 ms
+  // throttling) to settle before submit. Values themselves never enter logs.
+  await page.waitForTimeout(500)
+  assert.equal(await page.locator('input[name=email]').evaluate(input => input.value === 'admin@example.invalid'),true,'Email must survive form initialization')
+  assert.equal(await page.locator('input[name=password]').evaluate(input => input.value.length > 0),true,'Password must survive form initialization')
   const authentication = page.waitForResponse(response => new URL(response.url()).pathname === '/api/users/login' && response.request().method() === 'POST')
   await page.locator('button[type=submit]').click()
   assert.equal((await authentication).status(),200,'Browser password login must succeed')
   await page.waitForURL(url => url.pathname === '/admin',{ timeout: 45000 })
   await page.getByRole('navigation').first().waitFor()
+  console.log(JSON.stringify({ event: 'central_browser_login_passed' }))
   await page.screenshot({ path: '.cloudflare-ci/central-admin-desktop.png',fullPage: true })
   const invoke = (path,init = {}) => page.evaluate(async ({ path,init }) => {
     const response = await fetch(path,init)
@@ -104,7 +111,6 @@ try {
   assert.ok(/name="ticket" value="[0-9a-f]{64}"/.test(ticket.body),'Single-use ticket required')
   assert.equal((await invoke('/auth/enter-site',{ method: 'POST',headers: { 'content-type': 'application/x-www-form-urlencoded' },body: 'siteId=b' })).status,403,'Missing site grant must deny entry')
   await page.setViewportSize({ width: 390,height: 844 })
-  await page.reload()
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true,'Central admin must fit mobile width')
   await page.screenshot({ path: '.cloudflare-ci/central-admin-mobile.png',fullPage: true })
   assert.deepEqual(failedAssets,[],'Role import map and admin chunks must load')
@@ -118,7 +124,7 @@ try {
 } catch (error) {
   // Fixture-only diagnostics: no headers, cookie values, input values or handoff HTML.
   const dom = page ? await page.evaluate(() => ({ title: document.title,text: document.body.innerText.slice(0,600),
-    inputs: [...document.querySelectorAll('input')].map(input => ({ type: input.type,name: input.name,id: input.id })) })).catch(() => null) : null
+    inputs: [...document.querySelectorAll('input')].map(input => ({ type: input.type,name: input.name,id: input.id,filled: input.value.length > 0 })) })).catch(() => null) : null
   console.log(JSON.stringify({ event: 'central_application_failure',dom,assetResponses: assetResponses.slice(-30),browserErrors: browserErrors.slice(-10) }))
   throw error
 } finally { await browser?.close(); await mf.dispose() }
