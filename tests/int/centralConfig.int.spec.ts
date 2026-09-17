@@ -100,10 +100,24 @@ describe('independent central Payload configuration and native finance path', ()
 
   it('preserves registered site metadata on PATCH and prevents CRUD repointing or retirement', async () => {
     const original = await payload.findByID({ collection: 'sites', id: 37, depth: 0 })
-    const updated = await payload.update({ collection: 'sites', id: 37, user: admin, overrideAccess: false, data: { notes: 'Central note', primaryDomain: 'forged.example.invalid' } })
-    expect(updated).toMatchObject({ notes: 'Central note', primaryDomain: original.primaryDomain, slug: original.slug })
+    const updated = await payload.update({ collection: 'sites', id: 37, user: admin, overrideAccess: false, data: { notes: 'Central note', primaryDomain: 'forged.example.invalid', domainWorkflowStatus: 'done' } })
+    expect(updated).toMatchObject({ notes: 'Central note', primaryDomain: original.primaryDomain, slug: original.slug, domainWorkflowStatus: original.domainWorkflowStatus })
     await expect(payload.update({ collection: 'sites', id: 37, data: { runtimeSiteId: 'b' } as never })).rejects.toThrow('immutable')
     await expect(payload.delete({ collection: 'sites', id: 37 })).rejects.toThrow('Retire sites')
+  })
+
+  it('keeps staff account self-service from changing payout rates or organization assignment', async () => {
+    const staff = await payload.findByID({ collection: 'users', id: 9, depth: 0 })
+    const result = await payload.update({ collection: 'users', id: 9, user: { ...staff, collection: 'users' }, overrideAccess: false,
+      data: { profitSharePct: 99, leaderCutPctOverride: 99, opsCutPctOverride: 99, teamLead: 10, opsManager: 10, tenants: [{ tenant: 2 }] } })
+    expect(result.profitSharePct).not.toBe(99)
+    expect(result.leaderCutPctOverride).not.toBe(99)
+    expect(result.opsCutPctOverride).not.toBe(99)
+    expect(result.teamLead).not.toBe(10)
+    expect(result.opsManager).not.toBe(10)
+    expect(result.tenants?.map(row => typeof row.tenant === 'object' ? row.tenant.id : row.tenant)).toEqual([1])
+    const authorized = await payload.update({ collection: 'users', id: 9, user: admin, overrideAccess: false, data: { profitSharePct: 30 } })
+    expect(authorized.profitSharePct).toBe(30)
   })
 
   it('saves and approves finance against reconciled central costs, then blocks payment after revision', async () => {

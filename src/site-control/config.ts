@@ -37,7 +37,8 @@ import { lexicalEditorWithAi } from '../utilities/lexicalEditorWithAi'
 import { loggedInSuperAdminAccessFor } from '../collections/shared/loggedInSuperAdminAccess'
 import { superAdminOrTenantGMPasses } from '../utilities/superAdminPasses'
 import { userHasUnscopedAdminAccess } from '../utilities/superAdmin'
-import { userHasRole } from '../utilities/userRoles'
+import { userHasRole, userHasTenantGeneralManagerRole } from '../utilities/userRoles'
+import { userMayWriteCommissions } from '../utilities/financeRoleAccess'
 import { isUsersCollection } from '../utilities/announcementAccess'
 import { authorsGdprValidate } from '../collections/hooks/authorsGdprValidate'
 import { setContentCreatedByOnCreate } from '../collections/hooks/setContentCreatedByOnCreate'
@@ -116,9 +117,13 @@ export async function createCentralPayloadConfig(options: CentralPayloadOptions)
           return { ...args.originalDoc, ...args.data }
         }, ...(collection.hooks?.beforeChange ?? [])],
         afterChange: (collection.hooks?.afterChange ?? []).filter(hook => hook !== syncBlueprintsMirroredLayoutAfterSiteChange) }
-      for (const field of collection.fields) if ('name' in field && ['createdBy','operators','primaryDomain','slug','status'].includes(field.name)) {
-        field.admin = { ...field.admin, readOnly: true }
-      }
+      const controlled = new Set(['createdBy','operators','primaryDomain','slug','status','domainWorkflowStatus','domainCheckStatus',
+        'domainCheckAvailable','domainCheckAt','domainCheckMessage','domainGenerationLog'])
+      const protect = (fields: Field[]): void => { for (const field of fields) {
+        if ('name' in field && controlled.has(field.name)) field.admin = { ...field.admin, readOnly: true }
+        if ('fields' in field) protect(field.fields)
+      } }
+      protect(collection.fields)
     }
     if (collection.slug === 'site-quotas') excluded.add('usageYtd') // Local usage arrives via summaries, never policy CRUD.
     if (collection.slug === 'commission-statements') {
@@ -131,6 +136,17 @@ export async function createCentralPayloadConfig(options: CentralPayloadOptions)
     if (collection.slug === 'users') {
       const create = collection.access!.create!
       collection.access = { ...collection.access, create: args => args.req.user ? create(args) : false }
+      for (const field of collection.fields) if (field.type !== 'ui' && 'name' in field) {
+        if (['profitSharePct','leaderCutPctOverride','opsCutPctOverride'].includes(field.name)) {
+          field.access = { ...field.access, create: ({ req }) => userMayWriteCommissions(req.user),
+            update: ({ req }) => userMayWriteCommissions(req.user) }
+        }
+        if (['tenants','teamLead','opsManager'].includes(field.name)) {
+          const manage = ({ req }: { req: PayloadRequest }) => userHasUnscopedAdminAccess(req.user) || userHasTenantGeneralManagerRole(req.user) ||
+            (isUsersCollection(req.user) && (userHasRole(req.user,'ops-manager') || userHasRole(req.user,'team-lead')))
+          field.access = { ...field.access, create: manage, update: manage }
+        }
+      }
     }
     collection.fields = centralFields(collection.fields,excluded)
     return collection
