@@ -22,6 +22,7 @@ execFileSync(process.execPath, ['scripts/ci-role-build.mjs'], { stdio: 'inherit'
 run(['exec', 'playwright', 'install', '--only-shell', 'chromium'])
 const browserEnv = browserLibraryEnvironment()
 execFileSync(process.execPath, ['scripts/ci-role-central.mjs'], { stdio: 'inherit', env: { ...process.env, ...browserEnv } })
+execFileSync(process.execPath, ['scripts/ci-role-site.mjs'], { stdio: 'inherit', env: { ...process.env, ...browserEnv } })
 execFileSync(process.execPath, ['scripts/ci-site-isolation.mjs'], { stdio: 'inherit', env: process.env })
 run(['exec', 'opennextjs-cloudflare', 'build'], { PAYLOAD_BUILD_PHASE: '1' })
 execFileSync(process.execPath, ['scripts/ci-p0-source-encoding.mjs'], { stdio: 'inherit', env: process.env })

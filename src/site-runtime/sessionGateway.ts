@@ -8,6 +8,32 @@ import { assertSiteWriteOrigin, siteSessionFromHeaders } from './siteIdentity'
 
 const clearSessionCookie = `${SITE_SESSION_COOKIE}=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Strict`
 
+/** Logout must still work after pause/revocation, without an active D1 scope.
+ * The native Payload UI posts to its usual API endpoint; the form endpoint
+ * redirects only after the same central session revocation. */
+export async function siteLogout(request: Request, service: SiteIdentityRPC, siteId: string, host: string): Promise<Response | null> {
+  const url = new URL(request.url)
+  const api = url.pathname === '/api/users/logout'
+  if (!api && url.pathname !== SITE_LOGOUT_PATH) return null
+  try {
+    assertAdminHost(siteId, host)
+    if (url.origin !== `https://${host}` || url.search) return privateResponse('Not found', 404)
+    if (request.method !== 'POST') return privateResponse('Method not allowed', 405, { allow: 'POST' })
+    assertSiteWriteOrigin(request.method, request.headers, host)
+  } catch { return privateResponse('Access denied', 403) }
+  try {
+    const session = siteSessionFromHeaders(request.headers)
+    if (session) await callSiteIdentity(() => service.logout(session, siteId, host))
+    return api ? privateResponse(JSON.stringify({ message: 'Logged out successfully.' }), 200,
+      { 'content-type': 'application/json', 'set-cookie': clearSessionCookie }) :
+      privateResponse(null, 303, { location: CENTRAL_ORIGIN, 'set-cookie': clearSessionCookie })
+  } catch (error) {
+    const denied = error instanceof SiteAccessDeniedError
+    return privateResponse(denied ? 'Access denied' : 'Identity service unavailable', denied ? 403 : 503,
+      { 'set-cookie': clearSessionCookie })
+  }
+}
+
 /** Called inside trusted site ingress BEFORE Next/Payload. Returns null for
  * other routes; ordinary admin writes must also call assertSiteWriteOrigin.
  */
@@ -15,37 +41,26 @@ export async function siteSessionGateway(request: Request, service: SiteIdentity
   const url = new URL(request.url)
   if (url.pathname !== SITE_LOGIN_PATH && url.pathname !== SITE_LOGOUT_PATH) return null
   const context = requireSiteContext()
+  if (url.pathname === SITE_LOGOUT_PATH) return siteLogout(request, service, context.siteId, context.requestHost ?? '')
   try {
     assertAdminHost(context.siteId, context.requestHost ?? '')
     if (url.origin !== `https://${context.requestHost}` || url.search) return privateResponse('Not found', 404)
   } catch { return privateResponse('Not found', 404) }
   if (request.method !== 'POST') return privateResponse('Method not allowed', 405, { allow: 'POST' })
-  const login = url.pathname === SITE_LOGIN_PATH
+  if (request.headers.get('origin') !== CENTRAL_ORIGIN) return privateResponse('Access denied', 403)
   try {
-    if (login) {
-      if (request.headers.get('origin') !== CENTRAL_ORIGIN) return privateResponse('Access denied', 403)
-    } else { assertSiteWriteOrigin(request.method, request.headers, context.requestHost!) }
-  } catch { return privateResponse('Access denied', 403) }
-  try {
-    if (login) {
-      let ticket: string
-      try { ticket = await readSessionForm(request, 'ticket') } catch { return privateResponse('Invalid request', 400) }
-      if (!/^[0-9a-f]{64}$/.test(ticket)) return privateResponse('Invalid request', 400)
-      const session = await callSiteIdentity(() => service.redeem(ticket, context.siteId, context.requestHost!))
-      requireSiteContext()
-      const now = Date.now()
-      if (!session || !/^[0-9a-f]{64}$/.test(session.session) || !Number.isSafeInteger(session.expiresAt) ||
-        session.expiresAt <= now || session.expiresAt > now + 8 * 60 * 60_000) throw new Error('Invalid session response')
-      const cookie = `${SITE_SESSION_COOKIE}=${session.session}; Path=/; Max-Age=${Math.floor((session.expiresAt - now) / 1000)}; Secure; HttpOnly; SameSite=Strict`
-      return privateResponse(null, 303, { location: '/admin', 'set-cookie': cookie })
-    }
-    const session = siteSessionFromHeaders(request.headers)
-    if (session) await callSiteIdentity(() => service.logout(session, context.siteId, context.requestHost!))
-    return privateResponse(null, 303, { location: CENTRAL_ORIGIN, 'set-cookie': clearSessionCookie })
+    let ticket: string
+    try { ticket = await readSessionForm(request, 'ticket') } catch { return privateResponse('Invalid request', 400) }
+    if (!/^[0-9a-f]{64}$/.test(ticket)) return privateResponse('Invalid request', 400)
+    const session = await callSiteIdentity(() => service.redeem(ticket, context.siteId, context.requestHost!))
+    requireSiteContext()
+    const now = Date.now()
+    if (!session || !/^[0-9a-f]{64}$/.test(session.session) || !Number.isSafeInteger(session.expiresAt) ||
+      session.expiresAt <= now || session.expiresAt > now + 8 * 60 * 60_000) throw new Error('Invalid session response')
+    const cookie = `${SITE_SESSION_COOKIE}=${session.session}; Path=/; Max-Age=${Math.floor((session.expiresAt - now) / 1000)}; Secure; HttpOnly; SameSite=Strict`
+    return privateResponse(null, 303, { location: '/admin', 'set-cookie': cookie })
   } catch (error) {
     const denied = error instanceof SiteAccessDeniedError
-    // Even when central is unavailable, discard the local browser credential.
-    return privateResponse(denied ? 'Access denied' : 'Identity service unavailable', denied ? 403 : 503,
-      login ? {} : { 'set-cookie': clearSessionCookie })
+    return privateResponse(denied ? 'Access denied' : 'Identity service unavailable', denied ? 403 : 503)
   }
 }

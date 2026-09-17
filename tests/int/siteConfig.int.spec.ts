@@ -15,6 +15,7 @@ import { syncSiteIdentityProjection } from '../../src/site-runtime/identityProje
 import { migrateSiteMasters } from '../../src/site-control/masterSchema'
 import { migrateSiteMasterCopies } from '../../src/site-runtime/masterCopySchema'
 import { masterDigest, masterReference, projectMasterData, snapshotJSON, type MasterSnapshot } from '../../src/site-control/masterSnapshot'
+import { writeRoleFixture } from '../runtime/writeRoleFixture'
 import { receiveMasterRelease } from '../../src/site-runtime/masterReceiver'
 
 vi.mock('../../src/payload.config', () => { throw new Error('Independent site config imported shared configuration') })
@@ -76,6 +77,7 @@ describe('independent complete site Payload configuration', () => {
       await payload.create({ collection: 'sites', data: { id: context.localSiteId, name: `Site ${context.siteId}`, slug: context.siteId,
         publicLocaleCodes: ['en'], defaultPublicLocale: 'en' } as never })
     })
+    for (const context of contexts) await writeRoleFixture(context.binding, context.siteId === 'a' ? 'site-a' : 'site-b')
   }, 60000)
   afterAll(async () => { await mf?.dispose(); vi.unstubAllEnvs() })
 

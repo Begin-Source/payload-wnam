@@ -5,6 +5,7 @@ import { centralFetch } from '../../src/application-roles/centralIngress'
 import type { CentralEnvironment } from '../../src/application-roles/centralEnvironment'
 export { SiteIdentityService } from '../../src/site-control/identityService'
 export { SiteDataService } from '../../src/site-control/dataService'
+export { SiteRoutingService } from '../../src/site-control/routingService'
 
 export default {
   fetch(request: Request, env: CentralEnvironment, ctx: ExecutionContext) {
