@@ -21,7 +21,7 @@
 | P0 完整 Payload、后台、上传、内部缓存审计 | `6f43fba` 的 454 项测试、14 项浏览器检查、部署及线上 REST/后台/R2/队列/公开缓存/流式响应检查通过；5 个 isolate 共同服务两站；[最新证据](site-per-d1-p0-runtime-optimization.json) | 可行性通过 |
 | P0 现有用量基线 | [生产基线](site-per-d1-baseline.json)含 CPU、D1 读写/存储与账本用量；供应商账单未对账，不能作为真实单篇成本 | 基线已记录，成本验收待后续 |
 | P0 冷启动、CPU 与内存 | `6f43fba` 启动 30 ms；403 请求无执行错误；CPU P95 87.913 ms；内存 P95 104,548,730 bytes、P99.9 106,280,960 bytes；[原始查询及边界](site-per-d1-p0-runtime-optimization.json) | 小规模原型通过；非容量验收 |
-| P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用、身份投影及原数字站点 ID 映射已实现；[独立站点 factory](site-per-d1-p1-site-config.md)通过双 D1/R2 编辑检查；独立中央配置、主数据同步和正式角色尚未接入 | 实施中，未通过 |
+| P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用和身份映射已实现；[站点 factory](site-per-d1-p1-site-config.md)及[中央 factory/成本账本](site-per-d1-p1-central-config.md)有原生 D1 验证；来源投递、主数据同步和正式角色尚未接入 | 实施中，未通过 |
 | P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；最新 503 项测试和 P0 线上回归通过；独立完整角色部署和真实中央登录尚未接入 | 实施中，未通过 |
 | P1 建站、进入、暂停/恢复、MCP 明确 siteId | 未实现 | 待实施 |
 | P2 持久步骤链、公平调度、独立发布队列 | 未实现 | 待实施 |
