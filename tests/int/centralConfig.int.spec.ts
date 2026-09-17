@@ -4,16 +4,13 @@ import { createRequire } from 'node:module'
 import { realpathSync } from 'node:fs'
 import { createLocalReq, getPayload, type Payload, type SanitizedConfig } from 'payload'
 import { createCentralPayloadConfig } from '../../src/site-control/config'
-import { migrateSiteControl } from '../../src/site-control/schema'
-import { migrateCentralCosts } from '../../src/site-control/costSchema'
-import { centralCommissionGuardSchema } from '../../src/site-control/commissionStatement'
+import { migrateCentralRoleState } from '../../src/application-roles/schema'
 import { costSourceDigest, ingestSiteCost, reconcileEmployeeCosts, type CostRecord } from '../../src/site-control/costLedger'
 import { registerSite } from '../../src/site-control/registry'
 import { writeRoleFixture } from '../runtime/writeRoleFixture'
 import { withSiteContext } from '../../src/site-runtime/context'
 import { OpenAIConfig } from '../../src/utilities/aiOpenAIConfigImport'
 import { Users } from '../../src/collections/Users'
-import { migrateCentralMasters } from '../../src/site-control/masterSchema'
 import { publishMasterFromPayload } from '../../src/site-control/masterPublisher'
 import { masterReference } from '../../src/site-control/masterSnapshot'
 
@@ -52,10 +49,7 @@ describe('independent central Payload configuration and native finance path', ()
     const kit = adapter.requireDrizzleKit()
     const statements = await kit.generateMigration(adapter.defaultDrizzleSnapshot,await kit.generateDrizzleJson(adapter.schema))
     for (let offset = 0; offset < statements.length; offset += 25) await database.batch(statements.slice(offset,offset + 25).map(sql => database.prepare(sql)))
-    await migrateSiteControl(database)
-    await migrateCentralCosts(database)
-    await migrateCentralMasters(database)
-    await database.batch(centralCommissionGuardSchema.map(sql => database.prepare(sql)))
+    await migrateCentralRoleState(database)
     for (const id of [1,2]) await payload.create({ collection: 'tenants', data: { id, name: `Tenant ${id}`, slug: `tenant-${id}`, domain: `tenant-${id}.example.invalid` } })
     // Explicit trusted bootstrap fixture. Anonymous central API signup is denied.
     const bootstrap = { id: 7, collection: 'users', email: 'admin@example.invalid', roles: ['super-admin'] } as typeof admin
@@ -189,4 +183,15 @@ describe('independent central Payload configuration and native finance path', ()
     expect(paid).toMatchObject({ status: 'paid', notes: 'Payment metadata', payoutAmountUsd: 29.4 })
     await expect(payload.update({ collection: 'commission-statements', id: draft.id, data: { payoutAmountUsd: 999 } })).rejects.toThrow('immutable')
   }, 30000)
+  it('initializes configuration/assets and preserves central cost epoch on operational retries',async () => {
+    const original = await database.prepare('SELECT revision FROM central_cost_epoch WHERE id=1').first<number>('revision')
+    expect(original).not.toBeNull()
+    await database.prepare('UPDATE central_cost_epoch SET revision=revision+1 WHERE id=1').run()
+    await migrateCentralRoleState(database)
+    expect(await database.prepare('SELECT revision FROM central_cost_epoch WHERE id=1').first('revision')).toBe(original!+1)
+    for (const table of ['central_config_releases','central_asset_releases','central_asset_publications']) {
+      expect(await database.prepare('SELECT name FROM sqlite_master WHERE type=? AND name=?').bind('table',table).first('name')).toBe(table)
+    }
+  })
+
 })

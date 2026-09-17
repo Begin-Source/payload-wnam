@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { getPayload } from 'payload'
 import type { User } from '../src/payload-types'
 import { getPlatformProxy } from 'wrangler'
+import { migrateCentralRoleState, migrateSiteRoleState } from '../src/application-roles/schema'
 import { createCentralPayloadConfig } from '../src/site-control/config'
 import { createSitePayloadConfig } from '../src/site-runtime/config'
 import { registerSite } from '../src/site-control/registry'
@@ -43,6 +44,15 @@ try {
     const schema = JSON.parse(readFileSync(`.cloudflare-ci/role-${role}-schema.json`,'utf8')) as RoleSchema
     assert.equal(schema.role,role)
     receipts.push(await applyP1Schema(env[binding],schema,`p1-${role}-schema-v1`))
+    if (role === 'central') await migrateCentralRoleState(env[binding])
+    else await migrateSiteRoleState(env[binding])
+    // Validate that all explicit runtime migrations were represented by the
+    // checked schema artifact, including after resuming a partial seed.
+    await applyP1Schema(env[binding],schema,`p1-${role}-schema-v1`)
+    const singleton = role === 'central' ?
+      await env[binding].prepare('SELECT revision AS value FROM central_cost_epoch WHERE id=1').first<{ value: number }>() :
+      await env[binding].prepare('SELECT high_id AS value FROM site_asset_id_watermark WHERE singleton=1').first<{ value: number }>()
+    assert.ok(singleton && Number.isSafeInteger(singleton.value) && singleton.value >= 0,'P1 runtime counters unavailable')
     console.log(JSON.stringify({ event: 'p1_schema_ready',...receipts.at(-1) }))
   }
   const config = await createCentralPayloadConfig({ database: env.CENTRAL_D1,bucket: env.CENTRAL_MEDIA,secret,

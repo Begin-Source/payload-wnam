@@ -12,8 +12,7 @@ import { articlePublishGate } from '../../src/collections/hooks/articlePublishGa
 import { validateDocLocaleAgainstSite } from '../../src/collections/hooks/validateDocLocaleAgainstSite'
 import { authorsGdprValidate } from '../../src/collections/hooks/authorsGdprValidate'
 import { syncSiteIdentityProjection } from '../../src/site-runtime/identityProjection'
-import { migrateSiteMasters } from '../../src/site-control/masterSchema'
-import { migrateSiteMasterCopies } from '../../src/site-runtime/masterCopySchema'
+import { migrateSiteRoleState } from '../../src/application-roles/schema'
 import { masterDigest, masterReference, projectMasterData, snapshotJSON, type MasterSnapshot } from '../../src/site-control/masterSnapshot'
 import { writeRoleFixture } from '../runtime/writeRoleFixture'
 import { receiveMasterRelease } from '../../src/site-runtime/masterReceiver'
@@ -68,8 +67,7 @@ describe('independent complete site Payload configuration', () => {
     contexts = await Promise.all(['A','B'].map(async (name, index) => {
       const binding = await mf.getD1Database(name)
       for (let offset = 0; offset < sql.length; offset += 25) await binding.batch(sql.slice(offset, offset + 25).map(statement => binding.prepare(statement)))
-      await migrateSiteMasters(binding)
-      await migrateSiteMasterCopies(binding)
+      await migrateSiteRoleState(binding)
       return { ...scope, siteId: name.toLowerCase(), localSiteId: index ? 82 : 37, binding, requestHost: `cms-site-${name.toLowerCase()}.beginos.org` }
     }))
     for (const context of contexts) await withSiteContext(context, async () => {
@@ -265,4 +263,17 @@ describe('independent complete site Payload configuration', () => {
       }
     })
   }, 30000)
+  it('initializes configuration/assets and preserves media ID watermarks on operational retries',async () => {
+    for (const context of contexts) {
+      const database = context.binding
+      expect(await database.prepare('SELECT high_id FROM site_asset_id_watermark WHERE singleton=1').first('high_id')).not.toBeNull()
+      await database.prepare('UPDATE site_asset_id_watermark SET high_id=MAX(high_id,1000) WHERE singleton=1').run()
+      await migrateSiteRoleState(database)
+      expect(await database.prepare('SELECT high_id FROM site_asset_id_watermark WHERE singleton=1').first('high_id')).toBe(1000)
+      for (const table of ['site_config_releases','site_config_operations','site_asset_releases','site_asset_copies']) {
+        expect(await database.prepare('SELECT name FROM sqlite_master WHERE type=? AND name=?').bind('table',table).first('name')).toBe(table)
+      }
+    }
+  })
+
 })
