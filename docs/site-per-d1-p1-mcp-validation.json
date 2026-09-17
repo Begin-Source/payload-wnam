@@ -1,0 +1,829 @@
+{
+  "objective": "payload-wnam/docs/site-per-d1-execution-plan.md 完整执行",
+  "scope": "P1 central management MCP; full plan remains incomplete",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "repository": {
+    "name": "Begin-Source/payload-wnam",
+    "id": 1224379860,
+    "branch": "feat/site-per-d1"
+  },
+  "commit": "e1664b30843e910821e526686316fd0b428a5d78",
+  "build": {
+    "id": "8981d700-a3b3-4de2-936b-69784384f5de",
+    "status": "stopped",
+    "outcome": "success",
+    "startedAt": "2026-09-17T16:28:42.854Z",
+    "stoppedAt": "2026-09-17T16:47:30.170Z"
+  },
+  "localExecution": "Source/diff inspection and JavaScript syntax checks only. No local dependency install, build or test.",
+  "cloudChecks": {
+    "files": 118,
+    "tests": 599,
+    "newMcpIntegrationTests": 6,
+    "existingBrowserChecks": 14,
+    "boundaries": [
+      "MCP integration tests use real SDK/native D1 with fixture identity callback.",
+      "Complete central Worker uses real Payload login JWT and SDK through Chromium.",
+      "Remote acceptance uses actual DNS/TLS, independent deployed roles, real central JWT and SDK.",
+      "Manual Bearer support; OAuth discovery and service identities are not implemented."
+    ]
+  },
+  "failedAttempts": [
+    {
+      "commit": "5e7c05214227f441ef7490487d6fd92d5004e926",
+      "buildId": "f4c49d95-9a66-4d89-8f6f-5d530bfc1a71",
+      "status": "stopped",
+      "outcome": "fail",
+      "phase": "ci:check/typecheck, before any deployment",
+      "evidence": [
+        {
+          "at": "2026-09-17T16:27:54.701Z",
+          "line": "tests/int/managementMcp.int.spec.ts(85,86): error TS2339: Property 'replayed' does not exist on type '{}'."
+        }
+      ],
+      "fix": "Narrow the SDK structured result to an object with a replayed property before inspecting it."
+    }
+  ],
+  "milestones": [
+    {
+      "loggedAt": "2026-09-17T16:34:14.942Z",
+      "event": "p1_lifecycle_browser_passed",
+      "siteId": "a",
+      "fromVersion": 3,
+      "toVersion": 7,
+      "checks": [
+        "explicit-site-id",
+        "manager-ui",
+        "cancel",
+        "mobile",
+        "pause",
+        "idempotent-retry",
+        "stale-conflict",
+        "resume",
+        "ambiguous-response-retry"
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T16:34:15.569Z",
+      "event": "p1_mcp_browser_passed",
+      "siteId": "a",
+      "fromVersion": 7,
+      "toVersion": 9,
+      "checks": [
+        "real-sdk-client",
+        "real-central-bearer",
+        "cookie-only-denied",
+        "invalid-bearer-valid-cookie-denied",
+        "strict-explicit-site-id",
+        "unknown-site-denied",
+        "manager-pause-resume",
+        "idempotent-retry",
+        "routing-conflict"
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T16:34:16.380Z",
+      "event": "p1_mcp_session_revocation_passed",
+      "siteId": "a"
+    },
+    {
+      "loggedAt": "2026-09-17T16:34:16.405Z",
+      "event": "central_application_passed",
+      "checkedAt": "2026-09-17T16:34:16.404Z",
+      "checks": [
+        "complete-worker",
+        "canonical-host",
+        "closed-signup",
+        "browser-password-login",
+        "native-admin-assets",
+        "master-create-read",
+        "no-site-content-api",
+        "real-session-ticket",
+        "site-grant-denial",
+        "desktop-mobile",
+        "session-revocation",
+        "granted-site-chooser",
+        "site-search-empty",
+        "paused-site-disabled",
+        "directory-retry"
+      ],
+      "remoteDeployment": false
+    },
+    {
+      "loggedAt": "2026-09-17T16:36:52.251Z",
+      "event": "site_application_passed",
+      "checkedAt": "2026-09-17T16:36:52.250Z",
+      "remoteDeployment": false,
+      "checks": [
+        "complete-central-site-workers",
+        "native-assets",
+        "browser-central-password-login",
+        "central-chooser-click",
+        "real-ticket-post-handoff",
+        "two-host-only-cookies",
+        "native-site-admin-editors",
+        "same-id-concurrent-reads",
+        "site-isolated-create-update",
+        "no-site-password-login",
+        "desktop-mobile",
+        "live-grant-revocation",
+        "native-logout-revokes-session",
+        "revoked-grant-logout"
+      ],
+      "browserErrors": []
+    },
+    {
+      "loggedAt": "2026-09-17T16:41:10.257Z",
+      "event": "site_data_workerd_rpc",
+      "ok": true,
+      "commit": "e1664b30843e910821e526686316fd0b428a5d78",
+      "workers": 2,
+      "databases": 3,
+      "r2Buckets": 3,
+      "concurrentAssetCopies": 5,
+      "checks": [
+        "named read-only RPC",
+        "HTTP and publishing denied",
+        "live manager grant",
+        "forged destination denied",
+        "tenant-private master and asset isolation",
+        "global configuration to two sites",
+        "candidate persistence",
+        "binary asset transport and local media mapping",
+        "concurrent copy deduplication",
+        "withdrawal and retry",
+        "live revocation"
+      ],
+      "scope": "Cloudflare Builds native service bindings with minimal role schemas. Full independent Payload behavior has separate native integration tests; formal roles, UI and queue delivery are not deployed."
+    },
+    {
+      "loggedAt": "2026-09-17T16:41:10.432Z",
+      "event": "site_identity_workerd_rpc",
+      "ok": true,
+      "commit": "e1664b30843e910821e526686316fd0b428a5d78",
+      "workers": 2,
+      "databases": 3,
+      "concurrentRedemptions": 20,
+      "concurrentSiteRequests": 20,
+      "checks": [
+        "named RPC capability",
+        "no RPC issuer",
+        "HTTP capability denied",
+        "POST handoff",
+        "Chromium form/CSP/cookie navigation",
+        "single-use ticket",
+        "host/origin binding",
+        "explicit local site ID mapping",
+        "credential-free projections",
+        "live role changes",
+        "immediate revocation",
+        "site logout",
+        "central logout",
+        "central outage fails closed",
+        "independent public response"
+      ],
+      "scope": "Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance"
+    },
+    {
+      "loggedAt": "2026-09-17T16:44:18.943Z",
+      "event": "p0_release_passed",
+      "commit": "e1664b30843e910821e526686316fd0b428a5d78",
+      "worker": "payload-wnam-p0",
+      "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+    },
+    {
+      "loggedAt": "2026-09-17T16:44:25.435Z",
+      "event": "p1_preflight_passed",
+      "commit": "e1664b30843e910821e526686316fd0b428a5d78",
+      "account": "d487cf34c606620b442632a72272014d",
+      "production": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+    },
+    {
+      "loggedAt": "2026-09-17T16:44:45.988Z",
+      "event": "p1_bootstrap_passed",
+      "commit": "e1664b30843e910821e526686316fd0b428a5d78",
+      "checkedAt": "2026-09-17T16:44:45.987Z",
+      "schemas": [
+        {
+          "role": "central",
+          "operationId": "p1-central-schema-v2",
+          "digest": "a0e7820413a25bad42da857f7a60d96fb7f2997f8bf8f71e997d73e4eae97641",
+          "objects": 258,
+          "created": 0,
+          "upgradedFrom": null
+        },
+        {
+          "role": "site-a",
+          "operationId": "p1-site-a-schema-v1",
+          "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+          "objects": 504,
+          "created": 0,
+          "upgradedFrom": null
+        },
+        {
+          "role": "site-b",
+          "operationId": "p1-site-b-schema-v1",
+          "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+          "objects": 504,
+          "created": 0,
+          "upgradedFrom": null
+        }
+      ],
+      "siteIds": [
+        "p1-a",
+        "p1-b"
+      ],
+      "syntheticUserId": 7
+    },
+    {
+      "loggedAt": "2026-09-17T16:45:12.351Z",
+      "event": "p1_role_deployed",
+      "role": "central",
+      "worker": "payload-wnam-p1-central",
+      "deployment": "fc1a0c26-b09e-47fa-aa07-dcff9d2eb33f",
+      "versions": [
+        {
+          "version_id": "3949e6fa-6842-4179-83ba-6bd98d945738",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T16:45:37.235Z",
+      "event": "p1_role_deployed",
+      "role": "site",
+      "worker": "payload-wnam-p1-sites",
+      "deployment": "6073d86c-7885-4247-813c-4ccfd6fd0942",
+      "versions": [
+        {
+          "version_id": "df0598ef-dff5-4710-8caa-15a42447dc32",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T16:46:49.802Z",
+      "event": "p1_lifecycle_browser_passed",
+      "siteId": "p1-a",
+      "fromVersion": 5,
+      "toVersion": 9,
+      "checks": [
+        "explicit-site-id",
+        "manager-ui",
+        "cancel",
+        "mobile",
+        "pause",
+        "idempotent-retry",
+        "stale-conflict",
+        "resume",
+        "ambiguous-response-retry",
+        "old-cookie-denied",
+        "other-site-unaffected"
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T16:47:03.028Z",
+      "event": "p1_mcp_browser_passed",
+      "siteId": "p1-a",
+      "fromVersion": 9,
+      "toVersion": 11,
+      "checks": [
+        "real-sdk-client",
+        "real-central-bearer",
+        "cookie-only-denied",
+        "invalid-bearer-valid-cookie-denied",
+        "strict-explicit-site-id",
+        "unknown-site-denied",
+        "manager-pause-resume",
+        "idempotent-retry",
+        "routing-conflict",
+        "old-cookie-denied",
+        "other-site-unaffected"
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T16:47:08.718Z",
+      "event": "p1_mcp_grant_revocation_passed",
+      "siteId": "p1-a"
+    },
+    {
+      "loggedAt": "2026-09-17T16:47:12.273Z",
+      "event": "p1_mcp_session_revocation_passed",
+      "siteId": "p1-a"
+    },
+    {
+      "loggedAt": "2026-09-17T16:47:12.275Z",
+      "event": "p1_remote_smoke_passed",
+      "checkedAt": "2026-09-17T16:47:12.273Z",
+      "remoteDeployment": true,
+      "checks": [
+        "real-dns-tls",
+        "independent-central-site-workers",
+        "real-d1-schemas",
+        "central-password-login",
+        "chooser-sso-two-sites",
+        "host-only-cookies",
+        "native-editors",
+        "same-id-20-concurrent-reads",
+        "isolated-create-update",
+        "site-password-denied",
+        "manager-pause-resume",
+        "ambiguous-lifecycle-retry",
+        "routing-version-cookie-revocation",
+        "live-grant-revocation",
+        "native-logout-central-revocation",
+        "desktop-mobile",
+        "real-sdk-mcp",
+        "explicit-site-mcp",
+        "mcp-lifecycle",
+        "mcp-grant-revocation",
+        "mcp-central-logout"
+      ],
+      "browserErrors": []
+    },
+    {
+      "loggedAt": "2026-09-17T16:47:12.811Z",
+      "event": "p1_release_passed",
+      "commit": "e1664b30843e910821e526686316fd0b428a5d78",
+      "checkedAt": "2026-09-17T16:47:12.809Z",
+      "deployed": [
+        {
+          "role": "central",
+          "worker": "payload-wnam-p1-central",
+          "deployment": "fc1a0c26-b09e-47fa-aa07-dcff9d2eb33f",
+          "versions": [
+            {
+              "version_id": "3949e6fa-6842-4179-83ba-6bd98d945738",
+              "percentage": 100
+            }
+          ]
+        },
+        {
+          "role": "site",
+          "worker": "payload-wnam-p1-sites",
+          "deployment": "6073d86c-7885-4247-813c-4ccfd6fd0942",
+          "versions": [
+            {
+              "version_id": "df0598ef-dff5-4710-8caa-15a42447dc32",
+              "percentage": 100
+            }
+          ]
+        }
+      ],
+      "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+    }
+  ],
+  "p0RemoteSmoke": {
+    "event": "p0_deployed_smoke_passed",
+    "commit": "e1664b30843e910821e526686316fd0b428a5d78",
+    "at": "2026-09-17T16:44:18.918Z",
+    "scope": "Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending",
+    "concurrentReads": 40,
+    "concurrentPublicPages": 12,
+    "isolatesServingBothSites": 6,
+    "configuredIconViews": 4
+  },
+  "finalVerification": {
+    "checkedAt": "2026-09-17T16:48:21.220Z",
+    "workers": [
+      {
+        "name": "payload-wnam",
+        "deployment": {
+          "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+          "createdOn": "2026-09-16T13:17:17.77796Z",
+          "versions": [
+            {
+              "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+              "percentage": 100
+            }
+          ]
+        },
+        "bindings": [
+          {
+            "id": "f2aac41b-418d-47de-8bb3-edda485b1e2b",
+            "name": "D1",
+            "type": "d1"
+          },
+          {
+            "name": "DATAFORSEO_LOGIN",
+            "type": "secret_text"
+          },
+          {
+            "name": "DATAFORSEO_PASSWORD",
+            "type": "secret_text"
+          },
+          {
+            "name": "NEXT_PUBLIC_ADMIN_BRAND_NAME",
+            "type": "secret_text"
+          },
+          {
+            "name": "OPENAI_API_KEY",
+            "type": "secret_text"
+          },
+          {
+            "name": "OPENAI_BASE_URL",
+            "type": "secret_text"
+          },
+          {
+            "name": "PAYLOAD_SECRET",
+            "type": "secret_text"
+          },
+          {
+            "name": "PAYLOAD_SUPER_ADMIN_EMAILS",
+            "type": "secret_text"
+          },
+          {
+            "bucket_name": "payload-wnam",
+            "name": "R2",
+            "type": "r2_bucket"
+          },
+          {
+            "name": "SPACESHIP_API_KEY",
+            "type": "secret_text"
+          },
+          {
+            "name": "SPACESHIP_API_SECRET",
+            "type": "secret_text"
+          },
+          {
+            "name": "TOGETHER_API_KEY",
+            "type": "secret_text"
+          },
+          {
+            "name": "TOGETHER_BASE_URL",
+            "type": "secret_text"
+          },
+          {
+            "name": "TOGETHER_IMAGE_MODEL",
+            "type": "secret_text"
+          },
+          {
+            "name": "TOGETHER_IMAGE_USE_SIZE",
+            "type": "secret_text"
+          }
+        ],
+        "subdomain": {
+          "enabled": true,
+          "previews_enabled": true
+        }
+      },
+      {
+        "name": "payload-wnam-p0",
+        "deployment": {
+          "id": "a3eabb07-ff2d-47e2-9a63-f8ce70a0302a",
+          "createdOn": "2026-09-17T16:43:18.407776Z",
+          "versions": [
+            {
+              "version_id": "b4c2d2b8-0f53-40ad-9818-08a0c8300fa5",
+              "percentage": 100
+            }
+          ]
+        },
+        "bindings": [
+          {
+            "name": "P0_GATE_SECRET",
+            "type": "secret_text"
+          },
+          {
+            "name": "PAYLOAD_SECRET",
+            "type": "secret_text"
+          },
+          {
+            "bucket_name": "payload-wnam-p0",
+            "name": "R2",
+            "type": "r2_bucket"
+          },
+          {
+            "id": "31d5906e-f276-4a61-87c1-31a13e7131e6",
+            "name": "SITE_D1_A",
+            "type": "d1"
+          },
+          {
+            "id": "20fd152f-7b7c-4bc6-be81-1a36ea720060",
+            "name": "SITE_D1_B",
+            "type": "d1"
+          }
+        ],
+        "subdomain": {
+          "enabled": false,
+          "previews_enabled": false
+        }
+      },
+      {
+        "name": "payload-wnam-p1-central",
+        "deployment": {
+          "id": "fc1a0c26-b09e-47fa-aa07-dcff9d2eb33f",
+          "createdOn": "2026-09-17T16:45:08.252559Z",
+          "versions": [
+            {
+              "version_id": "3949e6fa-6842-4179-83ba-6bd98d945738",
+              "percentage": 100
+            }
+          ]
+        },
+        "bindings": [
+          {
+            "id": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d",
+            "name": "CENTRAL_D1",
+            "type": "d1"
+          },
+          {
+            "bucket_name": "payload-wnam-p1-central-media",
+            "name": "CENTRAL_MEDIA",
+            "type": "r2_bucket"
+          },
+          {
+            "bucket_name": "payload-wnam-p1-master-archive",
+            "name": "MASTER_ASSET_ARCHIVE",
+            "type": "r2_bucket"
+          },
+          {
+            "name": "PAYLOAD_SECRET",
+            "type": "secret_text"
+          }
+        ],
+        "subdomain": {
+          "enabled": false,
+          "previews_enabled": false
+        }
+      },
+      {
+        "name": "payload-wnam-p1-sites",
+        "deployment": {
+          "id": "6073d86c-7885-4247-813c-4ccfd6fd0942",
+          "createdOn": "2026-09-17T16:45:32.181232Z",
+          "versions": [
+            {
+              "version_id": "df0598ef-dff5-4710-8caa-15a42447dc32",
+              "percentage": 100
+            }
+          ]
+        },
+        "bindings": [
+          {
+            "entrypoint": "SiteDataService",
+            "name": "DATA",
+            "service": "payload-wnam-p1-central",
+            "type": "service"
+          },
+          {
+            "entrypoint": "SiteIdentityService",
+            "name": "IDENTITY",
+            "service": "payload-wnam-p1-central",
+            "type": "service"
+          },
+          {
+            "name": "PAYLOAD_SECRET",
+            "type": "secret_text"
+          },
+          {
+            "entrypoint": "SiteRoutingService",
+            "name": "ROUTING",
+            "service": "payload-wnam-p1-central",
+            "type": "service"
+          },
+          {
+            "id": "6daecf80-30f5-4010-add6-d67bb556cc42",
+            "name": "SITE_D1_A",
+            "type": "d1"
+          },
+          {
+            "id": "b2a1a340-681a-4581-8817-b2f9629a6ed4",
+            "name": "SITE_D1_B",
+            "type": "d1"
+          },
+          {
+            "bucket_name": "payload-wnam-p1-site-private",
+            "name": "SITE_PRIVATE",
+            "type": "r2_bucket"
+          },
+          {
+            "bucket_name": "payload-wnam-p1-site-public",
+            "name": "SITE_PUBLIC",
+            "type": "r2_bucket"
+          }
+        ],
+        "subdomain": {
+          "enabled": false,
+          "previews_enabled": false
+        }
+      }
+    ],
+    "domains": [
+      {
+        "id": "c167e7cd229ceeee3554b16fb07d1366d3cd2880",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "hub.beginos.org",
+        "service": "payload-wnam",
+        "environment": "production",
+        "cert_id": "0c568e5e-3094-42f0-870d-330a748f905d",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "5d19eb5020f84f6828256c6be39b9a589996b35b",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "p1-hub.beginos.org",
+        "service": "payload-wnam-p1-central",
+        "environment": "production",
+        "cert_id": "f1ac56f1-da12-4131-aefc-0570cfc0fce0",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "2fe6d57c5fb83cbe583b10dca688bd3ca4b1eac4",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "cms-site-p1-a.beginos.org",
+        "service": "payload-wnam-p1-sites",
+        "environment": "production",
+        "cert_id": "2d08cd26-63ab-410a-b2da-654f662ee0d4",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "19bf0f14464d689c226c4873bbad99c09fd93135",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "cms-site-p1-b.beginos.org",
+        "service": "payload-wnam-p1-sites",
+        "environment": "production",
+        "cert_id": "4fcc1bcd-d7a4-42db-8e01-9644c1c9c08e",
+        "previews_enabled": false,
+        "enabled": true
+      }
+    ],
+    "database": {
+      "sites": [
+        {
+          "site_id": "p1-a",
+          "local_site_id": 37,
+          "database_id": "6daecf80-30f5-4010-add6-d67bb556cc42",
+          "binding_name": "SITE_D1_A",
+          "worker_group": "p1-group-1",
+          "schema_version": 1,
+          "routing_version": 11,
+          "migration_state": "active",
+          "production_enabled": 0
+        },
+        {
+          "site_id": "p1-b",
+          "local_site_id": 82,
+          "database_id": "b2a1a340-681a-4581-8817-b2f9629a6ed4",
+          "binding_name": "SITE_D1_B",
+          "worker_group": "p1-group-1",
+          "schema_version": 1,
+          "routing_version": 1,
+          "migration_state": "active",
+          "production_enabled": 0
+        }
+      ],
+      "grants": [
+        {
+          "site_id": "p1-a",
+          "user_id": "7",
+          "role": "manager"
+        },
+        {
+          "site_id": "p1-b",
+          "user_id": "7",
+          "role": "manager"
+        }
+      ],
+      "sessions": [
+        {
+          "count": 0
+        }
+      ],
+      "centralSessions": [
+        {
+          "count": 1
+        }
+      ],
+      "tickets": [
+        {
+          "total": 4,
+          "redeemable": 0
+        }
+      ],
+      "operations": [
+        {
+          "operation_id": "56adb521-175f-4a52-a011-4f74f09de492",
+          "site_id": "p1-a",
+          "actor_user_id": "7",
+          "action": "pause",
+          "expected_version": 1,
+          "routing_version": 2,
+          "applied_at": "2026-09-17T16:03:33.132Z"
+        },
+        {
+          "operation_id": "2e7e6a03-804e-4735-8b0f-4d9ea46edf34",
+          "site_id": "p1-a",
+          "actor_user_id": "7",
+          "action": "resume",
+          "expected_version": 2,
+          "routing_version": 3,
+          "applied_at": "2026-09-17T16:03:35.603Z"
+        },
+        {
+          "operation_id": "abe6420b-9206-4c34-a188-d85484b9ee8a",
+          "site_id": "p1-a",
+          "actor_user_id": "7",
+          "action": "pause",
+          "expected_version": 3,
+          "routing_version": 4,
+          "applied_at": "2026-09-17T16:03:37.673Z"
+        },
+        {
+          "operation_id": "4bbb12b9-ea63-443d-b3a9-37f0479ecae7",
+          "site_id": "p1-a",
+          "actor_user_id": "7",
+          "action": "resume",
+          "expected_version": 4,
+          "routing_version": 5,
+          "applied_at": "2026-09-17T16:03:39.482Z"
+        },
+        {
+          "operation_id": "d99a4191-e19a-4b53-96a8-4d4688aef6e8",
+          "site_id": "p1-a",
+          "actor_user_id": "7",
+          "action": "pause",
+          "expected_version": 5,
+          "routing_version": 6,
+          "applied_at": "2026-09-17T16:46:42.823Z"
+        },
+        {
+          "operation_id": "7af68aee-2f4e-43cd-b079-d85ef9eb8d40",
+          "site_id": "p1-a",
+          "actor_user_id": "7",
+          "action": "resume",
+          "expected_version": 6,
+          "routing_version": 7,
+          "applied_at": "2026-09-17T16:46:44.901Z"
+        },
+        {
+          "operation_id": "ea59a52c-1a81-481b-b48b-8aed3ed434b4",
+          "site_id": "p1-a",
+          "actor_user_id": "7",
+          "action": "pause",
+          "expected_version": 7,
+          "routing_version": 8,
+          "applied_at": "2026-09-17T16:46:46.358Z"
+        },
+        {
+          "operation_id": "c32ddaaf-86ed-47ba-a590-050d10868e32",
+          "site_id": "p1-a",
+          "actor_user_id": "7",
+          "action": "resume",
+          "expected_version": 8,
+          "routing_version": 9,
+          "applied_at": "2026-09-17T16:46:47.968Z"
+        },
+        {
+          "operation_id": "960510ad-825f-4c21-9c65-4182569bdcd9",
+          "site_id": "p1-a",
+          "actor_user_id": "7",
+          "action": "pause",
+          "expected_version": 9,
+          "routing_version": 10,
+          "applied_at": "2026-09-17T16:46:52.978Z"
+        },
+        {
+          "operation_id": "bf2ebe29-e66e-464d-9437-ca9fb0cb41ac",
+          "site_id": "p1-a",
+          "actor_user_id": "7",
+          "action": "resume",
+          "expected_version": 10,
+          "routing_version": 11,
+          "applied_at": "2026-09-17T16:47:01.560Z"
+        }
+      ],
+      "schema": [
+        {
+          "role": "central",
+          "digest": "a0e7820413a25bad42da857f7a60d96fb7f2997f8bf8f71e997d73e4eae97641",
+          "operation_id": "p1-central-schema-v2",
+          "completed": 1
+        }
+      ],
+      "sessionMetadata": [
+        {
+          "_parent_id": 7,
+          "created_at": "2026-09-17T16:02:49.880Z",
+          "expires_at": "2026-09-17T18:02:49.880Z"
+        }
+      ]
+    },
+    "notes": [
+      "A active routing version 11; B active version 1; production remains disabled for both.",
+      "Six new lifecycle receipts in this release: four UI operations and two MCP operations. Retry did not add a version.",
+      "Site sessions and redeemable tickets are zero. Both synthetic manager grants restored.",
+      "One older central session row created at 2026-09-17T16:02:49.880Z remains from the earlier release. The current acceptance session was revoked through native central logout, and the existing SDK token was directly rejected with 401.",
+      "Central v2 and site v1 bootstrap digests unchanged; all three created-object counts zero.",
+      "Production deployment and hub.beginos.org ownership unchanged."
+    ]
+  },
+  "remaining": "Generic site provisioning, master-data management UI and queue/outbox delivery, remaining asset types, email/human handoff, full operations tooling and P2–P5."
+}

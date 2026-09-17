@@ -1,6 +1,6 @@
 # P1 中央站点管理 MCP
 
-实现待 Cloudflare 构建、完整 Worker 和实际 HTTPS 验收。不能将源码或 SDK 替身认证测试视为已部署验证。
+提交 `e1664b3` 已通过 Cloudflare 构建、完整 Worker 和实际 HTTPS 验收；2026-09-17T16:47:12Z 独立 P1 发布通过。完整目标和 P1 其余要求仍未完成。[构建、失败修复与直接 API 核验记录](site-per-d1-p1-mcp-validation.json)。
 
 ## 入口和身份
 
@@ -36,5 +36,15 @@
 - 云端顺序调整为中央构建→中央完整检查→站点构建→双站完整检查，其后保留全部共享构建、14 项既有浏览器、原生 RPC、P0 及 P1 部署后检查。仍须同一提交全部通过才能生成发布标记。
 
 本轮不新增数据表；中央保持 v2，站点保持 v1。通用建站、主数据界面与队列、邮件/真实员工交接、完整运维命令及 P2–P5 仍未完成。
+
+## 已验证结果
+
+- 构建 `8981d700-a3b3-4de2-936b-69784384f5de` 最终成功：118 个测试文件、599 项测试（含 6 项新增 MCP 测试）、14 项既有浏览器检查通过。所有依赖安装、测试、构建和部署均在 Cloudflare 完成。
+- 完整中央 Worker 使用真实 JWT 与 SDK 通过目标/身份边界、暂停/恢复、重试及会话撤销检查；完整双站 Worker 检查通过，浏览器错误为零。
+- 实际 `p1-hub.beginos.org/mcp` 通过同组检查，以及站点旧 Cookie 拒绝、另一站不变、已连接客户端即时撤权、原生中央退出后的 HTTP 401。真实 SDK 的后续请求也被拒绝。
+- 中央 deployment `fc1a0c26-b09e-47fa-aa07-dcff9d2eb33f`；站点 deployment `6073d86c-7885-4247-813c-4ccfd6fd0942`。
+- 2026-09-17T16:48:21Z 直接核验 A/B 均 active，版本分别为 11/1。此前 A 为 5；本轮 UI 四次和 MCP 两次状态变化各有一条回执，重试未额外推进版本。经理授权恢复、站点会话及可兑换票据均为零。旧轮次创建的一条中央会话行仍保留；本轮真实退出和旧 JWT 拒绝由实际 HTTPS 检查证明，不以总行数代替会话验证。
+- 三个 D1 的初始化摘要未变、新建对象数均为 0；两个 P1 Worker 的 workers.dev/预览关闭。生产 deployment 仍为 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`，`hub.beginos.org` 仍属于原生产 Worker。
+- 首次构建 `f4c49d95-9a66-4d89-8f6f-5d530bfc1a71` 在测试类型检查处失败，未部署；修正 SDK 结构化结果的类型收窄后上述完整链路通过。
 
 实现依据 [MCP Streamable HTTP](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)、[MCP Tools](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)及 SDK 1.27.1 的公开源代码；实际兼容性由云端真实 SDK 客户端验收确定。
