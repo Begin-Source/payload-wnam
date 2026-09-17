@@ -214,14 +214,14 @@ P0 是硬门槛，后续不能先默认通过。每阶段实现和检查通过 C
 
 ### 运维命令
 
-- `site:provision`：分配站点、创建 D1、初始化 schema、登记分组与绑定。[云端命令](site-per-d1-provision-command.md)已接通 `--request`、`--dry-run`、`--apply` 与六步恢复；[首次通用 D 站真实创建和单组普通发布](site-per-d1-p1-provision-d.md)已通过云端四站验收、上传中断恢复和完成后只读重入。中央建站入口、多组/多请求管理和扩组后的历史站点通用核验仍待完成。
+- `site:provision`：分配站点、创建 D1、初始化 schema、登记分组与绑定。[云端命令](site-per-d1-provision-command.md)已接通 `--request`、`--dry-run`、`--apply` 与六步恢复；[首次通用 D 站真实创建和单组普通发布](site-per-d1-p1-provision-d.md)已通过云端四站验收、上传中断恢复和完成后只读重入。中央建站入口、多组/多请求管理仍待完成；扩组后的历史站点改用独立只读核验。
 - `site:migrate --dry-run`：只检查数据归属、关系和目标准备情况。
 - `site:migrate --apply`：按单站冻结流程复制、核验和切换。
 - `db:fleet-migrate`：按分组、schema 版本渐进迁移。
-- `site:verify`：校验内容、关系、媒体、任务和路由。
+- `site:verify`：校验内容、关系、媒体、任务和路由。[云端只读命令](site-per-d1-site-verify.md)已接通当前分组清单、历史所有权凭证、实际 D1 绑定/路由、完整表库存与内容哈希、SQL 外键、R2 字节和显式任务站点引用；已通过云端四站各 81 表核验及源码摘要保护的原发布恢复。混合 schema、任意内嵌引用数据图和迁移源/目标比较仍待接通，不能据此放行 P4。
 - `site:resume`：检查完成后恢复单站写入与生产。
 
-除已接通的云端 `site:provision` 外，其余列出的命令仍是待开发接口，不应当作现有可执行命令。所有操作记录操作 ID、schema 版本和断点；重复执行不得重复创建资源。初始运维并发 4，遵守 Cloudflare API 退避。
+除已接通的云端 `site:provision` 和上述范围的 `site:verify` 外，其余列出的命令仍是待开发接口，不应当作现有可执行命令。所有操作记录操作 ID、schema 版本和断点；只读核验目前安全重读全程，尚无持久分页断点；重复执行不得重复创建资源。初始运维并发 4，遵守 Cloudflare API 退避。
 
 ## 9. 单站迁移流程
 

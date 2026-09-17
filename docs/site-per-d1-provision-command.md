@@ -4,7 +4,9 @@
 
 ## 输入与运行
 
-`operations/p1-release.json` 当前选择 `operations/provision/p1-d.json`，它是固定 D 站操作，不是可重复创建新站的模板。`operations/provision/p1-c.json` 保留 C 的历史输入；四站清单上线后，旧 C 请求不包含 D，会因清单/来源不匹配而拒绝执行。不能通过修改旧计划或回执绕过检查。历史站点在后续扩组后的通用核验仍需独立的 `site:verify` 接口。
+`operations/p1-release.json` 当前选择 `operations/provision/p1-d.json`，它是固定 D 站操作，不是可重复创建新站的模板。`operations/provision/p1-c.json` 保留 C 的历史输入；四站清单上线后，旧 C 请求不包含 D，会因清单/来源不匹配而拒绝执行。不能通过修改旧计划或回执绕过检查。扩组后的历史站点由独立的 [`site:verify`](site-per-d1-site-verify.md) 按当前完整清单和各站原始所有权凭证核验。
+
+当前选择还显式固定了超时轮已上传的分组发布，使用源码摘要保护的仅恢复模式补完验收，不重复上传。恢复的执行提交与站点运行提交分别记录；后续普通功能发布必须移除该恢复选择，否则应用源码变化会使发布拒绝执行。历史建站回执保持原值。
 
 计划 JSON 严格包含以下字段，不接受密码、Token、任意执行命令或部署代码路径：
 
