@@ -30,8 +30,9 @@ async function moveRoute(database: D1Database,plan: ProvisionPlan,lease: Provisi
       RETURNING routing_version AS version`).bind(state,next,plan.siteId,plan.operationId,expectedVersion,source,
       lease.operationId,lease.owner,lease.epoch,Number(state === 'provisioning'),plan.siteId,String(plan.ownerUserId)),
     ...['site_login_tickets','site_login_sessions'].map(table => database.prepare(`DELETE FROM ${table} WHERE site_id=? AND EXISTS
-      (SELECT 1 FROM site_runtime_registry WHERE site_id=? AND operation_id=? AND routing_version=? AND migration_state=?)`)
-      .bind(plan.siteId,plan.siteId,plan.operationId,next,state)),
+      (SELECT 1 FROM site_runtime_registry WHERE site_id=? AND operation_id=? AND routing_version=? AND migration_state=?)
+      AND EXISTS (SELECT 1 FROM site_provision_operations WHERE operation_id=? AND lease_owner=? AND lease_epoch=? AND lease_until>${now} AND checkpoint=5)`)
+      .bind(plan.siteId,plan.siteId,plan.operationId,next,state,lease.operationId,lease.owner,lease.epoch)),
   ])
   assert.equal((results[0].results[0] as { version?: number } | undefined)?.version,next,'Provision route changed or lease lost')
   return next

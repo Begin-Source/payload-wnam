@@ -96,6 +96,34 @@ describe('durable deployment reconciliation and activation with native D1',() =>
     expect(await readSiteRegistration(db,f.plan.siteId)).toMatchObject({ migrationState: 'paused',routingVersion: 3 })
     await expect(finishProvisionedSite(f.plan,'apply',f.deps)).rejects.toThrow('activation state changed')
   })
+  it('preserves a successor session when the lease changes after the final activation heartbeat',async () => {
+    const f = await fixture(),successor = randomUUID()
+    let intercepted = false
+    const database = new Proxy(db,{
+      get(target,key) {
+        if (key === 'batch') return async (statements: D1PreparedStatement[]) => {
+          if (!intercepted) {
+            intercepted = true
+            await db.batch([
+              db.prepare('UPDATE site_provision_operations SET lease_owner=?,lease_epoch=lease_epoch+1 WHERE operation_id=?').bind(successor,f.plan.operationId),
+              db.prepare("UPDATE site_runtime_registry SET migration_state='active',routing_version=2 WHERE site_id=?").bind(f.plan.siteId),
+              db.prepare("INSERT INTO site_login_sessions VALUES (?,?,'7','test',?,2,9999999999999)").bind(successor,f.plan.siteId,f.plan.adminHost),
+              db.prepare("INSERT INTO site_login_tickets VALUES (?,?,'7','test',?,2,9999999999999,NULL)").bind(successor,f.plan.siteId,f.plan.adminHost),
+            ])
+          }
+          return target.batch(statements)
+        }
+        const value = Reflect.get(target,key)
+        return typeof value === 'function' ? value.bind(target) : value
+      },
+    })
+    await expect(finishProvisionedSite(f.plan,'apply',{ ...f.deps,centralDatabase: database })).rejects.toThrow('route changed or lease lost')
+    expect(intercepted).toBe(true)
+    expect(await db.prepare('SELECT COUNT(*) AS n FROM site_login_sessions WHERE site_id=?').bind(f.plan.siteId).first('n')).toBe(1)
+    expect(await db.prepare('SELECT COUNT(*) AS n FROM site_login_tickets WHERE site_id=?').bind(f.plan.siteId).first('n')).toBe(1)
+    expect(await db.prepare('SELECT lease_owner FROM site_provision_operations WHERE operation_id=?').bind(f.plan.operationId).first('lease_owner')).toBe(successor)
+    expect(await readSiteRegistration(db,f.plan.siteId)).toMatchObject({ migrationState: 'active',routingVersion: 2 })
+  })
   it('inspects the selected native binding and denies forged targets, ownership and stale registry mappings',async () => {
     const f = await fixture(),local = await mf.getD1Database('SITE')
     await local.batch([local.prepare('CREATE TABLE site_schema_bootstrap (id INTEGER PRIMARY KEY,operation_id TEXT,site_id TEXT,database_id TEXT,digest TEXT,schema_version INTEGER,completed INTEGER)'),
