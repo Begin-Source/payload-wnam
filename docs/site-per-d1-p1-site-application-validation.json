@@ -1,0 +1,230 @@
+{
+  "objective": "payload-wnam/docs/site-per-d1-execution-plan.md 完整执行",
+  "stage": "P1 in progress; this report is not P1 or full-plan acceptance",
+  "repository": {
+    "name": "Begin-Source/payload-wnam",
+    "id": 1224379860,
+    "branch": "feat/site-per-d1"
+  },
+  "account": {
+    "id": "d487cf34c606620b442632a72272014d",
+    "name": "基源科技"
+  },
+  "commit": "3ac826c13b720a8b59dfd8c1d60c22de90e58736",
+  "build": {
+    "id": "aaa4de2b-7507-4fec-b709-ccf450eb50ca",
+    "status": "stopped",
+    "outcome": "success",
+    "createdOn": "2026-09-17T12:44:20.359Z",
+    "stoppedOn": "2026-09-17T12:56:07.697Z"
+  },
+  "executionPolicy": {
+    "dependencyInstallation": "Cloudflare Builds only",
+    "typechecksTestsAndBuilds": "Cloudflare Builds only",
+    "local": "source edits/inspection, node --check and git diff --check only"
+  },
+  "checks": {
+    "testFiles": 114,
+    "unitAndIntegrationTests": 572,
+    "existingBrowserChecks": 14,
+    "centralApplication": {
+      "event": "central_application_passed",
+      "checkedAt": "2026-09-17T12:50:16.208Z",
+      "checks": [
+        "complete-worker",
+        "canonical-host",
+        "closed-signup",
+        "browser-password-login",
+        "native-admin-assets",
+        "master-create-read",
+        "no-site-content-api",
+        "real-session-ticket",
+        "site-grant-denial",
+        "desktop-mobile",
+        "session-revocation"
+      ],
+      "remoteDeployment": false
+    },
+    "siteApplication": {
+      "event": "site_application_passed",
+      "checkedAt": "2026-09-17T12:50:38.620Z",
+      "remoteDeployment": false,
+      "checks": [
+        "complete-central-site-workers",
+        "native-assets",
+        "browser-central-password-login",
+        "real-ticket-post-handoff",
+        "two-host-only-cookies",
+        "native-site-admin-editors",
+        "same-id-concurrent-reads",
+        "site-isolated-create-update",
+        "no-site-password-login",
+        "desktop-mobile",
+        "live-grant-revocation",
+        "native-logout-revokes-session",
+        "revoked-grant-logout"
+      ],
+      "browserErrors": []
+    },
+    "nativeD1Isolation": {
+      "event": "site_d1_workerd_isolation",
+      "commit": "3ac826c13b720a8b59dfd8c1d60c22de90e58736",
+      "ok": true,
+      "databases": 2,
+      "concurrentRequests": 40,
+      "elapsedMs": 958,
+      "checks": [
+        "CRUD",
+        "same IDs",
+        "batch rollback",
+        "context guards",
+        "stale routes",
+        "streams",
+        "R2 prefixes",
+        "native R2 response metadata",
+        "cache keys",
+        "queue delivery and deduplication"
+      ],
+      "scope": "Cloudflare Builds workerd with local D1/R2/Queues; not deployed D1 or full Payload/admin acceptance"
+    },
+    "identityRPC": {
+      "event": "site_identity_workerd_rpc",
+      "ok": true,
+      "commit": "3ac826c13b720a8b59dfd8c1d60c22de90e58736",
+      "workers": 2,
+      "databases": 3,
+      "concurrentRedemptions": 20,
+      "concurrentSiteRequests": 20,
+      "checks": [
+        "named RPC capability",
+        "no RPC issuer",
+        "HTTP capability denied",
+        "POST handoff",
+        "Chromium form/CSP/cookie navigation",
+        "single-use ticket",
+        "host/origin binding",
+        "explicit local site ID mapping",
+        "credential-free projections",
+        "live role changes",
+        "immediate revocation",
+        "site logout",
+        "central logout",
+        "central outage fails closed",
+        "independent public response"
+      ],
+      "scope": "Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance"
+    },
+    "dataRPC": {
+      "event": "site_data_workerd_rpc",
+      "ok": true,
+      "commit": "3ac826c13b720a8b59dfd8c1d60c22de90e58736",
+      "workers": 2,
+      "databases": 3,
+      "r2Buckets": 3,
+      "concurrentAssetCopies": 5,
+      "checks": [
+        "named read-only RPC",
+        "HTTP and publishing denied",
+        "live manager grant",
+        "forged destination denied",
+        "tenant-private master and asset isolation",
+        "global configuration to two sites",
+        "candidate persistence",
+        "binary asset transport and local media mapping",
+        "concurrent copy deduplication",
+        "withdrawal and retry",
+        "live revocation"
+      ],
+      "scope": "Cloudflare Builds native service bindings with minimal role schemas. Full independent Payload behavior has separate native integration tests; formal roles, UI and queue delivery are not deployed."
+    },
+    "remoteP0Smoke": {
+      "event": "p0_deployed_smoke_passed",
+      "commit": "3ac826c13b720a8b59dfd8c1d60c22de90e58736",
+      "at": "2026-09-17T12:56:02.097Z",
+      "scope": "Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending",
+      "concurrentReads": 40,
+      "concurrentPublicPages": 12,
+      "isolatesServingBothSites": 6,
+      "configuredIconViews": 4
+    },
+    "release": {
+      "event": "p0_release_passed",
+      "commit": "3ac826c13b720a8b59dfd8c1d60c22de90e58736",
+      "worker": "payload-wnam-p0",
+      "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+    }
+  },
+  "deployment": {
+    "checkedAt": "2026-09-17T12:58:08.239Z",
+    "p0": {
+      "id": "665af82d-301d-4d89-8f41-7b5db76f8fd2",
+      "createdOn": "2026-09-17T12:55:01.865527Z",
+      "versions": [
+        {
+          "version_id": "36ebfae2-b87e-4ce0-b615-2e307eb50fd4",
+          "percentage": 100
+        }
+      ]
+    },
+    "production": {
+      "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+      "createdOn": "2026-09-16T13:17:17.77796Z",
+      "versions": [
+        {
+          "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+          "percentage": 100
+        }
+      ]
+    }
+  },
+  "failedBuilds": [
+    {
+      "id": "de470619-c654-4b80-b300-cb01238da3e0",
+      "commit": "0e2df7a",
+      "phase": "typecheck",
+      "reason": "RPC test mocks widened discriminant and role literals; explicit RPC method types required",
+      "deployed": false
+    },
+    {
+      "id": "6a3d2269-471c-4beb-a977-b7ab3a0a649c",
+      "commit": "fdf953a",
+      "phase": "complete-site-runtime",
+      "reason": "Pinned Miniflare assets plugin shares a global disk service across worker asset roots; use collision-checked public asset union only in multi-worker cloud fixture. Also preserve live strategy fields in /me.",
+      "deployed": false
+    },
+    {
+      "id": "b492b1f1-bcb0-40c0-b552-66d2b75a9bb2",
+      "commit": "07f2116",
+      "phase": "typecheck",
+      "reason": "Pinned Payload AfterMeHook response is unknown; construct explicit allowlisted response",
+      "deployed": false
+    },
+    {
+      "id": "509a5d10-0db4-4d2d-9aac-f94a8d51e572",
+      "commit": "1faa324",
+      "phase": "complete-site-runtime",
+      "reason": "Collision check correctly rejected role-specific BUILD_ID. Replaced asset union with version-guarded fixture-only Miniflare disk-service name scoping; also provisioned test tenant projections.",
+      "deployed": false
+    },
+    {
+      "id": "841e626b-df95-4802-a9e4-a80fc480dfc2",
+      "commit": "22768c3",
+      "phase": "complete-site-runtime",
+      "reason": "Both full admin SSO flows passed. Native disabled login returns Forbidden 403, not absent-route 404; assert documented disabled strategy behavior with valid central credentials.",
+      "deployed": false
+    }
+  ],
+  "fixtureAdaptation": {
+    "miniflareVersion": "4.20260430.0",
+    "reason": "Assets plugin uses a globally named disk service; multiple complete role asset roots alias the first root.",
+    "change": "Version- and source-match-guarded temporary module copy scopes only the assets disk service by workerName; each role retains native assets and its own full asset directory.",
+    "scope": "Only scripts/ci-role-site.mjs in Cloudflare Builds loads this copy; installed dependency and deployment artifacts are unchanged."
+  },
+  "limits": [
+    "Central and site application checks ran full built Workers and Chromium against disposable native D1/R2 in Cloudflare Builds; independent roles have not been remotely deployed.",
+    "Remote P0 remains the shared application with isolated test databases; its deployment is regression evidence, not formal independent-role deployment.",
+    "The real central form/ticket handoff was tested via browser form submission. A product site chooser UI remains pending.",
+    "Formal role resources/schema rollout, provisioning and lifecycle/MCP, master publication UI and queue delivery, email capability, and remaining P1 requirements are incomplete.",
+    "P2-P5, production migration, real-vendor trials, fleet expansion, capacity/cost gates and final deliverables remain governed by the full execution plan."
+  ]
+}
