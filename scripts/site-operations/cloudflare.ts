@@ -21,11 +21,22 @@ export class ProvisionCloudflare {
   }
   async request<T>(path: string,body?: unknown): Promise<Envelope<T>> {
     if (!/^[a-z0-9][a-z0-9_/?=&%.-]*$/i.test(path) || path.includes('..') || path.startsWith('accounts/')) throw new Error('Invalid account API path')
+    return this.scopedRequest<T>(`accounts/${this.accountId}/${path}`,body)
+  }
+  async zone(id: string): Promise<{ id: string; name: string; account: { id: string } }> {
+    if (id !== '8d8fd673a6aeacf85360bc9e397d3002') throw new Error('Explicit provision zone required')
+    return (await this.scopedRequest<{ id: string; name: string; account: { id: string } }>(`zones/${id}`)).result
+  }
+  async domainRecords(zoneId: string,host: string): Promise<unknown[]> {
+    if (zoneId !== '8d8fd673a6aeacf85360bc9e397d3002' || !/^cms-site-[a-z0-9-]+\.beginos\.org$/.test(host)) throw new Error('Explicit provision host required')
+    return (await this.scopedRequest<unknown[]>(`zones/${zoneId}/dns_records?name=${encodeURIComponent(host)}`)).result
+  }
+  private async scopedRequest<T>(path: string,body?: unknown): Promise<Envelope<T>> {
     const write = body !== undefined
     for (let attempt = 0; attempt < 5; attempt++) {
       let response: Response
       try {
-        response = await this.fetch(`https://api.cloudflare.com/client/v4/accounts/${this.accountId}/${path}`,{
+        response = await this.fetch(`https://api.cloudflare.com/client/v4/${path}`,{
           method: write ? 'POST' : 'GET',redirect: 'error',signal: AbortSignal.timeout(20000),
           headers: { authorization: `Bearer ${this.token}`,'content-type': 'application/json' },...(write ? { body: JSON.stringify(body) } : {}),
         })

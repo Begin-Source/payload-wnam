@@ -11,6 +11,10 @@ import { ProvisionJournal } from '../../src/site-control/provisionJournal'
 import { provisionPlan } from '../../src/site-control/provisionPlan'
 import { initializeProvisionSchema } from '../../scripts/site-operations/schema'
 import { seedProvisionedSite } from '../../scripts/site-operations/seed'
+import { prepareSiteDatabase } from '../../scripts/site-operations/prepare'
+import { finishProvisionedSite,type GroupDeployment } from '../../scripts/site-operations/finish'
+import { provisionSite,type ProvisionMode } from '../../scripts/site-operations/provision'
+import { ProvisionCloudflare } from '../../scripts/site-operations/cloudflare'
 import { roleSchemaDigest, type RoleSchema } from '../../scripts/p1-schema'
 
 vi.mock('../../src/payload.config',() => { throw new Error('Shared Payload config imported') })
@@ -27,25 +31,27 @@ async function payloadSchema(payload: Payload,db: D1Database) {
   const kit = adapter.requireDrizzleKit(),sql = await kit.generateMigration(adapter.defaultDrizzleSnapshot,await kit.generateDrizzleJson(adapter.schema))
   for (let offset = 0; offset < sql.length; offset += 25) await db.batch(sql.slice(offset,offset+25).map(sql => db.prepare(sql)))
 }
-async function fixture() {
+async function fixture(prepared = true) {
   const n = ++index,local = await mf.getD1Database(`S${n}`),databaseId = randomUUID()
   const plan = provisionPlan({ operationId: randomUUID(),accountId,centralDatabaseId,centralOrigin: 'https://p1-hub.beginos.org',
     siteId: `seed-${n}`,localSiteId: 100+n,name: `Seed ${n}`,tenantId: 1,ownerUserId: 7,workerGroup: `group-${n}`,
     workerName: 'payload-wnam-p1-sites',workerTag: 'e73dabad443148d1a6cede5c19ee203e',expectedDeploymentId: randomUUID(),
     baselineManifestDigest: 'a'.repeat(64),bindingName: 'SITE_D1_NEW',schemaVersion: 1,schemaDigest: roleSchemaDigest(siteSchema.objects),timezone: 'UTC' })
-  await journal.reserve(plan)
-  const lease = await journal.claim(plan.operationId)
-  await journal.begin(lease,'database','a'.repeat(64))
-  await journal.finish(lease,'database','a'.repeat(64),{ databaseId,databaseName: plan.databaseName,readReplication: 'disabled' })
-  await journal.begin(lease,'schema','b'.repeat(64))
-  const receipt = await initializeProvisionSchema(local,databaseId,plan,siteSchema,{ beforeWrite: noop })
-  await journal.finish(lease,'schema','b'.repeat(64),receipt); await journal.release(lease)
+  if (prepared) {
+    await journal.reserve(plan)
+    const lease = await journal.claim(plan.operationId)
+    await journal.begin(lease,'database','a'.repeat(64))
+    await journal.finish(lease,'database','a'.repeat(64),{ databaseId,databaseName: plan.databaseName,readReplication: 'disabled' })
+    await journal.begin(lease,'schema','b'.repeat(64))
+    const receipt = await initializeProvisionSchema(local,databaseId,plan,siteSchema,{ beforeWrite: noop })
+    await journal.finish(lease,'schema','b'.repeat(64),receipt); await journal.release(lease)
+  }
   return { plan,local,databaseId,deps: { journal,centralDatabase: central,siteDatabase: local,centralPayload,sitePayload,preflight: noop } }
 }
 describe('provision seed with full Payload roles and native D1',() => {
   beforeAll(async () => {
     mf = new Miniflare({ modules: true,script: 'export default {fetch(){return new Response("fixture")}}',compatibilityDate: '2025-08-15',
-      d1Databases: ['CENTRAL','TEMPLATE','S1','S2','S3','S4'],r2Buckets: ['CENTRAL','PUBLIC','PRIVATE'] })
+      d1Databases: ['CENTRAL','TEMPLATE','S1','S2','S3','S4','S5'],r2Buckets: ['CENTRAL','PUBLIC','PRIVATE'] })
     central = await mf.getD1Database('CENTRAL')
     centralPayload = await getPayload({ key: 'provision-seed-central',disableOnInit: true,config: await createCentralPayloadConfig({ database: central,
       bucket: await mf.getR2Bucket('CENTRAL'),secret: 'isolated-provision-central',generationModels: [],authorizeAiGeneration: external }) })
@@ -112,4 +118,50 @@ describe('provision seed with full Payload roles and native D1',() => {
     await central.prepare("UPDATE site_runtime_registry SET migration_state='active',routing_version=2 WHERE site_id=?").bind(plan.siteId).run()
     await expect(seedProvisionedSite(plan,'apply',deps)).rejects.toThrow('Seed cannot alter an existing route')
   },30000)
+  it('runs the whole provision command, resumes across seed/upload failures and never replays completed stages',async () => {
+    const f = await fixture(false),digest = 'c'.repeat(64),createdAt = new Date().toISOString()
+    let created = false,creates = 0,uploads = 0,seedInterruption = true,uploadInterruption = true
+    let deployment: (GroupDeployment & { operationId: string }) | null = null
+    const info = { uuid: f.databaseId,name: f.plan.databaseName,created_at: createdAt,read_replication: { mode: 'disabled' } }
+    const api = new ProvisionCloudflare(accountId,'isolated-command-fixture',{ fetch: async (input,init) => {
+      if (init?.method === 'POST') { creates++; created = true; return Response.json({ success: true,result: info }) }
+      const list = new URL(String(input)).searchParams.has('name')
+      return Response.json({ success: true,result: list ? created ? [info] : [] : info })
+    } })
+    const finishDeps = { journal,centralDatabase: central,manifestDigest: digest,preflight: noop,currentDeployment: async () => deployment,
+      deploy: async () => { uploads++; deployment = { deploymentId: randomUUID(),versionId: randomUUID(),manifestDigest: digest,commit: 'd'.repeat(40),operationId: f.plan.operationId } },
+      afterDeploy: async () => { if (uploadInterruption) { uploadInterruption = false; throw new Error('Injected command upload interruption') } },
+      verify: async () => {
+        expect(await f.local.prepare('SELECT operation_id FROM site_schema_bootstrap WHERE id=1').first('operation_id')).toBe(f.plan.operationId)
+        expect(await f.local.prepare('SELECT slug FROM sites WHERE id=?').bind(f.plan.localSiteId).first('slug')).toBe(f.plan.siteId)
+        return { nativeBindingVerified: true }
+      },acceptance: noop }
+    const stages = { journal,
+      prepare: vi.fn((mode: ProvisionMode) => prepareSiteDatabase(f.plan,siteSchema,mode,{ journal,api,preflight: noop,
+        openDatabase: async id => { expect(id).toBe(f.databaseId); return { database: f.local,close: noop } } })),
+      seed: vi.fn((mode: ProvisionMode) => seedProvisionedSite(f.plan,mode,{ ...f.deps,afterLocalSeed: async () => {
+        if (seedInterruption) { seedInterruption = false; throw new Error('Injected command seed interruption') }
+      } })),
+      finish: vi.fn((mode: ProvisionMode) => finishProvisionedSite(f.plan,mode,finishDeps)),
+      verifyCompleted: async () => { await finishProvisionedSite(f.plan,'dry-run',finishDeps); return finishDeps.verify() },
+    }
+    expect(await provisionSite(f.plan,'dry-run',stages)).toMatchObject({ checkpoint: 0,mutations: false,remaining: ['database','schema','seed','deploy','verify','activate'] })
+    expect(await journal.read(f.plan.operationId)).toBeNull(); expect(creates).toBe(0)
+    await expect(provisionSite(f.plan,'apply',stages)).rejects.toThrow('Injected command seed interruption')
+    expect(await journal.read(f.plan.operationId)).toMatchObject({ checkpoint: 2,pendingStep: 3,leaseUntil: 0 })
+    stages.prepare.mockClear()
+    expect(await provisionSite(f.plan,'dry-run',stages)).toMatchObject({ checkpoint: 2,mutations: false })
+    await expect(provisionSite(f.plan,'apply',stages)).rejects.toThrow('Injected command upload interruption')
+    expect(await journal.read(f.plan.operationId)).toMatchObject({ checkpoint: 3,pendingStep: 4,leaseUntil: 0 })
+    stages.seed.mockClear()
+    expect(await provisionSite(f.plan,'apply',stages)).toMatchObject({ checkpoint: 6,complete: true,resumed: true })
+    expect(stages.prepare).not.toHaveBeenCalled(); expect(stages.seed).not.toHaveBeenCalled()
+    expect(creates).toBe(1); expect(uploads).toBe(1)
+    const receipts = (await central.prepare('SELECT * FROM site_provision_steps WHERE operation_id=? ORDER BY step').bind(f.plan.operationId).all()).results
+    stages.finish.mockClear()
+    expect(await provisionSite(f.plan,'apply',stages)).toMatchObject({ complete: true,mutations: false })
+    expect(await provisionSite(f.plan,'dry-run',stages)).toMatchObject({ complete: true,mutations: false })
+    expect(stages.finish).not.toHaveBeenCalled()
+    expect((await central.prepare('SELECT * FROM site_provision_steps WHERE operation_id=? ORDER BY step').bind(f.plan.operationId).all()).results).toEqual(receipts)
+  },120000)
 })

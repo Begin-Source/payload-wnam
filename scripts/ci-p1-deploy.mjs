@@ -106,6 +106,11 @@ execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-provision-finish.ts']
   env: { ...env,P1_SITE_FINISH: '1',P1_TEST_PASSWORD: password },stdio: 'inherit',
 })
 deployed.push(JSON.parse(readFileSync('.cloudflare-ci/p1-provision-activation.json','utf8')).deployed)
+// Exercise the public maintenance command against the completed C operation.
+// Both modes must verify the existing state without replaying any provision step.
+for (const mode of ['--dry-run','--apply']) execFileSync('pnpm',['run','site:provision','--request','operations/provision/p1-c.json',mode],{
+  env,stdio: 'inherit',
+})
 const deployedDomains = await api('workers/domains')
 for (const config of Object.values(configs)) for (const route of config.routes) {
   const actual = deployedDomains.find(domain => domain.hostname === route.pattern)

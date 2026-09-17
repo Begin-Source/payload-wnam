@@ -7,7 +7,8 @@ import { ProvisionJournal } from '../src/site-control/provisionJournal'
 import { provisionDigest } from '../src/site-control/provisionPlan'
 import { ProvisionCloudflare } from './site-operations/cloudflare'
 import { finishProvisionedSite, type GroupDeployment } from './site-operations/finish'
-import { p1Manifests, p1BaseManifests, P1_ACCOUNT } from './p1-manifests.mjs'
+import { p1Manifests, p1BaseManifests, P1_ACCOUNT, P1_EMAIL } from './p1-manifests.mjs'
+import { provisionBrowserAcceptance } from './site-operations/acceptance'
 import { browserLibraryEnvironment } from './ci-browser-libs.mjs'
 import type { inspectProvisionedSite } from '../src/site-runtime/provisionInspection'
 
@@ -121,7 +122,11 @@ try {
     }
     throw new Error('Provision verification unavailable')
   }
-  const acceptance = async () => { await run(process.execPath,['scripts/ci-p1-smoke.mjs'],process.cwd(),browserLibraryEnvironment()) }
+  const acceptance = async () => {
+    await run(process.execPath,['scripts/ci-p1-smoke.mjs'],process.cwd(),browserLibraryEnvironment())
+    Object.assign(process.env,browserLibraryEnvironment())
+    await provisionBrowserAcceptance(plan,{ email: P1_EMAIL,password: process.env.P1_TEST_PASSWORD })
+  }
   const deps = { journal,centralDatabase: database,manifestDigest,preflight,currentDeployment: inspectGroup,deploy,verify,acceptance }
   const before = await journal.read(operationId),preview = await finishProvisionedSite(plan,'dry-run',deps)
   assert.deepEqual(await journal.read(operationId),before)

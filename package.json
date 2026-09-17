@@ -36,7 +36,8 @@
     "typecheck": "cross-env NODE_OPTIONS=--max-old-space-size=8000 tsc --noEmit --pretty false",
     "ci:check": "pnpm run lint && pnpm run typecheck && pnpm run test:int",
     "ci:build": "node scripts/ci-build.mjs",
-    "ci:deploy": "node scripts/ci-deploy.mjs"
+    "ci:deploy": "node scripts/ci-deploy.mjs",
+    "site:provision": "node scripts/site-provision.mjs"
   },
   "dependencies": {
     "@ai-stack/payloadcms": "^3.2.27",
