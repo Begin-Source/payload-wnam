@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@payloadcms/ui'
 import type { SiteDirectoryPage } from '../../site-control/siteDirectory'
 import './style.scss'
@@ -55,7 +56,7 @@ export function CentralSiteChooser() {
     </form>
     <div aria-live="polite" aria-busy={loading}>
       {loading && <p>正在加载网站…</p>}
-      {error === 'login' && <p role="alert">登录已失效。<a href="/admin/login">重新登录</a>后查看网站。</p>}
+      {error === 'login' && <p role="alert">登录已失效。<Link href="/admin/login">重新登录</Link>后查看网站。</p>}
       {error === 'unavailable' && <div role="alert"><p>暂时无法加载网站，请重试。</p>
         <Button buttonStyle="secondary" size="small" onClick={() => setRetry(value => value + 1)}>重新加载</Button></div>}
       {!loading && !error && data && <>

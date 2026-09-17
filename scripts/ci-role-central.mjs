@@ -41,6 +41,8 @@ try {
   }
   await db.batch([db.prepare('PRAGMA defer_foreign_keys = ON'),...inserts])
   await db.prepare('INSERT INTO site_runtime_access VALUES (?,?,?)').bind('a','7','editor').run()
+  await db.prepare('UPDATE sites SET name = ? WHERE runtime_site_id = ?')
+    .bind('户外装备选购指南 / Travel & Outdoor '.repeat(8) + '🌿','a').run()
   const worker = await mf.getWorker()
   const staticFiles = readdirSync(assets,{ recursive: true }).filter(name => typeof name === 'string')
   for (const extension of ['.js','.css']) {
@@ -94,7 +96,7 @@ try {
   assert.equal(await chooser.locator('[data-site-id="b"]').count(),0,'No grant must mean no site row')
   assert.equal(await chooser.getByRole('button',{ name: '下一页',exact: true }).isDisabled(),true)
   await chooser.getByLabel('查找网站',{ exact: true }).fill('no-matching-site')
-  await chooser.getByRole('button',{ name: '查找',exact: true }).click()
+  await chooser.getByLabel('查找网站',{ exact: true }).press('Enter')
   await chooser.getByText('没有匹配的网站。请修改名称或站点 ID 后重试。',{ exact: true }).waitFor()
   await chooser.getByLabel('查找网站',{ exact: true }).fill('')
   await chooser.getByRole('button',{ name: '查找',exact: true }).click()

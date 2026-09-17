@@ -15,6 +15,7 @@ export const siteControlSchema = [
     role TEXT NOT NULL CHECK(role IN ('viewer','editor','publisher','manager')),
     PRIMARY KEY(site_id,user_id)
   )`,
+  `CREATE INDEX IF NOT EXISTS site_runtime_access_user_site ON site_runtime_access(user_id,site_id)`,
   `CREATE TABLE IF NOT EXISTS site_login_tickets (
     token_hash TEXT PRIMARY KEY, site_id TEXT NOT NULL REFERENCES site_runtime_registry(site_id),
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, central_session_id TEXT NOT NULL, admin_host TEXT NOT NULL,
