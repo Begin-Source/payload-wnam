@@ -73,9 +73,12 @@ describe('independent complete site Payload configuration', () => {
       return { ...scope, siteId: name.toLowerCase(), localSiteId: index ? 82 : 37, binding, requestHost: `cms-site-${name.toLowerCase()}.beginos.org` }
     }))
     for (const context of contexts) await withSiteContext(context, async () => {
+      const tenant = context.siteId === 'a' ? 1 : 2
+      await payload.create({ collection: 'tenants', data: { id: tenant, name: `Site tenant ${tenant}`, slug: `site-tenant-${tenant}`,
+        centralSource: { recordId: String(tenant), revision: 1, syncedAt: new Date().toISOString() } } as never })
       await syncSiteIdentityProjection({ siteId: context.siteId, localSiteId: context.localSiteId!, userId: '7', displayName: 'Staff', role: 'publisher', routingVersion: 1 })
       await payload.create({ collection: 'sites', data: { id: context.localSiteId, name: `Site ${context.siteId}`, slug: context.siteId,
-        publicLocaleCodes: ['en'], defaultPublicLocale: 'en' } as never })
+        tenant, publicLocaleCodes: ['en'], defaultPublicLocale: 'en' } as never })
     })
     for (const context of contexts) await writeRoleFixture(context.binding, context.siteId === 'a' ? 'site-a' : 'site-b')
   }, 60000)
