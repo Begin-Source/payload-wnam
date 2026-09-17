@@ -1,0 +1,856 @@
+{
+  "scope": "P1 manager lifecycle; full P1 and P2–P5 remain incomplete",
+  "status": "passed for this implementation and isolated remote P1 release",
+  "localExecution": "Source inspection, editing and syntax/diff checks only. All dependency installation, tests, builds and deployment ran in Cloudflare Builds.",
+  "history": [
+    {
+      "buildId": "30205b3d-5566-4037-9850-5a1fe61ebbc9",
+      "commit": "6f484adcf2d99c503e99a71cc9edfd5c8e85a4a2",
+      "status": "cancelled",
+      "tests": 593,
+      "reason": "Cancelled before deployment to correct paused route HTTP expectation from 403 to existing 503."
+    },
+    {
+      "buildId": "8d4828c1-8e11-4435-b190-00c3d7f26325",
+      "commit": "b8dee642faf474403e73676d36d6d9ab616d3f45",
+      "status": "cancelled",
+      "tests": 593,
+      "roleBuilds": [
+        "central",
+        "site"
+      ],
+      "reason": "Cancelled before deployment after central browser login produced no further phase evidence. Source review found route.fetch could bypass fixture host mapping; replaced with browser-local response masking and added bounded fetches, phase logs, fixture deadline. Exact stall location not proven."
+    },
+    {
+      "buildId": "f935fece-6902-4108-92e6-ccdba03ac072",
+      "commit": "3c2e56b6141122f428da3bbb5c308d62e6ef15b4",
+      "status": "fail",
+      "tests": 593,
+      "roleBuilds": [
+        "central",
+        "site"
+      ],
+      "reason": "Central browser reached successful pause response; response.json failed with Chrome Network.getResponseBody: No data found. Fixed UI to consume/validate its receipt and browser verifier to obtain receipt via idempotent API replay. No deployment."
+    }
+  ],
+  "current": {
+    "id": "3f2850e8-fda6-475a-bed6-fd7cd7a6c9d1",
+    "status": "stopped",
+    "outcome": "success",
+    "commit": "6531a485af728c357e1ee5a2d8c018e6966b668c"
+  },
+  "tests": {
+    "files": 117,
+    "tests": 593,
+    "existingBrowserChecks": 14
+  },
+  "baseline": {
+    "checkedAt": "2026-09-17T15:13:28.566Z",
+    "sites": [
+      {
+        "site_id": "p1-a",
+        "routing_version": 1,
+        "migration_state": "active",
+        "production_enabled": 0
+      },
+      {
+        "site_id": "p1-b",
+        "routing_version": 1,
+        "migration_state": "active",
+        "production_enabled": 0
+      }
+    ],
+    "productionDeployment": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+    "productionVersions": [
+      {
+        "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+        "percentage": 100
+      }
+    ]
+  },
+  "events": [
+    {
+      "loggedAt": "2026-09-17T15:51:17.341Z",
+      "event": "role_build_passed",
+      "role": "central"
+    },
+    {
+      "loggedAt": "2026-09-17T15:53:32.193Z",
+      "event": "role_build_passed",
+      "role": "site"
+    },
+    {
+      "loggedAt": "2026-09-17T15:54:00.955Z",
+      "event": "p1_lifecycle_step",
+      "siteId": "a",
+      "step": "read-initial-state"
+    },
+    {
+      "loggedAt": "2026-09-17T15:54:01.178Z",
+      "event": "p1_lifecycle_step",
+      "siteId": "a",
+      "step": "cancel-passed"
+    },
+    {
+      "loggedAt": "2026-09-17T15:54:01.613Z",
+      "event": "p1_lifecycle_step",
+      "siteId": "a",
+      "step": "pause-response"
+    },
+    {
+      "loggedAt": "2026-09-17T15:54:01.947Z",
+      "event": "p1_lifecycle_step",
+      "siteId": "a",
+      "step": "first-resume-passed"
+    },
+    {
+      "loggedAt": "2026-09-17T15:54:02.235Z",
+      "event": "p1_lifecycle_step",
+      "siteId": "a",
+      "step": "ambiguous-retry-passed"
+    },
+    {
+      "loggedAt": "2026-09-17T15:54:02.805Z",
+      "event": "p1_lifecycle_browser_passed",
+      "siteId": "a",
+      "fromVersion": 3,
+      "toVersion": 7,
+      "checks": [
+        "explicit-site-id",
+        "manager-ui",
+        "cancel",
+        "mobile",
+        "pause",
+        "idempotent-retry",
+        "stale-conflict",
+        "resume",
+        "ambiguous-response-retry"
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T15:54:03.543Z",
+      "event": "central_application_passed",
+      "checkedAt": "2026-09-17T15:54:03.542Z",
+      "checks": [
+        "complete-worker",
+        "canonical-host",
+        "closed-signup",
+        "browser-password-login",
+        "native-admin-assets",
+        "master-create-read",
+        "no-site-content-api",
+        "real-session-ticket",
+        "site-grant-denial",
+        "desktop-mobile",
+        "session-revocation",
+        "granted-site-chooser",
+        "site-search-empty",
+        "paused-site-disabled",
+        "directory-retry"
+      ],
+      "remoteDeployment": false
+    },
+    {
+      "loggedAt": "2026-09-17T15:54:36.540Z",
+      "event": "site_application_passed",
+      "checkedAt": "2026-09-17T15:54:36.539Z",
+      "remoteDeployment": false,
+      "checks": [
+        "complete-central-site-workers",
+        "native-assets",
+        "browser-central-password-login",
+        "central-chooser-click",
+        "real-ticket-post-handoff",
+        "two-host-only-cookies",
+        "native-site-admin-editors",
+        "same-id-concurrent-reads",
+        "site-isolated-create-update",
+        "no-site-password-login",
+        "desktop-mobile",
+        "live-grant-revocation",
+        "native-logout-revokes-session",
+        "revoked-grant-logout"
+      ],
+      "browserErrors": []
+    },
+    {
+      "loggedAt": "2026-09-17T15:54:39.735Z",
+      "event": "site_d1_workerd_isolation",
+      "commit": "6531a485af728c357e1ee5a2d8c018e6966b668c",
+      "ok": true,
+      "databases": 2,
+      "concurrentRequests": 40,
+      "elapsedMs": 1143,
+      "checks": [
+        "CRUD",
+        "same IDs",
+        "batch rollback",
+        "context guards",
+        "stale routes",
+        "streams",
+        "R2 prefixes",
+        "native R2 response metadata",
+        "cache keys",
+        "queue delivery and deduplication"
+      ],
+      "scope": "Cloudflare Builds workerd with local D1/R2/Queues; not deployed D1 or full Payload/admin acceptance"
+    },
+    {
+      "loggedAt": "2026-09-17T15:57:43.727Z",
+      "event": "site_data_workerd_rpc",
+      "ok": true,
+      "commit": "6531a485af728c357e1ee5a2d8c018e6966b668c",
+      "workers": 2,
+      "databases": 3,
+      "r2Buckets": 3,
+      "concurrentAssetCopies": 5,
+      "checks": [
+        "named read-only RPC",
+        "HTTP and publishing denied",
+        "live manager grant",
+        "forged destination denied",
+        "tenant-private master and asset isolation",
+        "global configuration to two sites",
+        "candidate persistence",
+        "binary asset transport and local media mapping",
+        "concurrent copy deduplication",
+        "withdrawal and retry",
+        "live revocation"
+      ],
+      "scope": "Cloudflare Builds native service bindings with minimal role schemas. Full independent Payload behavior has separate native integration tests; formal roles, UI and queue delivery are not deployed."
+    },
+    {
+      "loggedAt": "2026-09-17T15:57:43.919Z",
+      "event": "site_identity_workerd_rpc",
+      "ok": true,
+      "commit": "6531a485af728c357e1ee5a2d8c018e6966b668c",
+      "workers": 2,
+      "databases": 3,
+      "concurrentRedemptions": 20,
+      "concurrentSiteRequests": 20,
+      "checks": [
+        "named RPC capability",
+        "no RPC issuer",
+        "HTTP capability denied",
+        "POST handoff",
+        "Chromium form/CSP/cookie navigation",
+        "single-use ticket",
+        "host/origin binding",
+        "explicit local site ID mapping",
+        "credential-free projections",
+        "live role changes",
+        "immediate revocation",
+        "site logout",
+        "central logout",
+        "central outage fails closed",
+        "independent public response"
+      ],
+      "scope": "Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance"
+    },
+    {
+      "loggedAt": "2026-09-17T16:01:06.683Z",
+      "event": "p0_deployed_smoke_passed",
+      "commit": "6531a485af728c357e1ee5a2d8c018e6966b668c",
+      "at": "2026-09-17T16:01:06.682Z",
+      "scope": "Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending",
+      "concurrentReads": 40,
+      "concurrentPublicPages": 12,
+      "isolatesServingBothSites": 5,
+      "configuredIconViews": 4
+    },
+    {
+      "loggedAt": "2026-09-17T16:01:06.708Z",
+      "event": "p0_release_passed",
+      "commit": "6531a485af728c357e1ee5a2d8c018e6966b668c",
+      "worker": "payload-wnam-p0",
+      "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+    },
+    {
+      "loggedAt": "2026-09-17T16:01:18.370Z",
+      "event": "p1_preflight_passed",
+      "commit": "6531a485af728c357e1ee5a2d8c018e6966b668c",
+      "account": "d487cf34c606620b442632a72272014d",
+      "production": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+    },
+    {
+      "loggedAt": "2026-09-17T16:01:32.699Z",
+      "event": "p1_schema_ready",
+      "role": "central",
+      "operationId": "p1-central-schema-v2",
+      "digest": "a0e7820413a25bad42da857f7a60d96fb7f2997f8bf8f71e997d73e4eae97641",
+      "objects": 258,
+      "created": 3,
+      "upgradedFrom": "32d9ac67f25b2dec5326ed868a1e98c5b06e0de87d5312c3b69d8591507604a3"
+    },
+    {
+      "loggedAt": "2026-09-17T16:01:33.858Z",
+      "event": "p1_schema_ready",
+      "role": "site-a",
+      "operationId": "p1-site-a-schema-v1",
+      "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "objects": 504,
+      "created": 0,
+      "upgradedFrom": null
+    },
+    {
+      "loggedAt": "2026-09-17T16:01:35.261Z",
+      "event": "p1_schema_ready",
+      "role": "site-b",
+      "operationId": "p1-site-b-schema-v1",
+      "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "objects": 504,
+      "created": 0,
+      "upgradedFrom": null
+    },
+    {
+      "loggedAt": "2026-09-17T16:01:39.066Z",
+      "event": "p1_bootstrap_passed",
+      "commit": "6531a485af728c357e1ee5a2d8c018e6966b668c",
+      "checkedAt": "2026-09-17T16:01:39.063Z",
+      "schemas": [
+        {
+          "role": "central",
+          "operationId": "p1-central-schema-v2",
+          "digest": "a0e7820413a25bad42da857f7a60d96fb7f2997f8bf8f71e997d73e4eae97641",
+          "objects": 258,
+          "created": 3,
+          "upgradedFrom": "32d9ac67f25b2dec5326ed868a1e98c5b06e0de87d5312c3b69d8591507604a3"
+        },
+        {
+          "role": "site-a",
+          "operationId": "p1-site-a-schema-v1",
+          "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+          "objects": 504,
+          "created": 0,
+          "upgradedFrom": null
+        },
+        {
+          "role": "site-b",
+          "operationId": "p1-site-b-schema-v1",
+          "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+          "objects": 504,
+          "created": 0,
+          "upgradedFrom": null
+        }
+      ],
+      "siteIds": [
+        "p1-a",
+        "p1-b"
+      ],
+      "syntheticUserId": 7
+    },
+    {
+      "loggedAt": "2026-09-17T16:02:04.954Z",
+      "event": "p1_role_deployed",
+      "role": "central",
+      "worker": "payload-wnam-p1-central",
+      "deployment": "911c63ab-c069-4733-bb6f-2737ab1bb505",
+      "versions": [
+        {
+          "version_id": "cb762d92-a286-4e7f-b3b2-1102639b39aa",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T16:02:30.761Z",
+      "event": "p1_role_deployed",
+      "role": "site",
+      "worker": "payload-wnam-p1-sites",
+      "deployment": "c3a66f23-6d29-4372-93f9-c9542f7f0b75",
+      "versions": [
+        {
+          "version_id": "12232924-c144-4507-99fb-8316a9d49bf4",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T16:02:33.795Z",
+      "event": "p1_readiness",
+      "attempt": 1,
+      "ready": 1,
+      "statuses": [
+        {
+          "host": "p1-hub.beginos.org",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "host": "cms-site-p1-a.beginos.org",
+          "status": 303,
+          "ok": true
+        },
+        {
+          "host": "cms-site-p1-b.beginos.org",
+          "status": 303,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T16:02:38.910Z",
+      "event": "p1_readiness",
+      "attempt": 2,
+      "ready": 2,
+      "statuses": [
+        {
+          "host": "p1-hub.beginos.org",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "host": "cms-site-p1-a.beginos.org",
+          "status": 303,
+          "ok": true
+        },
+        {
+          "host": "cms-site-p1-b.beginos.org",
+          "status": 303,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T16:02:44.001Z",
+      "event": "p1_readiness",
+      "attempt": 3,
+      "ready": 3,
+      "statuses": [
+        {
+          "host": "p1-hub.beginos.org",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "host": "cms-site-p1-a.beginos.org",
+          "status": 303,
+          "ok": true
+        },
+        {
+          "host": "cms-site-p1-b.beginos.org",
+          "status": 303,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T16:02:51.334Z",
+      "event": "p1_remote_central_login_passed"
+    },
+    {
+      "loggedAt": "2026-09-17T16:03:04.292Z",
+      "event": "p1_remote_site_editor_passed",
+      "siteId": "p1-a"
+    },
+    {
+      "loggedAt": "2026-09-17T16:03:21.444Z",
+      "event": "p1_remote_site_editor_passed",
+      "siteId": "p1-b"
+    },
+    {
+      "loggedAt": "2026-09-17T16:03:30.498Z",
+      "event": "p1_lifecycle_step",
+      "siteId": "p1-a",
+      "step": "read-initial-state"
+    },
+    {
+      "loggedAt": "2026-09-17T16:03:32.230Z",
+      "event": "p1_lifecycle_step",
+      "siteId": "p1-a",
+      "step": "cancel-passed"
+    },
+    {
+      "loggedAt": "2026-09-17T16:03:33.469Z",
+      "event": "p1_lifecycle_step",
+      "siteId": "p1-a",
+      "step": "pause-response"
+    },
+    {
+      "loggedAt": "2026-09-17T16:03:36.765Z",
+      "event": "p1_lifecycle_step",
+      "siteId": "p1-a",
+      "step": "first-resume-passed"
+    },
+    {
+      "loggedAt": "2026-09-17T16:03:39.195Z",
+      "event": "p1_lifecycle_step",
+      "siteId": "p1-a",
+      "step": "ambiguous-retry-passed"
+    },
+    {
+      "loggedAt": "2026-09-17T16:03:41.113Z",
+      "event": "p1_lifecycle_browser_passed",
+      "siteId": "p1-a",
+      "fromVersion": 1,
+      "toVersion": 5,
+      "checks": [
+        "explicit-site-id",
+        "manager-ui",
+        "cancel",
+        "mobile",
+        "pause",
+        "idempotent-retry",
+        "stale-conflict",
+        "resume",
+        "ambiguous-response-retry",
+        "old-cookie-denied",
+        "other-site-unaffected"
+      ]
+    },
+    {
+      "loggedAt": "2026-09-17T16:03:55.652Z",
+      "event": "p1_remote_smoke_passed",
+      "checkedAt": "2026-09-17T16:03:55.646Z",
+      "remoteDeployment": true,
+      "checks": [
+        "real-dns-tls",
+        "independent-central-site-workers",
+        "real-d1-schemas",
+        "central-password-login",
+        "chooser-sso-two-sites",
+        "host-only-cookies",
+        "native-editors",
+        "same-id-20-concurrent-reads",
+        "isolated-create-update",
+        "site-password-denied",
+        "manager-pause-resume",
+        "ambiguous-lifecycle-retry",
+        "routing-version-cookie-revocation",
+        "live-grant-revocation",
+        "native-logout-central-revocation",
+        "desktop-mobile"
+      ],
+      "browserErrors": []
+    },
+    {
+      "loggedAt": "2026-09-17T16:03:56.403Z",
+      "event": "p1_release_passed",
+      "commit": "6531a485af728c357e1ee5a2d8c018e6966b668c",
+      "checkedAt": "2026-09-17T16:03:56.402Z",
+      "deployed": [
+        {
+          "role": "central",
+          "worker": "payload-wnam-p1-central",
+          "deployment": "911c63ab-c069-4733-bb6f-2737ab1bb505",
+          "versions": [
+            {
+              "version_id": "cb762d92-a286-4e7f-b3b2-1102639b39aa",
+              "percentage": 100
+            }
+          ]
+        },
+        {
+          "role": "site",
+          "worker": "payload-wnam-p1-sites",
+          "deployment": "c3a66f23-6d29-4372-93f9-c9542f7f0b75",
+          "versions": [
+            {
+              "version_id": "12232924-c144-4507-99fb-8316a9d49bf4",
+              "percentage": 100
+            }
+          ]
+        }
+      ],
+      "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+    }
+  ],
+  "finalVerification": {
+    "checkedAt": "2026-09-17T16:05:10.392Z",
+    "build": {
+      "id": "3f2850e8-fda6-475a-bed6-fd7cd7a6c9d1",
+      "status": "stopped",
+      "outcome": "success",
+      "commit": "6531a485af728c357e1ee5a2d8c018e6966b668c"
+    },
+    "sites": [
+      {
+        "site_id": "p1-a",
+        "routing_version": 5,
+        "migration_state": "active",
+        "schema_version": 1,
+        "production_enabled": 0
+      },
+      {
+        "site_id": "p1-b",
+        "routing_version": 1,
+        "migration_state": "active",
+        "schema_version": 1,
+        "production_enabled": 0
+      }
+    ],
+    "grants": [
+      {
+        "site_id": "p1-a",
+        "user_id": "7",
+        "role": "manager"
+      },
+      {
+        "site_id": "p1-b",
+        "user_id": "7",
+        "role": "manager"
+      }
+    ],
+    "sessions": [
+      {
+        "sessions": 0,
+        "tickets": 3
+      }
+    ],
+    "operations": [
+      {
+        "site_id": "p1-a",
+        "actor_user_id": "7",
+        "action": "pause",
+        "expected_version": 1,
+        "routing_version": 2,
+        "applied_at": "2026-09-17T16:03:33.132Z"
+      },
+      {
+        "site_id": "p1-a",
+        "actor_user_id": "7",
+        "action": "resume",
+        "expected_version": 2,
+        "routing_version": 3,
+        "applied_at": "2026-09-17T16:03:35.603Z"
+      },
+      {
+        "site_id": "p1-a",
+        "actor_user_id": "7",
+        "action": "pause",
+        "expected_version": 3,
+        "routing_version": 4,
+        "applied_at": "2026-09-17T16:03:37.673Z"
+      },
+      {
+        "site_id": "p1-a",
+        "actor_user_id": "7",
+        "action": "resume",
+        "expected_version": 4,
+        "routing_version": 5,
+        "applied_at": "2026-09-17T16:03:39.482Z"
+      }
+    ],
+    "migrations": [
+      {
+        "operation_id": "p1-central-schema-v2",
+        "from_digest": "32d9ac67f25b2dec5326ed868a1e98c5b06e0de87d5312c3b69d8591507604a3",
+        "to_digest": "a0e7820413a25bad42da857f7a60d96fb7f2997f8bf8f71e997d73e4eae97641",
+        "applied_at": "2026-09-17T16:01:31.285Z"
+      }
+    ],
+    "receipt": [
+      {
+        "role": "central",
+        "digest": "a0e7820413a25bad42da857f7a60d96fb7f2997f8bf8f71e997d73e4eae97641",
+        "operation_id": "p1-central-schema-v2",
+        "completed": 1
+      }
+    ],
+    "workers": [
+      {
+        "name": "payload-wnam",
+        "deployment": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+        "versions": [
+          {
+            "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+            "percentage": 100
+          }
+        ]
+      },
+      {
+        "name": "payload-wnam-p0",
+        "deployment": "22e13eb6-bfea-42f1-9ec5-c036378d785b",
+        "versions": [
+          {
+            "version_id": "5829c7c1-20b4-4582-a174-1b63a96a56a5",
+            "percentage": 100
+          }
+        ]
+      },
+      {
+        "name": "payload-wnam-p1-central",
+        "deployment": "911c63ab-c069-4733-bb6f-2737ab1bb505",
+        "versions": [
+          {
+            "version_id": "cb762d92-a286-4e7f-b3b2-1102639b39aa",
+            "percentage": 100
+          }
+        ]
+      },
+      {
+        "name": "payload-wnam-p1-sites",
+        "deployment": "c3a66f23-6d29-4372-93f9-c9542f7f0b75",
+        "versions": [
+          {
+            "version_id": "12232924-c144-4507-99fb-8316a9d49bf4",
+            "percentage": 100
+          }
+        ]
+      }
+    ],
+    "bindings": [
+      {
+        "name": "payload-wnam-p1-central",
+        "subdomain": {
+          "enabled": false,
+          "previews_enabled": false
+        },
+        "bindings": [
+          {
+            "name": "ASSETS",
+            "type": "assets"
+          },
+          {
+            "database_id": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d",
+            "id": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d",
+            "name": "CENTRAL_D1",
+            "type": "d1"
+          },
+          {
+            "bucket_name": "payload-wnam-p1-central-media",
+            "name": "CENTRAL_MEDIA",
+            "type": "r2_bucket"
+          },
+          {
+            "name": "CENTRAL_ORIGIN",
+            "text": "https://p1-hub.beginos.org",
+            "type": "plain_text"
+          },
+          {
+            "bucket_name": "payload-wnam-p1-master-archive",
+            "name": "MASTER_ASSET_ARCHIVE",
+            "type": "r2_bucket"
+          },
+          {
+            "name": "PAYLOAD_SECRET",
+            "type": "secret_text"
+          }
+        ]
+      },
+      {
+        "name": "payload-wnam-p1-sites",
+        "subdomain": {
+          "enabled": false,
+          "previews_enabled": false
+        },
+        "bindings": [
+          {
+            "name": "ASSETS",
+            "type": "assets"
+          },
+          {
+            "name": "CENTRAL_ORIGIN",
+            "text": "https://p1-hub.beginos.org",
+            "type": "plain_text"
+          },
+          {
+            "entrypoint": "SiteDataService",
+            "environment": "production",
+            "name": "DATA",
+            "service": "payload-wnam-p1-central",
+            "type": "service"
+          },
+          {
+            "entrypoint": "SiteIdentityService",
+            "environment": "production",
+            "name": "IDENTITY",
+            "service": "payload-wnam-p1-central",
+            "type": "service"
+          },
+          {
+            "name": "PAYLOAD_SECRET",
+            "type": "secret_text"
+          },
+          {
+            "entrypoint": "SiteRoutingService",
+            "environment": "production",
+            "name": "ROUTING",
+            "service": "payload-wnam-p1-central",
+            "type": "service"
+          },
+          {
+            "database_id": "6daecf80-30f5-4010-add6-d67bb556cc42",
+            "id": "6daecf80-30f5-4010-add6-d67bb556cc42",
+            "name": "SITE_D1_A",
+            "type": "d1"
+          },
+          {
+            "database_id": "b2a1a340-681a-4581-8817-b2f9629a6ed4",
+            "id": "b2a1a340-681a-4581-8817-b2f9629a6ed4",
+            "name": "SITE_D1_B",
+            "type": "d1"
+          },
+          {
+            "bucket_name": "payload-wnam-p1-site-private",
+            "name": "SITE_PRIVATE",
+            "type": "r2_bucket"
+          },
+          {
+            "bucket_name": "payload-wnam-p1-site-public",
+            "name": "SITE_PUBLIC",
+            "type": "r2_bucket"
+          },
+          {
+            "name": "SITE_ROUTES",
+            "text": "[{\"siteId\":\"p1-a\",\"localSiteId\":37,\"bindingName\":\"SITE_D1_A\",\"databaseId\":\"6daecf80-30f5-4010-add6-d67bb556cc42\",\"schemaVersion\":1},{\"siteId\":\"p1-b\",\"localSiteId\":82,\"bindingName\":\"SITE_D1_B\",\"databaseId\":\"b2a1a340-681a-4581-8817-b2f9629a6ed4\",\"schemaVersion\":1}]",
+            "type": "plain_text"
+          },
+          {
+            "name": "WORKER_GROUP",
+            "text": "p1-group-1",
+            "type": "plain_text"
+          }
+        ]
+      }
+    ],
+    "domains": [
+      {
+        "id": "c167e7cd229ceeee3554b16fb07d1366d3cd2880",
+        "hostname": "hub.beginos.org",
+        "service": "payload-wnam",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002"
+      },
+      {
+        "id": "5d19eb5020f84f6828256c6be39b9a589996b35b",
+        "hostname": "p1-hub.beginos.org",
+        "service": "payload-wnam-p1-central",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002"
+      },
+      {
+        "id": "2fe6d57c5fb83cbe583b10dca688bd3ca4b1eac4",
+        "hostname": "cms-site-p1-a.beginos.org",
+        "service": "payload-wnam-p1-sites",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002"
+      },
+      {
+        "id": "19bf0f14464d689c226c4873bbad99c09fd93135",
+        "hostname": "cms-site-p1-b.beginos.org",
+        "service": "payload-wnam-p1-sites",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002"
+      }
+    ],
+    "tickets": [
+      {
+        "tickets": 3,
+        "consumed": 3,
+        "redeemable": 0
+      }
+    ],
+    "ticketSummaryRetrievedAfterMainVerification": true
+  },
+  "visualReview": {
+    "source": "Cloudflare Chromium real P1 chooser region, 390px viewport",
+    "path": "site-per-d1-p1-lifecycle-mobile.jpg",
+    "result": "Reviewed mobile confirmation: readable target/effect, native actions, no horizontal overflow; no personal profile or credential values captured.",
+    "sha256": "23f4403f27edebdc886646af5f7fe86dfc947da75b2185673d033463cc63f63c",
+    "bytes": 15645
+  },
+  "remaining": [
+    "MCP with explicit siteId",
+    "Generic provisioning and operational commands",
+    "Master review/publish UI and queue/outbox delivery",
+    "Email and real staff handoff",
+    "P2–P5 execution and full plan acceptance"
+  ]
+}
