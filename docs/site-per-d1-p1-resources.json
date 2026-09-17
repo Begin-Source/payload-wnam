@@ -1,7 +1,7 @@
 {
   "accountId": "d487cf34c606620b442632a72272014d",
-  "verifiedAt": "2026-09-17T13:35:00Z",
-  "status": "empty-resources-created-not-deployed",
+  "verifiedAt": "2026-09-17T14:45:29.219Z",
+  "status": "remote-role-deployment-validated-P1-overall-incomplete",
   "central": {
     "account_id": "d487cf34c606620b442632a72272014d",
     "main": "worker.ts",
@@ -119,5 +119,11 @@
     "customDomains": []
   },
   "productionWorker": "payload-wnam",
-  "productionDeployment": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+  "productionDeployment": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+  "workerTags": {
+    "payload-wnam-p1-central": "f1c8ec1e73c84600812af6794dea8a8c",
+    "payload-wnam-p1-sites": "e73dabad443148d1a6cede5c19ee203e"
+  },
+  "firstDeploymentEvidence": "site-per-d1-p1-first-deployment.json",
+  "validationEvidence": "site-per-d1-p1-remote-validation.json"
 }

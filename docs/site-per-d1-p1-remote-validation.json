@@ -1,0 +1,634 @@
+{
+  "status": "remote-role-deployment-validated-P1-overall-incomplete",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "repository": "Begin-Source/payload-wnam",
+  "history": [
+    {
+      "build": "a7383875-9739-4e7f-afd5-c73780ba10d4",
+      "commit": "3cfdb98e8d3adacb0af14abd4ec1ada6ae75e61b",
+      "outcome": "fail",
+      "phase": "cloud-unit-integration",
+      "cause": "Miniflare synchronous message bridge assertion in existing API schema setup",
+      "remoteP1Mutations": false
+    },
+    {
+      "build": "02b2371d-5aef-4af2-b549-f29e7c5283ca",
+      "commit": "3cfdb98e8d3adacb0af14abd4ec1ada6ae75e61b",
+      "outcome": "fail",
+      "phase": "p1-preflight",
+      "cause": "Build token DNS record read returned 403",
+      "unitTests": 581,
+      "existingBrowserChecks": 14,
+      "p0SmokePassed": true,
+      "remoteP1Mutations": false
+    },
+    {
+      "build": "9e1816d1-eb3e-44c9-b824-3a8092662598",
+      "commit": "3cfdb98e8d3adacb0af14abd4ec1ada6ae75e61b",
+      "outcome": "cancelled",
+      "cause": "Stopped before deployment to complete migration-owned state initialization",
+      "remoteP1Mutations": false
+    },
+    {
+      "build": "2d82c794-d65a-418b-a7ec-bd38c27512cb",
+      "commit": "d02449ad0771fb2d32aafeccd90851848ce7f599",
+      "outcome": "fail",
+      "phase": "post-deployment-HTTPS-readiness",
+      "unitTests": 583,
+      "existingBrowserChecks": 14,
+      "p0SmokePassed": true,
+      "remoteP1Mutations": true,
+      "bootstrapPassed": true,
+      "centralRoleDeployed": true,
+      "siteRoleDeployed": true,
+      "remoteBrowserSmokeStarted": false,
+      "cause": "Central returned 200; both site hosts had network exceptions without HTTP status for all 36 readiness rounds. Original script did not preserve error causes. External browser subsequently reached both domains; precise CI network cause remains unverified."
+    }
+  ],
+  "tokenPermissionChange": {
+    "id": "40277fab5035586da6a0dad096339ec4",
+    "name": "payload-wnam",
+    "modifiedOn": "2026-09-17T14:00:43Z",
+    "policyCount": 4,
+    "addedPolicy": {
+      "id": "4b9ac9619b394eeba3b86422f576460b",
+      "effect": "allow",
+      "resources": {
+        "com.cloudflare.api.account.zone.8d8fd673a6aeacf85360bc9e397d3002": "*"
+      },
+      "permission_groups": [
+        {
+          "id": "82e64a83756745bbbb1c9c2701bf816b",
+          "name": "DNS Read"
+        }
+      ]
+    }
+  },
+  "localExecution": {
+    "dependencyInstall": false,
+    "applicationBuild": false,
+    "tests": false
+  },
+  "build": {
+    "id": "caeeb1ff-e7b9-4976-9707-d46c1bdcbd7b",
+    "status": "stopped",
+    "outcome": "success",
+    "createdAt": "2026-09-17T14:25:40.602Z",
+    "stoppedAt": "2026-09-17T14:44:24.283Z",
+    "commit": "09c2a70bdbe985bda5864b2186023a972b4dc4ff"
+  },
+  "checks": {
+    "unitIntegrationTests": 583,
+    "testFiles": 116,
+    "existingBrowserChecks": 14,
+    "completeCentralAndSiteApplications": true,
+    "remoteDNSAndTLS": true,
+    "remoteConcurrentSameIDReads": 20,
+    "remoteBrowserErrors": [],
+    "remoteBootstrapRetryCreatedObjects": [
+      0,
+      0,
+      0
+    ]
+  },
+  "events": [
+    {
+      "timestamp": 1789655456640,
+      "event": "role_build_passed",
+      "role": "central"
+    },
+    {
+      "timestamp": 1789655595443,
+      "event": "role_build_passed",
+      "role": "site"
+    },
+    {
+      "timestamp": 1789655627820,
+      "event": "central_application_passed",
+      "checkedAt": "2026-09-17T14:33:47.819Z",
+      "checks": [
+        "complete-worker",
+        "canonical-host",
+        "closed-signup",
+        "browser-password-login",
+        "native-admin-assets",
+        "master-create-read",
+        "no-site-content-api",
+        "real-session-ticket",
+        "site-grant-denial",
+        "desktop-mobile",
+        "session-revocation",
+        "granted-site-chooser",
+        "site-search-empty",
+        "paused-site-disabled",
+        "directory-retry"
+      ],
+      "remoteDeployment": false
+    },
+    {
+      "timestamp": 1789655660111,
+      "event": "site_application_passed",
+      "checkedAt": "2026-09-17T14:34:20.110Z",
+      "remoteDeployment": false,
+      "checks": [
+        "complete-central-site-workers",
+        "native-assets",
+        "browser-central-password-login",
+        "central-chooser-click",
+        "real-ticket-post-handoff",
+        "two-host-only-cookies",
+        "native-site-admin-editors",
+        "same-id-concurrent-reads",
+        "site-isolated-create-update",
+        "no-site-password-login",
+        "desktop-mobile",
+        "live-grant-revocation",
+        "native-logout-revokes-session",
+        "revoked-grant-logout"
+      ],
+      "browserErrors": []
+    },
+    {
+      "timestamp": 1789656129643,
+      "event": "p0_deployed_smoke_passed",
+      "commit": "09c2a70bdbe985bda5864b2186023a972b4dc4ff",
+      "at": "2026-09-17T14:42:09.642Z",
+      "scope": "Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending",
+      "concurrentReads": 40,
+      "concurrentPublicPages": 12,
+      "isolatesServingBothSites": 6,
+      "configuredIconViews": 4
+    },
+    {
+      "timestamp": 1789656129668,
+      "event": "p0_release_passed",
+      "commit": "09c2a70bdbe985bda5864b2186023a972b4dc4ff",
+      "worker": "payload-wnam-p0",
+      "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+    },
+    {
+      "timestamp": 1789656135933,
+      "event": "p1_preflight_passed",
+      "commit": "09c2a70bdbe985bda5864b2186023a972b4dc4ff",
+      "account": "d487cf34c606620b442632a72272014d",
+      "production": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+    },
+    {
+      "timestamp": 1789656147723,
+      "event": "p1_schema_ready",
+      "role": "central",
+      "operationId": "p1-central-schema-v1",
+      "digest": "32d9ac67f25b2dec5326ed868a1e98c5b06e0de87d5312c3b69d8591507604a3",
+      "objects": 255,
+      "created": 0
+    },
+    {
+      "timestamp": 1789656148642,
+      "event": "p1_schema_ready",
+      "role": "site-a",
+      "operationId": "p1-site-a-schema-v1",
+      "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "objects": 504,
+      "created": 0
+    },
+    {
+      "timestamp": 1789656150160,
+      "event": "p1_schema_ready",
+      "role": "site-b",
+      "operationId": "p1-site-b-schema-v1",
+      "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "objects": 504,
+      "created": 0
+    },
+    {
+      "timestamp": 1789656153163,
+      "event": "p1_bootstrap_passed",
+      "commit": "09c2a70bdbe985bda5864b2186023a972b4dc4ff",
+      "checkedAt": "2026-09-17T14:42:33.163Z",
+      "schemas": [
+        {
+          "role": "central",
+          "operationId": "p1-central-schema-v1",
+          "digest": "32d9ac67f25b2dec5326ed868a1e98c5b06e0de87d5312c3b69d8591507604a3",
+          "objects": 255,
+          "created": 0
+        },
+        {
+          "role": "site-a",
+          "operationId": "p1-site-a-schema-v1",
+          "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+          "objects": 504,
+          "created": 0
+        },
+        {
+          "role": "site-b",
+          "operationId": "p1-site-b-schema-v1",
+          "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+          "objects": 504,
+          "created": 0
+        }
+      ],
+      "siteIds": [
+        "p1-a",
+        "p1-b"
+      ],
+      "syntheticUserId": 7
+    },
+    {
+      "timestamp": 1789656176663,
+      "event": "p1_role_deployed",
+      "role": "central",
+      "worker": "payload-wnam-p1-central",
+      "deployment": "33a50a51-39ee-4246-b528-1996e51b897b",
+      "versions": [
+        {
+          "version_id": "cba2ccc2-56b8-46dc-b06a-be2e815d68e2",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "timestamp": 1789656201478,
+      "event": "p1_role_deployed",
+      "role": "site",
+      "worker": "payload-wnam-p1-sites",
+      "deployment": "c43ca5c3-ce3f-492e-851c-84b6b02f15a2",
+      "versions": [
+        {
+          "version_id": "8e1c5fea-e73b-42d8-abac-c31fee8b2087",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "timestamp": 1789656204158,
+      "event": "p1_readiness",
+      "attempt": 1,
+      "ready": 1,
+      "statuses": [
+        {
+          "host": "p1-hub.beginos.org",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "host": "cms-site-p1-a.beginos.org",
+          "status": 303,
+          "ok": true
+        },
+        {
+          "host": "cms-site-p1-b.beginos.org",
+          "status": 303,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "timestamp": 1789656210493,
+      "event": "p1_readiness",
+      "attempt": 2,
+      "ready": 2,
+      "statuses": [
+        {
+          "host": "p1-hub.beginos.org",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "host": "cms-site-p1-a.beginos.org",
+          "status": 303,
+          "ok": true
+        },
+        {
+          "host": "cms-site-p1-b.beginos.org",
+          "status": 303,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "timestamp": 1789656216595,
+      "event": "p1_readiness",
+      "attempt": 3,
+      "ready": 3,
+      "statuses": [
+        {
+          "host": "p1-hub.beginos.org",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "host": "cms-site-p1-a.beginos.org",
+          "status": 303,
+          "ok": true
+        },
+        {
+          "host": "cms-site-p1-b.beginos.org",
+          "status": 303,
+          "ok": true
+        }
+      ]
+    },
+    {
+      "timestamp": 1789656220946,
+      "event": "p1_remote_central_login_passed"
+    },
+    {
+      "timestamp": 1789656229897,
+      "event": "p1_remote_site_editor_passed",
+      "siteId": "p1-a"
+    },
+    {
+      "timestamp": 1789656245057,
+      "event": "p1_remote_site_editor_passed",
+      "siteId": "p1-b"
+    },
+    {
+      "timestamp": 1789656256503,
+      "event": "p1_remote_smoke_passed",
+      "checkedAt": "2026-09-17T14:44:16.502Z",
+      "remoteDeployment": true,
+      "checks": [
+        "real-dns-tls",
+        "independent-central-site-workers",
+        "real-d1-schemas",
+        "central-password-login",
+        "chooser-sso-two-sites",
+        "host-only-cookies",
+        "native-editors",
+        "same-id-20-concurrent-reads",
+        "isolated-create-update",
+        "site-password-denied",
+        "live-grant-revocation",
+        "native-logout-central-revocation",
+        "desktop-mobile"
+      ],
+      "browserErrors": []
+    },
+    {
+      "timestamp": 1789656257009,
+      "event": "p1_release_passed",
+      "commit": "09c2a70bdbe985bda5864b2186023a972b4dc4ff",
+      "checkedAt": "2026-09-17T14:44:17.006Z",
+      "deployed": [
+        {
+          "role": "central",
+          "worker": "payload-wnam-p1-central",
+          "deployment": "33a50a51-39ee-4246-b528-1996e51b897b",
+          "versions": [
+            {
+              "version_id": "cba2ccc2-56b8-46dc-b06a-be2e815d68e2",
+              "percentage": 100
+            }
+          ]
+        },
+        {
+          "role": "site",
+          "worker": "payload-wnam-p1-sites",
+          "deployment": "c43ca5c3-ce3f-492e-851c-84b6b02f15a2",
+          "versions": [
+            {
+              "version_id": "8e1c5fea-e73b-42d8-abac-c31fee8b2087",
+              "percentage": 100
+            }
+          ]
+        }
+      ],
+      "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+    }
+  ],
+  "remoteVerification": {
+    "checkedAt": "2026-09-17T14:45:29.219Z",
+    "workers": [
+      {
+        "name": "payload-wnam",
+        "deployment": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+        "versions": [
+          {
+            "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+            "percentage": 100
+          }
+        ]
+      },
+      {
+        "name": "payload-wnam-p0",
+        "deployment": "1fb319a0-a2d7-4f34-a368-6bd73f9e7808",
+        "versions": [
+          {
+            "version_id": "7fe1ddb9-6977-4677-83df-aa8e5bd1401d",
+            "percentage": 100
+          }
+        ]
+      },
+      {
+        "name": "payload-wnam-p1-central",
+        "deployment": "33a50a51-39ee-4246-b528-1996e51b897b",
+        "versions": [
+          {
+            "version_id": "cba2ccc2-56b8-46dc-b06a-be2e815d68e2",
+            "percentage": 100
+          }
+        ],
+        "bindings": [
+          {
+            "name": "ASSETS",
+            "type": "assets"
+          },
+          {
+            "name": "CENTRAL_D1",
+            "type": "d1",
+            "id": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d"
+          },
+          {
+            "name": "CENTRAL_MEDIA",
+            "type": "r2_bucket",
+            "bucket_name": "payload-wnam-p1-central-media"
+          },
+          {
+            "name": "CENTRAL_ORIGIN",
+            "type": "plain_text"
+          },
+          {
+            "name": "MASTER_ASSET_ARCHIVE",
+            "type": "r2_bucket",
+            "bucket_name": "payload-wnam-p1-master-archive"
+          },
+          {
+            "name": "PAYLOAD_SECRET",
+            "type": "secret_text"
+          }
+        ],
+        "subdomain": {
+          "enabled": false,
+          "previews_enabled": false
+        }
+      },
+      {
+        "name": "payload-wnam-p1-sites",
+        "deployment": "c43ca5c3-ce3f-492e-851c-84b6b02f15a2",
+        "versions": [
+          {
+            "version_id": "8e1c5fea-e73b-42d8-abac-c31fee8b2087",
+            "percentage": 100
+          }
+        ],
+        "bindings": [
+          {
+            "name": "ASSETS",
+            "type": "assets"
+          },
+          {
+            "name": "CENTRAL_ORIGIN",
+            "type": "plain_text"
+          },
+          {
+            "name": "DATA",
+            "type": "service",
+            "service": "payload-wnam-p1-central",
+            "entrypoint": "SiteDataService"
+          },
+          {
+            "name": "IDENTITY",
+            "type": "service",
+            "service": "payload-wnam-p1-central",
+            "entrypoint": "SiteIdentityService"
+          },
+          {
+            "name": "PAYLOAD_SECRET",
+            "type": "secret_text"
+          },
+          {
+            "name": "ROUTING",
+            "type": "service",
+            "service": "payload-wnam-p1-central",
+            "entrypoint": "SiteRoutingService"
+          },
+          {
+            "name": "SITE_D1_A",
+            "type": "d1",
+            "id": "6daecf80-30f5-4010-add6-d67bb556cc42"
+          },
+          {
+            "name": "SITE_D1_B",
+            "type": "d1",
+            "id": "b2a1a340-681a-4581-8817-b2f9629a6ed4"
+          },
+          {
+            "name": "SITE_PRIVATE",
+            "type": "r2_bucket",
+            "bucket_name": "payload-wnam-p1-site-private"
+          },
+          {
+            "name": "SITE_PUBLIC",
+            "type": "r2_bucket",
+            "bucket_name": "payload-wnam-p1-site-public"
+          },
+          {
+            "name": "SITE_ROUTES",
+            "type": "plain_text"
+          },
+          {
+            "name": "WORKER_GROUP",
+            "type": "plain_text"
+          }
+        ],
+        "subdomain": {
+          "enabled": false,
+          "previews_enabled": false
+        }
+      }
+    ],
+    "domains": [
+      {
+        "id": "c167e7cd229ceeee3554b16fb07d1366d3cd2880",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "hub.beginos.org",
+        "service": "payload-wnam",
+        "environment": "production",
+        "cert_id": "0c568e5e-3094-42f0-870d-330a748f905d",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "5d19eb5020f84f6828256c6be39b9a589996b35b",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "p1-hub.beginos.org",
+        "service": "payload-wnam-p1-central",
+        "environment": "production",
+        "cert_id": "f1ac56f1-da12-4131-aefc-0570cfc0fce0",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "2fe6d57c5fb83cbe583b10dca688bd3ca4b1eac4",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "cms-site-p1-a.beginos.org",
+        "service": "payload-wnam-p1-sites",
+        "environment": "production",
+        "cert_id": "2d08cd26-63ab-410a-b2da-654f662ee0d4",
+        "previews_enabled": false,
+        "enabled": true
+      },
+      {
+        "id": "19bf0f14464d689c226c4873bbad99c09fd93135",
+        "zone_id": "8d8fd673a6aeacf85360bc9e397d3002",
+        "zone_name": "beginos.org",
+        "hostname": "cms-site-p1-b.beginos.org",
+        "service": "payload-wnam-p1-sites",
+        "environment": "production",
+        "cert_id": "4fcc1bcd-d7a4-42db-8e01-9644c1c9c08e",
+        "previews_enabled": false,
+        "enabled": true
+      }
+    ],
+    "grants": [
+      {
+        "site_id": "p1-a",
+        "user_id": "7",
+        "role": "editor"
+      },
+      {
+        "site_id": "p1-b",
+        "user_id": "7",
+        "role": "editor"
+      }
+    ],
+    "siteSessions": [
+      {
+        "count": 0
+      }
+    ],
+    "categoryA": [
+      {
+        "id": 990001,
+        "name": "Changed only P1 A",
+        "slug": "p1-remote-isolation-probe"
+      }
+    ],
+    "categoryB": [
+      {
+        "id": 990001,
+        "name": "Remote site p1-b",
+        "slug": "p1-remote-isolation-probe"
+      }
+    ]
+  },
+  "remaining": [
+    "P1 generic provision/lifecycle/MCP APIs",
+    "P1 master/config/asset delivery and operational UI",
+    "P1 real email delivery and remaining asset formats",
+    "P2 durable production steps, quotas, scheduler, outbox and publishing",
+    "P3 public routing/cache, summaries, retention and monitoring",
+    "P4 real site migration and 72-hour observation",
+    "P5 rollout/capacity/real vendor acceptance and final deliverables"
+  ],
+  "evidenceLimits": [
+    "Remote smoke covers independent admin authentication and category isolation; it does not prove production content migration or full pipeline completion.",
+    "Remote DATA service binding identity is verified; master/config/asset business flows still have separate cloud fixtures and await full remote UI/delivery acceptance.",
+    "Initial readiness failure had no error causes preserved. Later same-origin real TLS requests succeeded; precise earlier CI network cause remains unproven.",
+    "Dedicated P1 synthetic account only; no human access handover or real email delivery has been completed."
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "checkedAt": "2026-09-17T14:26:41.479Z",
+  "workers": [
+    {
+      "id": "payload-wnam-p1-central",
+      "tag": "f1c8ec1e73c84600812af6794dea8a8c"
+    },
+    {
+      "id": "payload-wnam-p1-sites",
+      "tag": "e73dabad443148d1a6cede5c19ee203e"
+    }
+  ],
+  "schemas": [
+    {
+      "id": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d",
+      "name": "payload-wnam-p1-central",
+      "read_replication": {
+        "mode": "disabled"
+      },
+      "receipt": [
+        {
+          "role": "central",
+          "digest": "32d9ac67f25b2dec5326ed868a1e98c5b06e0de87d5312c3b69d8591507604a3",
+          "operation_id": "p1-central-schema-v1",
+          "completed": 1
+        }
+      ]
+    },
+    {
+      "id": "6daecf80-30f5-4010-add6-d67bb556cc42",
+      "name": "payload-wnam-p1-a",
+      "read_replication": {
+        "mode": "disabled"
+      },
+      "receipt": [
+        {
+          "role": "site-a",
+          "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+          "operation_id": "p1-site-a-schema-v1",
+          "completed": 1
+        }
+      ]
+    },
+    {
+      "id": "b2a1a340-681a-4581-8817-b2f9629a6ed4",
+      "name": "payload-wnam-p1-b",
+      "read_replication": {
+        "mode": "disabled"
+      },
+      "receipt": [
+        {
+          "role": "site-b",
+          "digest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+          "operation_id": "p1-site-b-schema-v1",
+          "completed": 1
+        }
+      ]
+    }
+  ],
+  "production": {
+    "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+    "versions": [
+      {
+        "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+        "percentage": 100
+      }
+    ]
+  },
+  "acceptance": "not-accepted-HTTPS-readiness-failed-before-browser-smoke",
+  "build": "2d82c794-d65a-418b-a7ec-bd38c27512cb",
+  "commit": "d02449ad0771fb2d32aafeccd90851848ce7f599"
+}
