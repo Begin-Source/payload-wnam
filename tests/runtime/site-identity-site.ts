@@ -11,7 +11,7 @@ export default {
     if (url.hostname === 'public.example') return new Response('Public read independent of central')
     const siteId = url.hostname === 'cms-site-a.beginos.org' ? 'a' : url.hostname === 'cms-site-b.beginos.org' ? 'b' : null
     if (!siteId) return new Response('Unknown host', { status: 421 })
-    return withSiteContext({ siteId, binding: siteId === 'a' ? env.SITE_A : env.SITE_B,
+    return withSiteContext({ siteId, localSiteId: siteId === 'a' ? 37 : 82, binding: siteId === 'a' ? env.SITE_A : env.SITE_B,
       identity: null, routingVersion: 1, currentRoutingVersion: () => 1, requestHost: url.hostname }, async () => {
       const response = await siteSessionGateway(request, env.IDENTITY)
       if (response) return response

@@ -1,5 +1,5 @@
 import type { Access, AuthStrategy, CollectionConfig, SanitizedConfig, TypedUser } from 'payload'
-import { requireSiteContext } from './context'
+import { requireLocalSiteId, requireSiteContext } from './context'
 import { assertAdminHost } from '../site-control/registry'
 import { SITE_SESSION_COOKIE, type SitePrincipal, type SiteRole } from '../site-control/sso'
 
@@ -35,8 +35,10 @@ export function centralSiteStrategy(options: {
       const host = context.requestHost ?? ''
       assertAdminHost(context.siteId, host)
       const principal = await options.authenticateSession(session, context.siteId, host)
-      if (principal.siteId !== context.siteId || principal.routingVersion !== context.routingVersion) throw new Error('Identity routing mismatch')
+      if (principal.siteId !== context.siteId || principal.routingVersion !== context.routingVersion ||
+        principal.localSiteId !== requireLocalSiteId()) throw new Error('Identity routing mismatch')
       const projection = await options.loadProjection(principal)
+      requireSiteContext()
       if (!projection || projection.centralUserId !== principal.userId || !Number.isSafeInteger(projection.id) || projection.id < 1) {
         throw new Error('Site identity projection missing or invalid')
       }
@@ -57,12 +59,23 @@ export function sitePermission(permission: 'read' | 'write' | 'publish' | 'manag
     publish: ['publisher','manager'], manage: ['manager'],
   }
   return ({ req }) => {
-    if (!req.user) return false
-    const context = requireSiteContext()
-    const user = req.user as unknown as AuthenticatedSiteUser
-    return user.collection === 'users' && user._strategy === 'central-site-session' &&
-      user.siteId === context.siteId && context.requestHost === `cms-site-${context.siteId}.beginos.org` && roles[permission].includes(user.siteRole)
+    const user = authenticatedSiteUser(req.user)
+    return user !== null && roles[permission].includes(user.siteRole)
   }
+}
+
+/** Recognize only our live strategy in its trusted admin context. Legacy roles
+ * and tenant membership never grant permissions in an isolated site.
+ */
+export function authenticatedSiteUser(value: unknown): AuthenticatedSiteUser | null {
+  if (!value || typeof value !== 'object') return null
+  const user = value as AuthenticatedSiteUser
+  if (user.collection !== 'users' || user._strategy !== 'central-site-session') return null
+  const context = requireSiteContext()
+  return user.siteId === context.siteId && context.requestHost === `cms-site-${context.siteId}.beginos.org` &&
+    Number.isSafeInteger(user.id) && user.id > 0 && typeof user.centralUserId === 'string' &&
+    /^[1-9][0-9]*$/.test(user.centralUserId) && Number.isSafeInteger(Number(user.centralUserId)) &&
+    ['viewer','editor','publisher','manager'].includes(user.siteRole) ? user : null
 }
 
 /** Site-only identity relation target. Central provisioning/sync owns writes. */

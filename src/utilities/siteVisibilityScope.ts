@@ -4,6 +4,16 @@ import { isUsersCollection } from '@/utilities/announcementAccess'
 import { userHasUnscopedAdminAccess } from '@/utilities/superAdmin'
 import { userIdFromRelation } from '@/utilities/teamsUserScope'
 import { userHasRole, userHasTenantGeneralManagerRole } from '@/utilities/userRoles'
+import { optionalSiteContext, requireLocalSiteId } from '@/site-runtime/context'
+import { authenticatedSiteUser } from '@/site-runtime/siteIdentity'
+
+function isolatedVisibleSite(req: PayloadRequest): number | false | undefined {
+  const context = optionalSiteContext()
+  const isSiteIdentity = req.user && '_strategy' in req.user && req.user._strategy === 'central-site-session'
+  if (context?.localSiteId === undefined && !isSiteIdentity) return undefined
+  const id = requireLocalSiteId()
+  return authenticatedSiteUser(req.user) ? id : false
+}
 
 export async function teamLeadRelatedCreatorIds(
   payload: Payload,
@@ -39,6 +49,8 @@ export async function teamLeadRelatedCreatorIds(
  * MCP / non-`users` principals: `true` (tenant plugin only).
  */
 export async function buildSitesVisibilityWhere(req: PayloadRequest): Promise<Where | true | false> {
+  const isolated = isolatedVisibleSite(req)
+  if (isolated !== undefined) return isolated === false ? false : { id: { equals: isolated } }
   const user = req.user
   if (!user) return false
 
@@ -74,6 +86,8 @@ export async function resolveVisibleSiteIds(
   payload: Payload,
   req: PayloadRequest,
 ): Promise<number[] | true | false> {
+  const isolated = isolatedVisibleSite(req)
+  if (isolated !== undefined) return isolated === false ? false : [isolated]
   const w = await buildSitesVisibilityWhere(req)
   if (w === true) return true
   if (w === false) return false

@@ -10,7 +10,7 @@ const require = createRequire(realpathSync('node_modules/wrangler/package.json')
 const { Miniflare } = require('miniflare')
 let mf: { getD1Database: (name: string) => Promise<D1Database>; dispose: () => Promise<void> }
 let contexts: SiteContext[]
-const principal = (siteId: string): SitePrincipal => ({ siteId, userId: '7', displayName: 'Live name', role: 'viewer', routingVersion: 1 })
+const principal = (siteId: string): SitePrincipal => ({ siteId, localSiteId: siteId === 'a' ? 37 : 82, userId: '7', displayName: 'Live name', role: 'viewer', routingVersion: 1 })
 
 describe('credential-free local identity projection synchronization', () => {
   beforeAll(async () => {
@@ -20,7 +20,7 @@ describe('credential-free local identity projection synchronization', () => {
       const binding = await mf.getD1Database(name)
       await binding.exec('CREATE TABLE users (id INTEGER PRIMARY KEY, central_user_id TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)')
       await binding.prepare('INSERT INTO users VALUES (?, ?, ?, ?, ?)').bind(i ? 19 : 7, '7', `Stored ${name}`, '2000-01-01', '2000-01-01').run()
-      return { siteId: name.toLowerCase(), binding, routingVersion: 1, currentRoutingVersion: () => 1, identity: null }
+      return { siteId: name.toLowerCase(), localSiteId: i ? 82 : 37, binding, routingVersion: 1, currentRoutingVersion: () => 1, identity: null }
     }))
   }, 30000)
   afterAll(async () => { await mf?.dispose() })
@@ -53,6 +53,7 @@ describe('credential-free local identity projection synchronization', () => {
     await withSiteContext(contexts[0], async () => {
       await expect(syncSiteIdentityProjection(principal('b'))).rejects.toThrow('Invalid')
       await expect(syncSiteIdentityProjection({ ...principal('a'), routingVersion: 2 })).rejects.toThrow('Invalid')
+      await expect(syncSiteIdentityProjection({ ...principal('a'), localSiteId: 82 })).rejects.toThrow('Invalid')
       await expect(syncSiteIdentityProjection({ ...principal('a'), userId: '8 OR 1=1' })).rejects.toThrow('Invalid')
     })
   })

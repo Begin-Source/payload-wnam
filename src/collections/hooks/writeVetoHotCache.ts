@@ -1,6 +1,7 @@
 import type { Payload } from 'payload'
 
 import { translateVeto } from '@/utilities/vetoTranslations'
+import { optionalSiteContext, requireLocalSiteId } from '@/site-runtime/context'
 
 /**
  * Persists a veto-class entry to `knowledge-base` (Skill Contract hot-cache).
@@ -8,7 +9,8 @@ import { translateVeto } from '@/utilities/vetoTranslations'
 export async function writeVetoHotCacheEntry(
   payload: Payload,
   input: {
-    siteId?: string | null
+    /** Local numeric sites.id (or its serialized value), never the registry siteId. */
+    siteId?: number | string | null
     subject: string
     vetoIds: string[]
     summaryExtra?: string
@@ -16,8 +18,13 @@ export async function writeVetoHotCacheEntry(
 ): Promise<void> {
   const lines = input.vetoIds.map((id) => translateVeto(id))
   const summary = [lines.join('；'), input.summaryExtra].filter(Boolean).join(' — ')
-  const siteNum =
-    input.siteId && /^\d+$/.test(String(input.siteId)) ? Number(input.siteId) : undefined
+  let siteNum = input.siteId != null && /^[1-9][0-9]*$/.test(String(input.siteId)) ? Number(input.siteId) : undefined
+  if (siteNum !== undefined && !Number.isSafeInteger(siteNum)) siteNum = undefined
+  if (optionalSiteContext()?.localSiteId !== undefined) {
+    const localSiteId = requireLocalSiteId()
+    if (input.siteId != null && siteNum !== localSiteId) throw new Error('Quality record site mapping mismatch')
+    siteNum = localSiteId
+  }
 
   await payload.create({
     collection: 'knowledge-base',
@@ -32,7 +39,7 @@ export async function writeVetoHotCacheEntry(
       severity: 'veto',
       payload: { vetoIds: input.vetoIds, translated: lines },
       artifactClass: 'auditor-output',
-      ...(siteNum != null && Number.isFinite(siteNum) ? { site: siteNum } : {}),
+      ...(siteNum != null ? { site: siteNum } : {}),
     },
   })
 }

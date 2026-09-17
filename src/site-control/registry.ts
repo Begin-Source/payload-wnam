@@ -1,6 +1,6 @@
 export type SiteState = 'provisioning' | 'active' | 'paused' | 'migrating' | 'retired'
 export type SiteRegistration = Readonly<{
-  siteId: string; databaseId: string; bindingName: string; workerGroup: string
+  siteId: string; localSiteId: number; databaseId: string; bindingName: string; workerGroup: string
   adminHost: string; schemaVersion: number; routingVersion: number
   migrationState: SiteState; timezone: string; productionEnabled: boolean; operationId: string
 }>
@@ -14,7 +14,7 @@ export function assertAdminHost(siteId: string, host: string): void {
   if (host !== `cms-site-${siteId}.beginos.org`) throw new Error('Untrusted site admin host')
 }
 
-const columns = `site_id AS siteId, database_id AS databaseId, binding_name AS bindingName,
+const columns = `site_id AS siteId, local_site_id AS localSiteId, database_id AS databaseId, binding_name AS bindingName,
  worker_group AS workerGroup, admin_host AS adminHost, schema_version AS schemaVersion,
  routing_version AS routingVersion, migration_state AS migrationState, timezone,
  production_enabled AS productionEnabled, operation_id AS operationId`
@@ -25,6 +25,7 @@ export async function readSiteRegistration(database: D1Database, siteId: string)
     .first<Omit<SiteRegistration, 'productionEnabled'> & { productionEnabled: number }>()
   if (!row) return null
   assertAdminHost(row.siteId, row.adminHost)
+  if (!Number.isSafeInteger(row.localSiteId) || row.localSiteId < 1) throw new Error('Invalid local site ID mapping')
   return Object.freeze({ ...row, productionEnabled: row.productionEnabled === 1 })
 }
 
@@ -35,13 +36,14 @@ export async function registerSite(database: D1Database, site: SiteRegistration)
     !/^[a-z0-9-]{1,64}$/.test(site.workerGroup) || !site.operationId || site.operationId.length > 128 ||
     !Number.isSafeInteger(site.schemaVersion) || site.schemaVersion < 1 ||
     !Number.isSafeInteger(site.routingVersion) || site.routingVersion < 1 ||
+    !Number.isSafeInteger(site.localSiteId) || site.localSiteId < 1 ||
     typeof site.productionEnabled !== 'boolean' || typeof site.timezone !== 'string' || !site.timezone ||
     !['provisioning','active','paused','migrating','retired'].includes(site.migrationState)) throw new Error('Invalid site registration')
   new Intl.DateTimeFormat('en', { timeZone: site.timezone })
   await database.prepare(`INSERT INTO site_runtime_registry
-    (site_id,database_id,binding_name,worker_group,admin_host,schema_version,routing_version,migration_state,timezone,production_enabled,operation_id)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(site_id) DO NOTHING`).bind(
-    site.siteId, site.databaseId, site.bindingName, site.workerGroup, site.adminHost,
+    (site_id,local_site_id,database_id,binding_name,worker_group,admin_host,schema_version,routing_version,migration_state,timezone,production_enabled,operation_id)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(site_id) DO NOTHING`).bind(
+    site.siteId, site.localSiteId, site.databaseId, site.bindingName, site.workerGroup, site.adminHost,
     site.schemaVersion, site.routingVersion, site.migrationState, site.timezone, Number(site.productionEnabled), site.operationId,
   ).run()
   const current = await readSiteRegistration(database, site.siteId)

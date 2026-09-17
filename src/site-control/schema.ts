@@ -1,7 +1,8 @@
 /** Explicit central provisioning migration; never run from a request/onInit hook. */
 export const siteControlSchema = [
   `CREATE TABLE IF NOT EXISTS site_runtime_registry (
-    site_id TEXT PRIMARY KEY, database_id TEXT NOT NULL UNIQUE,
+    site_id TEXT PRIMARY KEY, local_site_id INTEGER NOT NULL CHECK(local_site_id > 0),
+    database_id TEXT NOT NULL UNIQUE,
     binding_name TEXT NOT NULL, worker_group TEXT NOT NULL,
     admin_host TEXT NOT NULL UNIQUE, schema_version INTEGER NOT NULL CHECK(schema_version > 0),
     routing_version INTEGER NOT NULL CHECK(routing_version > 0),

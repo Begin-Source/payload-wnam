@@ -2,6 +2,7 @@ import type { CollectionBeforeChangeHook } from 'payload'
 
 import { writeVetoHotCacheEntry } from '@/collections/hooks/writeVetoHotCache'
 import { applyAuditorVetoTable, listContainsHardVeto } from '@/utilities/eeatScoring'
+import { parseRelationshipId } from '@/utilities/parseRelationshipId'
 
 type QualityPayload = { vetoes?: string[]; rawScore?: number }
 
@@ -12,14 +13,6 @@ function appendOptimizationHistory(
   const list = Array.isArray(existing) ? [...existing] : []
   list.push(entry)
   return list as Record<string, unknown>[]
-}
-
-function relationId(value: unknown): string | null {
-  if (typeof value === 'string' && value.length > 0) return value
-  if (value && typeof value === 'object' && 'id' in value && typeof (value as { id: unknown }).id === 'string') {
-    return (value as { id: string }).id
-  }
-  return null
 }
 
 /**
@@ -35,7 +28,7 @@ export const articlePublishGate: CollectionBeforeChangeHook = async ({ data, ori
   }
 
   const q = next._quality
-  const siteId = relationId(next.site ?? (originalDoc as { site?: unknown } | null)?.site)
+  const siteId = parseRelationshipId(next.site ?? (originalDoc as { site?: unknown } | null)?.site)
   const subject =
     (typeof next.title === 'string' && next.title) ||
     (originalDoc as { title?: string } | null)?.title ||

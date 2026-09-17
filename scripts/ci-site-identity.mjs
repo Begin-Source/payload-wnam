@@ -36,7 +36,7 @@ try {
   await db.prepare('INSERT INTO users VALUES (7, ?, NULL)').bind('staff@example.invalid').run()
   await db.prepare('INSERT INTO users_sessions VALUES (?,7,?)').bind('fixture-original-session', new Date(Date.now() + 3600_000).toISOString()).run()
   for (const [index, site] of ['a', 'b'].entries()) {
-    await registerSite(db, { siteId: site, databaseId: `${String(index + 1).repeat(8)}-1111-4111-8111-111111111111`,
+    await registerSite(db, { siteId: site, localSiteId: site === 'a' ? 37 : 82, databaseId: `${String(index + 1).repeat(8)}-1111-4111-8111-111111111111`,
       bindingName: `SITE_D1_${site.toUpperCase()}`, workerGroup: 'test-group', adminHost: `cms-site-${site}.beginos.org`,
       schemaVersion: 1, routingVersion: 1, migrationState: 'active', timezone: 'UTC', productionEnabled: false, operationId: `fixture-${site}` })
     await db.prepare('INSERT INTO site_runtime_access VALUES (?, ?, ?)').bind(site, '7', 'editor').run()
@@ -83,6 +83,12 @@ try {
       collection: 'users', _strategy: 'central-site-session', siteId: target, siteRole: 'editor' })
   }))
   assert.equal((await me('b', cookieA)).status, 403)
+  // Deliberately corrupt only the isolated fixture registry to prove a valid
+  // session cannot authenticate against a different preserved sites.id mapping.
+  await db.prepare("UPDATE site_runtime_registry SET local_site_id = 999 WHERE site_id = 'a'").run()
+  assert.equal((await me('a', cookieA)).status, 403)
+  await db.prepare("UPDATE site_runtime_registry SET local_site_id = 37 WHERE site_id = 'a'").run()
+  assert.equal((await me('a', cookieA)).status, 200)
   assert.equal((await me('a', cookieA, { method: 'POST', headers: { origin: 'https://cms-site-b.beginos.org' } })).status, 403)
   assert.equal((await site.fetch('https://cms-site-a.beginos.org/test/no-issuer')).status, 200)
   assert.equal((await site.fetch('https://cms-site-a.beginos.org/test/no-http')).status, 404)
@@ -148,7 +154,7 @@ try {
     commit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
     workers: 2, databases: 3, concurrentRedemptions: 20, concurrentSiteRequests: 20,
     checks: ['named RPC capability', 'no RPC issuer', 'HTTP capability denied', 'POST handoff', 'Chromium form/CSP/cookie navigation', 'single-use ticket',
-      'host/origin binding', 'credential-free projections', 'live role changes', 'immediate revocation', 'site logout',
+      'host/origin binding', 'explicit local site ID mapping', 'credential-free projections', 'live role changes', 'immediate revocation', 'site logout',
       'central logout', 'central outage fails closed', 'independent public response'],
     scope: 'Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance' }
   writeFileSync('.cloudflare-ci/site-identity.json', JSON.stringify(report, null, 2))

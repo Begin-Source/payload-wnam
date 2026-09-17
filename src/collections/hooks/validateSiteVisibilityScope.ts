@@ -5,8 +5,23 @@ import { parseRelationshipId } from '@/utilities/parseRelationshipId'
 import { resolveVisibleSiteIds } from '@/utilities/siteVisibilityScope'
 import { userHasUnscopedAdminAccess } from '@/utilities/superAdmin'
 import { userHasRole, userHasTenantGeneralManagerRole } from '@/utilities/userRoles'
+import { optionalSiteContext, requireLocalSiteId } from '@/site-runtime/context'
+
+function isolatedLocalSiteId(req: PayloadRequest): number | undefined {
+  const isSiteIdentity = req.user && '_strategy' in req.user && req.user._strategy === 'central-site-session'
+  if (optionalSiteContext()?.localSiteId !== undefined || isSiteIdentity) return requireLocalSiteId()
+  return undefined
+}
+
+async function allowedSiteIds(req: PayloadRequest): Promise<number[] | true | false> {
+  const local = isolatedLocalSiteId(req)
+  // Containment applies to trusted internal jobs too. Collection access remains
+  // responsible for authorizing browser writes before these business hooks.
+  return local === undefined ? resolveVisibleSiteIds(req.payload, req) : [local]
+}
 
 function bypassSiteVisibilityValidation(req: PayloadRequest): boolean {
+  if (isolatedLocalSiteId(req) !== undefined) return false
   if (!isUsersCollection(req.user)) return true
   if (userHasUnscopedAdminAccess(req.user)) return true
   if (userHasTenantGeneralManagerRole(req.user)) return true
@@ -29,13 +44,13 @@ export const validateSiteFieldWithinVisibilityScope: CollectionBeforeChangeHook 
 
   const siteId = parseRelationshipId(merged)
   if (siteId == null) {
-    if (operation === 'create') {
+    if (operation === 'create' || isolatedLocalSiteId(req) !== undefined) {
       throw new Error('请选择站点')
     }
     return data
   }
 
-  const allowed = await resolveVisibleSiteIds(req.payload, req)
+  const allowed = await allowedSiteIds(req)
   if (allowed === true) return data
   if (allowed === false) {
     throw new Error('无权为该站点创建或修改内容')
@@ -69,14 +84,17 @@ export const validateAuthorsSitesWithinVisibilityScope: CollectionBeforeChangeHo
     incoming !== undefined ? incoming : (originalDoc as { sites?: unknown } | undefined)?.sites
 
   const siteIds = siteIdsFromSitesField(merged)
+  if (isolatedLocalSiteId(req) !== undefined && Array.isArray(merged) && siteIds.length !== merged.length) {
+    throw new Error('Invalid site relationship')
+  }
   if (siteIds.length === 0) {
-    if (operation === 'create') {
+    if (operation === 'create' || isolatedLocalSiteId(req) !== undefined) {
       throw new Error('请至少选择一个站点')
     }
     return data
   }
 
-  const allowed = await resolveVisibleSiteIds(req.payload, req)
+  const allowed = await allowedSiteIds(req)
   if (allowed === true) return data
   if (allowed === false) {
     throw new Error('无权修改作者')
@@ -103,7 +121,7 @@ export const validateOriginalEvidenceArticleVisibilityScope: CollectionBeforeCha
 
   const articleId = parseRelationshipId(merged)
   if (articleId == null) {
-    if (operation === 'create') {
+    if (operation === 'create' || isolatedLocalSiteId(req) !== undefined) {
       throw new Error('请选择文章')
     }
     return data
@@ -121,7 +139,7 @@ export const validateOriginalEvidenceArticleVisibilityScope: CollectionBeforeCha
     throw new Error('所选文章未绑定站点，无法保存原创证据')
   }
 
-  const allowed = await resolveVisibleSiteIds(req.payload, req)
+  const allowed = await allowedSiteIds(req)
   if (allowed === true) return data
   if (allowed === false) {
     throw new Error('无权保存原创证据')

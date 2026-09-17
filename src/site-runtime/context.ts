@@ -3,6 +3,8 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 export type SiteIdentity = Readonly<{ userId: string; sessionId: string }>
 export type SiteContext = Readonly<{
   siteId: string
+  /** Original sites.id, supplied by trusted registry routing; never inferred from siteId. */
+  localSiteId?: number
   binding: D1Database
   routingVersion: number
   identity: SiteIdentity | null
@@ -44,6 +46,15 @@ export function requireSiteContext(): Scope {
   return context
 }
 
+/** Full site configurations require the preserved numeric relationship target.
+ * Optional on SiteContext only for the legacy P0 isolation harness.
+ */
+export function requireLocalSiteId(): number {
+  const { localSiteId } = requireSiteContext()
+  if (!Number.isSafeInteger(localSiteId) || localSiteId! < 1) throw new Error('Local site ID mapping required')
+  return localSiteId!
+}
+
 /** Only trusted ingress/queue routing may establish this scope. */
 export function withSiteContext<T>(context: SiteContext, callback: () => T): T {
   if (!context.siteId || !Number.isSafeInteger(context.routingVersion) || context.routingVersion < 1) {
@@ -51,6 +62,9 @@ export function withSiteContext<T>(context: SiteContext, callback: () => T): T {
   }
   if (!context.binding || typeof context.binding.prepare !== 'function') {
     throw new Error('Site database binding required')
+  }
+  if (context.localSiteId !== undefined && (!Number.isSafeInteger(context.localSiteId) || context.localSiteId < 1)) {
+    throw new Error('Invalid local site ID mapping')
   }
   const scope: Scope = Object.freeze({
     ...context,

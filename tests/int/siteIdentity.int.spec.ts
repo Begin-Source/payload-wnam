@@ -9,9 +9,9 @@ import type { SitePrincipal } from '../../src/site-control/sso'
 
 const token = 'a'.repeat(64)
 const headers = new Headers({ cookie: `__Host-site-session=${token}` })
-const context: SiteContext = { siteId: 'a', binding: { prepare() { throw new Error('Unexpected database read') } } as unknown as D1Database,
+const context: SiteContext = { siteId: 'a', localSiteId: 37, binding: { prepare() { throw new Error('Unexpected database read') } } as unknown as D1Database,
   routingVersion: 1, currentRoutingVersion: () => 1, identity: null, requestHost: 'cms-site-a.beginos.org' }
-const principal: SitePrincipal = { siteId: 'a', userId: '7', displayName: 'Staff', role: 'editor', routingVersion: 1 }
+const principal: SitePrincipal = { siteId: 'a', localSiteId: 37, userId: '7', displayName: 'Staff', role: 'editor', routingVersion: 1 }
 const authenticateSession = vi.fn(async () => principal)
 const loadProjection = vi.fn(async () => ({ id: 7, centralUserId: '7', displayName: 'Old name', hash: 'must-never-escape', roles: ['super-admin'] }))
 const strategy = centralSiteStrategy({ authenticateSession, loadProjection })
@@ -61,6 +61,10 @@ describe('site Payload uses central authentication and credential-free identity 
     await expect(withSiteContext(context, () => down.authenticate(args))).rejects.toThrow('Central unavailable')
     const mismatch = centralSiteStrategy({ authenticateSession, loadProjection: async () => ({ id: 8, centralUserId: '8', displayName: 'Wrong' }) })
     await expect(withSiteContext(context, () => mismatch.authenticate(args))).rejects.toThrow('projection')
+    loadProjection.mockClear()
+    await expect(withSiteContext({ ...context, localSiteId: 82 }, () => strategy.authenticate(args))).rejects.toThrow('routing mismatch')
+    await expect(withSiteContext({ ...context, localSiteId: undefined }, () => strategy.authenticate(args))).rejects.toThrow('mapping required')
+    expect(loadProjection).not.toHaveBeenCalled()
   })
 
   it('rejects duplicate cookies and cross-origin writes including sibling subdomains', () => {

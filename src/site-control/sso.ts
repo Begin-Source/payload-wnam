@@ -5,7 +5,7 @@ export class SiteAccessDeniedError extends Error {}
 export type SiteRole = 'viewer' | 'editor' | 'publisher' | 'manager'
 export type CentralSession = Readonly<{ userId: string; sessionId: string; displayName: string; expiresAt: number }>
 export type LiveCentralSession = (userId: string, sessionId: string) => Promise<CentralSession | null>
-export type SitePrincipal = Readonly<{ siteId: string; userId: string; displayName: string; role: SiteRole; routingVersion: number }>
+export type SitePrincipal = Readonly<{ siteId: string; localSiteId: number; userId: string; displayName: string; role: SiteRole; routingVersion: number }>
 type StoredLogin = { siteId: string; userId: string; centralSessionId: string; adminHost: string; routingVersion: number; expiresAt: number }
 const loginColumns = 'site_id AS siteId, user_id AS userId, central_session_id AS centralSessionId, admin_host AS adminHost, routing_version AS routingVersion, expires_at AS expiresAt'
 export const SITE_SESSION_COOKIE = '__Host-site-session'
@@ -79,7 +79,7 @@ export class SiteLoginBroker {
     if (!row || row.siteId !== trustedSiteId || row.adminHost !== adminHost || row.expiresAt <= this.now()) throw new SiteAccessDeniedError('Site session invalid or expired')
     const live = await this.authorize(row.siteId, row.userId, row.centralSessionId)
     if (live.site.routingVersion !== row.routingVersion) throw new SiteAccessDeniedError('Site session routing changed')
-    return Object.freeze({ siteId: row.siteId, userId: live.identity.userId, displayName: live.identity.displayName, role: live.role, routingVersion: row.routingVersion })
+    return Object.freeze({ siteId: row.siteId, localSiteId: live.site.localSiteId, userId: live.identity.userId, displayName: live.identity.displayName, role: live.role, routingVersion: row.routingVersion })
   }
 
   /** Logout remains effective after a grant has been revoked or a route paused. */

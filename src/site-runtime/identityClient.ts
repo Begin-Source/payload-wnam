@@ -1,7 +1,7 @@
 import type { IdentityResult, SiteIdentityRPC } from '../site-control/identityService'
 import { assertAdminHost } from '../site-control/registry'
 import { SiteAccessDeniedError, type SitePrincipal } from '../site-control/sso'
-import { requireSiteContext } from './context'
+import { requireLocalSiteId, requireSiteContext } from './context'
 
 export class SiteIdentityUnavailableError extends Error {}
 export async function callSiteIdentity<T>(call: () => Promise<IdentityResult<T>>): Promise<T> {
@@ -23,15 +23,17 @@ export function siteIdentityAuthenticator(service: SiteIdentityRPC) {
     const context = requireSiteContext()
     assertAdminHost(context.siteId, context.requestHost ?? '')
     if (siteId !== context.siteId || adminHost !== context.requestHost) throw new SiteAccessDeniedError('Identity context mismatch')
+    const localSiteId = requireLocalSiteId()
     const principal = await callSiteIdentity(() => service.authenticate(session, context.siteId, adminHost))
     // Validate runtime data and routing again after the asynchronous RPC.
     const current = requireSiteContext()
     if (!principal || principal.siteId !== current.siteId || principal.routingVersion !== current.routingVersion ||
+      principal.localSiteId !== localSiteId || requireLocalSiteId() !== localSiteId ||
       typeof principal.userId !== 'string' || !/^[1-9][0-9]*$/.test(principal.userId) || !Number.isSafeInteger(Number(principal.userId)) ||
       typeof principal.displayName !== 'string' || !['viewer','editor','publisher','manager'].includes(principal.role)) {
       throw new SiteIdentityUnavailableError('Invalid identity response')
     }
-    return Object.freeze({ siteId: principal.siteId, routingVersion: principal.routingVersion,
+    return Object.freeze({ siteId: principal.siteId, localSiteId, routingVersion: principal.routingVersion,
       userId: principal.userId, displayName: principal.displayName, role: principal.role })
   }
 }

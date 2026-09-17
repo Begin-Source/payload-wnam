@@ -10,9 +10,9 @@ import { siteIdentityAuthenticator } from '../../src/site-runtime/identityClient
 import { siteSessionGateway } from '../../src/site-runtime/sessionGateway'
 
 const token = 'a'.repeat(64)
-const site: SiteContext = { siteId: 'a', binding: { prepare() {} } as unknown as D1Database,
+const site: SiteContext = { siteId: 'a', localSiteId: 37, binding: { prepare() {} } as unknown as D1Database,
   routingVersion: 1, currentRoutingVersion: () => 1, identity: null, requestHost: 'cms-site-a.beginos.org' }
-const principal = { siteId: 'a', routingVersion: 1, userId: '7', displayName: 'Staff', role: 'editor' as const }
+const principal = { siteId: 'a', localSiteId: 37, routingVersion: 1, userId: '7', displayName: 'Staff', role: 'editor' as const }
 function rpc() {
   return { authenticate: vi.fn(async () => ({ ok: true as const, value: principal })),
     redeem: vi.fn(async () => ({ ok: true as const, value: { session: token, expiresAt: Date.now() + 60_000 } })),
@@ -129,6 +129,8 @@ describe('central and site HTTP session boundaries', () => {
       expect(await authenticate(token, 'a', site.requestHost!)).toEqual(principal)
       await expect(authenticate(token, 'b', site.requestHost!)).rejects.toThrow('context mismatch')
       service.authenticate.mockResolvedValueOnce({ ok: true, value: { ...principal, siteId: 'b' } })
+      await expect(authenticate(token, 'a', site.requestHost!)).rejects.toThrow('Invalid identity')
+      service.authenticate.mockResolvedValueOnce({ ok: true, value: { ...principal, localSiteId: 82 } })
       await expect(authenticate(token, 'a', site.requestHost!)).rejects.toThrow('Invalid identity')
       const denied: SiteIdentityRPC = { ...rpc(), authenticate: async () => ({ ok: false, reason: 'denied' }) }
       await expect(siteIdentityAuthenticator(denied)(token, 'a', site.requestHost!)).rejects.toBeInstanceOf(SiteAccessDeniedError)

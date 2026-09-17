@@ -1,5 +1,5 @@
 import type { SitePrincipal } from '../site-control/sso'
-import { requireSiteContext } from './context'
+import { requireLocalSiteId, requireSiteContext } from './context'
 import { createSiteD1Proxy } from './d1'
 import type { IdentityProjection } from './siteIdentity'
 
@@ -13,6 +13,7 @@ const columns = 'id, central_user_id AS centralUserId, display_name AS displayNa
 export async function syncSiteIdentityProjection(principal: SitePrincipal): Promise<IdentityProjection> {
   const context = requireSiteContext()
   if (principal.siteId !== context.siteId || principal.routingVersion !== context.routingVersion ||
+    principal.localSiteId !== requireLocalSiteId() ||
     typeof principal.userId !== 'string' || !/^[1-9][0-9]*$/.test(principal.userId) || !Number.isSafeInteger(Number(principal.userId)) ||
     typeof principal.displayName !== 'string' || !principal.displayName || principal.displayName.length > 320) {
     throw new Error('Invalid central identity projection')

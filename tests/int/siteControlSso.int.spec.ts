@@ -15,7 +15,7 @@ let broker: SiteLoginBroker
 let now: number
 const clock = () => now
 const identity = { userId: '7', sessionId: 'central-session-7' }
-const registration = (siteId = 'a'): SiteRegistration => ({ siteId,
+const registration = (siteId = 'a'): SiteRegistration => ({ siteId, localSiteId: siteId === 'a' ? 37 : 82,
   databaseId: siteId === 'a' ? '11111111-1111-4111-8111-111111111111' : '22222222-2222-4222-8222-222222222222',
   bindingName: `SITE_D1_${siteId.toUpperCase()}`, workerGroup: 'group-1', adminHost: `cms-site-${siteId}.beginos.org`,
   schemaVersion: 1, routingVersion: 1, migrationState: 'active', timezone: 'UTC', productionEnabled: false, operationId: `provision-${siteId}`,
@@ -50,11 +50,23 @@ describe('central registry and single-use SSO on native D1', () => {
   it('registers idempotently, rejects repointing and makes routing changes compare-and-swap', async () => {
     await registerSite(database, registration())
     await expect(registerSite(database, { ...registration(), databaseId: '33333333-3333-4333-8333-333333333333' })).rejects.toThrow('conflicts')
+    await expect(registerSite(database, { ...registration(), localSiteId: 1 })).rejects.toThrow('conflicts')
+    expect((await readSiteRegistration(database, 'a'))?.localSiteId).toBe(37)
     expect((await readSiteRegistration(database, 'a'))?.databaseId).toBe(registration().databaseId)
     const changes = await Promise.allSettled([transitionSiteState(database, 'a', 1, 'paused'), transitionSiteState(database, 'a', 1, 'migrating')])
     expect(changes.filter(result => result.status === 'fulfilled')).toHaveLength(1)
     expect((await readSiteRegistration(database, 'a'))?.routingVersion).toBe(2)
     expect(crossSiteReference('a', 'articles', 1)).not.toEqual(crossSiteReference('b', 'articles', 1))
+  })
+
+  it('requires an explicit numeric site mapping and permits the same local ID in different databases', async () => {
+    for (const localSiteId of [undefined, null, 0, -1, 1.5, '37', Number.MAX_SAFE_INTEGER + 1]) {
+      await expect(registerSite(database, { ...registration(), localSiteId } as SiteRegistration)).rejects.toThrow('Invalid')
+    }
+    await database.prepare("DELETE FROM site_runtime_access WHERE site_id = 'b'").run()
+    await database.prepare("DELETE FROM site_runtime_registry WHERE site_id = 'b'").run()
+    await registerSite(database, { ...registration('b'), localSiteId: 37 })
+    expect((await readSiteRegistration(database, 'b'))?.localSiteId).toBe(37)
   })
 
   it('allows exactly one of 20 concurrent exchanges and stores digests, never bearer tokens', async () => {
@@ -68,7 +80,7 @@ describe('central registry and single-use SSO on native D1', () => {
     expect(session.cookie).toMatch(/^__Host-site-session=[a-f0-9]{64}; Path=\//)
     expect(session.cookie).toContain('Secure; HttpOnly; SameSite=Strict')
     expect(session.cookie).not.toContain('Domain=')
-    expect(await broker.authenticate(session.session, 'a', registration().adminHost)).toMatchObject({ siteId: 'a', userId: '7', role: 'editor' })
+    expect(await broker.authenticate(session.session, 'a', registration().adminHost)).toMatchObject({ siteId: 'a', localSiteId: 37, userId: '7', role: 'editor' })
     const persisted = JSON.stringify(await database.prepare('SELECT * FROM site_login_tickets').all()) + JSON.stringify(await database.prepare('SELECT * FROM site_login_sessions').all())
     expect(persisted).not.toContain(ticket.ticket)
     expect(persisted).not.toContain(session.session)
