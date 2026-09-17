@@ -15,6 +15,8 @@ import { releaseGroup } from './site-operations/release'
 import { parseVerificationRequest } from './site-operations/verify-request'
 import { p1ReleaseRequest,p1EffectiveManifests } from './p1-release-manifests.mjs'
 import { browserLibraryEnvironment } from './ci-browser-libs.mjs'
+import { loadProvisionFleet } from './provision-fleet-input.mjs'
+import { resolveProvisionFleet,releaseProvisionFleet } from './site-operations/fleet'
 
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1'); assert.equal(process.env.P1_GROUP_RELEASE,'1')
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
@@ -40,9 +42,20 @@ try {
   const original = await provisions.plan(plan.operationId),operation = await provisions.read(plan.operationId)
   assert.deepEqual(original,plan)
   assert.ok(operation?.completedAt && operation.checkpoint === 6 && operation.databaseId,'Selected provision must complete before ordinary group release')
-  const databaseId = operation.databaseId,site = provisionManifest(request,databaseId),manifest = JSON.stringify(site),manifestDigest = provisionDigest(manifest)
+  const fleet = await resolveProvisionFleet(loadProvisionFleet('operations/fleet/p1.json'),database)
+  // This P1 controller owns its one reviewed remote group. The shared fleet
+  // coordinator supports ordered batches without silently expanding P1 scope.
+  assert.equal(fleet.groups.length,1)
+  const managed = fleet.groups[0]
+  assert.equal(managed.workerGroup,plan.workerGroup); assert.deepEqual(managed.latestRequest,request)
+  const databaseId = operation.databaseId,site = managed.manifest,manifest = JSON.stringify(site),manifestDigest = provisionDigest(manifest)
+  assert.deepEqual(site,provisionManifest(request,databaseId))
+  console.log(JSON.stringify({ event: 'p1_fleet_history_verified',operationId: fleet.operationId,workerGroup: managed.workerGroup,
+    manifestDigest,members: groupRoutes(site).map(route => route.siteId),operations: managed.operations,mutations: false }))
   assert.equal((await api.database(databaseId)).name,plan.databaseName)
   const preflight = async () => {
+    const current = await resolveProvisionFleet(loadProvisionFleet('operations/fleet/p1.json'),database)
+    assert.deepEqual(current,fleet,'Fleet history changed during release')
     await group.resources()
     const registrations = (await database.prepare('SELECT site_id,local_site_id,binding_name,database_id,schema_version,admin_host FROM site_runtime_registry WHERE worker_group=? ORDER BY site_id')
       .bind(plan.workerGroup).all<{ site_id: string; local_site_id: number; binding_name: string; database_id: string; schema_version: number; admin_host: string }>()).results
@@ -82,7 +95,8 @@ try {
     const current = await group.releaseSnapshot(site)
     const verification = parseVerificationRequest({ operationId: randomUUID(),central,centralWorkerTag: request.centralWorkerTag,
       group: site,workerTag: plan.workerTag,zoneId: request.zoneId,schemaDigest: plan.schemaDigest,expectedDeploymentId: current.deploymentId,
-      sites: JSON.parse(readFileSync('operations/p1-verify.json','utf8')) })
+      sites: managed.verification.sites })
+    assert.deepEqual(verification.sites,JSON.parse(readFileSync('operations/p1-verify.json','utf8')),'Fleet ownership differs from explicit P1 verification targets')
     assert.deepEqual(verification.sites.map(target => target.siteId),groupRoutes(site).map(route => route.siteId),'P1 verification must include every current member')
     const path = '.cloudflare-ci/site-verify-request.json'
     writeFileSync(path,JSON.stringify(verification,null,2))
@@ -125,8 +139,10 @@ try {
       assert.equal((await journal.read(releaseId))?.receipt,null)
       console.log(JSON.stringify({ event: 'p1_group_upload_interrupted',releaseId,workerGroup: plan.workerGroup }))
     }
-    const result = await releaseGroup(plan.workerGroup,commit,manifest,deps),receipt = await journal.read(releaseId)
-    const repeated = await releaseGroup(plan.workerGroup,commit,manifest,deps)
+    const [result] = await releaseProvisionFleet(fleet,commit,() => deps,async result => {
+      console.log(JSON.stringify({ event: 'p1_fleet_group_completed',operationId: fleet.operationId,...result }))
+    }),receipt = await journal.read(releaseId)
+    const [repeated] = await releaseProvisionFleet(fleet,commit,() => deps,async () => {})
     assert.equal(repeated.uploaded,false); assert.equal(repeated.reused,true); assert.deepEqual(await journal.read(releaseId),receipt)
     assert.deepEqual(await provisions.read(plan.operationId),operation,'Ordinary release changed the completed provision operation')
     const report = { event: 'p1_group_release_passed',checkedAt: new Date().toISOString(),...result,resumedAfterInjectedUpload: inject,

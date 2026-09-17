@@ -1,0 +1,13 @@
+{
+  "operationId": "319e6bb6-a658-4e37-9756-f6b8aa12a6c6",
+  "groups": [
+    {
+      "workerGroup": "p1-group-1",
+      "baselineSites": [
+        { "siteId": "p1-a", "ownership": { "kind": "p1", "role": "site-a", "operationId": "p1-site-a-schema-v1" } },
+        { "siteId": "p1-b", "ownership": { "kind": "p1", "role": "site-b", "operationId": "p1-site-b-schema-v1" } }
+      ],
+      "requests": ["operations/provision/p1-c.json", "operations/provision/p1-d.json"]
+    }
+  ]
+}
