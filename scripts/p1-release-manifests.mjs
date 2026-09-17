@@ -2,15 +2,28 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { p1Manifests } from './p1-manifests.mjs'
+import { currentRuntimeSourceDigest } from './p1-runtime-source.mjs'
 
+export function validateReleaseSelection(selection,sourceDigest) {
+  assert.ok(selection && typeof selection === 'object' && !Array.isArray(selection))
+  assert.deepEqual(Object.keys(selection).sort(),selection.reconcile ? ['provisionRequest','reconcile'] : ['provisionRequest'])
+  if (selection.reconcile) {
+    assert.deepEqual(Object.keys(selection.reconcile).sort(),['commit','releaseId','sourceDigest'])
+    assert.match(selection.reconcile.commit,/^[a-f0-9]{40}$/)
+    assert.match(selection.reconcile.releaseId,/^[a-f0-9]{64}$/)
+    assert.match(selection.reconcile.sourceDigest,/^[a-f0-9]{64}$/)
+    assert.equal(sourceDigest,selection.reconcile.sourceDigest,'Reconciliation cannot retain a release after runtime source changes')
+  }
+  assert.match(selection.provisionRequest,/^operations\/provision\/p1-[a-z0-9-]+\.json$/)
+  return selection
+}
 export function p1ReleaseRequest() {
   const selection = JSON.parse(readFileSync('operations/p1-release.json','utf8'))
-  assert.deepEqual(Object.keys(selection),['provisionRequest'])
-  assert.match(selection.provisionRequest,/^operations\/provision\/p1-[a-z0-9-]+\.json$/)
+  validateReleaseSelection(selection,selection?.reconcile ? currentRuntimeSourceDigest() : undefined)
   const request = JSON.parse(readFileSync(selection.provisionRequest,'utf8')),source = p1Manifests()
   assert.deepEqual(request.baseline,source.site,'P1 request baseline must retain the reviewed source group')
   assert.deepEqual(request.central,source.central)
-  return { path: selection.provisionRequest,request }
+  return { path: selection.provisionRequest,request,reconcile: selection.reconcile }
 }
 
 /** Only a verified cloud controller writes this commit-matched effective

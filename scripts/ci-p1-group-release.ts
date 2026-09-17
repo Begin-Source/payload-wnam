@@ -20,7 +20,7 @@ assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BR
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
 assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit); assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
 assert.equal(process.env.WRANGLER_CI_OVERRIDE_NAME,undefined); assert.equal(process.env.WRANGLER_CI_MATCH_TAG,undefined)
-const request = parseProvisionRequest(p1ReleaseRequest().request),{ plan,baseline,central } = request
+const selection = p1ReleaseRequest(),request = parseProvisionRequest(selection.request),{ plan,baseline,central } = request
 const api = new ProvisionCloudflare(plan.accountId,process.env.CLOUDFLARE_API_TOKEN ?? ''),group = new ProvisionGroup(api,request)
 await group.resources()
 type Environment = { CENTRAL_D1: D1Database; INSPECT: { inspect: (siteId: string,operationId: string) => ReturnType<typeof inspectProvisionedSite> } }
@@ -94,27 +94,44 @@ try {
       await verifyCurrentSites()
     } }
   const releaseId = groupReleaseId(plan.workerGroup,commit,manifestDigest),pending = await journal.pending(plan.workerGroup)
-  if (pending && pending.releaseId !== releaseId) {
-    // A newer CI script may finish acceptance of an earlier proven upload. It
-    // cannot upload old code or reinterpret a missing source marker as failure.
-    assert.equal(pending.manifest,manifest,'Prior group release used a different manifest')
-    assert.equal((await deps.current()).releaseId,pending.releaseId,'Prior group upload remains unknown')
-    const recovered = await releaseGroup(plan.workerGroup,pending.commit,pending.manifest,{ ...deps,deploy: async () => { throw new Error('Prior release recovery cannot upload') } })
-    console.log(JSON.stringify({ event: 'p1_group_prior_release_recovered',...recovered }))
+  if (selection.reconcile) {
+    const selected = await journal.read(selection.reconcile.releaseId)
+    assert.ok(selected && selected.workerGroup === plan.workerGroup && selected.commit === selection.reconcile.commit && selected.manifest === manifest,'Reviewed recovery identity mismatch')
+    assert.ok(!pending || pending.releaseId === selected.releaseId,'Another pending release occupies this group')
+    assert.equal((await deps.current()).releaseId,selected.releaseId,'Reviewed release is no longer deployed')
+    const noUpload = { ...deps,deploy: async () => { throw new Error('Reviewed reconciliation cannot upload') } }
+    const result = await releaseGroup(plan.workerGroup,selected.commit,selected.manifest,noUpload)
+    const receipt = await journal.read(selected.releaseId)
+    const repeated = await releaseGroup(plan.workerGroup,selected.commit,selected.manifest,noUpload)
+    assert.equal(result.uploaded,false); assert.equal(repeated.uploaded,false); assert.equal(repeated.reused,true)
+    assert.deepEqual(await journal.read(selected.releaseId),receipt)
+    assert.deepEqual(await provisions.read(plan.operationId),operation)
+    const report = { event: 'p1_group_release_passed',checkedAt: new Date().toISOString(),...result,executionCommit: commit,
+      reviewedReconciliation: selection.reconcile,repeatReceiptUnchanged: true,provisionOperationUnchanged: plan.operationId,members: groupRoutes(site).map(route => route.siteId) }
+    writeFileSync('.cloudflare-ci/p1-group-release.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
+  } else {
+    if (pending && pending.releaseId !== releaseId) {
+      // A newer CI script may finish acceptance of an earlier proven upload. It
+      // cannot upload old code or reinterpret a missing source marker as failure.
+      assert.equal(pending.manifest,manifest,'Prior group release used a different manifest')
+      assert.equal((await deps.current()).releaseId,pending.releaseId,'Prior group upload remains unknown')
+      const recovered = await releaseGroup(plan.workerGroup,pending.commit,pending.manifest,{ ...deps,deploy: async () => { throw new Error('Prior release recovery cannot upload') } })
+      console.log(JSON.stringify({ event: 'p1_group_prior_release_recovered',...recovered }))
+    }
+    const count = await database.prepare('SELECT COUNT(*) AS n FROM site_group_releases WHERE worker_group=?').bind(plan.workerGroup).first<number>('n')
+    const inject = count === 0
+    if (inject) {
+      await assert.rejects(releaseGroup(plan.workerGroup,commit,manifest,{ ...deps,afterDeploy: async () => { throw new Error('P1 injected group upload interruption') } }),/P1 injected group upload interruption/)
+      assert.equal((await journal.read(releaseId))?.receipt,null)
+      console.log(JSON.stringify({ event: 'p1_group_upload_interrupted',releaseId,workerGroup: plan.workerGroup }))
+    }
+    const result = await releaseGroup(plan.workerGroup,commit,manifest,deps),receipt = await journal.read(releaseId)
+    const repeated = await releaseGroup(plan.workerGroup,commit,manifest,deps)
+    assert.equal(repeated.uploaded,false); assert.equal(repeated.reused,true); assert.deepEqual(await journal.read(releaseId),receipt)
+    assert.deepEqual(await provisions.read(plan.operationId),operation,'Ordinary release changed the completed provision operation')
+    const report = { event: 'p1_group_release_passed',checkedAt: new Date().toISOString(),...result,resumedAfterInjectedUpload: inject,
+      repeatReceiptUnchanged: true,provisionOperationUnchanged: plan.operationId,members: groupRoutes(site).map(route => route.siteId) }
+    writeFileSync('.cloudflare-ci/p1-group-release.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
   }
-  const count = await database.prepare('SELECT COUNT(*) AS n FROM site_group_releases WHERE worker_group=?').bind(plan.workerGroup).first<number>('n')
-  const inject = count === 0
-  if (inject) {
-    await assert.rejects(releaseGroup(plan.workerGroup,commit,manifest,{ ...deps,afterDeploy: async () => { throw new Error('P1 injected group upload interruption') } }),/P1 injected group upload interruption/)
-    assert.equal((await journal.read(releaseId))?.receipt,null)
-    console.log(JSON.stringify({ event: 'p1_group_upload_interrupted',releaseId,workerGroup: plan.workerGroup }))
-  }
-  const result = await releaseGroup(plan.workerGroup,commit,manifest,deps),receipt = await journal.read(releaseId)
-  const repeated = await releaseGroup(plan.workerGroup,commit,manifest,deps)
-  assert.equal(repeated.uploaded,false); assert.equal(repeated.reused,true); assert.deepEqual(await journal.read(releaseId),receipt)
-  assert.deepEqual(await provisions.read(plan.operationId),operation,'Ordinary release changed the completed provision operation')
-  const report = { event: 'p1_group_release_passed',checkedAt: new Date().toISOString(),...result,resumedAfterInjectedUpload: inject,
-    repeatReceiptUnchanged: true,provisionOperationUnchanged: plan.operationId,members: groupRoutes(site).map(route => route.siteId) }
-  writeFileSync('.cloudflare-ci/p1-group-release.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
 } finally { await proxy.dispose() }
 process.exit(0)

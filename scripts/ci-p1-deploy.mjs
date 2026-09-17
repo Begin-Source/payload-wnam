@@ -13,6 +13,7 @@ assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit)
 assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
 if (process.env.WRANGLER_CI_MATCH_TAG) assert.equal(process.env.WRANGLER_CI_MATCH_TAG,'a53ec5c30f6f4623909113bf36ca914f')
 const configs = p1Manifests()
+const request = p1ReleaseRequest() // Check any reviewed reconciliation before P1 writes.
 const env = { ...process.env,CLOUDFLARE_ACCOUNT_ID: P1_ACCOUNT,NODE_ENV: 'production',CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false' }
 for (const key of ['WRANGLER_CI_OVERRIDE_NAME','WRANGLER_CI_MATCH_TAG','PAYLOAD_TEST_MODE','PAYLOAD_BUILD_PHASE','PAYLOAD_ROLE_BUILD']) delete env[key]
 const token = env.CLOUDFLARE_API_TOKEN
@@ -103,7 +104,6 @@ for (let attempt = 1; attempt <= 96; attempt++) {
   await new Promise(resolve => setTimeout(resolve,5000))
 }
 assert.ok(ready >= 3,'P1 HTTPS deployment did not become ready; forward recovery required')
-const request = p1ReleaseRequest()
 for (const mode of ['--dry-run','--apply']) execFileSync('pnpm',['run','site:provision','--request',request.path,mode],{
   env: { ...env,SITE_PROVISION_EMAIL: 'p1-isolation@example.invalid',SITE_PROVISION_PASSWORD: password },stdio: 'inherit',
 })

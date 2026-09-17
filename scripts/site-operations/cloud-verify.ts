@@ -12,6 +12,7 @@ import { groupRoutes } from './manifest'
 import { parseVerificationRequest } from './verify-request'
 import { verifySiteDatabase } from './verify-database'
 import { runtimeProofSnapshot } from './runtime-proof'
+import { provisionDigest } from '../../src/site-control/provisionPlan'
 
 assert.equal(process.env.WORKERS_CI,'1'); assert.ok(['feat/site-per-d1','main'].includes(process.env.WORKERS_CI_BRANCH ?? ''))
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
@@ -97,7 +98,21 @@ try {
     accountId: group.account_id,workerGroup: group.vars.WORKER_GROUP,deployment: before,mutations: false,reports,
     limits: ['No source-database migration comparison','SQL foreign keys and explicit task site references; arbitrary embedded HTML/SVG/JSON relations need migration graph validation',
       'Pending media without filenames counted separately; media objects larger than 64 MiB rejected','P2 scheduling and vendor execution are not implemented or certified'] }
-  writeFileSync(resolve(directory,'report.json'),JSON.stringify(report,null,2))
-  console.log(JSON.stringify(report))
+  const serialized = JSON.stringify(report,null,2)
+  writeFileSync(resolve(directory,'report.json'),serialized)
+  // Avoid one oversized log line and wait for pipe backpressure before exit.
+  // Each inventory chunk is independently attributed to this operation/site.
+  const output = (value: unknown) => new Promise<void>((resolve,reject) => {
+    process.stdout.write(JSON.stringify(value)+'\n',error => error ? reject(error) : resolve())
+  })
+  for (const target of reports) {
+    const { tables,...metadata } = target
+    await output({ event: 'site_verification_site_report',operationId: request.operationId,...metadata })
+    for (let offset = 0; offset < tables.length; offset += 10) await output({ event: 'site_verification_inventory',operationId: request.operationId,
+      siteId: target.siteId,offset,tables: tables.slice(offset,offset+10) })
+  }
+  await output({ event: report.event,operationId: report.operationId,checkedAt: report.checkedAt,commit,accountId: group.account_id,
+    workerGroup: group.vars.WORKER_GROUP,deployment: before,mutations: false,limits: report.limits,reportDigest: provisionDigest(serialized),
+    sites: reports.map(target => ({ siteId: target.siteId,tables: target.tables.length,contentDigest: target.contentDigest })) })
 } finally { await proxy.dispose() }
 process.exit(0)
