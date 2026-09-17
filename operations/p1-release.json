@@ -1,3 +1,9 @@
 {
-  "provisionRequest": "operations/provision/p1-d.json"
+  "provisionRequest": "operations/provision/p1-d.json",
+  "reconcile": {
+    "commit": "d26506b8e67175d9196199aebe6ad2dd62b1f1ee",
+    "releaseId": "c854f4a0e252a13b8a8e57df7a799f7d7f3f09b1323356b960a50172f0910e3b",
+    "sourceDigest": "3d6626770351058a23789c1a126d458644a325d2c3192929382aef78d97c2ef4",
+    "centralDeploymentId": "2dcf80c8-a92d-4492-87d0-c7b202195989"
+  }
 }

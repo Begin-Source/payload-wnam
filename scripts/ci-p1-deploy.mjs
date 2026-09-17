@@ -27,6 +27,8 @@ const api = async (path,account = true) => {
   return result.result
 }
 const production = (await api('workers/scripts/payload-wnam/deployments')).deployments[0].id
+if (request.reconcile) assert.equal((await api(`workers/scripts/${configs.central.name}/deployments`)).deployments[0].id,
+  request.reconcile.centralDeploymentId,'Reviewed central runtime is no longer deployed')
 const domains = await api('workers/domains')
 const zone = await api(`zones/${P1_ZONE}`,false)
 assert.equal(zone.name,'beginos.org'); assert.equal(zone.account.id,P1_ACCOUNT)
@@ -64,21 +66,24 @@ const deployed = []
 for (const [role,config] of Object.entries(configs)) {
   if (role === 'site') continue // The provision executor owns its upload and receipt.
   const cwd = resolve('.cloudflare-ci/roles',role), configPath = resolve(cwd,'wrangler.p1.jsonc')
-  writeFileSync(configPath,JSON.stringify(config,null,2))
-  // Reuse the exact role artifacts that passed this commit's browser checks.
-  // No role rebuild, no legacy shared-app upload and no implicit CI Worker name.
-  execFileSync('pnpm',['exec','opennextjs-cloudflare','deploy','--config',configPath],{ cwd,env,stdio: 'inherit' })
-  execFileSync('pnpm',['exec','wrangler','secret','bulk','--config',configPath],{
-    cwd,env,input: JSON.stringify({ PAYLOAD_SECRET: secrets[role] }),stdio: ['pipe','inherit','inherit'],
-  })
+  if (!request.reconcile) {
+    writeFileSync(configPath,JSON.stringify(config,null,2))
+    // Reuse the exact role artifacts that passed this commit's browser checks.
+    // No role rebuild, no legacy shared-app upload and no implicit CI Worker name.
+    execFileSync('pnpm',['exec','opennextjs-cloudflare','deploy','--config',configPath],{ cwd,env,stdio: 'inherit' })
+    execFileSync('pnpm',['exec','wrangler','secret','bulk','--config',configPath],{
+      cwd,env,input: JSON.stringify({ PAYLOAD_SECRET: secrets[role] }),stdio: ['pipe','inherit','inherit'],
+    })
+  }
   const settings = await api(`workers/scripts/${config.name}/settings`)
   for (const db of config.d1_databases) assert.ok(settings.bindings.some(b => b.name === db.binding && b.type === 'd1' && b.id === db.database_id))
   for (const bucket of config.r2_buckets) assert.ok(settings.bindings.some(b => b.name === bucket.binding && b.type === 'r2_bucket' && b.bucket_name === bucket.bucket_name))
   for (const service of config.services ?? []) assert.ok(settings.bindings.some(b => b.name === service.binding && b.type === 'service' && b.service === service.service && b.entrypoint === service.entrypoint))
   assert.ok(settings.bindings.some(b => b.name === 'CENTRAL_ORIGIN' && b.text === config.vars.CENTRAL_ORIGIN))
   const deployment = (await api(`workers/scripts/${config.name}/deployments`)).deployments[0]
-  deployed.push({ role,worker: config.name,deployment: deployment.id,versions: deployment.versions })
-  console.log(JSON.stringify({ event: 'p1_role_deployed',...deployed.at(-1) }))
+  if (request.reconcile) assert.equal(deployment.id,request.reconcile.centralDeploymentId)
+  deployed.push({ role,worker: config.name,deployment: deployment.id,versions: deployment.versions,retained: Boolean(request.reconcile) })
+  console.log(JSON.stringify({ event: request.reconcile ? 'p1_role_retained' : 'p1_role_deployed',...deployed.at(-1) }))
 }
 // Wait for actual HTTPS/TLS/domain and secret propagation, then run the full
 // smoke once. Readiness retries make no content changes.
@@ -104,7 +109,7 @@ for (let attempt = 1; attempt <= 96; attempt++) {
   await new Promise(resolve => setTimeout(resolve,5000))
 }
 assert.ok(ready >= 3,'P1 HTTPS deployment did not become ready; forward recovery required')
-for (const mode of ['--dry-run','--apply']) execFileSync('pnpm',['run','site:provision','--request',request.path,mode],{
+for (const mode of request.reconcile ? [] : ['--dry-run','--apply']) execFileSync('pnpm',['run','site:provision','--request',request.path,mode],{
   env: { ...env,SITE_PROVISION_EMAIL: 'p1-isolation@example.invalid',SITE_PROVISION_PASSWORD: password },stdio: 'inherit',
 })
 execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-group-release.ts'],{
@@ -112,9 +117,9 @@ execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-group-release.ts'],{
 })
 const groupRelease = JSON.parse(readFileSync('.cloudflare-ci/p1-group-release.json','utf8'))
 deployed.push({ role: 'site',worker: configs.site.name,deployment: groupRelease.receipt.deploymentId,
-  versions: [{ version_id: groupRelease.receipt.versionId,percentage: 100 }] })
+  versions: [{ version_id: groupRelease.receipt.versionId,percentage: 100 }],retained: Boolean(request.reconcile),runtimeCommit: groupRelease.receipt.commit })
 // Completed reentry must not create a resource, re-seed or revert this release.
-for (const mode of ['--dry-run','--apply']) execFileSync('pnpm',['run','site:provision','--request',request.path,mode],{ env,stdio: 'inherit' })
+for (const mode of request.reconcile ? ['--apply'] : ['--dry-run','--apply']) execFileSync('pnpm',['run','site:provision','--request',request.path,mode],{ env,stdio: 'inherit' })
 const deployedDomains = await api('workers/domains')
 for (const config of Object.values(p1EffectiveManifests())) for (const route of config.routes) {
   const actual = deployedDomains.find(domain => domain.hostname === route.pattern)
@@ -123,5 +128,6 @@ for (const config of Object.values(p1EffectiveManifests())) for (const route of 
 assert.equal(deployedDomains.find(domain => domain.hostname === 'hub.beginos.org')?.service,'payload-wnam')
 
 assert.equal((await api('workers/scripts/payload-wnam/deployments')).deployments[0].id,production)
+if (request.reconcile) assert.equal((await api(`workers/scripts/${configs.central.name}/deployments`)).deployments[0].id,request.reconcile.centralDeploymentId)
 const report = { event: 'p1_release_passed',commit,checkedAt: new Date().toISOString(),deployed,productionUnchanged: production }
 writeFileSync('.cloudflare-ci/p1-release.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))

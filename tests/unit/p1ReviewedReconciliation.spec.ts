@@ -4,7 +4,7 @@ import { validateReleaseSelection } from '../../scripts/p1-release-manifests.mjs
 
 const entry = (path: string,hash = 'a'.repeat(40)) => `100644 blob ${hash}\t${path}`
 const pinned = () => ({ provisionRequest: 'operations/provision/p1-d.json',reconcile: {
-  commit: 'a'.repeat(40),releaseId: 'b'.repeat(64),sourceDigest: 'c'.repeat(64),
+  commit: 'a'.repeat(40),releaseId: 'b'.repeat(64),sourceDigest: 'c'.repeat(64),centralDeploymentId: '11111111-1111-4111-8111-111111111111',
 } })
 describe('reviewed P1 release reconciliation',() => {
   it('requires unchanged runtime, dependencies, assets, build scripts and operational inputs',() => {
@@ -18,7 +18,7 @@ describe('reviewed P1 release reconciliation',() => {
   it('permits only named maintenance entrypoints, documentation and tests to change',() => {
     const runtime = entry('src/app/page.tsx')
     for (const path of ['AGENTS.md','docs/report.md','tests/unit/report.spec.ts','operations/p1-release.json',
-      'scripts/p1-runtime-source.mjs','scripts/p1-release-manifests.mjs','scripts/ci-p1-deploy.mjs',
+      'scripts/p1-runtime-source.mjs','scripts/p1-release-manifests.mjs','scripts/ci-p0-deploy.mjs','scripts/ci-p1-deploy.mjs',
       'scripts/ci-p1-group-release.ts','scripts/site-operations/cloud-verify.ts']) {
       expect(runtimeSourceDigest(`${runtime}\n${entry(path)}`)).toBe(runtimeSourceDigest(runtime))
     }
@@ -30,7 +30,7 @@ describe('reviewed P1 release reconciliation',() => {
     expect(() => validateReleaseSelection(pinned(),'d'.repeat(64))).toThrow('runtime source changes')
     for (const value of [null,[],{ ...pinned(),force: true },{ ...pinned(),reconcile: null },
       { ...pinned(),provisionRequest: '../foreign.json' },
-      ...['commit','releaseId','sourceDigest'].map(key => ({ ...pinned(),reconcile: { ...pinned().reconcile,[key]: '' } })),
+      ...['commit','releaseId','sourceDigest','centralDeploymentId'].map(key => ({ ...pinned(),reconcile: { ...pinned().reconcile,[key]: '' } })),
       { ...pinned(),reconcile: { ...pinned().reconcile,allowUpload: true } }]) {
       expect(() => validateReleaseSelection(value,'c'.repeat(64))).toThrow()
     }

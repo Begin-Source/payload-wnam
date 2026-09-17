@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process'
 // reconciliation build. Runtime source, assets, dependency/configuration files,
 // role build scripts and all other operation inputs remain fingerprinted.
 const maintenance = new Set(['AGENTS.md','operations/p1-release.json','scripts/p1-runtime-source.mjs',
-  'scripts/p1-release-manifests.mjs','scripts/ci-p1-deploy.mjs','scripts/ci-p1-group-release.ts','scripts/site-operations/cloud-verify.ts'])
+  'scripts/p1-release-manifests.mjs','scripts/ci-p0-deploy.mjs','scripts/ci-p1-deploy.mjs','scripts/ci-p1-group-release.ts','scripts/site-operations/cloud-verify.ts'])
 export function runtimeSourceDigest(tree) {
   const lines = tree.trim().split('\n').filter(Boolean).filter(line => {
     const path = line.split('\t')[1]

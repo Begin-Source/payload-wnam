@@ -8,7 +8,8 @@ export function validateReleaseSelection(selection,sourceDigest) {
   assert.ok(selection && typeof selection === 'object' && !Array.isArray(selection))
   assert.deepEqual(Object.keys(selection).sort(),selection.reconcile ? ['provisionRequest','reconcile'] : ['provisionRequest'])
   if (selection.reconcile) {
-    assert.deepEqual(Object.keys(selection.reconcile).sort(),['commit','releaseId','sourceDigest'])
+    assert.deepEqual(Object.keys(selection.reconcile).sort(),['centralDeploymentId','commit','releaseId','sourceDigest'])
+    assert.match(selection.reconcile.centralDeploymentId,/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
     assert.match(selection.reconcile.commit,/^[a-f0-9]{40}$/)
     assert.match(selection.reconcile.releaseId,/^[a-f0-9]{64}$/)
     assert.match(selection.reconcile.sourceDigest,/^[a-f0-9]{64}$/)

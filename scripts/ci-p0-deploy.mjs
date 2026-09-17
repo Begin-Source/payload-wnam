@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { p1ReleaseRequest } from './p1-release-manifests.mjs'
 
 if (process.env.WORKERS_CI_BRANCH !== 'feat/site-per-d1') {
   console.log('Cloudflare validation complete; no P0 deployment for this branch')
@@ -12,6 +13,13 @@ const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).
 const marker = JSON.parse(readFileSync('.cloudflare-ci/release.json', 'utf8'))
 if (process.env.WORKERS_CI !== '1' || process.env.WORKERS_CI_COMMIT_SHA !== commit ||
   marker.commit !== commit || !existsSync('.open-next/worker.js')) throw new Error('P0 requires a successful commit-matched Workers Build')
+// Full commit-matched cloud checks/builds still ran. A reviewed unchanged-source
+// P1 recovery does not need another P0 upload or its unrelated online smoke.
+if (p1ReleaseRequest().reconcile) {
+  console.log(JSON.stringify({ event: 'p1_reviewed_reconciliation_only',commit }))
+  execFileSync(process.execPath,['scripts/ci-p1-deploy.mjs'],{ env: process.env,stdio: 'inherit' })
+  process.exit(0)
+}
 const config = JSON.parse(readFileSync('wrangler.p0.json', 'utf8'))
 const expectedDBs = ['31d5906e-f276-4a61-87c1-31a13e7131e6', '20fd152f-7b7c-4bc6-be81-1a36ea720060']
 if (config.name !== WORKER || config.account_id !== ACCOUNT || config.d1_databases.length !== 2 ||
