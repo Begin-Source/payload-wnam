@@ -1,0 +1,374 @@
+{
+  "phase": "P1 implementation — not accepted",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "repository": "Begin-Source/payload-wnam",
+  "commit": "7086951cd4233c55cf534fa2b008f827d46db395",
+  "buildId": "4e173867-675a-4aa1-8171-2b0271ed1fd7",
+  "localChecks": [
+    "git diff --check and JavaScript syntax checks passed",
+    "No local dependency installation, application build or test execution; all tests/builds ran in Cloudflare Builds"
+  ],
+  "changes": [
+    "Independent central Next/Payload application and named identity/data entrypoints",
+    "Explicit central runtime bindings without shared-config or default-D1 fallback",
+    "Role-specific generated import map, Wrangler binding types and OpenNext artifacts",
+    "Canonical-origin central ingress and real Payload JWT-backed site ticket route",
+    "Complete central Worker with native D1, R2 and Static Assets plus real browser login",
+    "P0 credential-rotation readiness checks before full deployed regression"
+  ],
+  "validation": {
+    "unitAndIntegrationTests": 564,
+    "testFiles": 113,
+    "existingBrowserChecks": 14,
+    "centralApplication": {
+      "event": "central_application_passed",
+      "checkedAt": "2026-09-17T11:11:55.112Z",
+      "checks": [
+        "complete-worker",
+        "canonical-host",
+        "closed-signup",
+        "browser-password-login",
+        "native-admin-assets",
+        "master-create-read",
+        "no-site-content-api",
+        "real-session-ticket",
+        "site-grant-denial",
+        "desktop-mobile",
+        "session-revocation"
+      ],
+      "remoteDeployment": false
+    },
+    "scope": "Complete central application assembled and executed by Cloudflare Builds workerd/Chromium with a disposable full central schema and synthetic accounts. No independent central remote deployment, full site application, real staff acceptance or central/site migration.",
+    "events": [
+      {
+        "at": "2026-09-17T11:11:55.114Z",
+        "value": {
+          "event": "central_application_passed",
+          "checkedAt": "2026-09-17T11:11:55.112Z",
+          "checks": [
+            "complete-worker",
+            "canonical-host",
+            "closed-signup",
+            "browser-password-login",
+            "native-admin-assets",
+            "master-create-read",
+            "no-site-content-api",
+            "real-session-ticket",
+            "site-grant-denial",
+            "desktop-mobile",
+            "session-revocation"
+          ],
+          "remoteDeployment": false
+        }
+      },
+      {
+        "at": "2026-09-17T11:11:57.922Z",
+        "value": {
+          "event": "site_d1_workerd_isolation",
+          "commit": "7086951cd4233c55cf534fa2b008f827d46db395",
+          "ok": true,
+          "databases": 2,
+          "concurrentRequests": 40,
+          "elapsedMs": 1035,
+          "checks": [
+            "CRUD",
+            "same IDs",
+            "batch rollback",
+            "context guards",
+            "stale routes",
+            "streams",
+            "R2 prefixes",
+            "native R2 response metadata",
+            "cache keys",
+            "queue delivery and deduplication"
+          ],
+          "scope": "Cloudflare Builds workerd with local D1/R2/Queues; not deployed D1 or full Payload/admin acceptance"
+        }
+      },
+      {
+        "at": "2026-09-17T11:14:25.624Z",
+        "value": {
+          "event": "site_data_workerd_rpc",
+          "ok": true,
+          "commit": "7086951cd4233c55cf534fa2b008f827d46db395",
+          "workers": 2,
+          "databases": 3,
+          "r2Buckets": 3,
+          "concurrentAssetCopies": 5,
+          "checks": [
+            "named read-only RPC",
+            "HTTP and publishing denied",
+            "live manager grant",
+            "forged destination denied",
+            "tenant-private master and asset isolation",
+            "global configuration to two sites",
+            "candidate persistence",
+            "binary asset transport and local media mapping",
+            "concurrent copy deduplication",
+            "withdrawal and retry",
+            "live revocation"
+          ],
+          "scope": "Cloudflare Builds native service bindings with minimal role schemas. Full independent Payload behavior has separate native integration tests; formal roles, UI and queue delivery are not deployed."
+        }
+      },
+      {
+        "at": "2026-09-17T11:14:25.740Z",
+        "value": {
+          "event": "site_identity_workerd_rpc",
+          "ok": true,
+          "commit": "7086951cd4233c55cf534fa2b008f827d46db395",
+          "workers": 2,
+          "databases": 3,
+          "concurrentRedemptions": 20,
+          "concurrentSiteRequests": 20,
+          "checks": [
+            "named RPC capability",
+            "no RPC issuer",
+            "HTTP capability denied",
+            "POST handoff",
+            "Chromium form/CSP/cookie navigation",
+            "single-use ticket",
+            "host/origin binding",
+            "explicit local site ID mapping",
+            "credential-free projections",
+            "live role changes",
+            "immediate revocation",
+            "site logout",
+            "central logout",
+            "central outage fails closed",
+            "independent public response"
+          ],
+          "scope": "Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance"
+        }
+      },
+      {
+        "at": "2026-09-17T11:16:19.877Z",
+        "value": {
+          "event": "p0_deployment_readiness",
+          "attempt": 1,
+          "consecutiveReady": 0,
+          "statuses": [
+            {
+              "site": "a",
+              "status": 401,
+              "ready": false
+            },
+            {
+              "site": "b",
+              "status": 401,
+              "ready": false
+            }
+          ]
+        }
+      },
+      {
+        "at": "2026-09-17T11:16:25.989Z",
+        "value": {
+          "event": "p0_deployment_readiness",
+          "attempt": 2,
+          "consecutiveReady": 1,
+          "statuses": [
+            {
+              "site": "a",
+              "status": 200,
+              "ready": true
+            },
+            {
+              "site": "b",
+              "status": 200,
+              "ready": true
+            }
+          ]
+        }
+      },
+      {
+        "at": "2026-09-17T11:16:32.406Z",
+        "value": {
+          "event": "p0_deployment_readiness",
+          "attempt": 3,
+          "consecutiveReady": 2,
+          "statuses": [
+            {
+              "site": "a",
+              "status": 200,
+              "ready": true
+            },
+            {
+              "site": "b",
+              "status": 200,
+              "ready": true
+            }
+          ]
+        }
+      },
+      {
+        "at": "2026-09-17T11:16:37.209Z",
+        "value": {
+          "event": "p0_deployment_readiness",
+          "attempt": 4,
+          "consecutiveReady": 3,
+          "statuses": [
+            {
+              "site": "a",
+              "status": 200,
+              "ready": true
+            },
+            {
+              "site": "b",
+              "status": 200,
+              "ready": true
+            }
+          ]
+        }
+      },
+      {
+        "at": "2026-09-17T11:16:42.040Z",
+        "value": {
+          "event": "p0_deployment_readiness",
+          "attempt": 5,
+          "consecutiveReady": 4,
+          "statuses": [
+            {
+              "site": "a",
+              "status": 200,
+              "ready": true
+            },
+            {
+              "site": "b",
+              "status": 200,
+              "ready": true
+            }
+          ]
+        }
+      },
+      {
+        "at": "2026-09-17T11:17:45.701Z",
+        "value": {
+          "event": "p0_deployed_smoke_passed",
+          "commit": "7086951cd4233c55cf534fa2b008f827d46db395",
+          "at": "2026-09-17T11:17:45.700Z",
+          "scope": "Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending",
+          "concurrentReads": 40,
+          "concurrentPublicPages": 12,
+          "isolatesServingBothSites": 7,
+          "configuredIconViews": 4
+        }
+      },
+      {
+        "at": "2026-09-17T11:17:45.721Z",
+        "value": {
+          "event": "p0_release_passed",
+          "commit": "7086951cd4233c55cf534fa2b008f827d46db395",
+          "worker": "payload-wnam-p0",
+          "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+        }
+      }
+    ]
+  },
+  "failedBuilds": [
+    {
+      "buildId": "a876a80b-dc1a-4a41-a3ae-6fc5fd25ce2d",
+      "commit": "31fd1fe",
+      "stage": "before-deployment",
+      "reason": "Role config promise type and omitted shared writing helpers failed staged typecheck."
+    },
+    {
+      "buildId": "80c41a2d-954d-414c-978e-ee52a7731d14",
+      "commit": "34f055c",
+      "stage": "before-deployment",
+      "reason": "Miniflare automatic module scanning rejected a dynamic import in the complete OpenNext bundle."
+    },
+    {
+      "buildId": "ebe6f7a0-fed8-40b0-9ece-824153551286",
+      "commit": "6e98c4f",
+      "stage": "before-deployment",
+      "reason": "One transitive draft-skeleton helper was missing from the staged source tree."
+    },
+    {
+      "buildId": "ad6e7fd4-0f10-4242-afca-dd25f7475c9d",
+      "commit": "01a59dd",
+      "stage": "before-deployment",
+      "reason": "Login input timeout; self-signed TLS and static asset handling required diagnostic follow-up."
+    },
+    {
+      "buildId": "94fc742e-c07a-406d-a010-73272e080d44",
+      "commit": "4301cf5",
+      "stage": "before-deployment",
+      "reason": "Bounded browser diagnostics identified ERR_CERT_AUTHORITY_INVALID on the isolated listener."
+    },
+    {
+      "buildId": "9aa45690-f18b-4515-a7c3-e2ddc51d71f5",
+      "commit": "cea0571",
+      "stage": "before-deployment",
+      "reason": "Pinned Miniflare explicit host routes bypassed the native assets router; all admin chunks returned 404."
+    },
+    {
+      "buildId": "f79ec5bc-f152-4289-b1cc-0f29246274b9",
+      "commit": "f5a49f4",
+      "stage": "before-deployment",
+      "reason": "Form submission raced Payload hydration/field initialization."
+    },
+    {
+      "buildId": "8fce732c-22a1-495d-aada-186d9be0a14d",
+      "commit": "c761f99",
+      "stage": "before-deployment",
+      "reason": "Field validation had not settled before automated submission; corrected to match upstream login synchronization."
+    },
+    {
+      "buildId": "c27d578c-044c-47fd-a1d8-d733d86dc8d9",
+      "commit": "ea98d9c",
+      "stage": "post-deployment",
+      "reason": "All build checks passed; P0 deployed, then authenticated GET /admin/login returned 401 during online smoke. Forward recovery added bounded two-domain readiness after credential rotation."
+    }
+  ],
+  "deploymentConstraints": {
+    "centralDomain": {
+      "hostname": "hub.beginos.org",
+      "customDomainId": "c167e7cd229ceeee3554b16fb07d1366d3cd2880",
+      "service": "payload-wnam",
+      "zoneId": "8d8fd673a6aeacf85360bc9e397d3002"
+    },
+    "domainSwitchPerformed": false
+  },
+  "remaining": [
+    "Full site application and role routing/builds",
+    "Independent remote resources, role migrations and rollout",
+    "Complete SSO entry/exit and master review interfaces",
+    "Central account email delivery",
+    "Provisioning, pause/resume/retire and MCP explicit stable siteId",
+    "P2–P5, real migration and timed acceptance, capacity and final deliverables"
+  ],
+  "capturedAt": "2026-09-17T11:19:28.619Z",
+  "buildOutcome": "success",
+  "deployments": {
+    "payload-wnam": {
+      "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+      "createdOn": "2026-09-16T13:17:17.77796Z",
+      "versions": [
+        {
+          "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+          "percentage": 100
+        }
+      ]
+    },
+    "payload-wnam-p0": {
+      "id": "999a2b50-d52d-4189-ad59-ae63787a1fe8",
+      "createdOn": "2026-09-17T11:16:14.194978Z",
+      "versions": [
+        {
+          "version_id": "65c64d43-ae2c-44a1-b22f-99449ed9b5bc",
+          "percentage": 100
+        }
+      ]
+    }
+  },
+  "recovery": {
+    "failedDeployment": {
+      "id": "b4652653-52bc-4c09-9a51-3cf6b52dcd3a",
+      "versionId": "4e6bfc22-79df-4457-aeaa-e2e1ed59f8de"
+    },
+    "method": "Fresh Cloudflare build and forward deployment with two-domain credential readiness followed by full deployed smoke",
+    "observed": "Both domains initially returned 401 with the new gate cookie, then returned 200 for four consecutive readiness rounds; subsequent full online smoke passed.",
+    "automaticRollback": false
+  }
+}
