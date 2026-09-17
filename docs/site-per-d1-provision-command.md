@@ -34,7 +34,7 @@ pnpm run site:provision --request operations/provision/p1-d.json --apply
 
 checkpoint 6 的 `--apply` 也只读：核验当前部署/绑定、实际远程检查服务、域名、原站点归属及 active 路由，返回 `mutations: false`，不重跑 seed、不重传、不更改原六步回执。后续正常发布可能使用新 Worker 版本；历史建站 deployment 仍保留在回执中，不伪装成最新发布。
 
-部署使用本提交已构建的共享站点产物，增加目标绑定和域名并保留原组全部成员。云端生成 `.cloudflare-ci/provision/<operationId>/target.json` 和对应模式的报告。P1 的[普通分组发布](site-per-d1-p1-provision-d.md)从明确选择的 D 请求和持久建库回执生成四站有效清单，逐项核对登记成员后上传；建站预约和普通发布通过中央日志互斥。后续同一发布入口继续保留 D，不能把旧三站清单强行上传。跨组/多请求清单管理与中央建站界面仍需继续接通。
+部署使用本提交已构建的共享站点产物，增加目标绑定和域名并保留原组全部成员。云端生成 `.cloudflare-ci/provision/<operationId>/target.json` 和对应模式的报告。P1 的[普通分组发布](site-per-d1-p1-provision-d.md)现通过[多请求历史解析与逐组发布协调](site-per-d1-fleet-management.md)读取 `operations/fleet/p1.json` 中的 C/D 完整日志，生成四站清单，并核对最后 D 请求与原部署入口一致；建站预约和普通发布通过中央日志互斥。后续同一发布入口继续保留 D，不能把旧三站清单强行上传。原生多组恢复和真实单组四站核验均已通过；中央建站界面、动态新请求执行与完整多组云端入口仍需接通。
 
 ## 激活验收与边界
 

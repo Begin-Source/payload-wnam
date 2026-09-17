@@ -1,0 +1,717 @@
+{
+  "scope": "P1 ordered provision histories, fleet release coordination and recovery of one actual four-site group; full execution plan remains incomplete",
+  "repository": {
+    "fullName": "Begin-Source/payload-wnam",
+    "id": 1224379860,
+    "branch": "feat/site-per-d1"
+  },
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "build": {
+    "id": "1090e048-c523-4ec1-b89d-0ee00ae468f7",
+    "status": "stopped",
+    "outcome": "success",
+    "createdAt": "2026-09-17T23:20:07.039Z",
+    "startedAt": "2026-09-17T23:20:10.198Z",
+    "stoppedAt": "2026-09-17T23:46:05.298Z",
+    "executionCommit": "420558be0f75545f5ac9b71c5dd1928e7e7b47ce",
+    "unitAndIntegrationTests": 661,
+    "testFiles": 129,
+    "existingBrowserTests": 14,
+    "githubCheck": {
+      "status": "completed",
+      "conclusion": "success"
+    },
+    "url": "https://dash.cloudflare.com/d487cf34c606620b442632a72272014d/workers/services/view/payload-wnam/production/builds/1090e048-c523-4ec1-b89d-0ee00ae468f7"
+  },
+  "priorFailure": [
+    {
+      "id": "3457b271-b642-4e4b-a6bd-c27c523aaaba",
+      "commit": "d26506b8e67175d9196199aebe6ad2dd62b1f1ee",
+      "status": "stopped",
+      "outcome": "terminated",
+      "stoppedAt": "2026-09-17T23:18:15.801Z",
+      "reason": "Build took too long and was timed out",
+      "unitAndIntegrationTests": 661,
+      "testFiles": 129,
+      "existingBrowserTests": 14,
+      "verifiedTargets": [
+        "p1-a",
+        "p1-b"
+      ],
+      "unverifiedTargets": [
+        "p1-c",
+        "p1-d"
+      ]
+    }
+  ],
+  "recovery": {
+    "runtimeCommit": "d26506b8e67175d9196199aebe6ad2dd62b1f1ee",
+    "sourceDigest": "3d6626770351058a23789c1a126d458644a325d2c3192929382aef78d97c2ef4",
+    "sourceProof": "Current and retained Git trees match under scripts/p1-runtime-source.mjs maintenance exclusions; local source/evidence digest checks only",
+    "centralDeploymentId": "2dcf80c8-a92d-4492-87d0-c7b202195989",
+    "siteDeploymentId": "b88d798e-6080-460d-affc-ab85dc5301d3",
+    "p0Retained": {
+      "id": "bc448801-868f-409b-a3e5-7ca7a92f020f",
+      "versions": [
+        {
+          "version_id": "e4d95986-901d-4d7b-a724-e0458b80a011",
+          "percentage": 100
+        }
+      ]
+    },
+    "p0CentralAndSiteUploadSkipped": true,
+    "signingKeyNotRotated": true,
+    "fullCloudBuildChecksAndFourSiteAcceptanceExecuted": true,
+    "leaseRecoveredAfterNaturalExpiry": true,
+    "manualJournalReset": false,
+    "futureRuntimeChangesRequireRemovingReconciliationSelection": true
+  },
+  "events": [
+    {
+      "time": "2026-09-17T23:33:19.950Z",
+      "value": {
+        "event": "p1_role_retained",
+        "role": "central",
+        "worker": "payload-wnam-p1-central",
+        "deployment": "2dcf80c8-a92d-4492-87d0-c7b202195989",
+        "versions": [
+          {
+            "version_id": "2e15c1a1-00ca-43b4-bc33-767aa14f7aeb",
+            "percentage": 100
+          }
+        ],
+        "retained": true
+      }
+    },
+    {
+      "time": "2026-09-17T23:33:52.516Z",
+      "value": {
+        "event": "p1_fleet_history_verified",
+        "operationId": "319e6bb6-a658-4e37-9756-f6b8aa12a6c6",
+        "workerGroup": "p1-group-1",
+        "manifestDigest": "29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2",
+        "members": [
+          "p1-a",
+          "p1-b",
+          "p1-c",
+          "p1-d"
+        ],
+        "operations": [
+          {
+            "operationId": "f8d779c3-12a4-491c-b368-00f274be2bfd",
+            "siteId": "p1-c",
+            "databaseId": "02e8be38-7dfb-4c48-86e1-30e586961fc9",
+            "completedAt": "2026-09-17T19:24:07.827Z",
+            "planDigest": "d25199af2ece754f2e37a58591df27ffe7ddff948c004397a8390c654e818cf8",
+            "receiptsDigest": "2fca3e61f7e3ac11afbe2048ff7866a63b5bf35c365149c1c56c9aa1a567fa4d",
+            "activationRoutingVersion": 2
+          },
+          {
+            "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+            "siteId": "p1-d",
+            "databaseId": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+            "completedAt": "2026-09-17T20:38:26.039Z",
+            "planDigest": "69fd554a4974e1689b7a3d35ca67e54a7e5f493eda84ed84dadc0db1652fad3e",
+            "receiptsDigest": "c1f021b3e35ff275c46513d26a3c1ec59c562c356098363252120339403d7949",
+            "activationRoutingVersion": 2
+          }
+        ],
+        "mutations": false
+      }
+    },
+    {
+      "time": "2026-09-17T23:38:33.040Z",
+      "value": {
+        "event": "p1_remote_smoke_passed",
+        "checkedAt": "2026-09-17T23:38:33.039Z",
+        "remoteDeployment": true,
+        "sites": [
+          "p1-a",
+          "p1-b",
+          "p1-c",
+          "p1-d"
+        ],
+        "checks": [
+          "real-dns-tls",
+          "independent-central-site-workers",
+          "real-d1-schemas",
+          "central-password-login",
+          "chooser-sso-group",
+          "new-site-live-revocation",
+          "host-only-cookies",
+          "native-editors",
+          "same-id-20-concurrent-reads",
+          "isolated-create-update",
+          "site-password-denied",
+          "manager-pause-resume",
+          "ambiguous-lifecycle-retry",
+          "routing-version-cookie-revocation",
+          "live-grant-revocation",
+          "native-logout-central-revocation",
+          "desktop-mobile",
+          "real-sdk-mcp",
+          "explicit-site-mcp",
+          "mcp-lifecycle",
+          "mcp-grant-revocation",
+          "mcp-central-logout"
+        ],
+        "browserErrors": []
+      }
+    },
+    {
+      "time": "2026-09-17T23:39:49.395Z",
+      "value": {
+        "event": "site_verification_target_passed",
+        "operationId": "60c7c466-6105-4439-a4d7-2439c0cad587",
+        "siteId": "p1-a",
+        "tables": 81,
+        "contentDigest": "d6a31a547458a1428e77209a80402a7d1e2f63222cff89f7525d0712ce4bf9ca",
+        "media": {
+          "objects": 0,
+          "pendingMedia": 0,
+          "withdrawnMedia": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "taskRows": 0
+      }
+    },
+    {
+      "time": "2026-09-17T23:40:32.398Z",
+      "value": {
+        "event": "site_verification_target_passed",
+        "operationId": "60c7c466-6105-4439-a4d7-2439c0cad587",
+        "siteId": "p1-b",
+        "tables": 81,
+        "contentDigest": "589d25ebe625e063b0ea70fecd4cdd343e908471edc5119ee5c8b67d3db4c4b2",
+        "media": {
+          "objects": 0,
+          "pendingMedia": 0,
+          "withdrawnMedia": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "taskRows": 0
+      }
+    },
+    {
+      "time": "2026-09-17T23:41:23.602Z",
+      "value": {
+        "event": "site_verification_target_passed",
+        "operationId": "60c7c466-6105-4439-a4d7-2439c0cad587",
+        "siteId": "p1-c",
+        "tables": 81,
+        "contentDigest": "d85856588a87683c931b9e6f074dbbbc00a2babf48f05db788231ddc251a4892",
+        "media": {
+          "objects": 0,
+          "pendingMedia": 0,
+          "withdrawnMedia": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "taskRows": 0
+      }
+    },
+    {
+      "time": "2026-09-17T23:44:22.803Z",
+      "value": {
+        "event": "site_verification_target_passed",
+        "operationId": "60c7c466-6105-4439-a4d7-2439c0cad587",
+        "siteId": "p1-d",
+        "tables": 81,
+        "contentDigest": "7b483250237cdda736c6d32483c3482b409269c4da72933b06bd6fcc7ed475ff",
+        "media": {
+          "objects": 0,
+          "pendingMedia": 0,
+          "withdrawnMedia": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "taskRows": 0
+      }
+    },
+    {
+      "time": "2026-09-17T23:45:08.169Z",
+      "value": {
+        "event": "p1_group_release_passed",
+        "checkedAt": "2026-09-17T23:45:08.168Z",
+        "releaseId": "c854f4a0e252a13b8a8e57df7a799f7d7f3f09b1323356b960a50172f0910e3b",
+        "workerGroup": "p1-group-1",
+        "commit": "d26506b8e67175d9196199aebe6ad2dd62b1f1ee",
+        "uploaded": false,
+        "reused": false,
+        "receipt": {
+          "deploymentId": "b88d798e-6080-460d-affc-ab85dc5301d3",
+          "versionId": "c9b5e663-61f5-426b-908e-13e6a4266fd2",
+          "manifestDigest": "29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2",
+          "commit": "d26506b8e67175d9196199aebe6ad2dd62b1f1ee",
+          "releaseId": "c854f4a0e252a13b8a8e57df7a799f7d7f3f09b1323356b960a50172f0910e3b"
+        },
+        "completedAt": "2026-09-17T23:44:35.611Z",
+        "executionCommit": "420558be0f75545f5ac9b71c5dd1928e7e7b47ce",
+        "reviewedReconciliation": {
+          "commit": "d26506b8e67175d9196199aebe6ad2dd62b1f1ee",
+          "releaseId": "c854f4a0e252a13b8a8e57df7a799f7d7f3f09b1323356b960a50172f0910e3b",
+          "sourceDigest": "3d6626770351058a23789c1a126d458644a325d2c3192929382aef78d97c2ef4",
+          "centralDeploymentId": "2dcf80c8-a92d-4492-87d0-c7b202195989"
+        },
+        "repeatReceiptUnchanged": true,
+        "provisionOperationUnchanged": "d31f541a-f160-48dc-a992-57bf9da70344",
+        "members": [
+          "p1-a",
+          "p1-b",
+          "p1-c",
+          "p1-d"
+        ]
+      }
+    },
+    {
+      "time": "2026-09-17T23:45:54.020Z",
+      "value": {
+        "event": "site_provision_completed",
+        "commit": "420558be0f75545f5ac9b71c5dd1928e7e7b47ce",
+        "mode": "apply",
+        "checkedAt": "2026-09-17T23:45:54.020Z",
+        "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+        "siteId": "p1-d",
+        "checkpoint": 6,
+        "complete": true,
+        "mutations": false,
+        "verification": {
+          "siteId": "p1-d",
+          "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+          "releaseCommit": "d26506b8e67175d9196199aebe6ad2dd62b1f1ee",
+          "databaseId": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+          "bindingName": "SITE_D1_D",
+          "localSiteId": 104,
+          "tenantId": 2,
+          "centralTenantId": "2",
+          "ownerUserId": "7",
+          "schemaDigest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+          "schemaVersion": 1,
+          "routingVersion": 2,
+          "state": "active",
+          "deploymentId": "b88d798e-6080-460d-affc-ab85dc5301d3"
+        }
+      }
+    },
+    {
+      "time": "2026-09-17T23:45:56.573Z",
+      "value": {
+        "event": "p1_release_passed",
+        "commit": "420558be0f75545f5ac9b71c5dd1928e7e7b47ce",
+        "checkedAt": "2026-09-17T23:45:56.572Z",
+        "deployed": [
+          {
+            "role": "central",
+            "worker": "payload-wnam-p1-central",
+            "deployment": "2dcf80c8-a92d-4492-87d0-c7b202195989",
+            "versions": [
+              {
+                "version_id": "2e15c1a1-00ca-43b4-bc33-767aa14f7aeb",
+                "percentage": 100
+              }
+            ],
+            "retained": true
+          },
+          {
+            "role": "site",
+            "worker": "payload-wnam-p1-sites",
+            "deployment": "b88d798e-6080-460d-affc-ab85dc5301d3",
+            "versions": [
+              {
+                "version_id": "c9b5e663-61f5-426b-908e-13e6a4266fd2",
+                "percentage": 100
+              }
+            ],
+            "retained": true,
+            "runtimeCommit": "d26506b8e67175d9196199aebe6ad2dd62b1f1ee"
+          }
+        ],
+        "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+      }
+    }
+  ],
+  "verification": {
+    "summary": {
+      "event": "site_verification_passed",
+      "operationId": "60c7c466-6105-4439-a4d7-2439c0cad587",
+      "checkedAt": "2026-09-17T23:44:24.510Z",
+      "commit": "420558be0f75545f5ac9b71c5dd1928e7e7b47ce",
+      "accountId": "d487cf34c606620b442632a72272014d",
+      "workerGroup": "p1-group-1",
+      "deployment": {
+        "id": "b88d798e-6080-460d-affc-ab85dc5301d3",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "happygammon@gmail.com",
+        "annotations": {
+          "workers/triggered_by": "deployment"
+        },
+        "versions": [
+          {
+            "version_id": "c9b5e663-61f5-426b-908e-13e6a4266fd2",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-09-17T23:08:14.968748Z"
+      },
+      "mutations": false,
+      "limits": [
+        "No source-database migration comparison",
+        "SQL foreign keys and explicit task site references; arbitrary embedded HTML/SVG/JSON relations need migration graph validation",
+        "Pending media without filenames counted separately; media objects larger than 64 MiB rejected",
+        "P2 scheduling and vendor execution are not implemented or certified"
+      ],
+      "reportDigest": "1463f0695c6e17ed5893d9c7f276f221989dcc802c15f41c5123810898a12025",
+      "sites": [
+        {
+          "siteId": "p1-a",
+          "tables": 81,
+          "contentDigest": "d6a31a547458a1428e77209a80402a7d1e2f63222cff89f7525d0712ce4bf9ca"
+        },
+        {
+          "siteId": "p1-b",
+          "tables": 81,
+          "contentDigest": "589d25ebe625e063b0ea70fecd4cdd343e908471edc5119ee5c8b67d3db4c4b2"
+        },
+        {
+          "siteId": "p1-c",
+          "tables": 81,
+          "contentDigest": "d85856588a87683c931b9e6f074dbbbc00a2babf48f05db788231ddc251a4892"
+        },
+        {
+          "siteId": "p1-d",
+          "tables": 81,
+          "contentDigest": "7b483250237cdda736c6d32483c3482b409269c4da72933b06bd6fcc7ed475ff"
+        }
+      ]
+    },
+    "artifact": "site-per-d1-fleet-management-site-report.json",
+    "source": "Four site metadata events and 36 contiguous inventory chunks from the successful Cloudflare build",
+    "tables": 324,
+    "reportDigestVerified": true,
+    "allFourContentDigestsVerified": true
+  },
+  "directVerification": {
+    "checkedAt": "2026-09-17T23:46:30.388Z",
+    "baselineAt": "2026-09-17T22:46:25.528Z",
+    "timeoutSnapshotAt": "2026-09-17T23:19:14.804Z",
+    "unchangedFromBaseline": [
+      "centralSchema",
+      "centralMigrations",
+      "centralObjects",
+      "cReceipts",
+      "siteObjects",
+      "operation",
+      "receipts",
+      "siteContent",
+      "siteCategories",
+      "siteIdentities",
+      "siteIdentityColumns",
+      "ownership",
+      "grants"
+    ],
+    "domainRecordsUnchangedAfterSortingByHostname": true,
+    "productionUnchanged": true,
+    "recoveryRuntimesAndBindingsUnchanged": true,
+    "allPriorUploadReceiptsAndCreationTimesUnchanged": true,
+    "groupReleases": [
+      {
+        "release_id": "552d810a8c9395ad42ce75ca295d26fbee1e6edf359bb683b572467861d0c91f",
+        "worker_group": "p1-group-1",
+        "commit_sha": "a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910",
+        "manifest_digest": "29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2",
+        "expected_deployment_id": "8dbcc449-a55a-4b0f-af74-689d8fcc15ed",
+        "receipt_json": "{\"releaseId\":\"552d810a8c9395ad42ce75ca295d26fbee1e6edf359bb683b572467861d0c91f\",\"deploymentId\":\"9375c118-760a-4481-a54b-539b04dde48c\",\"versionId\":\"411a0c34-cf49-4cfe-b1e8-b8cfa58df433\",\"manifestDigest\":\"29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2\",\"commit\":\"a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910\"}",
+        "created_at": "2026-09-17T20:39:00.450Z",
+        "completed_at": "2026-09-17T20:42:44.183Z"
+      },
+      {
+        "release_id": "1267afaf2193e7d4dbb75c41a0154c7cd1492b121044121c60497cc47c51c07f",
+        "worker_group": "p1-group-1",
+        "commit_sha": "26b21bc43c085768ef9345c277e002caa5fe36be",
+        "manifest_digest": "29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2",
+        "expected_deployment_id": "9375c118-760a-4481-a54b-539b04dde48c",
+        "receipt_json": "{\"releaseId\":\"1267afaf2193e7d4dbb75c41a0154c7cd1492b121044121c60497cc47c51c07f\",\"deploymentId\":\"d8037161-0325-4c8c-bc7d-a79b86221d1a\",\"versionId\":\"440a64ab-95bc-4b38-9c52-5e6b36d8619c\",\"manifestDigest\":\"29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2\",\"commit\":\"26b21bc43c085768ef9345c277e002caa5fe36be\"}",
+        "created_at": "2026-09-17T21:15:35.215Z",
+        "completed_at": "2026-09-17T21:51:30.235Z"
+      },
+      {
+        "release_id": "a538d63060deaefb2fa0ddf30f6fa87932028c0c15357e4890a73c6f46455d90",
+        "worker_group": "p1-group-1",
+        "commit_sha": "7c4282aefc1f0b124bc0e206ba467b395944c7cd",
+        "manifest_digest": "29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2",
+        "expected_deployment_id": "d8037161-0325-4c8c-bc7d-a79b86221d1a",
+        "receipt_json": "{\"releaseId\":\"a538d63060deaefb2fa0ddf30f6fa87932028c0c15357e4890a73c6f46455d90\",\"deploymentId\":\"a044acd1-42f9-4b2a-a9a5-32c51d6ab04e\",\"versionId\":\"68db86fb-e4e6-4a32-b2c8-0816a6a5bc47\",\"manifestDigest\":\"29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2\",\"commit\":\"7c4282aefc1f0b124bc0e206ba467b395944c7cd\"}",
+        "created_at": "2026-09-17T21:51:54.054Z",
+        "completed_at": "2026-09-17T22:30:09.463Z"
+      },
+      {
+        "release_id": "c854f4a0e252a13b8a8e57df7a799f7d7f3f09b1323356b960a50172f0910e3b",
+        "worker_group": "p1-group-1",
+        "commit_sha": "d26506b8e67175d9196199aebe6ad2dd62b1f1ee",
+        "manifest_digest": "29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2",
+        "expected_deployment_id": "a044acd1-42f9-4b2a-a9a5-32c51d6ab04e",
+        "receipt_json": "{\"releaseId\":\"c854f4a0e252a13b8a8e57df7a799f7d7f3f09b1323356b960a50172f0910e3b\",\"deploymentId\":\"b88d798e-6080-460d-affc-ab85dc5301d3\",\"versionId\":\"c9b5e663-61f5-426b-908e-13e6a4266fd2\",\"manifestDigest\":\"29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2\",\"commit\":\"d26506b8e67175d9196199aebe6ad2dd62b1f1ee\"}",
+        "created_at": "2026-09-17T23:07:30.173Z",
+        "completed_at": "2026-09-17T23:44:35.611Z"
+      }
+    ],
+    "groupLeases": [
+      {
+        "worker_group": "p1-group-1",
+        "lease_epoch": 11,
+        "lease_until": 0
+      }
+    ],
+    "registry": [
+      {
+        "site_id": "p1-a",
+        "local_site_id": 37,
+        "database_id": "6daecf80-30f5-4010-add6-d67bb556cc42",
+        "binding_name": "SITE_D1_A",
+        "worker_group": "p1-group-1",
+        "admin_host": "cms-site-p1-a.beginos.org",
+        "schema_version": 1,
+        "routing_version": 77,
+        "migration_state": "active",
+        "production_enabled": 0,
+        "operation_id": "p1-provision-p1-a-v1"
+      },
+      {
+        "site_id": "p1-b",
+        "local_site_id": 82,
+        "database_id": "b2a1a340-681a-4581-8817-b2f9629a6ed4",
+        "binding_name": "SITE_D1_B",
+        "worker_group": "p1-group-1",
+        "admin_host": "cms-site-p1-b.beginos.org",
+        "schema_version": 1,
+        "routing_version": 1,
+        "migration_state": "active",
+        "production_enabled": 0,
+        "operation_id": "p1-provision-p1-b-v1"
+      },
+      {
+        "site_id": "p1-c",
+        "local_site_id": 103,
+        "database_id": "02e8be38-7dfb-4c48-86e1-30e586961fc9",
+        "binding_name": "SITE_D1_C",
+        "worker_group": "p1-group-1",
+        "admin_host": "cms-site-p1-c.beginos.org",
+        "schema_version": 1,
+        "routing_version": 2,
+        "migration_state": "active",
+        "production_enabled": 0,
+        "operation_id": "f8d779c3-12a4-491c-b368-00f274be2bfd"
+      },
+      {
+        "site_id": "p1-d",
+        "local_site_id": 104,
+        "database_id": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+        "binding_name": "SITE_D1_D",
+        "worker_group": "p1-group-1",
+        "admin_host": "cms-site-p1-d.beginos.org",
+        "schema_version": 1,
+        "routing_version": 2,
+        "migration_state": "active",
+        "production_enabled": 0,
+        "operation_id": "d31f541a-f160-48dc-a992-57bf9da70344"
+      }
+    ],
+    "grants": [
+      {
+        "site_id": "p1-a",
+        "user_id": "7",
+        "role": "manager"
+      },
+      {
+        "site_id": "p1-b",
+        "user_id": "7",
+        "role": "manager"
+      },
+      {
+        "site_id": "p1-c",
+        "user_id": "7",
+        "role": "manager"
+      },
+      {
+        "site_id": "p1-d",
+        "user_id": "7",
+        "role": "manager"
+      }
+    ],
+    "sessions": [
+      {
+        "sessions": 5,
+        "redeemableTickets": 0
+      }
+    ],
+    "liveSessions": [
+      {
+        "site_id": "p1-b",
+        "stored": 2,
+        "unexpired": 1
+      },
+      {
+        "site_id": "p1-c",
+        "stored": 2,
+        "unexpired": 1
+      },
+      {
+        "site_id": "p1-d",
+        "stored": 1,
+        "unexpired": 1
+      }
+    ],
+    "centralSchema": [
+      {
+        "role": "central",
+        "digest": "a7c3aadae00b64d214635f59147438ad9b44798f5b8fd241483b5f10728c539f",
+        "operation_id": "p1-central-schema-v4",
+        "completed": 1,
+        "completed_at": "2026-09-17T20:35:07.981Z"
+      }
+    ],
+    "centralObjects": [
+      {
+        "count": 266
+      }
+    ],
+    "operation": [
+      {
+        "operation_id": "d31f541a-f160-48dc-a992-57bf9da70344",
+        "site_id": "p1-d",
+        "database_id": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+        "checkpoint": 6,
+        "lease_epoch": 3,
+        "lease_until": 0,
+        "completed_at": "2026-09-17T20:38:26.039Z"
+      }
+    ],
+    "cReceipts": [
+      {
+        "step": 1,
+        "intent_digest": "7f525b641e4db9fb9efaae092783acf6c1727cb7fdf952288dc68dc7b1d62d4d",
+        "receipt_json": "{\"databaseId\":\"02e8be38-7dfb-4c48-86e1-30e586961fc9\",\"databaseName\":\"payload-p1-c-f8d779c312a4491cb36800f274be2bfd\",\"readReplication\":\"disabled\"}",
+        "started_at": "2026-09-17T17:52:11.914Z",
+        "completed_at": "2026-09-17T17:52:15.259Z"
+      },
+      {
+        "step": 2,
+        "intent_digest": "3f3a3e20097bb6eea70b620c52bfe565bf5d9143ec6ef98953c03765f4d267d1",
+        "receipt_json": "{\"databaseId\":\"02e8be38-7dfb-4c48-86e1-30e586961fc9\",\"schemaDigest\":\"43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e\",\"schemaVersion\":1,\"objects\":504}",
+        "started_at": "2026-09-17T17:52:16.836Z",
+        "completed_at": "2026-09-17T17:52:27.224Z"
+      },
+      {
+        "step": 3,
+        "intent_digest": "ba240a48492382ef7b34d7dc1adf18b4f5cc23146a6cb3e00a0c888c2ae4754f",
+        "receipt_json": "{\"databaseId\":\"02e8be38-7dfb-4c48-86e1-30e586961fc9\",\"siteId\":\"p1-c\",\"localSiteId\":103,\"tenantId\":1,\"ownerUserId\":7,\"contentDigest\":\"10aa6755cbef8c5a842f89017de00c4513d895c0c0a7a0fcb0640fe1a4dad92a\"}",
+        "started_at": "2026-09-17T18:35:33.140Z",
+        "completed_at": "2026-09-17T18:35:46.294Z"
+      },
+      {
+        "step": 4,
+        "intent_digest": "8664d11df2dd1761ea1011a44cfa4408acb8ab67f5164e7b4ca0599d7f3366bf",
+        "receipt_json": "{\"deploymentId\":\"895b9f03-5a60-4d66-a951-9ba2d7a2d013\",\"versionId\":\"254dc418-e216-4fb8-891a-17f83005e870\",\"manifestDigest\":\"34873e43930b78d20bfff67d22c6972a77ec832236632a7226f863023ee791b0\",\"commit\":\"cd09e7dd879fa1125fea081ea6b5e7c9800bfe95\"}",
+        "started_at": "2026-09-17T19:06:11.984Z",
+        "completed_at": "2026-09-17T19:06:35.225Z"
+      },
+      {
+        "step": 5,
+        "intent_digest": "2a5b69ff143566eb611d07be9c8086e9813ce7701a6e4bb94cbabace5d5fd3ff",
+        "receipt_json": "{\"deploymentId\":\"895b9f03-5a60-4d66-a951-9ba2d7a2d013\",\"reportDigest\":\"9ad7da4e1c9ac8c4abfec40a69394707d0e6a451657f0a2300fb0221bc94557d\",\"checkedAt\":\"2026-09-17T19:06:40.599Z\"}",
+        "started_at": "2026-09-17T19:06:35.502Z",
+        "completed_at": "2026-09-17T19:06:40.914Z"
+      },
+      {
+        "step": 6,
+        "intent_digest": "32f01ca235cb7db4c8fc4859fb83a2e639645363ca6cea0519077c993f2fdd3b",
+        "receipt_json": "{\"siteId\":\"p1-c\",\"routingVersion\":2}",
+        "started_at": "2026-09-17T19:06:41.194Z",
+        "completed_at": "2026-09-17T19:24:07.827Z"
+      }
+    ],
+    "dReceipts": [
+      {
+        "step": 1,
+        "intent_digest": "1bc7a0b081ba45fcc837a17572e83c13d69b38d38cf608e62cf4755134bbe6fa",
+        "receipt_json": "{\"databaseId\":\"40885d2c-87a7-4801-91cd-73f3d760c9f9\",\"databaseName\":\"payload-p1-d-d31f541af16048dca99257bf9da70344\",\"readReplication\":\"disabled\"}",
+        "started_at": "2026-09-17T20:36:42.150Z",
+        "completed_at": "2026-09-17T20:36:44.326Z"
+      },
+      {
+        "step": 2,
+        "intent_digest": "3b6c2bece258aacccd87d420942198b2d4121fbdeffb36fb9ada69d437eebf85",
+        "receipt_json": "{\"databaseId\":\"40885d2c-87a7-4801-91cd-73f3d760c9f9\",\"schemaDigest\":\"43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e\",\"schemaVersion\":1,\"objects\":504}",
+        "started_at": "2026-09-17T20:36:46.247Z",
+        "completed_at": "2026-09-17T20:37:01.198Z"
+      },
+      {
+        "step": 3,
+        "intent_digest": "314b0024edd50ef7010aaa9cbf778a40ddd785bec5717448a4e7c7fd54c57b11",
+        "receipt_json": "{\"databaseId\":\"40885d2c-87a7-4801-91cd-73f3d760c9f9\",\"siteId\":\"p1-d\",\"localSiteId\":104,\"tenantId\":2,\"ownerUserId\":7,\"contentDigest\":\"467f5afc5d70435487f4b6ee24ab9516b6863dece13f6b98a103bf343cdd6dda\"}",
+        "started_at": "2026-09-17T20:37:07.756Z",
+        "completed_at": "2026-09-17T20:37:15.441Z"
+      },
+      {
+        "step": 4,
+        "intent_digest": "5d1cb5cf8a3e1f608d0cf84feaa15d5d0e380244f65c875dddc4ddca6c99bafc",
+        "receipt_json": "{\"deploymentId\":\"8dbcc449-a55a-4b0f-af74-689d8fcc15ed\",\"versionId\":\"3ac3c55d-f033-4648-aec9-908be2ca76d2\",\"manifestDigest\":\"29aab4a6c25ef7b6dbbcc8327bf6226f3faab066d5909fdca2995416a429acb2\",\"commit\":\"a1c1ca1d8376327303f4bfe6bc50a7ac0f9e6910\"}",
+        "started_at": "2026-09-17T20:37:18.473Z",
+        "completed_at": "2026-09-17T20:37:48.140Z"
+      },
+      {
+        "step": 5,
+        "intent_digest": "4a1937f1515975ee9c591541bd347f400923c579f87a670bd8f012f0319ab960",
+        "receipt_json": "{\"deploymentId\":\"8dbcc449-a55a-4b0f-af74-689d8fcc15ed\",\"reportDigest\":\"06aea8e5892bcecaf23b2c6c1a2b7dd441e5a9522e59bd83c8e2bd5f2443cca3\",\"checkedAt\":\"2026-09-17T20:37:53.618Z\"}",
+        "started_at": "2026-09-17T20:37:48.430Z",
+        "completed_at": "2026-09-17T20:37:53.942Z"
+      },
+      {
+        "step": 6,
+        "intent_digest": "4e52a5431e105c6879415a8d443334a00670787b6a610ec2b4bd98ddda1691b2",
+        "receipt_json": "{\"siteId\":\"p1-d\",\"routingVersion\":2}",
+        "started_at": "2026-09-17T20:37:54.256Z",
+        "completed_at": "2026-09-17T20:38:26.039Z"
+      }
+    ],
+    "deployments": {
+      "payload-wnam": {
+        "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+        "versions": [
+          {
+            "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-16T13:17:17.77796Z"
+      },
+      "payload-wnam-p1-central": {
+        "id": "2dcf80c8-a92d-4492-87d0-c7b202195989",
+        "versions": [
+          {
+            "version_id": "2e15c1a1-00ca-43b4-bc33-767aa14f7aeb",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-17T23:04:21.744526Z"
+      },
+      "payload-wnam-p1-sites": {
+        "id": "b88d798e-6080-460d-affc-ab85dc5301d3",
+        "versions": [
+          {
+            "version_id": "c9b5e663-61f5-426b-908e-13e6a4266fd2",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-17T23:08:14.968748Z"
+      }
+    }
+  },
+  "boundaries": [
+    "Dependencies, all application tests, builds and deployments ran only in Cloudflare Builds.",
+    "Two-group history and three-group interrupted release recovery have native D1 integration evidence with controlled external upload/acceptance substitutes; only one real remote four-site group is deployed.",
+    "Current data inventory has no media objects or task rows; nonempty scenarios are covered separately by native tests.",
+    "No arbitrary embedded HTML/SVG/JSON relation graph, mixed-schema migration or migration source/target comparison.",
+    "Five historical stored synthetic sessions remained at direct verification; three were unexpired, zero tickets redeemable. Current run logout passed; no historical-session cleanup claimed.",
+    "Central provisioning UI, dynamic request admission/execution and generic multi-group cloud entry remain incomplete, as do remaining P1 and P2–P5."
+  ]
+}
