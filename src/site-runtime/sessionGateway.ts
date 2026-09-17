@@ -1,5 +1,5 @@
 import type { SiteIdentityRPC } from '../site-control/identityService'
-import { CENTRAL_ORIGIN, SITE_LOGIN_PATH, SITE_LOGOUT_PATH, privateResponse, readSessionForm } from '../site-control/sessionHttp'
+import { CENTRAL_ORIGIN, requireCentralOrigin, SITE_LOGIN_PATH, SITE_LOGOUT_PATH, privateResponse, readSessionForm } from '../site-control/sessionHttp'
 import { assertAdminHost } from '../site-control/registry'
 import { SITE_SESSION_COOKIE, SiteAccessDeniedError } from '../site-control/sso'
 import { requireSiteContext } from './context'
@@ -11,7 +11,8 @@ const clearSessionCookie = `${SITE_SESSION_COOKIE}=; Path=/; Max-Age=0; Secure; 
 /** Logout must still work after pause/revocation, without an active D1 scope.
  * The native Payload UI posts to its usual API endpoint; the form endpoint
  * redirects only after the same central session revocation. */
-export async function siteLogout(request: Request, service: SiteIdentityRPC, siteId: string, host: string): Promise<Response | null> {
+export async function siteLogout(request: Request, service: SiteIdentityRPC, siteId: string, host: string, centralOrigin = CENTRAL_ORIGIN): Promise<Response | null> {
+  requireCentralOrigin(centralOrigin)
   const url = new URL(request.url)
   const api = url.pathname === '/api/users/logout'
   if (!api && url.pathname !== SITE_LOGOUT_PATH) return null
@@ -26,7 +27,7 @@ export async function siteLogout(request: Request, service: SiteIdentityRPC, sit
     if (session) await callSiteIdentity(() => service.logout(session, siteId, host))
     return api ? privateResponse(JSON.stringify({ message: 'Logged out successfully.' }), 200,
       { 'content-type': 'application/json', 'set-cookie': clearSessionCookie }) :
-      privateResponse(null, 303, { location: CENTRAL_ORIGIN, 'set-cookie': clearSessionCookie })
+      privateResponse(null, 303, { location: centralOrigin, 'set-cookie': clearSessionCookie })
   } catch (error) {
     const denied = error instanceof SiteAccessDeniedError
     return privateResponse(denied ? 'Access denied' : 'Identity service unavailable', denied ? 403 : 503,
@@ -37,17 +38,18 @@ export async function siteLogout(request: Request, service: SiteIdentityRPC, sit
 /** Called inside trusted site ingress BEFORE Next/Payload. Returns null for
  * other routes; ordinary admin writes must also call assertSiteWriteOrigin.
  */
-export async function siteSessionGateway(request: Request, service: SiteIdentityRPC): Promise<Response | null> {
+export async function siteSessionGateway(request: Request, service: SiteIdentityRPC, centralOrigin = CENTRAL_ORIGIN): Promise<Response | null> {
+  requireCentralOrigin(centralOrigin)
   const url = new URL(request.url)
   if (url.pathname !== SITE_LOGIN_PATH && url.pathname !== SITE_LOGOUT_PATH) return null
   const context = requireSiteContext()
-  if (url.pathname === SITE_LOGOUT_PATH) return siteLogout(request, service, context.siteId, context.requestHost ?? '')
+  if (url.pathname === SITE_LOGOUT_PATH) return siteLogout(request, service, context.siteId, context.requestHost ?? '', centralOrigin)
   try {
     assertAdminHost(context.siteId, context.requestHost ?? '')
     if (url.origin !== `https://${context.requestHost}` || url.search) return privateResponse('Not found', 404)
   } catch { return privateResponse('Not found', 404) }
   if (request.method !== 'POST') return privateResponse('Method not allowed', 405, { allow: 'POST' })
-  if (request.headers.get('origin') !== CENTRAL_ORIGIN) return privateResponse('Access denied', 403)
+  if (request.headers.get('origin') !== centralOrigin) return privateResponse('Access denied', 403)
   try {
     let ticket: string
     try { ticket = await readSessionForm(request, 'ticket') } catch { return privateResponse('Invalid request', 400) }

@@ -25,6 +25,23 @@ const entry = (body = 'siteId=a', origin = CENTRAL_ORIGIN) => post(`${CENTRAL_OR
 const login = (body = `ticket=${token}`, origin = CENTRAL_ORIGIN) => post('https://cms-site-a.beginos.org/auth/site-login', origin, body)
 
 describe('central and site HTTP session boundaries', () => {
+  it('keeps staging and production SSO origins separate for entry, redemption and logout', async () => {
+    const centralOrigin = 'https://p1-hub.beginos.org'
+    const issueTicket = vi.fn(async () => ({ ticket: token, adminOrigin: 'https://cms-site-a.beginos.org', expiresAt: Date.now() + 60_000 }))
+    const options = { centralOrigin, broker: { issueTicket }, authenticate: vi.fn(async () => ({ userId: '7',sessionId: 'verified' })) }
+    expect((await centralSiteEntry(entry(),options)).status).toBe(404)
+    expect((await centralSiteEntry(post(`${centralOrigin}/auth/enter-site`,CENTRAL_ORIGIN,'siteId=a'),options)).status).toBe(403)
+    expect(issueTicket).not.toHaveBeenCalled()
+    expect((await centralSiteEntry(post(`${centralOrigin}/auth/enter-site`,centralOrigin,'siteId=a'),options)).status).toBe(200)
+    await withSiteContext(site,async () => {
+      const service = rpc()
+      expect((await siteSessionGateway(login(),service,centralOrigin))?.status).toBe(403)
+      expect(service.redeem).not.toHaveBeenCalled()
+      expect((await siteSessionGateway(login(`ticket=${token}`,centralOrigin),service,centralOrigin))?.status).toBe(303)
+      const logout = await siteSessionGateway(post('https://cms-site-a.beginos.org/auth/site-logout','https://cms-site-a.beginos.org',''),service,centralOrigin)
+      expect(logout?.headers.get('location')).toBe(centralOrigin)
+    })
+  })
   it('uses only the verified Payload JWT session and disables automatic login', async () => {
     const auth = vi.fn(async (_options: { headers: Headers }) => ({ user: { id: 7, collection: 'users', _strategy: 'local-jwt', _sid: 'verified-session' } }))
     const payload = { auth } as unknown as Payload

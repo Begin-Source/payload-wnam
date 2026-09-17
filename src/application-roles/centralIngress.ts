@@ -1,4 +1,4 @@
-import { CENTRAL_ORIGIN, privateResponse } from '../site-control/sessionHttp'
+import { privateResponse } from '../site-control/sessionHttp'
 import { requireCentralEnvironment, type CentralEnvironment } from './centralEnvironment'
 
 /** Only the canonical central origin can reach the role's Next application.
@@ -6,8 +6,8 @@ import { requireCentralEnvironment, type CentralEnvironment } from './centralEnv
 export async function centralFetch<E extends CentralEnvironment>(request: Request, env: E, ctx: ExecutionContext,
   next: (request: Request, env: E, ctx: ExecutionContext) => Promise<Response>): Promise<Response> {
   const url = new URL(request.url)
-  if (url.origin !== CENTRAL_ORIGIN) return privateResponse('Unknown central host',421)
   try { requireCentralEnvironment(env) } catch { return privateResponse('Central service unavailable',503) }
+  if (url.origin !== env.CENTRAL_ORIGIN) return privateResponse('Unknown central host',421)
   const headers = new Headers(request.headers)
   headers.set('host',url.host)
   headers.set('x-forwarded-host',url.host)

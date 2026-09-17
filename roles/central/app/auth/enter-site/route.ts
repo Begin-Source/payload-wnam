@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: Request): Promise<Response> {
   const env = requireCentralEnvironment((await getCloudflareContext({ async: true })).env)
   return centralSiteEntry(request,{
+    centralOrigin: env.CENTRAL_ORIGIN,
     broker: new SiteLoginBroker(env.CENTRAL_D1,payloadSessionAuthority(env.CENTRAL_D1)),
     authenticate: async request => centralIdentityFromPayload(await getPayload({ config }),request),
   })

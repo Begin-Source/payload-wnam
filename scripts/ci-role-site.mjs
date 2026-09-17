@@ -36,11 +36,11 @@ const siteConfig = JSON.parse(readFileSync('.cloudflare-ci/roles/site/wrangler.j
 const mf = new Miniflare({ host: '127.0.0.1', port: 0, https: true, log: new Log(LogLevel.WARN), workers: [
   { name: 'front', ...shared, modules: true,
     script: `export default { fetch(request,env) { const host=new URL(request.url).hostname;
-      if(host==='hub.beginos.org')return env.CENTRAL.fetch(request);
+      if(host==='p1-hub.beginos.org')return env.CENTRAL.fetch(request);
       if(host==='cms-site-a.beginos.org'||host==='cms-site-b.beginos.org')return env.SITE.fetch(request);
       return new Response('Unknown host',{status:421}); } }`,
     serviceBindings: { CENTRAL: 'central', SITE: 'site' } },
-  { ...application('central'), bindings: { PAYLOAD_SECRET: 'central-config-isolated-test-only' },
+  { ...application('central'), bindings: { CENTRAL_ORIGIN: 'https://p1-hub.beginos.org', PAYLOAD_SECRET: 'central-config-isolated-test-only' },
     d1Databases: { CENTRAL_D1: 'complete-sso-central' }, r2Buckets: { CENTRAL_MEDIA: 'sso-central-media', MASTER_ASSET_ARCHIVE: 'sso-master-archive' } },
   { ...application('site'), bindings: { ...siteConfig.vars, PAYLOAD_SECRET: 'site-config-isolated-test-only-secret' },
     d1Databases: { SITE_D1_A: 'complete-sso-a', SITE_D1_B: 'complete-sso-b' }, r2Buckets: { SITE_PUBLIC: 'sso-public', SITE_PRIVATE: 'sso-private' },
@@ -69,7 +69,7 @@ try {
     await centralDB.prepare('INSERT INTO site_runtime_access VALUES (?,?,?)').bind(id,'7','editor').run()
   }
   const listener = await mf.ready
-  const hosts = ['hub.beginos.org','cms-site-a.beginos.org','cms-site-b.beginos.org']
+  const hosts = ['p1-hub.beginos.org','cms-site-a.beginos.org','cms-site-b.beginos.org']
   for (const [role,host] of [['central',hosts[0]],['site',hosts[1]],['site',hosts[2]]]) {
     const files = readdirSync(resolve('.cloudflare-ci/roles',role,'.open-next/assets'),{ recursive: true })
     for (const extension of ['.js','.css']) {
@@ -89,7 +89,7 @@ try {
     page.on('response',response => { if (response.url().includes('/_next/') && response.status() >= 400) failedAssets.push(new URL(response.url()).pathname) })
   })
   const hub = currentPage = await context.newPage()
-  assert.equal((await hub.goto('https://hub.beginos.org/admin/login')).status(),200)
+  assert.equal((await hub.goto('https://p1-hub.beginos.org/admin/login')).status(),200)
   await hub.locator('form[data-form-ready="true"]').waitFor()
   await hub.waitForLoadState('networkidle')
   await hub.locator('input[name=email]').fill('admin@example.invalid')
@@ -103,7 +103,7 @@ try {
   const pages = {}
   for (const id of ['a','b']) {
     const page = currentPage = await context.newPage()
-    await page.goto('https://hub.beginos.org/admin')
+    await page.goto('https://p1-hub.beginos.org/admin')
     // Navigate through the actual central chooser, with its current grant list.
     const chooser = page.getByRole('region',{ name: '我的网站' })
     await chooser.locator(`[data-site-id="${id}"]`).waitFor()

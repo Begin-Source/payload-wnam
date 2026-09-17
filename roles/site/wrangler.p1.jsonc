@@ -1,0 +1,70 @@
+{
+  "account_id": "d487cf34c606620b442632a72272014d",
+  "main": "worker.ts",
+  "compatibility_date": "2025-08-15",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "CENTRAL_ORIGIN": "https://p1-hub.beginos.org",
+    "WORKER_GROUP": "p1-group-1",
+    "SITE_ROUTES": "[{\"siteId\":\"p1-a\",\"localSiteId\":37,\"bindingName\":\"SITE_D1_A\",\"databaseId\":\"6daecf80-30f5-4010-add6-d67bb556cc42\",\"schemaVersion\":1},{\"siteId\":\"p1-b\",\"localSiteId\":82,\"bindingName\":\"SITE_D1_B\",\"databaseId\":\"b2a1a340-681a-4581-8817-b2f9629a6ed4\",\"schemaVersion\":1}]"
+  },
+  "name": "payload-wnam-p1-sites",
+  "routes": [
+    {
+      "pattern": "cms-site-p1-a.beginos.org",
+      "custom_domain": true
+    },
+    {
+      "pattern": "cms-site-p1-b.beginos.org",
+      "custom_domain": true
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "SITE_D1_A",
+      "database_name": "payload-wnam-p1-a",
+      "database_id": "6daecf80-30f5-4010-add6-d67bb556cc42"
+    },
+    {
+      "binding": "SITE_D1_B",
+      "database_name": "payload-wnam-p1-b",
+      "database_id": "b2a1a340-681a-4581-8817-b2f9629a6ed4"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "SITE_PUBLIC",
+      "bucket_name": "payload-wnam-p1-site-public"
+    },
+    {
+      "binding": "SITE_PRIVATE",
+      "bucket_name": "payload-wnam-p1-site-private"
+    }
+  ],
+  "services": [
+    {
+      "binding": "IDENTITY",
+      "entrypoint": "SiteIdentityService",
+      "service": "payload-wnam-p1-central"
+    },
+    {
+      "binding": "DATA",
+      "entrypoint": "SiteDataService",
+      "service": "payload-wnam-p1-central"
+    },
+    {
+      "binding": "ROUTING",
+      "entrypoint": "SiteRoutingService",
+      "service": "payload-wnam-p1-central"
+    }
+  ]
+}

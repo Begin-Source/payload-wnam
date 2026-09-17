@@ -8,6 +8,6 @@ import { centralSiteDirectory } from '@/site-control/siteDirectory'
 export const dynamic = 'force-dynamic'
 export async function GET(request: Request): Promise<Response> {
   const env = requireCentralEnvironment((await getCloudflareContext({ async: true })).env)
-  return centralSiteDirectory(request, { database: env.CENTRAL_D1,
+  return centralSiteDirectory(request, { centralOrigin: env.CENTRAL_ORIGIN, database: env.CENTRAL_D1,
     authenticate: async request => centralIdentityFromPayload(await getPayload({ config }), request) })
 }

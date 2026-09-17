@@ -21,7 +21,7 @@ const mf = new Miniflare({ host: '127.0.0.1',port: 0,https: true,
   // its assets router. A single-role listener uses the assets-aware fallback.
   name: 'central',modules,modulesRoot: bundle,
   compatibilityDate: '2025-08-15',compatibilityFlags: ['nodejs_compat','global_fetch_strictly_public'],
-  bindings: { PAYLOAD_SECRET: 'central-config-isolated-test-only' },
+  bindings: { CENTRAL_ORIGIN: 'https://p1-hub.beginos.org', PAYLOAD_SECRET: 'central-config-isolated-test-only' },
   d1Databases: { CENTRAL_D1: 'complete-central-app' },
   r2Buckets: { CENTRAL_MEDIA: 'central-app-media',MASTER_ASSET_ARCHIVE: 'central-app-archive' },
   // Match Workers Static Assets routing, not only an ASSETS fetch binding.
@@ -48,21 +48,21 @@ try {
   for (const extension of ['.js','.css']) {
     const file = staticFiles.find(name => name.startsWith('_next/') && name.endsWith(extension))
     assert.ok(file,`Missing built ${extension} asset`)
-    const response = await mf.dispatchFetch('https://hub.beginos.org/' + file)
+    const response = await mf.dispatchFetch('https://p1-hub.beginos.org/' + file)
     assert.equal(response.status,200,`Native listener must serve ${extension} assets before browser checks`)
     assert.match(response.headers.get('content-type'),extension === '.js' ? /javascript/ : /text\/css/)
   }
   console.log(JSON.stringify({ event: 'central_asset_router_passed' }))
   assert.equal((await worker.fetch('https://unknown.example/admin/login')).status,421)
-  const anonymous = await worker.fetch('https://hub.beginos.org/api/users',{ method: 'POST',headers: { 'content-type': 'application/json',origin: 'https://hub.beginos.org' },
+  const anonymous = await worker.fetch('https://p1-hub.beginos.org/api/users',{ method: 'POST',headers: { 'content-type': 'application/json',origin: 'https://p1-hub.beginos.org' },
     body: JSON.stringify({ email: 'anonymous@example.invalid',password: 'must-not-register-automatically' }) })
   assert.equal(anonymous.status,403,'Central anonymous signup must remain closed')
   const listener = await mf.ready
-  browser = await chromium.launch({ headless: true,args: ['--no-proxy-server','--ignore-certificate-errors','--disable-background-networking',`--host-resolver-rules=MAP hub.beginos.org:443 127.0.0.1:${listener.port}`] })
+  browser = await chromium.launch({ headless: true,args: ['--no-proxy-server','--ignore-certificate-errors','--disable-background-networking',`--host-resolver-rules=MAP p1-hub.beginos.org:443 127.0.0.1:${listener.port}`] })
   const context = await browser.newContext({ ignoreHTTPSErrors: true,serviceWorkers: 'block',viewport: { width: 1365,height: 900 } })
   // This browser is confined to the disposable HTTPS listener with a self-signed
   // certificate; it cannot contact the actual production host or third parties.
-  await context.route('**/*',route => new URL(route.request().url()).hostname === 'hub.beginos.org' ? route.continue() : route.abort())
+  await context.route('**/*',route => new URL(route.request().url()).hostname === 'p1-hub.beginos.org' ? route.continue() : route.abort())
   page = await context.newPage()
   page.on('pageerror',error => browserErrors.push(error.message.slice(0,240)))
   const failedAssets = []
@@ -72,7 +72,7 @@ try {
     if (response.status() >= 400) failedAssets.push(path)
   } })
   page.on('requestfailed',request => browserErrors.push(`${new URL(request.url()).pathname}: ${request.failure()?.errorText}`))
-  const login = await page.goto('https://hub.beginos.org/admin/login')
+  const login = await page.goto('https://p1-hub.beginos.org/admin/login')
   assert.equal(login.status(),200,'Complete central login page must render')
   // Payload exposes this readiness signal specifically for browser automation.
   // Filling SSR fields before hydration can be discarded by REPLACE_STATE.

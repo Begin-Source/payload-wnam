@@ -1,3 +1,4 @@
+import { unavailableEmail } from '../application-roles/unavailableEmail'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildConfig, type PayloadRequest, type Plugin, type SanitizedConfig } from 'payload'
@@ -41,7 +42,7 @@ export async function createSitePayloadConfig(options: SitePayloadOptions): Prom
   const strategy = centralSiteStrategy({ authenticateSession: siteIdentityAuthenticator(options.identity), loadProjection: syncSiteIdentityProjection })
   const workflows = workflowsPlugin({ enabled: true, collectionTriggers: { articles: { afterChange: true }, pages: { afterChange: true } },
     steps: siteWorkflowTasks(options.executeExternalTask) as unknown as Parameters<typeof workflowsPlugin>[0]['steps'] })
-  const config = await buildConfig({
+  const config = await buildConfig({ email: unavailableEmail,
     secret: options.secret, telemetry: false,
     typescript: { autoGenerate: false },
     admin: { user: 'users', importMap: { baseDir: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), autoGenerate: false } },

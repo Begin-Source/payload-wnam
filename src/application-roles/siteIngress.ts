@@ -1,4 +1,4 @@
-import { CENTRAL_ORIGIN, privateResponse } from '../site-control/sessionHttp'
+import { privateResponse } from '../site-control/sessionHttp'
 import { SiteAccessDeniedError } from '../site-control/sso'
 import { bindSiteCallback, requireSiteContext, withSiteContext } from '../site-runtime/context'
 import { siteIdentityAuthenticator } from '../site-runtime/identityClient'
@@ -21,7 +21,7 @@ export async function siteFetch<E extends SiteEnvironment>(request: Request, env
   try { routes = requireSiteEnvironment(env).routes } catch { return privateResponse('Site service unavailable', 503) }
   const binding = routes.find(route => route.siteId === match[1])
   if (!binding) return privateResponse('Unknown site host', 421)
-  const logout = await siteLogout(request, env.IDENTITY, binding.siteId, url.hostname)
+  const logout = await siteLogout(request, env.IDENTITY, binding.siteId, url.hostname, env.CENTRAL_ORIGIN)
   if (logout) return logout
   let states = versions.get(env)
   if (!states) { states = new Map(); versions.set(env, states) }
@@ -46,14 +46,14 @@ export async function siteFetch<E extends SiteEnvironment>(request: Request, env
   return withSiteContext({ siteId: binding.siteId, localSiteId: binding.localSiteId,
     binding: env[binding.bindingName as `SITE_D1_${string}`], requestHost: url.hostname, routingVersion,
     currentRoutingVersion: () => current.active ? current.version : -1, identity: null }, async () => {
-    const gateway = await siteSessionGateway(request, env.IDENTITY)
+    const gateway = await siteSessionGateway(request, env.IDENTITY, env.CENTRAL_ORIGIN)
     if (gateway) return gateway
     try { assertSiteWriteOrigin(request.method, request.headers, url.hostname) }
     catch { return privateResponse('Access denied', 403) }
     let session
     try { session = siteSessionFromHeaders(request.headers) } catch { return privateResponse('Invalid session', 401) }
     if (!session) return (request.method === 'GET' && (url.pathname === '/' || url.pathname.startsWith('/admin'))) ?
-      privateResponse(null, 303, { location: `${CENTRAL_ORIGIN}/admin` }) : privateResponse('Authentication required', 401)
+      privateResponse(null, 303, { location: `${env.CENTRAL_ORIGIN}/admin` }) : privateResponse('Authentication required', 401)
     try { await siteIdentityAuthenticator(env.IDENTITY)(session, binding.siteId, url.hostname) }
     catch (error) { return privateResponse(error instanceof SiteAccessDeniedError ? 'Access denied' : 'Identity service unavailable', error instanceof SiteAccessDeniedError ? 403 : 503) }
     requireSiteContext()

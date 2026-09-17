@@ -1,0 +1,42 @@
+{
+  "account_id": "d487cf34c606620b442632a72272014d",
+  "main": "worker.ts",
+  "compatibility_date": "2025-08-15",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "CENTRAL_ORIGIN": "https://p1-hub.beginos.org"
+  },
+  "name": "payload-wnam-p1-central",
+  "routes": [
+    {
+      "pattern": "p1-hub.beginos.org",
+      "custom_domain": true
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "CENTRAL_D1",
+      "database_name": "payload-wnam-p1-central",
+      "database_id": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "CENTRAL_MEDIA",
+      "bucket_name": "payload-wnam-p1-central-media"
+    },
+    {
+      "binding": "MASTER_ASSET_ARCHIVE",
+      "bucket_name": "payload-wnam-p1-master-archive"
+    }
+  ]
+}

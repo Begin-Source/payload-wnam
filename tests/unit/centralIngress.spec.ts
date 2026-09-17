@@ -2,12 +2,22 @@ import { describe, expect, it, vi } from 'vitest'
 import { centralFetch } from '../../src/application-roles/centralIngress'
 import { requireCentralEnvironment, type CentralEnvironment } from '../../src/application-roles/centralEnvironment'
 
-const env = (): CentralEnvironment => ({ CENTRAL_D1: { prepare: vi.fn() } as unknown as D1Database,
+const env = (): CentralEnvironment => ({ CENTRAL_ORIGIN: 'https://hub.beginos.org', CENTRAL_D1: { prepare: vi.fn() } as unknown as D1Database,
   CENTRAL_MEDIA: { get: vi.fn(),put: vi.fn() } as unknown as R2Bucket,
   MASTER_ASSET_ARCHIVE: { get: vi.fn() } as unknown as R2Bucket,PAYLOAD_SECRET: 'test-central-secret-with-32-characters' })
 const ctx = {} as ExecutionContext
 
 describe('independent central ingress',() => {
+  it('accepts only the configured deployment origin and rejects missing or normalized substitutes',async () => {
+    for (const origin of [undefined,'https://evil.example','https://p1-hub.beginos.org/','http://p1-hub.beginos.org']) {
+      expect(() => requireCentralEnvironment({ ...env(),CENTRAL_ORIGIN: origin })).toThrow()
+    }
+    const bindings = { ...env(),CENTRAL_ORIGIN: 'https://p1-hub.beginos.org' }
+    const next = vi.fn(async () => new Response('pilot'))
+    expect((await centralFetch(new Request('https://hub.beginos.org/admin'),bindings,ctx,next)).status).toBe(421)
+    expect((await centralFetch(new Request('https://p1-hub.beginos.org/admin'),bindings,ctx,next)).status).toBe(200)
+    expect(next).toHaveBeenCalledOnce()
+  })
   it('rejects legacy-only bindings, missing secrets and shared archive storage',() => {
     expect(() => requireCentralEnvironment({ D1: {},R2: {},PAYLOAD_SECRET: 'legacy' })).toThrow()
     expect(() => requireCentralEnvironment({ ...env(),PAYLOAD_SECRET: '' })).toThrow()

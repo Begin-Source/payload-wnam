@@ -29,6 +29,7 @@ for (const role of ['central','site']) {
   // database. Deployment will require a separately verified resource manifest.
   const config = { name: `payload-wnam-${role}-ci`,account_id: 'd487cf34c606620b442632a72272014d',
     main: 'worker.ts',compatibility_date: '2025-08-15',compatibility_flags: ['nodejs_compat','global_fetch_strictly_public'],
+    vars: { CENTRAL_ORIGIN: 'https://p1-hub.beginos.org' },
     assets: { directory: '.open-next/assets',binding: 'ASSETS' },workers_dev: false,
     d1_databases: [{ binding: 'CENTRAL_D1',database_name: 'central-ci',database_id: '00000000-0000-0000-0000-000000000001',remote: false }],
     r2_buckets: [{ binding: 'CENTRAL_MEDIA',bucket_name: 'central-media-ci',remote: false },
@@ -38,7 +39,7 @@ for (const role of ['central','site']) {
     config.d1_databases = ['A','B'].map((name,index) => ({ binding: `SITE_D1_${name}`, database_name: `site-${name.toLowerCase()}-ci`, database_id: `00000000-0000-0000-0000-00000000000${index+2}`, remote: false }))
     config.r2_buckets = ['PUBLIC','PRIVATE'].map(name => ({ binding: `SITE_${name}`, bucket_name: `site-${name.toLowerCase()}-ci`, remote: false }))
     config.services = [['IDENTITY','SiteIdentityService'],['DATA','SiteDataService'],['ROUTING','SiteRoutingService']].map(([binding,entrypoint]) => ({ binding,entrypoint,service: 'payload-wnam-central-ci' }))
-    config.vars = { WORKER_GROUP: 'group-1', SITE_ROUTES: JSON.stringify(['a','b'].map((siteId,index) => ({ siteId, localSiteId: index ? 82 : 37, bindingName: `SITE_D1_${siteId.toUpperCase()}`, databaseId: `00000000-0000-0000-0000-00000000000${index+2}`, schemaVersion: 1 }))) }
+    config.vars = { ...config.vars, WORKER_GROUP: 'group-1', SITE_ROUTES: JSON.stringify(['a','b'].map((siteId,index) => ({ siteId, localSiteId: index ? 82 : 37, bindingName: `SITE_D1_${siteId.toUpperCase()}`, databaseId: `00000000-0000-0000-0000-00000000000${index+2}`, schemaVersion: 1 }))) }
   }
   writeFileSync(resolve(cwd,'wrangler.jsonc'),JSON.stringify(config,null,2))
   const env = { ...process.env,PAYLOAD_ROLE_BUILD: role,PAYLOAD_CONFIG_PATH: resolve(cwd,'src/payload.config.ts') }

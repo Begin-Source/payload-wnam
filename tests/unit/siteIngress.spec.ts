@@ -10,7 +10,7 @@ const route = (siteId = 'a', version = 1): SiteRoute => ({ siteId, localSiteId: 
   workerGroup: 'group-1', adminHost: `cms-site-${siteId}.beginos.org`, schemaVersion: 1, routingVersion: version, migrationState: 'active' })
 function bindings(): SiteEnvironment {
   const routes = ['a','b'].map(id => route(id))
-  return { PAYLOAD_SECRET: 'independent-site-runtime-test-secret', WORKER_GROUP: 'group-1', SITE_ROUTES: JSON.stringify(routes),
+  return { CENTRAL_ORIGIN: 'https://hub.beginos.org', PAYLOAD_SECRET: 'independent-site-runtime-test-secret', WORKER_GROUP: 'group-1', SITE_ROUTES: JSON.stringify(routes),
     SITE_D1_A: { prepare: vi.fn() } as unknown as D1Database, SITE_D1_B: { prepare: vi.fn() } as unknown as D1Database,
     SITE_PUBLIC: { get: vi.fn(), put: vi.fn() } as unknown as R2Bucket, SITE_PRIVATE: { get: vi.fn(), put: vi.fn() } as unknown as R2Bucket,
     DATA: { readMaster: vi.fn(), readConfig: vi.fn(), readAsset: vi.fn() },
@@ -25,6 +25,12 @@ const request = (site = 'a', path = '/admin', method = 'GET') => new Request(`ht
 const ctx = {} as ExecutionContext
 
 describe('complete site application ingress', () => {
+  it('requires explicit central origin and redirects anonymous pilot visitors to their own central', async () => {
+    expect(() => requireSiteEnvironment({ ...bindings(),CENTRAL_ORIGIN: undefined })).toThrow()
+    const env = { ...bindings(),CENTRAL_ORIGIN: 'https://p1-hub.beginos.org' }
+    const result = await siteFetch(new Request('https://cms-site-a.beginos.org/admin'),env,ctx,vi.fn())
+    expect(result.headers.get('location')).toBe('https://p1-hub.beginos.org/admin')
+  })
   it('rejects fallback, duplicate D1 ownership and unconfigured hosts', async () => {
     expect(() => requireSiteEnvironment({ D1: {}, R2: {} })).toThrow()
     const env = bindings(), routes = JSON.parse(env.SITE_ROUTES)

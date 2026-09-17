@@ -1,3 +1,4 @@
+import { unavailableEmail } from '../application-roles/unavailableEmail'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildConfig, type CollectionConfig, type Field, type PayloadRequest, type Plugin, type SanitizedConfig } from 'payload'
@@ -154,7 +155,7 @@ export async function createCentralPayloadConfig(options: CentralPayloadOptions)
   })
   const globals = [CommissionRules,QuotaRules,AdminBranding,LlmPrompts,PromptLibrary,PipelineSettings].map(source => deepCopyObjectSimple(source))
   const tenantCollections = Object.fromEntries(collections.filter(collection => !['users','tenants','site-layouts'].includes(collection.slug)).map(collection => [collection.slug, {}]))
-  const config = await buildConfig({ secret: options.secret, telemetry: false, typescript: { autoGenerate: false },
+  const config = await buildConfig({ email: unavailableEmail, secret: options.secret, telemetry: false, typescript: { autoGenerate: false },
     admin: { user: 'users', components: { beforeDashboard: ['./components/CentralSiteChooser#CentralSiteChooser'] },
       importMap: { baseDir: path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'), autoGenerate: false } },
     db: sqliteD1Adapter({ binding: options.database, push: false, allowIDOnCreate: true }),

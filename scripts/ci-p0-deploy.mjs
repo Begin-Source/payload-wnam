@@ -108,3 +108,6 @@ for (let attempt = 1; Date.now() - readinessStarted < 90_000; attempt++) {
 if (consecutiveReady < 4) throw new Error('P0 deployment/secret propagation did not become ready; online smoke not started')
 execFileSync(process.execPath, ['scripts/ci-p0-smoke.mjs'], { stdio: 'inherit', env: { ...env, P0_GATE_SECRET: gate, P0_TEST_PASSWORD: password } })
 console.log(JSON.stringify({ event: 'p0_release_passed', commit, worker: WORKER, productionUnchanged: before.deployments[0].id }))
+
+// Independent P1 roles share the same successful, commit-matched cloud gate.
+execFileSync(process.execPath, ['scripts/ci-p1-deploy.mjs'], { stdio: 'inherit', env: process.env })

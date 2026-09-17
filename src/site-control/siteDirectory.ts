@@ -1,6 +1,6 @@
 import { assertSiteId, type SiteState } from './registry'
 import { payloadSessionAuthority } from './payloadSessionAuthority'
-import { CENTRAL_ORIGIN, privateResponse } from './sessionHttp'
+import { CENTRAL_ORIGIN, requireCentralOrigin, privateResponse } from './sessionHttp'
 import { SiteAccessDeniedError, type SiteRole } from './sso'
 
 export type SiteDirectoryEntry = { siteId: string; name: string; role: SiteRole; state: SiteState }
@@ -32,10 +32,11 @@ export async function listGrantedSites(database: D1Database, identity: Identity,
 }
 
 export async function centralSiteDirectory(request: Request, options: {
-  database: D1Database; authenticate: (request: Request) => Promise<Identity | null>
+  centralOrigin?: string; database: D1Database; authenticate: (request: Request) => Promise<Identity | null>
 }): Promise<Response> {
+  const centralOrigin = requireCentralOrigin(options.centralOrigin ?? CENTRAL_ORIGIN)
   const url = new URL(request.url)
-  if (url.origin !== CENTRAL_ORIGIN || url.pathname !== '/auth/sites') return privateResponse('Not found',404)
+  if (url.origin !== centralOrigin || url.pathname !== '/auth/sites') return privateResponse('Not found',404)
   if (request.method !== 'GET') return privateResponse('Method not allowed',405,{ allow: 'GET' })
   const query = url.searchParams.get('q')?.trim() ?? '', after = url.searchParams.get('after') ?? ''
   try {

@@ -13,5 +13,6 @@ export async function writeRoleFixture(database: D1Database,role: 'central' | 's
     tables.push({ name: item.name,rows: rows.results })
   }
   mkdirSync('.cloudflare-ci',{ recursive: true })
+  writeFileSync(`.cloudflare-ci/role-${role}-schema.json`,JSON.stringify({ role, objects: results }))
   writeFileSync(`.cloudflare-ci/role-${role}-fixture.json`,JSON.stringify({ schema: results.map(item => item.sql),tables }))
 }

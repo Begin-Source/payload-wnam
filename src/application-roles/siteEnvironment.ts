@@ -1,3 +1,4 @@
+import { requireCentralOrigin } from '../site-control/sessionHttp'
 import type { SiteIdentityRPC } from '../site-control/identityService'
 import type { SiteDataRPC } from '../site-control/dataDelivery'
 import type { SiteRoutingRPC } from '../site-control/routingService'
@@ -7,7 +8,7 @@ export type SiteBinding = Readonly<{ siteId: string; localSiteId: number; bindin
 export type SiteEnvironment = {
   IDENTITY: SiteIdentityRPC; DATA: SiteDataRPC; ROUTING: SiteRoutingRPC
   SITE_PUBLIC: R2Bucket; SITE_PRIVATE: R2Bucket; PAYLOAD_SECRET: string
-  WORKER_GROUP: string; SITE_ROUTES: string
+  CENTRAL_ORIGIN: string; WORKER_GROUP: string; SITE_ROUTES: string
   [name: `SITE_D1_${string}`]: D1Database
 }
 
@@ -23,6 +24,7 @@ export function requireSiteEnvironment(value: unknown): { env: SiteEnvironment; 
     typeof env.SITE_PUBLIC?.get !== 'function' || typeof env.SITE_PUBLIC?.put !== 'function' ||
     typeof env.SITE_PRIVATE?.get !== 'function' || typeof env.SITE_PRIVATE?.put !== 'function' || env.SITE_PUBLIC === env.SITE_PRIVATE ||
     typeof env.SITE_ROUTES !== 'string') throw new Error('Site role bindings unavailable')
+  requireCentralOrigin(env.CENTRAL_ORIGIN)
   const routes: SiteBinding[] = JSON.parse(env.SITE_ROUTES)
   if (!Array.isArray(routes) || routes.length < 1 || routes.length > 50) throw new Error('Invalid site group manifest')
   const sites = new Set(), databases = new Set(), bindings = new Set()

@@ -9,6 +9,7 @@ import { requireCentralEnvironment } from './centralEnvironment'
 const building = process.env.WORKERS_CI === '1' && process.env.PAYLOAD_ROLE_BUILD === 'central'
 const unavailable = () => { throw new Error('Build configuration cannot access runtime resources') }
 const env = building ? {
+  CENTRAL_ORIGIN,
   CENTRAL_D1: { prepare: unavailable } as unknown as D1Database,
   CENTRAL_MEDIA: { get: unavailable, put: unavailable } as unknown as R2Bucket,
   PAYLOAD_SECRET: '__CENTRAL_BUILD_ONLY_NEVER_A_RUNTIME_SECRET__',
@@ -18,6 +19,6 @@ const config = await createCentralPayloadConfig({ database: env.CENTRAL_D1, buck
   // P2 supplies the metered vendor capability; the mounted admin cannot bypass it.
   authorizeAiGeneration: async () => false,
 })
-config.serverURL = CENTRAL_ORIGIN
-config.csrf = [CENTRAL_ORIGIN]
+config.serverURL = env.CENTRAL_ORIGIN
+config.csrf = [env.CENTRAL_ORIGIN]
 export default Promise.resolve(config)

@@ -1,4 +1,11 @@
 export const CENTRAL_ORIGIN = 'https://hub.beginos.org'
+export const P1_CENTRAL_ORIGIN = 'https://p1-hub.beginos.org'
+
+/** Deployment-owned, exact origins only. No request headers or process globals. */
+export function requireCentralOrigin(value: unknown): string {
+  if (value !== CENTRAL_ORIGIN && value !== P1_CENTRAL_ORIGIN) throw new Error('Invalid central origin')
+  return value
+}
 export const SITE_LOGIN_PATH = '/auth/site-login'
 export const SITE_LOGOUT_PATH = '/auth/site-logout'
 export const CENTRAL_SITE_ENTRY_PATH = '/auth/enter-site'

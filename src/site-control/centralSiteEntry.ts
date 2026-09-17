@@ -1,7 +1,7 @@
 import type { Payload } from 'payload'
 import { assertSiteId } from './registry'
 import { SiteAccessDeniedError, type SiteLoginBroker } from './sso'
-import { CENTRAL_ORIGIN, CENTRAL_SITE_ENTRY_PATH, SITE_LOGIN_PATH, privateResponse, readSessionForm } from './sessionHttp'
+import { CENTRAL_ORIGIN, requireCentralOrigin, CENTRAL_SITE_ENTRY_PATH, SITE_LOGIN_PATH, privateResponse, readSessionForm } from './sessionHttp'
 
 /** Only accept a JWT-verified original Payload session, never API keys, auto-login
  * or user/session IDs from an HTTP body. Broker rechecks that live session in D1.
@@ -21,13 +21,15 @@ export async function centralIdentityFromPayload(payload: Payload, request: Requ
  * Payload instance; injectable here so this transport owns no global config.
  */
 export async function centralSiteEntry(request: Request, options: {
+  centralOrigin?: string
   broker: Pick<SiteLoginBroker, 'issueTicket'>
   authenticate: (request: Request) => Promise<{ userId: string; sessionId: string } | null>
 }): Promise<Response> {
+  const centralOrigin = requireCentralOrigin(options.centralOrigin ?? CENTRAL_ORIGIN)
   const url = new URL(request.url)
-  if (url.origin !== CENTRAL_ORIGIN || url.pathname !== CENTRAL_SITE_ENTRY_PATH || url.search) return privateResponse('Not found', 404)
+  if (url.origin !== centralOrigin || url.pathname !== CENTRAL_SITE_ENTRY_PATH || url.search) return privateResponse('Not found', 404)
   if (request.method !== 'POST') return privateResponse('Method not allowed', 405, { allow: 'POST' })
-  if (request.headers.get('origin') !== CENTRAL_ORIGIN) return privateResponse('Access denied', 403)
+  if (request.headers.get('origin') !== centralOrigin) return privateResponse('Access denied', 403)
   let siteId: string
   try { siteId = await readSessionForm(request, 'siteId'); assertSiteId(siteId) } catch { return privateResponse('Invalid request', 400) }
   try {

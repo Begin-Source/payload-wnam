@@ -1,7 +1,9 @@
+import { requireCentralOrigin } from '../site-control/sessionHttp'
 export type CentralEnvironment = {
   CENTRAL_D1: D1Database
   CENTRAL_MEDIA: R2Bucket
   MASTER_ASSET_ARCHIVE: R2Bucket
+  CENTRAL_ORIGIN: string
   PAYLOAD_SECRET: string
 }
 
@@ -14,5 +16,6 @@ export function requireCentralEnvironment(value: unknown): CentralEnvironment {
     typeof env.PAYLOAD_SECRET !== 'string' || env.PAYLOAD_SECRET.length < 32) {
     throw new Error('Central role bindings unavailable')
   }
+  requireCentralOrigin(env.CENTRAL_ORIGIN)
   return env as CentralEnvironment
 }
