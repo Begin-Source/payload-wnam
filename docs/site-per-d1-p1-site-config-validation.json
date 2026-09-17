@@ -1,0 +1,189 @@
+{
+  "capturedAt": "2026-09-17T03:09:40.884Z",
+  "phase": "P1 implementation — not accepted",
+  "commit": "d8537b39367a7e3383c633af124839d933adf1d6",
+  "buildId": "4a9bc191-870e-4451-ac91-07b26acd09c3",
+  "buildOutcome": "success",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "repository": "Begin-Source/payload-wnam",
+  "validation": {
+    "unitAndIntegrationTests": 503,
+    "existingBrowserChecks": 14,
+    "focusedTests": 11,
+    "independentSiteConfig": {
+      "integrationTests": 8,
+      "workflowCapabilityTests": 3,
+      "databases": 2,
+      "buckets": 2,
+      "scope": "Full independent Payload configuration in Node with native workerd D1/R2; explicit in-memory test schema provisioning, repeated sanitization, real content and design-version edits, role/quality constraints, public field filtering, separate storage and upload endpoint authorization. R2 SDK development metadata branch for Miniflare. No deployed independent role."
+    },
+    "events": [
+      {
+        "at": "2026-09-17T03:04:16.986Z",
+        "value": {
+          "event": "p0_source_encoding",
+          "file": ".open-next/server-functions/default/handler.mjs",
+          "regexCount": 1996,
+          "remainingTokenTypes": {
+            "template": 1
+          },
+          "nonLatin1Before": 13024,
+          "nonLatin1After": 0
+        }
+      },
+      {
+        "at": "2026-09-17T03:04:17.046Z",
+        "value": {
+          "event": "p0_source_encoding",
+          "file": ".open-next/middleware/handler.mjs",
+          "regexCount": 0,
+          "remainingTokenTypes": {},
+          "nonLatin1Before": 0,
+          "nonLatin1After": 0
+        }
+      },
+      {
+        "at": "2026-09-17T03:04:49.598Z",
+        "value": {
+          "event": "site_identity_workerd_rpc",
+          "ok": true,
+          "commit": "d8537b39367a7e3383c633af124839d933adf1d6",
+          "workers": 2,
+          "databases": 3,
+          "concurrentRedemptions": 20,
+          "concurrentSiteRequests": 20,
+          "checks": [
+            "named RPC capability",
+            "no RPC issuer",
+            "HTTP capability denied",
+            "POST handoff",
+            "Chromium form/CSP/cookie navigation",
+            "single-use ticket",
+            "host/origin binding",
+            "explicit local site ID mapping",
+            "credential-free projections",
+            "live role changes",
+            "immediate revocation",
+            "site logout",
+            "central logout",
+            "central outage fails closed",
+            "independent public response"
+          ],
+          "scope": "Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance"
+        }
+      },
+      {
+        "at": "2026-09-17T03:06:36.414Z",
+        "value": {
+          "event": "p0_cloud_workerd_heap_profile",
+          "commit": "d8537b39367a7e3383c633af124839d933adf1d6",
+          "at": "2026-09-17T03:06:36.413Z",
+          "snapshots": [
+            {
+              "phase": "before-payload-request",
+              "usedSize": 40381232,
+              "totalSize": 42774528,
+              "embedderHeapUsedSize": 257936,
+              "backingStorageSize": 1217658
+            },
+            {
+              "phase": "after-payload-login",
+              "usedSize": 76219400,
+              "totalSize": 86396928,
+              "embedderHeapUsedSize": 257936,
+              "backingStorageSize": 1233308
+            },
+            {
+              "phase": "after-read-batch-1",
+              "usedSize": 74984252,
+              "totalSize": 94785536,
+              "embedderHeapUsedSize": 257936,
+              "backingStorageSize": 1288629
+            },
+            {
+              "phase": "after-read-batch-2",
+              "usedSize": 81410256,
+              "totalSize": 96096256,
+              "embedderHeapUsedSize": 386896,
+              "backingStorageSize": 1364501
+            },
+            {
+              "phase": "after-read-batch-3",
+              "usedSize": 76918944,
+              "totalSize": 102125568,
+              "embedderHeapUsedSize": 386896,
+              "backingStorageSize": 1288885
+            },
+            {
+              "phase": "after-unconfirmed-gc-request",
+              "usedSize": 76918944,
+              "totalSize": 102125568,
+              "embedderHeapUsedSize": 386896,
+              "backingStorageSize": 1288885
+            }
+          ],
+          "garbageCollectionAcknowledged": false,
+          "scope": "Cloud CI workerd with full build and remote synthetic D1. Inspector affects runtime; an unacknowledged GC does not establish retained heap size. This report is diagnostic, not production headroom acceptance. No heap contents captured."
+        }
+      },
+      {
+        "at": "2026-09-17T03:08:50.641Z",
+        "value": {
+          "event": "p0_deployed_smoke_passed",
+          "commit": "d8537b39367a7e3383c633af124839d933adf1d6",
+          "at": "2026-09-17T03:08:50.639Z",
+          "scope": "Full Next/Payload REST/admin, two remote D1, R2 upload/delete, real queue duplicates, nonce and lease/heartbeat SQL, public React caches/streaming/forged hosts and draft exclusion; failure/performance gates still pending",
+          "concurrentReads": 40,
+          "concurrentPublicPages": 12,
+          "isolatesServingBothSites": 9,
+          "configuredIconViews": 4
+        }
+      },
+      {
+        "at": "2026-09-17T03:08:50.669Z",
+        "value": {
+          "event": "p0_release_passed",
+          "commit": "d8537b39367a7e3383c633af124839d933adf1d6",
+          "worker": "payload-wnam-p0",
+          "productionUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+        }
+      }
+    ]
+  },
+  "deployments": [
+    {
+      "worker": "payload-wnam",
+      "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+      "versions": [
+        {
+          "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+          "percentage": 100
+        }
+      ]
+    },
+    {
+      "worker": "payload-wnam-p0",
+      "id": "77495c2e-ede9-403b-ad42-66c2d00fbba8",
+      "versions": [
+        {
+          "version_id": "aefc5c3b-9972-4f69-ba4c-960a6c30a08a",
+          "percentage": 100
+        }
+      ]
+    }
+  ],
+  "changes": [
+    "Independent site Payload configuration factory without shared config imports or startup SQL, seeds, model discovery or migrations",
+    "Site collection and field access, publication roles, explicit local site mapping and scoped version/file queries",
+    "Separate public and private media collections and R2 capabilities",
+    "Restricted generated plugin collections and generic workflow tasks with forced Local API access",
+    "Site-only atomic upsert adapter reuses inserted values to avoid duplicate D1 parameters"
+  ],
+  "limitations": [
+    "Independent site factory is not mounted in a formal Worker role; production and P0 still use the shared configuration",
+    "Independent central configuration, reconciled central cost inputs, versioned master synchronization and role migrations/builds remain pending",
+    "Node/Miniflare full-schema checks do not establish deployed site editor or native Worker R2 metadata behavior",
+    "Identity RPC/browser tests still use synthetic central login and minimal site identity collections",
+    "No production migration or capacity acceptance; P1 through P5 remain incomplete"
+  ]
+}

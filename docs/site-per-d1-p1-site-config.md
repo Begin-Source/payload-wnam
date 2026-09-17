@@ -27,6 +27,8 @@
 
 R2 文件端点测试使用 SDK 为 Miniflare 提供的 development metadata 分支；完整站点角色在原生 Worker 中的上传/下载和浏览器界面仍待正式构建验证。当前生产及 P0 继续使用共享配置，不能把这些独立 schema 测试视为新角色已部署。
 
+2026-09-17T03:08:50Z：提交 `d8537b3` 的 Cloudflare 构建 `4a9bc191-870e-4451-ac91-07b26acd09c3` 成功，503 项测试、14 项既有浏览器检查、原生身份 RPC/HTTPS 检查及 P0 部署后回归全部通过。P0 deployment `77495c2e-ede9-403b-ad42-66c2d00fbba8`，version `aefc5c3b-9972-4f69-ba4c-960a6c30a08a`；生产 deployment 仍为 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`。[发布证据与范围](site-per-d1-p1-site-config-validation.json)保留各项检查的适用边界；此发布不表示正式站点角色或 P1 已验收。
+
 ## 尚需接入
 
 1. 独立中央配置、中央财务成本账本依赖、模板/作者/商品等主数据的字段同步及正式迁移。
