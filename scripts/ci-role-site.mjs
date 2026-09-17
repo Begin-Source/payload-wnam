@@ -133,7 +133,9 @@ try {
     assert.equal(created.status,201,`Site ${id} category create: ${created.body.slice(0,300)}`)
     docs[id] = JSON.parse(created.body).doc
     assert.match(created.cacheControl,/no-store/)
-    assert.equal((await invoke(page,'/api/users/login',{ method: 'POST',headers: { 'content-type': 'application/json' },body: '{}' })).status,404,'No site password endpoint')
+    assert.equal((await invoke(page,'/api/users/login',{ method: 'POST',headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@example.invalid', password: 'native-central-test-only-password' }) })).status,403,
+    'Payload disableLocalStrategy must reject even valid central credentials')
     await page.goto(`https://cms-site-${id}.beginos.org/admin/collections/categories/${docs[id].id}`)
     await page.locator('form[data-form-ready="true"]').waitFor()
     assert.equal(await page.locator('input[name=name]').inputValue(),`Complete site ${id}`,'Complete native editor must read the correct D1')
@@ -157,6 +159,7 @@ try {
   assert.equal(await pages.a.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true)
   await pages.a.screenshot({ path: '.cloudflare-ci/site-a-admin-mobile.png',fullPage: true })
   assert.deepEqual(failedAssets,[])
+  assert.deepEqual(browserErrors,[],'Complete site admin must have no uncaught browser errors')
   await centralDB.prepare('DELETE FROM site_runtime_access WHERE site_id = ? AND user_id = ?').bind('a','7').run()
   assert.equal((await invoke(pages.a,`/api/categories/${docs.a.id}`)).status,403,'Grant revocation must apply immediately')
   assert.equal((await invoke(pages.a,`/api/categories/${docs.a.id}`,{ method: 'PATCH',headers: { 'content-type': 'application/json' },body: JSON.stringify({ name: 'Denied' }) })).status,403)
