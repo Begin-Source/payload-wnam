@@ -37,7 +37,8 @@
     "ci:check": "pnpm run lint && pnpm run typecheck && pnpm run test:int",
     "ci:build": "node scripts/ci-build.mjs",
     "ci:deploy": "node scripts/ci-deploy.mjs",
-    "site:provision": "node scripts/site-provision.mjs"
+    "site:provision": "node scripts/site-provision.mjs",
+    "site:verify": "node scripts/site-verify.mjs"
   },
   "dependencies": {
     "@ai-stack/payloadcms": "^3.2.27",

@@ -13,11 +13,11 @@ const config = z.object({
   routes: z.array(z.object({ pattern: z.string(),custom_domain: z.literal(true) }).strict()).max(50),
   d1_databases: z.array(database).max(50),r2_buckets: z.array(bucket),
 })
-const siteConfig = config.extend({
+export const siteConfig = config.extend({
   vars: z.object({ CENTRAL_ORIGIN: z.string(),WORKER_GROUP: z.string(),SITE_ROUTES: z.string() }).strict(),
   services: z.array(z.object({ binding: z.string(),service: name,entrypoint: z.string() }).strict()),
 }).strict()
-const centralConfig = config.extend({ vars: z.object({ CENTRAL_ORIGIN: z.string() }).strict() }).strict()
+export const centralConfig = config.extend({ vars: z.object({ CENTRAL_ORIGIN: z.string() }).strict() }).strict()
 const routeSchema = z.object({ siteId: z.string().regex(/^[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?$/),localSiteId: z.number().int().positive(),
   bindingName: z.string().regex(/^SITE_D1_[A-Z0-9_]{1,48}$/),databaseId: provisionUuidSchema,schemaVersion: z.number().int().positive() }).strict()
 export type GroupManifest = z.infer<typeof siteConfig>

@@ -1,0 +1,6 @@
+[
+  { "siteId": "p1-a", "ownership": { "kind": "p1", "operationId": "p1-site-a-schema-v1", "role": "site-a" } },
+  { "siteId": "p1-b", "ownership": { "kind": "p1", "operationId": "p1-site-b-schema-v1", "role": "site-b" } },
+  { "siteId": "p1-c", "ownership": { "kind": "provision", "operationId": "f8d779c3-12a4-491c-b368-00f274be2bfd" } },
+  { "siteId": "p1-d", "ownership": { "kind": "provision", "operationId": "d31f541a-f160-48dc-a992-57bf9da70344" } }
+]

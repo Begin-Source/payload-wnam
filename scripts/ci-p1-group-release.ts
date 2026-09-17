@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync,spawn } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { readFileSync,writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { getPlatformProxy } from 'wrangler'
@@ -11,6 +12,7 @@ import { ProvisionCloudflare } from './site-operations/cloudflare'
 import { ProvisionGroup } from './site-operations/group'
 import { groupRoutes,parseProvisionRequest,provisionManifest } from './site-operations/manifest'
 import { releaseGroup } from './site-operations/release'
+import { parseVerificationRequest } from './site-operations/verify-request'
 import { p1ReleaseRequest,p1EffectiveManifests } from './p1-release-manifests.mjs'
 import { browserLibraryEnvironment } from './ci-browser-libs.mjs'
 
@@ -76,8 +78,21 @@ try {
       }
     }
   }
+  const verifyCurrentSites = async () => {
+    const current = await group.releaseSnapshot(site)
+    const verification = parseVerificationRequest({ operationId: randomUUID(),central,centralWorkerTag: request.centralWorkerTag,
+      group: site,workerTag: plan.workerTag,zoneId: request.zoneId,schemaDigest: plan.schemaDigest,expectedDeploymentId: current.deploymentId,
+      sites: JSON.parse(readFileSync('operations/p1-verify.json','utf8')) })
+    assert.deepEqual(verification.sites.map(target => target.siteId),groupRoutes(site).map(route => route.siteId),'P1 verification must include every current member')
+    const path = '.cloudflare-ci/site-verify-request.json'
+    writeFileSync(path,JSON.stringify(verification,null,2))
+    await run('pnpm',['run','site:verify','--request',path])
+  }
   const deps = { journal,current: () => group.releaseSnapshot(site),preflight,deploy,verify,
-    acceptance: () => run(process.execPath,['scripts/ci-p1-smoke.mjs'],process.cwd(),browserLibraryEnvironment()) }
+    acceptance: async () => {
+      await run(process.execPath,['scripts/ci-p1-smoke.mjs'],process.cwd(),browserLibraryEnvironment())
+      await verifyCurrentSites()
+    } }
   const releaseId = groupReleaseId(plan.workerGroup,commit,manifestDigest),pending = await journal.pending(plan.workerGroup)
   if (pending && pending.releaseId !== releaseId) {
     // A newer CI script may finish acceptance of an earlier proven upload. It
