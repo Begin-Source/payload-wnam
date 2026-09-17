@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
+import { lookup } from 'node:dns/promises'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { p1Manifests, P1_ACCOUNT, P1_ZONE } from './p1-manifests.mjs'
@@ -86,13 +87,20 @@ assert.equal(deployedDomains.find(domain => domain.hostname === 'hub.beginos.org
 // Wait for actual HTTPS/TLS/domain and secret propagation, then run the full
 // smoke once. Readiness retries make no content changes.
 let ready = 0
-for (let attempt = 1; attempt <= 36; attempt++) {
+for (let attempt = 1; attempt <= 96; attempt++) {
   const statuses = await Promise.all(['p1-hub.beginos.org','cms-site-p1-a.beginos.org','cms-site-p1-b.beginos.org'].map(async host => {
     try {
       const r = await fetch(`https://${host}/admin/login`,{ redirect: 'manual',signal: AbortSignal.timeout(10000) })
       const ok = host === 'p1-hub.beginos.org' ? r.status === 200 : r.status === 303 && r.headers.get('location') === 'https://p1-hub.beginos.org/admin'
       await r.body?.cancel(); return { host,status: r.status,ok }
-    } catch { return { host,status: null,ok: false } }
+    } catch (error) {
+      // New custom domains can outlive a resolver's negative-cache TTL. Keep
+      // normal certificate validation and DNS; report bounded public-host
+      // diagnostics so TLS/lookup errors cannot be mistaken for app readiness.
+      const dns = await lookup(host,{ all: true }).then(addresses => ({ addresses }),failure => ({ code: failure.code }))
+      return { host,status: null,ok: false,error: String(error.cause?.code ?? error.code ?? error.name),
+        reason: String(error.cause?.message ?? error.message).slice(0,180),dns }
+    }
   }))
   ready = statuses.every(status => status.ok) ? ready + 1 : 0
   console.log(JSON.stringify({ event: 'p1_readiness',attempt,ready,statuses }))
