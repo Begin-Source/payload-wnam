@@ -17,7 +17,9 @@ const modules = [entries[0],...moduleFiles.filter(name => name !== entries[0])].
 }))
 const assets = resolve(cwd,'.open-next/assets')
 const mf = new Miniflare({ host: '127.0.0.1',port: 0,https: true,
-  name: 'central',routes: ['hub.beginos.org/*'],modules,modulesRoot: bundle,
+  // In pinned Miniflare, explicit routes address the raw user Worker and bypass
+  // its assets router. A single-role listener uses the assets-aware fallback.
+  name: 'central',modules,modulesRoot: bundle,
   compatibilityDate: '2025-08-15',compatibilityFlags: ['nodejs_compat','global_fetch_strictly_public'],
   bindings: { PAYLOAD_SECRET: 'central-config-isolated-test-only' },
   d1Databases: { CENTRAL_D1: 'complete-central-app' },
@@ -40,6 +42,15 @@ try {
   await db.batch([db.prepare('PRAGMA defer_foreign_keys = ON'),...inserts])
   await db.prepare('INSERT INTO site_runtime_access VALUES (?,?,?)').bind('a','7','editor').run()
   const worker = await mf.getWorker()
+  const staticFiles = readdirSync(assets,{ recursive: true }).filter(name => typeof name === 'string')
+  for (const extension of ['.js','.css']) {
+    const file = staticFiles.find(name => name.startsWith('_next/') && name.endsWith(extension))
+    assert.ok(file,`Missing built ${extension} asset`)
+    const response = await mf.dispatchFetch('https://hub.beginos.org/' + file)
+    assert.equal(response.status,200,`Native listener must serve ${extension} assets before browser checks`)
+    assert.match(response.headers.get('content-type'),extension === '.js' ? /javascript/ : /text\/css/)
+  }
+  console.log(JSON.stringify({ event: 'central_asset_router_passed' }))
   assert.equal((await worker.fetch('https://unknown.example/admin/login')).status,421)
   const anonymous = await worker.fetch('https://hub.beginos.org/api/users',{ method: 'POST',headers: { 'content-type': 'application/json',origin: 'https://hub.beginos.org' },
     body: JSON.stringify({ email: 'anonymous@example.invalid',password: 'must-not-register-automatically' }) })
