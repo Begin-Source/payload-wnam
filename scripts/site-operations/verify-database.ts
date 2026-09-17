@@ -64,7 +64,7 @@ export async function verifySiteDatabase(options: Options) {
       let cursor: number | null = null,count = 0
       for (;;) {
         const statement = db.prepare(`SELECT _rowid_ AS __verify_cursor,* FROM ${identifier(table.name)} ${cursor === null ? '' : 'WHERE _rowid_>?'} ORDER BY _rowid_ LIMIT 50`)
-        const rows = (await (cursor === null ? statement : statement.bind(cursor)).all<Row>()).results
+        const rows: Row[] = (await (cursor === null ? statement : statement.bind(cursor)).all<Row>()).results
         if (!rows.length) break
         for (const row of rows) {
           assert.ok(Number.isSafeInteger(row.__verify_cursor),'Unsafe D1 row cursor')
