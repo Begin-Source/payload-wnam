@@ -13,6 +13,11 @@ export async function masterCopyColumns(req: PayloadRequest, collection: MasterC
   const config = req.payload.collections[collection]?.config
   if (!config) throw new Error('Independent master collection unavailable')
   if (collection === 'authors') await authorsGdprValidate({ data } as Parameters<typeof authorsGdprValidate>[0])
+  return validatedScalarColumns(req,config.fields,data,{ collectionSlug: collection })
+}
+
+export async function validatedScalarColumns(req: PayloadRequest, fields: Field[], data: Record<string,unknown>,
+  identity: { collectionSlug?: string; globalSlug?: string }): Promise<CopyColumn[]> {
   const columns: CopyColumn[] = []
   const seen = new Set<string>()
   const walk = async (fields: Field[], sibling: Record<string,unknown>, prefix = '', path: string[] = []): Promise<void> => {
@@ -40,7 +45,7 @@ export async function masterCopyColumns(req: PayloadRequest, collection: MasterC
         ('hasMany' in field && field.hasMany) || field.localized) throw new Error('Unsupported master field storage')
       if ('validate' in field && typeof field.validate === 'function') {
         const result = await (field.validate as Validate)(value,{ ...field,req,data,siblingData: sibling,blockData: {},
-          collectionSlug: collection,operation: 'create',event: 'submit',overrideAccess: true,path: fieldPath,preferences: { fields: {} } })
+          ...identity,operation: 'create',event: 'submit',overrideAccess: true,path: fieldPath,preferences: { fields: {} } } as Parameters<Validate>[1])
         if (result !== true) throw new Error(`Invalid master field ${fieldPath.join('.')}: ${result}`)
       }
       let stored: string | number | null = null
@@ -61,7 +66,7 @@ export async function masterCopyColumns(req: PayloadRequest, collection: MasterC
       columns.push({ name: key,value: stored })
     }
   }
-  await walk(config.fields,data)
+  await walk(fields,data)
   for (const key of Object.keys(data)) if (!seen.has(key)) throw new Error(`Unknown master field ${key}`)
   return columns
 }
