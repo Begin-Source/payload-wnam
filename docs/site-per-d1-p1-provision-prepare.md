@@ -1,6 +1,6 @@
 # P1 实际建库与 schema 准备
 
-待 Cloudflare 验证。本轮把建站日志的前两步接到实际资源：创建/核对独立 D1，以及初始化固定 schema。执行完成停在 checkpoint 2；站点资料、分组部署、实际新站 SSO 和激活仍待接通，不能据此宣布完整 `site:provision` 工具完成。
+提交 `3aca286` 已通过 Cloudflare 构建、部署后回归及实际建库/恢复验证，2026-09-17T17:52:34Z 发布通过。[完整证据](site-per-d1-p1-provision-prepare-validation.json)。本轮把建站日志的前两步接到实际资源：创建/核对独立 D1，以及初始化固定 schema。执行完成停在 checkpoint 2；站点资料、分组部署、实际新站 SSO 和激活仍待接通，不能据此宣布完整 `site:provision` 工具完成。
 
 ## 执行范围
 
@@ -30,3 +30,15 @@
 准备后的新库不出现在站点注册表、不接入域名、不启用生产，也不能作为“新站全链路可用”的验收证据。下一步沿同一操作完成 seed、deploy、verify、activate，再提供完整云端命令和建站入口。
 
 API 字段及分页依据 [D1 创建](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/create/)、[D1 列表](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/list/)与 [Cloudflare API 限速](https://developers.cloudflare.com/fundamentals/api/reference/limits/)。
+
+## 已验证结果与继续执行点
+
+- 构建 `e9e39791-bee7-4620-abc5-8757bd66e3a3` 成功：120 个文件、616 项测试，含 7 项新增准备测试；14 项既有浏览器检查、完整中央/双站后台、RPC 及实际 HTTPS 回归通过。
+- 真实 D1：`02e8be38-7dfb-4c48-86e1-30e586961fc9`，名称 `payload-p1-c-f8d779c312a4491cb36800f274be2bfd`，17:52:13Z 创建。API 直接核验运行区域 WNAM、读副本 disabled，仅有一个同名资源。
+- 建库后中断在 checkpoint 0/pending step 1 被观察到，随后恢复至 checkpoint 2。第二次完整准备复用同一 UUID 和两个原回执，没有重复创建数据库。
+- 17:53:45Z 直接核验：操作 lease epoch 3、lease_until 0、completed_at null；步骤 1/2 都有回执。新库所有权记录 completed=1，schema 摘要 `43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e`，应用/运行态对象 504；站点、用户和租户行数均为零，媒体高水位为 0。
+- 中央 deployment `484811a0-0a79-462c-8376-d457d9ca15da`；站点 deployment `56d735ef-ce61-4350-a085-ef3a852aed5c`。准备前后分组 deployment 相同，bindings 仍只有 A/B，C 无注册路由及域名。
+- A/B 均 active，版本 23/1；经理权限恢复，站点会话和可兑换票据为零。生产 deployment 仍为 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`，生产域名归属未变。所有安装、测试、构建及部署在 Cloudflare 完成。
+- 日志在两个远程 proxy 调用之间出现一次 Wrangler `Network connection lost`，具体来源未证实；之后准备、重复检查、最终发布和直接远程核验通过，未将该行当作一次失败构建或重复建库证据。
+
+继续使用原操作 UUID 与中央保存的固定计划，不另开操作替代。下一步从 checkpoint 2 种入租户/站点资料和身份投影，再处理分组配置合并、实际部署、SSO/隔离验收及激活。现有 P1 发布脚本会重复验证前两步；接入后续阶段时需同步支持更高 checkpoint 和保留新增站点绑定。

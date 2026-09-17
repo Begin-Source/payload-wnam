@@ -23,7 +23,7 @@
 | P0 冷启动、CPU 与内存 | `6f43fba` 启动 30 ms；403 请求无执行错误；CPU P95 87.913 ms；内存 P95 104,548,730 bytes、P99.9 106,280,960 bytes；[原始查询及边界](site-per-d1-p0-runtime-optimization.json) | 小规模原型通过；非容量验收 |
 | P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用和身份映射已实现；[站点 factory](site-per-d1-p1-site-config.md)、[中央 factory/成本账本](site-per-d1-p1-central-config.md)及[主数据发布/候选接收](site-per-d1-p1-master-sync.md)有原生 D1 验证；[副本应用/提示词选择](site-per-d1-p1-master-copies.md)已实现；[运行 Global/配额版本](site-per-d1-p1-config-sync.md)已实现；[媒体复制/撤回、头像与品牌图](site-per-d1-p1-assets.md)已通过原生验证；[交互式内部数据服务](site-per-d1-p1-data-service.md)已通过原生 RPC 验证；[完整中央应用](site-per-d1-p1-central-application.md)已接入并通过云端完整 Worker/后台检查；[完整站点应用](site-per-d1-p1-site-application.md)也已通过云端双站后台检查；[中央站点选择器](site-per-d1-p1-site-chooser.md)已通过实际点击进入验证；[独立远程角色](site-per-d1-p1-remote-roles.md)已部署并通过实际双站后台/SSO；队列投递、其余管理界面和通用建站尚未接入 | 实施中，未通过 |
 | P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；真实中央 Payload 密码登录、JWT 签发站点票据与会话撤销已在完整中央 Worker 中通过；最新 576 项测试通过；完整站点后台、中央选择器实际点击、真实双站 SSO、实时撤权和原生退出已通过云端验证；独立远程中央和双站后台已部署，真实 HTTPS 撤权/退出通过；其余 P1 要求仍待完成 | 实施中，未通过 |
-| P1 建站、进入、暂停/恢复、MCP 明确 siteId | 中央选择器、进入 API 和完整站点接收入口已接入；[经理暂停/恢复与明确目标 API](site-per-d1-p1-lifecycle.md)及[中央 MCP](site-per-d1-p1-mcp.md)已部署并通过真实 HTTPS 验收；[建站持久计划/操作日志](site-per-d1-p1-provision-journal.md)已通过原生 D1 验证并以中央 v3 增量迁移安装，资源创建/初始化/部署执行器及命令尚未接通 | 实施中，未通过 |
+| P1 建站、进入、暂停/恢复、MCP 明确 siteId | 中央选择器、进入 API 和完整站点接收入口已接入；[经理暂停/恢复与明确目标 API](site-per-d1-p1-lifecycle.md)及[中央 MCP](site-per-d1-p1-mcp.md)已部署并通过真实 HTTPS 验收；[建站日志](site-per-d1-p1-provision-journal.md)和[真实 D1 创建/恢复/schema 准备](site-per-d1-p1-provision-prepare.md)已验证，C 停在 checkpoint 2，站点资料、分组部署、实际新站 SSO/激活和完整命令尚未接通 | 实施中，未通过 |
 | P2 持久步骤链、公平调度、独立发布队列 | 未实现 | 待实施 |
 | P2 供应商 DO 配额、预算、429、结果不明核查 | 未实现 | 待实施 |
 | P2 180 秒租约/30 秒心跳、版本检查、Outbox、最多 5 次尝试、死信 | 未实现 | 待实施 |
@@ -42,7 +42,13 @@
 | 配额、计费和年度成本按实测修订 | 未完成；不得将规划预算写成验证结果 | 待实施 |
 | 交付：迁移/容量/试运行报告、员工手册、故障恢复手册、发布清单 | 本文仅为证据索引，完整交付待完成 | 待实施 |
 
-## P1 最新发布：建站持久计划与操作日志
+## P1 最新发布：真实建库与 schema 准备
+
+`3aca286` 的构建 `e9e39791-bee7-4620-abc5-8757bd66e3a3` 成功，通过 616 项测试、14 项既有浏览器检查、完整角色及实际 HTTPS 回归，并以真实 API 创建和恢复新测试库。2026-09-17T17:52:34Z 发布通过；中央 deployment `484811a0-0a79-462c-8376-d457d9ca15da`、站点 deployment `56d735ef-ce61-4350-a085-ef3a852aed5c`。
+
+新 D1 `02e8be38-7dfb-4c48-86e1-30e586961fc9` 属于 `p1-c` 操作 `f8d779c3-12a4-491c-b368-00f274be2bfd`。真实建库后、回执前注入中断，随后恢复并重复准备，UUID 和两个回执不变。17:53:45Z 直接核验 WNAM、读副本关闭、504 个应用/运行态对象、checkpoint 2、租约已释放；C 尚无站点/用户/租户资料、分组绑定、域名或 active 路由。A/B active、版本 23/1，权限恢复，站点会话和可兑换票据为零，生产部署/域名未变。[验证记录](site-per-d1-p1-provision-prepare-validation.json)区分 HTTP 替身测试与真实远程创建/恢复。安装、测试、构建、部署全部在 Cloudflare 执行；下一步必须继续原操作的 seed/deploy/verify/activate，完整建站与 P1/P2–P5 仍未完成。
+
+## P1 前轮发布：建站持久计划与操作日志
 
 `1f8c90f` 的构建 `c1d8904b-5fde-4d26-947e-6deda373efb0` 成功，通过 609 项测试、14 项既有浏览器检查、完整中央/双站 Worker、RPC 和实际 HTTPS 回归。2026-09-17T17:22:54Z 发布通过；中央 deployment `37badf26-e568-4dc1-b355-8c2fb552d71f`、站点 deployment `b6d4f7c9-cd96-4fb4-ae3c-8465e4dba533`。
 
