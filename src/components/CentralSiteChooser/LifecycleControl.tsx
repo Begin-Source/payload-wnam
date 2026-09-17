@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@payloadcms/ui'
 import type { SiteDirectoryEntry } from '../../site-control/siteDirectory'
-import type { SiteLifecycleInput } from '../../site-control/siteLifecycle'
+import type { SiteLifecycleInput, SiteLifecycleReceipt } from '../../site-control/siteLifecycle'
 
 export function LifecycleControl({ site, onChanged }: { site: SiteDirectoryEntry; onChanged: (message: string) => void }) {
   const [operation, setOperation] = useState<SiteLifecycleInput | null>(null)
@@ -25,6 +25,9 @@ export function LifecycleControl({ site, onChanged }: { site: SiteDirectoryEntry
         signal: AbortSignal.timeout(20000),
         headers: { 'content-type': 'application/json' },body: JSON.stringify(operation) })
       if (!response.ok) { setFailure(response.status); return }
+      const receipt = await response.json() as SiteLifecycleReceipt
+      if (receipt.operationId !== operation.operationId || receipt.siteId !== operation.siteId || receipt.action !== operation.action ||
+        receipt.expectedRoutingVersion !== operation.expectedRoutingVersion || receipt.routingVersion !== operation.expectedRoutingVersion+1) throw new Error('Unexpected operation receipt')
       onChanged(`${site.name}已${label}。${label === '恢复' ? '请重新进入网站。' : ''}`)
     } catch { setFailure(503) }
     finally { setBusy(false) }
