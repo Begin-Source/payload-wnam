@@ -97,7 +97,7 @@ const syncSingleDefaultPerTenant: CollectionBeforeChangeHook = async ({
   return data
 }
 
-const enforceAssignedTenantOnly: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
+export const enforcePipelineProfilesTenant: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
   const user = req.user
   if (!isUsersCollection(user)) return data
   if (userHasUnscopedAdminAccess(user)) return data
@@ -136,7 +136,7 @@ export const PipelineProfiles: CollectionConfig = {
   access: loggedInSuperAdminAccessFor('pipeline-profiles'),
   hooks: {
     beforeValidate: [ensureUniqueTenantSlug],
-    beforeChange: [syncSingleDefaultPerTenant, enforceAssignedTenantOnly],
+    beforeChange: [syncSingleDefaultPerTenant, enforcePipelineProfilesTenant],
   },
   fields: [
     {

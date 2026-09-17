@@ -127,7 +127,7 @@ const enforcePipelineProfileMatchesTenant: CollectionBeforeChangeHook = async ({
   return data
 }
 
-const enforceAssignedTenantOnly: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
+export const enforceTenantPromptTemplatesTenant: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
   const user = req.user
   if (!isUsersCollection(user)) return data
   if (userHasUnscopedAdminAccess(user)) return data
@@ -161,7 +161,7 @@ export const TenantPromptTemplates: CollectionConfig = {
   access: loggedInSuperAdminAccessFor('tenant-prompt-templates'),
   hooks: {
     beforeValidate: [ensureUniqueTenantPromptKey],
-    beforeChange: [enforcePipelineProfileMatchesTenant, enforceAssignedTenantOnly],
+    beforeChange: [enforcePipelineProfileMatchesTenant, enforceTenantPromptTemplatesTenant],
   },
   fields: [
     {

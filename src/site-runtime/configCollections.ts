@@ -19,9 +19,9 @@ import { Rankings } from '../collections/Rankings'
 import { WorkflowJobs } from '../collections/WorkflowJobs'
 import { SiteQuotas } from '../collections/SiteQuotas'
 import { ClickEvents } from '../collections/ClickEvents'
-import { TenantPromptTemplates } from '../collections/TenantPromptTemplates'
-import { PipelineProfiles } from '../collections/PipelineProfiles'
-import { KeywordBatchPresets } from '../collections/KeywordBatchPresets'
+import { TenantPromptTemplates, enforceTenantPromptTemplatesTenant } from '../collections/TenantPromptTemplates'
+import { PipelineProfiles, enforcePipelineProfilesTenant } from '../collections/PipelineProfiles'
+import { KeywordBatchPresets, enforceKeywordBatchPresetsTenant } from '../collections/KeywordBatchPresets'
 import { KnowledgeBase } from '../collections/KnowledgeBase'
 import { AuditLogs } from '../collections/AuditLogs'
 import { OriginalEvidence } from '../collections/OriginalEvidence'
@@ -37,6 +37,7 @@ import { enforceSitesMatrixQuota } from '../collections/hooks/sitesMatrixQuota'
 import { syncBlueprintTenantFromSiteTenantFieldBeforeChange } from '../collections/hooks/syncBlueprintMirroredLayout'
 import { requireLocalSiteId } from './context'
 import { siteIdentityCollection } from './siteIdentity'
+import { masterTenantWhere, validateMasterTenant } from './masterTenant'
 import { denySiteWrite, onlyCurrentSite, scopeDocumentAccess, scopeSiteFields, siteDocumentAccess, siteManage, siteRead, siteReadOnlyAccess,
   validateLocalSiteRecord, validateSitePublication } from './configAccess'
 
@@ -109,7 +110,14 @@ export function siteCollections(strategy: AuthStrategy): CollectionConfig[] {
     scopeSiteFields(collection.fields)
     protectFields(collection.fields, new Set())
     if (readOnly.has(collection.slug)) collection.access = siteReadOnlyAccess
-    if (managed.has(collection.slug)) collection.access = { read: siteRead, create: siteManage, update: siteManage, delete: siteManage }
+    if (managed.has(collection.slug)) {
+      collection.access = { read: siteRead, create: siteManage, update: siteManage, delete: siteManage }
+      const legacyTenantHooks = [enforceTenantPromptTemplatesTenant, enforcePipelineProfilesTenant, enforceKeywordBatchPresetsTenant]
+      collection.hooks = { ...collection.hooks,
+        beforeValidate: [validateMasterTenant, ...(collection.hooks?.beforeValidate ?? [])],
+        beforeChange: (collection.hooks?.beforeChange ?? []).filter(hook => !legacyTenantHooks.includes(hook)) }
+      scopeDocumentAccess(collection, masterTenantWhere)
+    }
     if (['articles','pages'].includes(collection.slug)) {
       collection.hooks = { ...collection.hooks, beforeChange: [validateSitePublication, ...(collection.hooks?.beforeChange ?? [])] }
     }

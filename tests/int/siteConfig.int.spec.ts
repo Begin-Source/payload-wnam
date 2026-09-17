@@ -12,6 +12,9 @@ import { articlePublishGate } from '../../src/collections/hooks/articlePublishGa
 import { validateDocLocaleAgainstSite } from '../../src/collections/hooks/validateDocLocaleAgainstSite'
 import { authorsGdprValidate } from '../../src/collections/hooks/authorsGdprValidate'
 import { syncSiteIdentityProjection } from '../../src/site-runtime/identityProjection'
+import { migrateSiteMasters } from '../../src/site-control/masterSchema'
+import { masterDigest, masterReference, projectMasterData, snapshotJSON, type MasterSnapshot } from '../../src/site-control/masterSnapshot'
+import { receiveMasterRelease } from '../../src/site-runtime/masterReceiver'
 
 vi.mock('../../src/payload.config', () => { throw new Error('Independent site config imported shared configuration') })
 // The storage SDK's development branch explicitly handles Miniflare proxy
@@ -63,6 +66,7 @@ describe('independent complete site Payload configuration', () => {
     contexts = await Promise.all(['A','B'].map(async (name, index) => {
       const binding = await mf.getD1Database(name)
       for (let offset = 0; offset < sql.length; offset += 25) await binding.batch(sql.slice(offset, offset + 25).map(statement => binding.prepare(statement)))
+      await migrateSiteMasters(binding)
       return { ...scope, siteId: name.toLowerCase(), localSiteId: index ? 82 : 37, binding, requestHost: `cms-site-${name.toLowerCase()}.beginos.org` }
     }))
     for (const context of contexts) await withSiteContext(context, async () => {
@@ -164,6 +168,47 @@ describe('independent complete site Payload configuration', () => {
       expect(published.docs[0]).not.toHaveProperty('createdBy')
     })
   }, 30000)
+
+  it('edits selected tenant masters using site grants and rejects foreign imported copies without legacy tenant roles', async () => {
+    for (const context of contexts) await withSiteContext(context,async () => {
+      const ownTenant = context.siteId === 'a' ? 11 : 22, foreignTenant = ownTenant + 100
+      const centralTenantId = context.siteId === 'a' ? 1 : 2
+      for (const id of [ownTenant,foreignTenant]) await payload.create({ collection: 'tenants',
+        data: { id,name: `Projection ${id}`,slug: `projection-${id}`,centralSource: { recordId: String(id === ownTenant ? centralTenantId : id),revision: 1,syncedAt: new Date().toISOString() } } as never })
+      await payload.update({ collection: 'sites',id: context.localSiteId!,data: { tenant: ownTenant } as never })
+      const snapshot: MasterSnapshot = { format: 1,collection: 'affiliate-networks',recordId: '123',revision: 1,tenantId: centralTenantId,
+        sourceUpdatedAt: '2026-09-17T04:00:00.000Z',relations: {},data: projectMasterData('affiliate-networks',{ name: 'Candidate network',slug: 'candidate' }) }
+      const release = { ...snapshot,digest: await masterDigest(snapshotJSON(snapshot)),operationId: 'native-schema-receipt',createdAt: snapshot.sourceUpdatedAt }
+      await receiveMasterRelease(masterReference(release),{ readBundle: async () => ({ siteId: context.siteId,localSiteId: context.localSiteId!,
+        routingVersion: 1,centralTenantId,root: masterReference(release),releases: [release] }) })
+      expect(await context.binding.prepare("SELECT revision FROM site_master_heads WHERE record_id='123'").first('revision')).toBe(1)
+      expect((await payload.find({ collection: 'affiliate-networks' })).docs).toHaveLength(0)
+      const manager = { ...request('manager').user!,id: 1,siteId: context.siteId }
+      const editor = { ...manager,siteRole: 'editor' }
+      const profile = await payload.create({ collection: 'pipeline-profiles',user: manager,overrideAccess: false,
+        data: { name: 'Buying intent · 发布质量 80+',slug: 'reviewed-profile' } })
+      const preset = await payload.create({ collection: 'keyword-batch-presets',user: manager,overrideAccess: false,
+        data: { name: 'Quick-win affiliate',slug: 'quick-win',batchMode: 'quick_wins' } })
+      const template = await payload.create({ collection: 'tenant-prompt-templates',user: manager,overrideAccess: false,
+        data: { key: 'serp_brief_user',body: 'Reviewed {{term}}',pipelineProfile: profile.id } })
+      await payload.update({ collection: 'sites',id: context.localSiteId!,user: manager,overrideAccess: false,
+        data: { pipelineProfile: profile.id,keywordBatchPreset: preset.id } })
+      for (const [collection,id,data] of [['pipeline-profiles',profile.id,{ description: 'Local review retained' }],
+        ['keyword-batch-presets',preset.id,{ description: 'Local preset retained' }],
+        ['tenant-prompt-templates',template.id,{ body: 'Updated {{term}}' }]] as const) {
+        const updated = await payload.update({ collection,id,data,user: manager,overrideAccess: false })
+        expect(updated.tenant).toMatchObject({ id: ownTenant })
+        await expect(payload.update({ collection,id,data,user: editor,overrideAccess: false })).rejects.toThrow()
+        await expect(payload.update({ collection,id,data: { tenant: foreignTenant } as never,user: manager,overrideAccess: true })).rejects.toThrow('Cross-tenant')
+      }
+      // Corrupt legacy import: even a manager must not see/edit its tenant.
+      await context.binding.prepare('UPDATE pipeline_profiles SET tenant_id=? WHERE id=?').bind(foreignTenant,profile.id).run()
+      await expect(payload.findByID({ collection: 'pipeline-profiles',id: profile.id,user: manager,overrideAccess: false })).rejects.toThrow()
+      await expect(payload.update({ collection: 'pipeline-profiles',id: profile.id,data: { name: 'Denied' },user: manager,overrideAccess: false })).rejects.toThrow()
+      await expect(payload.update({ collection: 'pipeline-profiles',id: profile.id,data: { tenant: ownTenant } as never,user: manager,overrideAccess: true })).rejects.toThrow('Cross-tenant')
+      await context.binding.prepare('UPDATE pipeline_profiles SET tenant_id=? WHERE id=?').bind(ownTenant,profile.id).run()
+    })
+  },30000)
 
   it('preserves design versions in both databases through wide-row updates', async () => {
     for (const context of contexts) await withSiteContext(context, async () => {

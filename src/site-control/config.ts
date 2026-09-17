@@ -125,6 +125,7 @@ export async function createCentralPayloadConfig(options: CentralPayloadOptions)
       } }
       protect(collection.fields)
     }
+    if (collection.slug === 'keyword-batch-presets') excluded.add('pillarKeywordId')
     if (collection.slug === 'site-quotas') excluded.add('usageYtd') // Local usage arrives via summaries, never policy CRUD.
     if (collection.slug === 'commission-statements') {
       collection.hooks = { beforeChange: [createCentralCommissionStatementHook(options.database)] }

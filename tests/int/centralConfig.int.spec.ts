@@ -2,7 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createRequire } from 'node:module'
 import { realpathSync } from 'node:fs'
-import { getPayload, type Payload, type SanitizedConfig } from 'payload'
+import { createLocalReq, getPayload, type Payload, type SanitizedConfig } from 'payload'
 import { createCentralPayloadConfig } from '../../src/site-control/config'
 import { migrateSiteControl } from '../../src/site-control/schema'
 import { migrateCentralCosts } from '../../src/site-control/costSchema'
@@ -12,6 +12,9 @@ import { registerSite } from '../../src/site-control/registry'
 import { withSiteContext } from '../../src/site-runtime/context'
 import { OpenAIConfig } from '../../src/utilities/aiOpenAIConfigImport'
 import { Users } from '../../src/collections/Users'
+import { migrateCentralMasters } from '../../src/site-control/masterSchema'
+import { publishMasterFromPayload } from '../../src/site-control/masterPublisher'
+import { masterReference } from '../../src/site-control/masterSnapshot'
 
 vi.mock('../../src/payload.config', () => { throw new Error('Central role imported shared configuration') })
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
@@ -50,6 +53,7 @@ describe('independent central Payload configuration and native finance path', ()
     for (let offset = 0; offset < statements.length; offset += 25) await database.batch(statements.slice(offset,offset + 25).map(sql => database.prepare(sql)))
     await migrateSiteControl(database)
     await migrateCentralCosts(database)
+    await migrateCentralMasters(database)
     await database.batch(centralCommissionGuardSchema.map(sql => database.prepare(sql)))
     for (const id of [1,2]) await payload.create({ collection: 'tenants', data: { id, name: `Tenant ${id}`, slug: `tenant-${id}`, domain: `tenant-${id}.example.invalid` } })
     // Explicit trusted bootstrap fixture. Anonymous central API signup is denied.
@@ -77,7 +81,39 @@ describe('independent central Payload configuration and native finance path', ()
     expect(config.collections.find(collection => collection.slug === 'users')!.auth.disableLocalStrategy ?? false).toBe(false)
     expect(config.collections.find(collection => collection.slug === 'authors')!.flattenedFields.map(field => field.name)).not.toContain('sites')
     expect(config.collections.find(collection => collection.slug === 'offers')!.flattenedFields.map(field => field.name)).not.toContain('categories')
+    expect(config.collections.find(collection => collection.slug === 'keyword-batch-presets')!.flattenedFields.map(field => field.name)).not.toContain('pillarKeywordId')
   })
+
+  it('publishes authorized central masters with pinned relationships and rejects stale source or unauthorized publishers', async () => {
+    const network = await payload.create({ collection: 'affiliate-networks',user: admin,overrideAccess: false,
+      data: { name: 'Release network',slug: 'release-network',tenant: 1 } as never })
+    const req = await createLocalReq({ user: admin },payload)
+    const input = { collection: 'affiliate-networks' as const,recordId: String(network.id),expectedRevision: 0,
+      expectedUpdatedAt: network.updatedAt,operationId: 'central-config-network',relations: {} }
+    const release = await publishMasterFromPayload(database,req,input)
+    expect(release).toMatchObject({ revision: 1,tenantId: 1,data: { name: 'Release network' } })
+    const staff = await payload.findByID({ collection: 'users',id: 9,depth: 0 })
+    await expect(publishMasterFromPayload(database,await createLocalReq({ user: { ...staff,collection: 'users' } },payload),input)).rejects.toThrow('permission')
+    const manager = await payload.create({ collection: 'users',user: admin,data: { email: 'master-manager@example.invalid',
+      password: 'native-central-test-only-password',roles: ['general-manager'],tenants: [{ tenant: 1 }] } })
+    const managerReq = await createLocalReq({ user: { ...manager,collection: 'users' } },payload)
+    expect(await publishMasterFromPayload(database,managerReq,input)).toEqual(release)
+    const foreign = await payload.create({ collection: 'affiliate-networks',user: admin,overrideAccess: false,
+      data: { name: 'Foreign network',slug: 'foreign-network',tenant: 2 } as never })
+    await expect(publishMasterFromPayload(database,managerReq,{ ...input,recordId: String(foreign.id),
+      expectedUpdatedAt: foreign.updatedAt,operationId: 'unauthorized-foreign-publish' })).rejects.toThrow()
+    await expect(publishMasterFromPayload(database,managerReq,{ ...input,collection: 'site-layouts' })).rejects.toThrow('Global master')
+    const offer = await payload.create({ collection: 'offers',user: admin,overrideAccess: false,
+      data: { title: 'Released product',network: network.id,tenant: 1 } as never })
+    const offerInput = { collection: 'offers' as const,recordId: String(offer.id),expectedRevision: 0,
+      expectedUpdatedAt: offer.updatedAt,operationId: 'central-config-offer',relations: { network: masterReference(release) } }
+    expect((await publishMasterFromPayload(database,req,offerInput)).relations.network).toEqual(masterReference(release))
+    await expect(publishMasterFromPayload(database,req,{ ...offerInput,operationId: 'bad-network-map',relations: { network: { ...masterReference(release),recordId: '999' } } })).rejects.toThrow('source mismatch')
+    await payload.update({ collection: 'affiliate-networks',id: network.id,user: admin,data: { name: 'Changed source' },overrideAccess: false })
+    // Exact operation retries return the immutable original, even after edits.
+    expect(await publishMasterFromPayload(database,req,input)).toEqual(release)
+    await expect(publishMasterFromPayload(database,req,{ ...input,expectedRevision: 1,operationId: 'stale-ui' })).rejects.toThrow('refresh')
+  },30000)
 
   it('keeps credential login central, denies anonymous signup and rejects site-context reuse', async () => {
     const login = await payload.login({ collection: 'users', data: { email: 'staff-9@example.invalid', password: 'native-central-test-only-password' } })

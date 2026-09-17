@@ -64,7 +64,7 @@ export const siteReadOnlyAccess: CollectionConfig['access'] = {
  * also match the registered site. Returning a Where makes Payload's upload
  * endpoint check the owning document before serving an object.
  */
-export function scopeDocumentAccess(collection: CollectionConfig, siteWhere: () => Where): void {
+export function scopeDocumentAccess(collection: CollectionConfig, siteWhere: (req: PayloadRequest) => Where | Promise<Where>): void {
   const access = { ...collection.access }
   for (const operation of ['read', 'update', 'delete', 'readVersions'] as const) {
     const original = access[operation]
@@ -72,7 +72,8 @@ export function scopeDocumentAccess(collection: CollectionConfig, siteWhere: () 
       requireLocalSiteId()
       const allowed = original ? await original(args) : false
       if (allowed === false) return false
-      const scope = operation === 'readVersions' ? whereForBlueprintVersions(siteWhere()) : siteWhere()
+      const documentWhere = await siteWhere(args.req)
+      const scope = operation === 'readVersions' ? whereForBlueprintVersions(documentWhere) : documentWhere
       return allowed === true ? scope : { and: [scope, allowed] }
     }
   }

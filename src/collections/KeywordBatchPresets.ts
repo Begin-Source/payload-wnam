@@ -39,7 +39,7 @@ const ensureUniqueTenantSlug: CollectionBeforeValidateHook = async ({
   return data
 }
 
-const enforceAssignedTenantOnly: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
+export const enforceKeywordBatchPresetsTenant: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
   const user = req.user
   if (!isUsersCollection(user)) return data
   if (userHasUnscopedAdminAccess(user)) return data
@@ -71,7 +71,7 @@ export const KeywordBatchPresets: CollectionConfig = {
   access: loggedInSuperAdminAccessFor('keyword-batch-presets'),
   hooks: {
     beforeValidate: [ensureUniqueTenantSlug],
-    beforeChange: [enforceAssignedTenantOnly],
+    beforeChange: [enforceKeywordBatchPresetsTenant],
   },
   fields: [
     {
