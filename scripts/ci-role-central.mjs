@@ -30,6 +30,12 @@ const mf = new Miniflare({ host: '127.0.0.1',port: 0,https: true,
 })
 let browser, page
 const assetResponses = [], browserErrors = []
+let stage = 'bootstrap'
+const progress = value => { stage = value; console.log(JSON.stringify({ event: 'central_application_step',stage })) }
+// This guard applies only to the disposable cloud fixture. A stalled browser
+// or teardown must fail before the release marker; no remote state is touched.
+const watchdog = setTimeout(() => { console.error(JSON.stringify({ event: 'central_application_timeout',stage })); process.exit(1) },6*60000)
+watchdog.unref()
 try {
   const db = await mf.getD1Database('CENTRAL_D1')
   const fixture = JSON.parse(readFileSync('.cloudflare-ci/role-central-fixture.json','utf8'))
@@ -61,6 +67,8 @@ try {
   const listener = await mf.ready
   browser = await chromium.launch({ headless: true,args: ['--no-proxy-server','--ignore-certificate-errors','--disable-background-networking',`--host-resolver-rules=MAP p1-hub.beginos.org:443 127.0.0.1:${listener.port}`] })
   const context = await browser.newContext({ ignoreHTTPSErrors: true,serviceWorkers: 'block',viewport: { width: 1365,height: 900 } })
+  context.setDefaultTimeout(30000)
+  context.setDefaultNavigationTimeout(60000)
   // This browser is confined to the disposable HTTPS listener with a self-signed
   // certificate; it cannot contact the actual production host or third parties.
   await context.route('**/*',route => new URL(route.request().url()).hostname === 'p1-hub.beginos.org' ? route.continue() : route.abort())
@@ -93,6 +101,7 @@ try {
   await page.getByRole('navigation').first().waitFor()
   console.log(JSON.stringify({ event: 'central_browser_login_passed' }))
   const chooser = page.getByRole('region',{ name: '我的网站' })
+  progress('chooser-load')
   await chooser.locator('[data-site-id="a"]').waitFor()
   assert.equal(await chooser.locator('[data-site-id="b"]').count(),0,'No grant must mean no site row')
   assert.equal(await chooser.getByRole('button',{ name: '下一页',exact: true }).isDisabled(),true)
@@ -102,6 +111,7 @@ try {
   await chooser.getByLabel('查找网站',{ exact: true }).fill('')
   await chooser.getByRole('button',{ name: '查找',exact: true }).click()
   await chooser.locator('[data-site-id="a"]').waitFor()
+  progress('search-passed')
   await db.prepare("UPDATE site_runtime_registry SET migration_state = 'paused', routing_version = routing_version + 1 WHERE site_id = 'a'").run()
   await chooser.getByRole('button',{ name: '查找',exact: true }).click()
   await chooser.getByText('已暂停',{ exact: true }).waitFor()
@@ -109,6 +119,7 @@ try {
   await db.prepare("UPDATE site_runtime_registry SET migration_state = 'active', routing_version = routing_version + 1 WHERE site_id = 'a'").run()
   await chooser.getByRole('button',{ name: '查找',exact: true }).click()
   await chooser.getByText('可进入',{ exact: true }).waitFor()
+  progress('paused-disabled-passed')
   const intercept = '**/auth/sites?*'
   await page.route(intercept,route => route.fulfill({ status: 503,contentType: 'text/plain',body: 'Site list unavailable' }))
   await chooser.getByRole('button',{ name: '查找',exact: true }).click()
@@ -117,9 +128,11 @@ try {
   await chooser.getByRole('button',{ name: '重新加载' }).click()
   await chooser.locator('[data-site-id="a"]').waitFor()
 
+  progress('directory-retry-passed')
   await db.prepare("UPDATE site_runtime_access SET role='manager' WHERE site_id='a' AND user_id='7'").run()
   await chooser.getByRole('button',{ name: '查找',exact: true }).click()
   await chooser.locator('[data-site-id="a"]').getByRole('button',{ name: /^暂停网站 / }).waitFor()
+  progress('manager-visible')
   await checkLifecycleBrowser({ hub: page,siteId: 'a',artifactPrefix: '.cloudflare-ci/central-lifecycle' })
 
   await page.screenshot({ path: '.cloudflare-ci/central-admin-desktop.png',fullPage: true })
@@ -160,4 +173,4 @@ try {
     inputs: [...document.querySelectorAll('input')].map(input => ({ type: input.type,name: input.name,id: input.id,filled: input.value.length > 0 })) })).catch(() => null) : null
   console.log(JSON.stringify({ event: 'central_application_failure',dom,assetResponses: assetResponses.slice(-30),browserErrors: browserErrors.slice(-10) }))
   throw error
-} finally { await browser?.close(); await mf.dispose() }
+} finally { await browser?.close(); await mf.dispose(); clearTimeout(watchdog) }

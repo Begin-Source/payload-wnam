@@ -3,8 +3,10 @@ import assert from 'node:assert/strict'
 /** Runs only inside Cloudflare's complete Worker/browser and remote release
  * checks. Uses the real central UI and API; no direct SQL lifecycle mutations. */
 export async function checkLifecycleBrowser({ hub,siteId,otherSiteId,siteRequest,otherSiteRequest,artifactPrefix }) {
+  const progress = step => console.log(JSON.stringify({ event: 'p1_lifecycle_step',siteId,step }))
+  progress('read-initial-state')
   const invoke = (path,init = {}) => hub.evaluate(async ({ path,init }) => {
-    const response = await fetch(path,init)
+    const response = await fetch(path,{ ...init,signal: AbortSignal.timeout(20000) })
     return { status: response.status,body: await response.text() }
   },{ path,init })
   const read = async id => {
@@ -24,6 +26,7 @@ export async function checkLifecycleBrowser({ hub,siteId,otherSiteId,siteRequest
     await row.getByRole('button',{ name: /^暂停网站 / }).click()
     await row.getByRole('button',{ name: '取消',exact: true }).click()
     assert.equal((await read(siteId)).routingVersion,initial.routingVersion,'Cancel must not change state')
+    progress('cancel-passed')
     await hub.setViewportSize({ width: 390,height: 844 })
     await row.getByRole('button',{ name: /^暂停网站 / }).click()
     await row.getByRole('group',{ name: /^确认暂停 / }).waitFor()
@@ -44,6 +47,7 @@ export async function checkLifecycleBrowser({ hub,siteId,otherSiteId,siteRequest
     pauseOperation = (await sent).postDataJSON()
     const paused = await pending
     assert.equal(paused.status(),200)
+    progress('pause-response')
     await row.getByText('已暂停',{ exact: true }).waitFor()
     assert.equal(await row.getByRole('button',{ name: /^进入网站 / }).isDisabled(),true)
     const pauseReceipt = await paused.json()
@@ -59,27 +63,40 @@ export async function checkLifecycleBrowser({ hub,siteId,otherSiteId,siteRequest
     assert.equal((await resuming).status(),200)
     await row.getByText('可进入',{ exact: true }).waitFor()
     assert.equal((await read(siteId)).routingVersion,initial.routingVersion+2)
+    progress('first-resume-passed')
     if (siteRequest) assert.equal((await siteRequest()).status,403,'Resume must not resurrect the old site cookie')
     if (other) assert.deepEqual(await read(otherSiteId),other)
     // Simulate an ambiguous delivery: the backend commits but the UI sees 503.
     // Retry must submit exactly the same operation ID and receive its receipt.
-    let ambiguousOperation
-    await hub.route('**/auth/site-lifecycle',async route => {
-      ambiguousOperation = route.request().postDataJSON()
-      pauseOperation = ambiguousOperation
-      const response = await route.fetch()
-      assert.equal(response.status(),200)
-      await route.fulfill({ status: 503,contentType: 'text/plain',body: 'Injected lost response' })
-    },{ times: 1 })
+    // Keep the actual request in Chromium. route.fetch() uses Node networking
+    // and would bypass the fixture's browser host-resolver mapping.
+    await hub.evaluate(() => {
+      const original = window.fetch.bind(window)
+      window.__p1OriginalFetch = original
+      window.fetch = async (input,init) => {
+        const url = new URL(input instanceof Request ? input.url : String(input),location.href)
+        if (url.origin === location.origin && url.pathname === '/auth/site-lifecycle' && (init?.method ?? 'GET') === 'POST') {
+          window.fetch = original
+          const response = await original(input,init)
+          if (!response.ok) return response
+          await response.text()
+          return new Response('Injected lost response',{ status: 503,headers: { 'content-type': 'text/plain' } })
+        }
+        return original(input,init)
+      }
+    })
     await row.getByRole('button',{ name: /^暂停网站 / }).click()
+    const ambiguousRequest = hub.waitForRequest(request => new URL(request.url()).pathname === '/auth/site-lifecycle' && request.method() === 'POST')
     await row.getByRole('button',{ name: '确认暂停',exact: true }).click()
+    const ambiguousOperation = (await ambiguousRequest).postDataJSON()
+    pauseOperation = ambiguousOperation
     await row.getByRole('button',{ name: '重试这次操作',exact: true }).waitFor()
     const retry = capture()
     await row.getByRole('button',{ name: '重试这次操作',exact: true }).click()
     const retried = await retry
     assert.deepEqual(retried.request().postDataJSON(),ambiguousOperation)
     assert.equal((await retried.json()).replayed,true)
-    pauseOperation = ambiguousOperation
+    progress('ambiguous-retry-passed')
     await row.getByText('已暂停',{ exact: true }).waitFor()
     await row.getByRole('button',{ name: /^恢复网站 / }).click()
     const resumed = capture()
@@ -92,7 +109,9 @@ export async function checkLifecycleBrowser({ hub,siteId,otherSiteId,siteRequest
     console.log(JSON.stringify({ event: 'p1_lifecycle_browser_passed',siteId,fromVersion: initial.routingVersion,toVersion: initial.routingVersion+4,
       checks: ['explicit-site-id','manager-ui','cancel','mobile','pause','idempotent-retry','stale-conflict','resume','ambiguous-response-retry',...(siteRequest ? ['old-cookie-denied','other-site-unaffected'] : [])] }))
   } finally {
-    await hub.unroute('**/auth/site-lifecycle')
+    await hub.evaluate(() => {
+      if (window.__p1OriginalFetch) { window.fetch = window.__p1OriginalFetch; delete window.__p1OriginalFetch }
+    })
     if (attempted) {
       const current = await read(siteId)
       if (current.state === 'paused') {

@@ -22,6 +22,7 @@ export function LifecycleControl({ site, onChanged }: { site: SiteDirectoryEntry
     setBusy(true); setFailure(null); setAttempted(true)
     try {
       const response = await fetch('/auth/site-lifecycle',{ method: 'POST',credentials: 'same-origin',cache: 'no-store',
+        signal: AbortSignal.timeout(20000),
         headers: { 'content-type': 'application/json' },body: JSON.stringify(operation) })
       if (!response.ok) { setFailure(response.status); return }
       onChanged(`${site.name}已${label}。${label === '恢复' ? '请重新进入网站。' : ''}`)

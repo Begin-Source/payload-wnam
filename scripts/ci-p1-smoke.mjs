@@ -29,6 +29,8 @@ try {
   // proxy to a fixture, or certificate-error suppression in remote acceptance.
   browser = await chromium.launch({ headless: true,args: ['--disable-background-networking'] })
   context = await browser.newContext({ serviceWorkers: 'block',viewport: { width: 1365,height: 900 } })
+  context.setDefaultTimeout(30000)
+  context.setDefaultNavigationTimeout(60000)
   await context.route('**/*',route => hosts.includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort())
   context.on('page',page => {
     page.on('pageerror',error => browserErrors.push(error.message.slice(0,240)))
