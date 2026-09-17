@@ -11,6 +11,7 @@ import { assertGroupSettings } from './group'
 import { groupRoutes } from './manifest'
 import { parseVerificationRequest } from './verify-request'
 import { verifySiteDatabase } from './verify-database'
+import { runtimeProofSnapshot } from './runtime-proof'
 
 assert.equal(process.env.WORKERS_CI,'1'); assert.ok(['feat/site-per-d1','main'].includes(process.env.WORKERS_CI_BRANCH ?? ''))
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
@@ -70,8 +71,9 @@ try {
     const site = await readSiteRegistration(centralDb,target.siteId),binding = routes.find(route => route.siteId === target.siteId)!
     assert.ok(site && site.workerGroup === group.vars.WORKER_GROUP && site.localSiteId === binding.localSiteId && site.databaseId === binding.databaseId &&
       site.bindingName === binding.bindingName && site.schemaVersion === binding.schemaVersion,'Verification registration mismatch')
-    const runtime = await proxy.env.INSPECT.verify(site.siteId)
+    const runtime = runtimeProofSnapshot(await proxy.env.INSPECT.verify(site.siteId))
     assert.ok(runtime.siteId === site.siteId && runtime.databaseId === site.databaseId && runtime.bindingName === site.bindingName && runtime.localSiteId === site.localSiteId &&
+      runtime.schemaVersion === site.schemaVersion && runtime.workerGroup === site.workerGroup && runtime.adminHost === site.adminHost &&
       runtime.routingVersion === site.routingVersion && runtime.state === site.migrationState && runtime.releaseCommit === deployedCommit && runtime.releaseId === releaseId,'Deployed binding proof mismatch')
     const db = proxy.env[site.bindingName as `SITE_D1_${string}`]
     const centralRecord = await centralDb.prepare('SELECT tenant_id,runtime_site_id FROM sites WHERE id=?').bind(site.localSiteId).first<{ tenant_id: number; runtime_site_id: string }>()
@@ -84,7 +86,7 @@ try {
     const report = await verifySiteDatabase({ database: db,site,schema,schemaDigest: request.schemaDigest,accountId: group.account_id,ownership: target.ownership,
       publicBucket: proxy.env.SITE_PUBLIC,privateBucket: proxy.env.SITE_PRIVATE })
     assert.ok(JSON.stringify(await readSiteRegistration(centralDb,site.siteId)) === JSON.stringify(site),'Registration changed during verification')
-    assert.deepEqual(await proxy.env.INSPECT.verify(site.siteId),runtime,'Runtime changed during verification')
+    assert.deepEqual(runtimeProofSnapshot(await proxy.env.INSPECT.verify(site.siteId)),runtime,'Runtime changed during verification')
     reports.push({ ...report,runtime,identityProjections: projections.length })
     console.log(JSON.stringify({ event: 'site_verification_target_passed',operationId: request.operationId,siteId: site.siteId,tables: report.tables.length,
       contentDigest: report.contentDigest,media: report.media,taskRows: report.tasks.reduce((n,table) => n+table.rows,0) }))

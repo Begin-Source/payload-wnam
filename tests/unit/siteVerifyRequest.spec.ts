@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { describe,expect,it } from 'vitest'
 import { verificationArguments } from '../../scripts/site-verify.mjs'
 import { parseVerificationRequest } from '../../scripts/site-operations/verify-request'
+import { runtimeProofSnapshot } from '../../scripts/site-operations/runtime-proof'
 const fixture = () => {
   const provision = JSON.parse(readFileSync('operations/provision/p1-d.json','utf8'))
   return { operationId: randomUUID(),central: provision.central,centralWorkerTag: provision.centralWorkerTag,group: provision.baseline,
@@ -10,6 +11,15 @@ const fixture = () => {
     sites: [{ siteId: 'p1-c',ownership: { kind: 'provision',operationId: 'f8d779c3-12a4-491c-b368-00f274be2bfd' } }] }
 }
 describe('read-only verification request boundaries',() => {
+  it('compares explicit RPC values without depending on proxy identity or enumeration',() => {
+    const value = { siteId: 'p1-c',localSiteId: 103,bindingName: 'SITE_D1_C',databaseId: randomUUID(),schemaVersion: 1,
+      workerGroup: 'p1-group-1',adminHost: 'cms-site-p1-c.beginos.org',routingVersion: 2,state: 'active' as const,tenantId: 1,
+      releaseCommit: 'a'.repeat(40),releaseId: 'b'.repeat(64) }
+    const remote = () => new Proxy({} as typeof value,{ get: (_target,key) => Reflect.get(value,key),ownKeys: () => [] })
+    expect(runtimeProofSnapshot(remote())).toEqual(value)
+    const before = runtimeProofSnapshot(remote()); value.routingVersion++
+    expect(runtimeProofSnapshot(remote())).not.toEqual(before)
+  })
   it('requires one explicit file and exposes no apply, force, SQL or credential option',() => {
     expect(verificationArguments(['--request','reviewed.json'])).toEqual({ request: 'reviewed.json' })
     for (const args of [[],['--request'],['--request','--force'],['--request','r.json','--apply'],['--sql','SELECT 1']]) expect(() => verificationArguments(args)).toThrow()
