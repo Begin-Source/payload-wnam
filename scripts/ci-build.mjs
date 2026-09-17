@@ -16,15 +16,17 @@ writeFileSync('.cloudflare-ci/wrangler.json', JSON.stringify({
   r2_buckets: [{ binding: 'R2', bucket_name: 'payload-wnam-ci', remote: false }],
 }))
 run(['run', 'ci:check'], { PAYLOAD_TEST_MODE: 'isolated', PAYLOAD_SECRET: 'isolated-test-secret' })
+// Fail new role packaging/runtime checks before spending time on shared regression
+// packaging. Every existing check still gates the same commit-matched marker.
+execFileSync(process.execPath, ['scripts/ci-role-build.mjs'], { stdio: 'inherit', env: process.env })
+run(['exec', 'playwright', 'install', '--only-shell', 'chromium'])
+const browserEnv = browserLibraryEnvironment()
+execFileSync(process.execPath, ['scripts/ci-role-central.mjs'], { stdio: 'inherit', env: { ...process.env, ...browserEnv } })
 execFileSync(process.execPath, ['scripts/ci-site-isolation.mjs'], { stdio: 'inherit', env: process.env })
 run(['exec', 'opennextjs-cloudflare', 'build'], { PAYLOAD_BUILD_PHASE: '1' })
 execFileSync(process.execPath, ['scripts/ci-p0-source-encoding.mjs'], { stdio: 'inherit', env: process.env })
 execFileSync(process.execPath, ['scripts/ci-p0-bundle-report.mjs'], { stdio: 'inherit', env: process.env })
-run(['exec', 'playwright', 'install', '--only-shell', 'chromium'])
-const browserEnv = browserLibraryEnvironment()
 run(['exec', 'playwright', 'test', '--config=playwright.cloud-ci.config.ts'], browserEnv)
 execFileSync(process.execPath, ['--import=tsx', 'scripts/ci-site-identity.mjs'], { stdio: 'inherit', env: { ...process.env, ...browserEnv } })
-execFileSync(process.execPath, ['scripts/ci-role-build.mjs'], { stdio: 'inherit', env: process.env })
-execFileSync(process.execPath, ['scripts/ci-role-central.mjs'], { stdio: 'inherit', env: { ...process.env, ...browserEnv } })
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
 writeFileSync('.cloudflare-ci/release.json', JSON.stringify({ commit, builtAt: new Date().toISOString() }))

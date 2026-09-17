@@ -11,11 +11,14 @@ const cwd = resolve('.cloudflare-ci/roles/central')
 const bundle = resolve(cwd,'.cloudflare-ci/bundle')
 const entries = readdirSync(bundle).filter(name => /\.m?js$/.test(name))
 assert.equal(entries.length,1,'One complete central Worker entry is required')
+const moduleFiles = readdirSync(bundle,{ recursive: true }).filter(name => typeof name === 'string' && /\.(?:m?js|wasm|html|txt)$/.test(name))
+const modules = [entries[0],...moduleFiles.filter(name => name !== entries[0])].map(name => ({
+  type: name.endsWith('.wasm') ? 'CompiledWasm' : /\.(?:html|txt)$/.test(name) ? 'Text' : 'ESModule',path: resolve(bundle,name),
+}))
 const assets = resolve(cwd,'.open-next/assets')
 const mime = { '.js': 'application/javascript','.css': 'text/css','.svg': 'image/svg+xml','.png': 'image/png','.ico': 'image/x-icon','.woff2': 'font/woff2','.json': 'application/json' }
 const mf = new Miniflare({ host: '127.0.0.1',port: 0,https: true,
-  name: 'central',routes: ['hub.beginos.org/*'],modules: true,scriptPath: resolve(bundle,entries[0]),
-  modulesRules: [{ type: 'CompiledWasm',include: ['**/*.wasm'],fallthrough: true },{ type: 'Text',include: ['**/*.html','**/*.txt'],fallthrough: true }],
+  name: 'central',routes: ['hub.beginos.org/*'],modules,modulesRoot: bundle,
   compatibilityDate: '2025-08-15',compatibilityFlags: ['nodejs_compat','global_fetch_strictly_public'],
   bindings: { PAYLOAD_SECRET: 'central-config-isolated-test-only' },
   d1Databases: { CENTRAL_D1: 'complete-central-app' },
@@ -76,8 +79,8 @@ try {
   assert.equal(JSON.parse(record.body).displayName,'Complete central app author')
   const ticket = await invoke('/auth/enter-site',{ method: 'POST',headers: { 'content-type': 'application/x-www-form-urlencoded' },body: 'siteId=a' })
   assert.equal(ticket.status,200,'Real JWT-authenticated central login must issue a site ticket')
-  assert.match(ticket.body,/action="https:\/\/cms-site-a.beginos.org\/auth\/site-login"/)
-  assert.match(ticket.body,/name="ticket" value="[0-9a-f]{64}"/)
+  assert.ok(/action="https:\/\/cms-site-a.beginos.org\/auth\/site-login"/.test(ticket.body),'Canonical POST handoff action required')
+  assert.ok(/name="ticket" value="[0-9a-f]{64}"/.test(ticket.body),'Single-use ticket required')
   assert.equal((await invoke('/auth/enter-site',{ method: 'POST',headers: { 'content-type': 'application/x-www-form-urlencoded' },body: 'siteId=b' })).status,403,'Missing site grant must deny entry')
   await page.setViewportSize({ width: 390,height: 844 })
   await page.reload()
