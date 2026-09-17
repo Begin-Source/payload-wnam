@@ -30,7 +30,8 @@ const mf = new Miniflare({ host: '127.0.0.1',port: 0,https: true,
     catch { return new Response('Not found',{ status: 404 }) }
   } },
 })
-let browser
+let browser, page
+const assetResponses = [], browserErrors = []
 try {
   const db = await mf.getD1Database('CENTRAL_D1')
   const fixture = JSON.parse(readFileSync('.cloudflare-ci/role-central-fixture.json','utf8'))
@@ -51,9 +52,15 @@ try {
   const listener = await mf.ready
   browser = await chromium.launch({ headless: true,args: ['--no-proxy-server',`--host-resolver-rules=MAP hub.beginos.org:443 127.0.0.1:${listener.port}`] })
   const context = await browser.newContext({ ignoreHTTPSErrors: true,serviceWorkers: 'block',viewport: { width: 1365,height: 900 } })
-  const page = await context.newPage()
+  page = await context.newPage()
+  page.on('pageerror',error => browserErrors.push(error.message.slice(0,240)))
   const failedAssets = []
-  page.on('response',response => { if (response.url().includes('/_next/') && response.status() >= 400) failedAssets.push(new URL(response.url()).pathname) })
+  page.on('response',response => { if (response.url().includes('/_next/')) {
+    const path = new URL(response.url()).pathname
+    assetResponses.push({ path,status: response.status(),type: response.headers()['content-type'] })
+    if (response.status() >= 400) failedAssets.push(path)
+  } })
+  page.on('requestfailed',request => browserErrors.push(`${new URL(request.url()).pathname}: ${request.failure()?.errorText}`))
   const login = await page.goto('https://hub.beginos.org/admin/login')
   assert.equal(login.status(),200,'Complete central login page must render')
   await page.locator('input[name=email]').fill('admin@example.invalid')
@@ -94,4 +101,10 @@ try {
     remoteDeployment: false }
   writeFileSync('.cloudflare-ci/central-application.json',JSON.stringify(report,null,2))
   console.log(JSON.stringify(report))
+} catch (error) {
+  // Fixture-only diagnostics: no headers, cookie values, input values or handoff HTML.
+  const dom = page ? await page.evaluate(() => ({ title: document.title,text: document.body.innerText.slice(0,600),
+    inputs: [...document.querySelectorAll('input')].map(input => ({ type: input.type,name: input.name,id: input.id })) })).catch(() => null) : null
+  console.log(JSON.stringify({ event: 'central_application_failure',dom,assetResponses: assetResponses.slice(-30),browserErrors: browserErrors.slice(-10) }))
+  throw error
 } finally { await browser?.close(); await mf.dispose() }
