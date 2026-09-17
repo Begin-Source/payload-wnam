@@ -3,6 +3,7 @@ import { siteFetch } from '../../src/application-roles/siteIngress'
 import { requireSiteEnvironment, type SiteEnvironment } from '../../src/application-roles/siteEnvironment'
 import { requireSiteContext } from '../../src/site-runtime/context'
 import type { SiteRoute } from '../../src/site-control/routingService'
+import type { SiteIdentityRPC } from '../../src/site-control/identityService'
 
 const route = (siteId = 'a', version = 1): SiteRoute => ({ siteId, localSiteId: siteId === 'a' ? 37 : 82,
   databaseId: `00000000-0000-0000-0000-00000000000${siteId === 'a' ? 1 : 2}`, bindingName: `SITE_D1_${siteId.toUpperCase()}`,
@@ -13,8 +14,8 @@ function bindings(): SiteEnvironment {
     SITE_D1_A: { prepare: vi.fn() } as unknown as D1Database, SITE_D1_B: { prepare: vi.fn() } as unknown as D1Database,
     SITE_PUBLIC: { get: vi.fn(), put: vi.fn() } as unknown as R2Bucket, SITE_PRIVATE: { get: vi.fn(), put: vi.fn() } as unknown as R2Bucket,
     DATA: { readMaster: vi.fn(), readConfig: vi.fn(), readAsset: vi.fn() },
-    ROUTING: { resolve: vi.fn(async id => route(id)) }, IDENTITY: { redeem: vi.fn(), logout: vi.fn(async () => ({ ok: true, value: null })),
-      authenticate: vi.fn(async (_session, id) => ({ ok: true, value: { siteId: id, localSiteId: id === 'a' ? 37 : 82, routingVersion: 1,
+    ROUTING: { resolve: vi.fn(async id => route(id)) }, IDENTITY: { redeem: vi.fn(), logout: vi.fn<SiteIdentityRPC['logout']>(async () => ({ ok: true, value: null })),
+      authenticate: vi.fn<SiteIdentityRPC['authenticate']>(async (_session, id) => ({ ok: true, value: { siteId: id, localSiteId: id === 'a' ? 37 : 82, routingVersion: 1,
         userId: '7', displayName: 'Staff', role: 'editor' } })) } }
 }
 const request = (site = 'a', path = '/admin', method = 'GET') => new Request(`https://cms-site-${site}.beginos.org${path}`, {
