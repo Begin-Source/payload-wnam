@@ -16,6 +16,8 @@ for (const role of ['central']) {
   // Shared writing helpers currently live beneath app/ but contain no routes.
   // Preserve their import paths without mounting the shared HTTP controllers.
   cpSync('src/app/api/pipeline/lib',resolve(cwd,'src/app/api/pipeline/lib'),{ recursive: true })
+  mkdirSync(resolve(cwd,'src/app/api/pipeline/draft-skeleton'),{ recursive: true })
+  cpSync('src/app/api/pipeline/draft-skeleton/runDraftSkeleton.ts',resolve(cwd,'src/app/api/pipeline/draft-skeleton/runDraftSkeleton.ts'))
   mkdirSync(resolve(cwd,'src/app-styles'),{ recursive: true })
   cpSync('src/app/(payload)/custom.scss',resolve(cwd,'src/app-styles/central-admin.scss'))
   cpSync('public',resolve(cwd,'public'),{ recursive: true })
@@ -39,6 +41,8 @@ for (const role of ['central']) {
   const run = args => execFileSync('pnpm',args,{ cwd,env,stdio: 'inherit' })
   console.log(JSON.stringify({ event: 'role_build_start',role }))
   run(['exec','wrangler','types','cloudflare-role-env.d.ts','--env-interface','CentralRoleEnv','--config',resolve(cwd,'wrangler.jsonc')])
+  const bindingTypes = readFileSync(resolve(cwd,'cloudflare-role-env.d.ts'),'utf8')
+  for (const name of ['CENTRAL_D1','CENTRAL_MEDIA','MASTER_ASSET_ARCHIVE','ASSETS']) assert.ok(bindingTypes.includes(name),`Missing role binding type: ${name}`)
   run(['exec','payload','generate:importmap'])
   const map = readFileSync(resolve(cwd,'src/app/(payload)/admin/importMap.js'),'utf8')
   assert.ok(map.includes('@payloadcms/'), 'Role component map must be generated')
