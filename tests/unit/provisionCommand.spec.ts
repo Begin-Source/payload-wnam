@@ -46,6 +46,7 @@ describe('reviewed provision command boundaries',() => {
     expect(() => assertGroupSettings(settings,baseline)).not.toThrow()
     expect(() => assertGroupSettings({ ...settings,bindings: [...settings.bindings,{ name: 'UNREVIEWED',type: 'service' }] },baseline)).toThrow()
     expect(() => assertGroupSettings({ ...settings,bindings: settings.bindings.filter(b => b.name !== 'SITE_D1_A') },baseline)).toThrow()
+    expect(() => assertGroupSettings({ ...settings,bindings: settings.bindings.map(b => b.name === 'IDENTITY' ? { ...b,environment: 'foreign' } : b) },baseline)).toThrow()
     expect(() => assertGroupSettings({ ...settings,bindings: [...settings.bindings,{ name: 'PROVISION_OPERATION',type: 'plain_text',text: 'incomplete' }] },baseline)).toThrow('Incomplete group provenance')
   })
 })

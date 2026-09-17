@@ -1,0 +1,145 @@
+{
+  "plan": {
+    "operationId": "d31f541a-f160-48dc-a992-57bf9da70344",
+    "accountId": "d487cf34c606620b442632a72272014d",
+    "centralDatabaseId": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d",
+    "centralOrigin": "https://p1-hub.beginos.org",
+    "siteId": "p1-d",
+    "localSiteId": 104,
+    "name": "P1 Provisioned Site D",
+    "tenantId": 2,
+    "ownerUserId": 7,
+    "workerGroup": "p1-group-1",
+    "workerName": "payload-wnam-p1-sites",
+    "workerTag": "e73dabad443148d1a6cede5c19ee203e",
+    "expectedDeploymentId": "0ffbeecb-db65-4ac1-8b17-52cafe7b1275",
+    "baselineManifestDigest": "34873e43930b78d20bfff67d22c6972a77ec832236632a7226f863023ee791b0",
+    "bindingName": "SITE_D1_D",
+    "schemaVersion": 1,
+    "schemaDigest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+    "timezone": "UTC"
+  },
+  "baseline": {
+    "account_id": "d487cf34c606620b442632a72272014d",
+    "main": "worker.ts",
+    "compatibility_date": "2025-08-15",
+    "compatibility_flags": [
+      "nodejs_compat",
+      "global_fetch_strictly_public"
+    ],
+    "assets": {
+      "directory": ".open-next/assets",
+      "binding": "ASSETS"
+    },
+    "workers_dev": false,
+    "preview_urls": false,
+    "vars": {
+      "CENTRAL_ORIGIN": "https://p1-hub.beginos.org",
+      "WORKER_GROUP": "p1-group-1",
+      "SITE_ROUTES": "[{\"siteId\":\"p1-a\",\"localSiteId\":37,\"bindingName\":\"SITE_D1_A\",\"databaseId\":\"6daecf80-30f5-4010-add6-d67bb556cc42\",\"schemaVersion\":1},{\"siteId\":\"p1-b\",\"localSiteId\":82,\"bindingName\":\"SITE_D1_B\",\"databaseId\":\"b2a1a340-681a-4581-8817-b2f9629a6ed4\",\"schemaVersion\":1},{\"siteId\":\"p1-c\",\"localSiteId\":103,\"bindingName\":\"SITE_D1_C\",\"databaseId\":\"02e8be38-7dfb-4c48-86e1-30e586961fc9\",\"schemaVersion\":1}]"
+    },
+    "name": "payload-wnam-p1-sites",
+    "routes": [
+      {
+        "pattern": "cms-site-p1-a.beginos.org",
+        "custom_domain": true
+      },
+      {
+        "pattern": "cms-site-p1-b.beginos.org",
+        "custom_domain": true
+      },
+      {
+        "pattern": "cms-site-p1-c.beginos.org",
+        "custom_domain": true
+      }
+    ],
+    "d1_databases": [
+      {
+        "binding": "SITE_D1_A",
+        "database_name": "payload-wnam-p1-a",
+        "database_id": "6daecf80-30f5-4010-add6-d67bb556cc42"
+      },
+      {
+        "binding": "SITE_D1_B",
+        "database_name": "payload-wnam-p1-b",
+        "database_id": "b2a1a340-681a-4581-8817-b2f9629a6ed4"
+      },
+      {
+        "binding": "SITE_D1_C",
+        "database_name": "payload-p1-c-f8d779c312a4491cb36800f274be2bfd",
+        "database_id": "02e8be38-7dfb-4c48-86e1-30e586961fc9"
+      }
+    ],
+    "r2_buckets": [
+      {
+        "binding": "SITE_PUBLIC",
+        "bucket_name": "payload-wnam-p1-site-public"
+      },
+      {
+        "binding": "SITE_PRIVATE",
+        "bucket_name": "payload-wnam-p1-site-private"
+      }
+    ],
+    "services": [
+      {
+        "binding": "IDENTITY",
+        "entrypoint": "SiteIdentityService",
+        "service": "payload-wnam-p1-central"
+      },
+      {
+        "binding": "DATA",
+        "entrypoint": "SiteDataService",
+        "service": "payload-wnam-p1-central"
+      },
+      {
+        "binding": "ROUTING",
+        "entrypoint": "SiteRoutingService",
+        "service": "payload-wnam-p1-central"
+      }
+    ]
+  },
+  "central": {
+    "account_id": "d487cf34c606620b442632a72272014d",
+    "main": "worker.ts",
+    "compatibility_date": "2025-08-15",
+    "compatibility_flags": [
+      "nodejs_compat",
+      "global_fetch_strictly_public"
+    ],
+    "assets": {
+      "directory": ".open-next/assets",
+      "binding": "ASSETS"
+    },
+    "workers_dev": false,
+    "preview_urls": false,
+    "vars": {
+      "CENTRAL_ORIGIN": "https://p1-hub.beginos.org"
+    },
+    "name": "payload-wnam-p1-central",
+    "routes": [
+      {
+        "pattern": "p1-hub.beginos.org",
+        "custom_domain": true
+      }
+    ],
+    "d1_databases": [
+      {
+        "binding": "CENTRAL_D1",
+        "database_name": "payload-wnam-p1-central",
+        "database_id": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d"
+      }
+    ],
+    "r2_buckets": [
+      {
+        "binding": "CENTRAL_MEDIA",
+        "bucket_name": "payload-wnam-p1-central-media"
+      },
+      {
+        "binding": "MASTER_ASSET_ARCHIVE",
+        "bucket_name": "payload-wnam-p1-master-archive"
+      }
+    ]
+  },
+  "centralWorkerTag": "f1c8ec1e73c84600812af6794dea8a8c",
+  "zoneId": "8d8fd673a6aeacf85360bc9e397d3002"
+}

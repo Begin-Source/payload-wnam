@@ -76,13 +76,15 @@ export class ProvisionJournal {
       (SELECT COUNT(*) FROM site_provision_operations WHERE site_id=? OR local_site_id=? OR database_name=? OR (worker_group=? AND completed_at IS NULL) OR (worker_group=? AND binding_name=?)) AS reserved,
       (SELECT COUNT(*) FROM site_runtime_registry WHERE worker_group=?) AS groupSize,
       (SELECT COUNT(*) FROM users WHERE id=?) AS ownerExists,
-      (SELECT COUNT(*) FROM tenants WHERE id=?) AS tenantExists`).bind(
+      (SELECT COUNT(*) FROM tenants WHERE id=?) AS tenantExists,
+      ((SELECT COUNT(*) FROM site_group_leases WHERE worker_group=? AND lease_until>${now})
+        + (SELECT COUNT(*) FROM site_group_releases WHERE worker_group=? AND completed_at IS NULL)) AS releaseBusy`).bind(
       plan.siteId,plan.localSiteId,plan.workerGroup,plan.bindingName,plan.localSiteId,plan.siteId,
       plan.siteId,plan.localSiteId,plan.databaseName,plan.workerGroup,plan.workerGroup,plan.bindingName,
-      plan.workerGroup,plan.ownerUserId,plan.tenantId,
-    ).first<{ registered: number; siteRecords: number; reserved: number; groupSize: number; ownerExists: number; tenantExists: number }>()
+      plan.workerGroup,plan.ownerUserId,plan.tenantId,plan.workerGroup,plan.workerGroup,
+    ).first<{ registered: number; siteRecords: number; reserved: number; groupSize: number; ownerExists: number; tenantExists: number; releaseBusy: number }>()
     if (!conflicts || conflicts.registered || conflicts.siteRecords || conflicts.reserved || conflicts.groupSize >= 50 ||
-      conflicts.ownerExists !== 1 || conflicts.tenantExists !== 1) throw new Error('Provision target occupied, group full, or owner/tenant missing')
+      conflicts.ownerExists !== 1 || conflicts.tenantExists !== 1 || conflicts.releaseBusy) throw new Error('Provision target occupied, group full/busy, or owner/tenant missing')
     return { mode: 'new' as const,planDigest: digest,groupSize: conflicts.groupSize }
   }
   async reserve(plan: ProvisionPlan): Promise<ProvisionOperation> {
@@ -96,8 +98,10 @@ export class ProvisionJournal {
         AND NOT EXISTS (SELECT 1 FROM sites WHERE id=? OR runtime_site_id=?)
         AND (SELECT COUNT(*) FROM site_runtime_registry WHERE worker_group=?) < 50
         AND EXISTS (SELECT 1 FROM users WHERE id=?) AND EXISTS (SELECT 1 FROM tenants WHERE id=?)
+        AND NOT EXISTS (SELECT 1 FROM site_group_leases WHERE worker_group=? AND lease_until>${now})
+        AND NOT EXISTS (SELECT 1 FROM site_group_releases WHERE worker_group=? AND completed_at IS NULL)
       ON CONFLICT DO NOTHING`).bind(plan.operationId,plan.siteId,plan.localSiteId,plan.workerGroup,plan.bindingName,plan.databaseName,json,digest,
-      plan.siteId,plan.localSiteId,plan.workerGroup,plan.bindingName,plan.localSiteId,plan.siteId,plan.workerGroup,plan.ownerUserId,plan.tenantId).run()
+      plan.siteId,plan.localSiteId,plan.workerGroup,plan.bindingName,plan.localSiteId,plan.siteId,plan.workerGroup,plan.ownerUserId,plan.tenantId,plan.workerGroup,plan.workerGroup).run()
     const stored = await this.read(plan.operationId)
     if (!stored || stored.planDigest !== digest) throw new Error('Provision reservation conflict')
     return stored
@@ -107,7 +111,8 @@ export class ProvisionJournal {
     const owner = randomUUID()
     const row = await this.database.prepare(`UPDATE site_provision_operations SET lease_owner=?,lease_epoch=lease_epoch+1,lease_until=${now}+180000
       WHERE operation_id=? AND completed_at IS NULL AND lease_until<=${now}
-        AND (SELECT COUNT(*) FROM site_provision_operations WHERE completed_at IS NULL AND lease_until>${now}) < 4
+        AND ((SELECT COUNT(*) FROM site_provision_operations WHERE completed_at IS NULL AND lease_until>${now})
+          + (SELECT COUNT(*) FROM site_group_leases WHERE lease_until>${now})) < 4
         AND (?=1 OR NOT EXISTS (SELECT 1 FROM site_provision_steps WHERE operation_id=? AND receipt_json IS NULL))
       RETURNING lease_epoch AS epoch`).bind(owner,operationId,Number(options.reconcilePending === true),operationId).first<{ epoch: number }>()
     if (!row) throw new Error('Provision busy, complete, capacity exhausted, or pending effect requires reconciliation')

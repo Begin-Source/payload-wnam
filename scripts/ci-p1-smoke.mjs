@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict'
 import { writeFileSync } from 'node:fs'
 import { chromium } from '@playwright/test'
-import { p1Manifests, P1_ACCOUNT, P1_ORIGIN, P1_EMAIL } from './p1-manifests.mjs'
+import { P1_ACCOUNT, P1_ORIGIN, P1_EMAIL } from './p1-manifests.mjs'
+import { p1EffectiveManifests } from './p1-release-manifests.mjs'
 import { checkLifecycleBrowser } from './p1-lifecycle-browser.mjs'
 import { checkMcpBrowser } from './p1-mcp-browser.mjs'
 
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1')
 const password = process.env.P1_TEST_PASSWORD, token = process.env.CLOUDFLARE_API_TOKEN
 assert.ok(password && password.length >= 32 && token)
-const { central,site } = p1Manifests()
+const { central,site } = p1EffectiveManifests()
 const routes = JSON.parse(site.vars.SITE_ROUTES)
 const hosts = [new URL(P1_ORIGIN).hostname,...site.routes.map(route => route.pattern)]
 const centralQuery = async (sql,params = []) => {
@@ -19,7 +20,8 @@ const centralQuery = async (sql,params = []) => {
   if (!response.ok || !result.success || result.result.some(item => !item.success)) throw new Error(`P1 smoke control query failed (${response.status})`)
   return result.result[0].results
 }
-let browser, context, currentPage, mcp, revokeAttempted = false, cRevokeAttempted = false
+let browser, context, currentPage, mcp, revokeAttempted = false
+const pendingRevocations = new Set()
 const browserErrors = [],failedAssets = []
 const invoke = (page,path,init = {}) => page.evaluate(async ({ path,init }) => {
   const response = await fetch(path,init)
@@ -90,26 +92,27 @@ try {
   for (const { id,result } of results) { assert.equal(result.status,200); assert.equal(JSON.parse(result.body).name,`Remote site ${id}`) }
   const changed = await invoke(pages['p1-a'],'/api/categories/990001',{ method: 'PATCH',headers: { 'content-type': 'application/json' },body: JSON.stringify({ name: 'Changed only P1 A' }) })
   assert.equal(changed.status,200)
-  for (const id of ['p1-b','p1-c']) assert.equal(JSON.parse((await invoke(pages[id],'/api/categories/990001')).body).name,`Remote site ${id}`)
+  for (const { siteId: id } of routes.filter(route => route.siteId !== 'p1-a')) assert.equal(JSON.parse((await invoke(pages[id],'/api/categories/990001')).body).name,`Remote site ${id}`)
   const cookies = (await context.cookies()).filter(cookie => cookie.name === '__Host-site-session')
   assert.deepEqual(cookies.map(cookie => cookie.domain).sort(),hosts.slice(1).sort())
   assert.ok(cookies.every(cookie => cookie.httpOnly && cookie.secure && cookie.sameSite === 'Strict' && cookie.path === '/'))
-  currentPage = pages['p1-a']
-  await currentPage.setViewportSize({ width: 390,height: 844 })
-  assert.equal(await currentPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true)
-  await currentPage.screenshot({ path: '.cloudflare-ci/remote-p1-a-mobile.png',fullPage: true })
-  currentPage = pages['p1-c']
-  await currentPage.setViewportSize({ width: 390,height: 844 })
-  assert.equal(await currentPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true)
-  await currentPage.screenshot({ path: '.cloudflare-ci/remote-p1-c-mobile.png',fullPage: true })
-  cRevokeAttempted = true
-  await centralQuery("DELETE FROM site_runtime_access WHERE site_id='p1-c' AND user_id='7'")
-  assert.equal((await invoke(pages['p1-c'],'/api/categories/990001')).status,403)
-  assert.equal((await invoke(pages['p1-c'],'/api/categories/990001',{ method: 'PATCH',headers: { 'content-type': 'application/json' },body: JSON.stringify({ name: 'Denied' }) })).status,403)
-  for (const id of ['p1-a','p1-b']) assert.equal((await invoke(pages[id],'/api/categories/990001')).status,200)
-  await centralQuery("INSERT INTO site_runtime_access (site_id,user_id,role) VALUES ('p1-c','7','manager') ON CONFLICT(site_id,user_id) DO UPDATE SET role='manager'")
-  cRevokeAttempted = false
-  console.log(JSON.stringify({ event: 'p1_new_site_revocation_passed',siteId: 'p1-c',otherSitesUnaffected: ['p1-a','p1-b'] }))
+  for (const { siteId: id } of routes.filter(route => route.siteId !== 'p1-b')) {
+    currentPage = pages[id]
+    await currentPage.setViewportSize({ width: 390,height: 844 })
+    assert.equal(await currentPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true)
+    await currentPage.screenshot({ path: `.cloudflare-ci/remote-${id}-mobile.png`,fullPage: true })
+  }
+  for (const { siteId: id } of routes.filter(route => !['p1-a','p1-b'].includes(route.siteId))) {
+    pendingRevocations.add(id)
+    await centralQuery('DELETE FROM site_runtime_access WHERE site_id=? AND user_id=?',[id,'7'])
+    assert.equal((await invoke(pages[id],'/api/categories/990001')).status,403)
+    assert.equal((await invoke(pages[id],'/api/categories/990001',{ method: 'PATCH',headers: { 'content-type': 'application/json' },body: JSON.stringify({ name: 'Denied' }) })).status,403)
+    const others = routes.filter(route => route.siteId !== id).map(route => route.siteId)
+    for (const other of others) assert.equal((await invoke(pages[other],'/api/categories/990001')).status,200)
+    await centralQuery("INSERT INTO site_runtime_access (site_id,user_id,role) VALUES (?,'7','manager') ON CONFLICT(site_id,user_id) DO UPDATE SET role='manager'",[id])
+    pendingRevocations.delete(id)
+    console.log(JSON.stringify({ event: 'p1_new_site_revocation_passed',siteId: id,otherSitesUnaffected: others }))
+  }
   currentPage = hub
   await checkLifecycleBrowser({ hub,siteId: 'p1-a',otherSiteId: 'p1-b',artifactPrefix: '.cloudflare-ci/remote-lifecycle',
     siteRequest: () => invoke(pages['p1-a'],'/api/categories/990001'),otherSiteRequest: () => invoke(pages['p1-b'],'/api/categories/990001') })
@@ -131,8 +134,7 @@ try {
   const logout = pages['p1-b'].waitForResponse(response => new URL(response.url()).pathname === '/api/users/logout' && response.request().method() === 'POST')
   await pages['p1-b'].goto('https://cms-site-p1-b.beginos.org/admin/logout')
   assert.equal((await logout).status(),200)
-  assert.equal((await invoke(pages['p1-a'],'/api/users/logout',{ method: 'POST' })).status,200)
-  assert.equal((await invoke(pages['p1-c'],'/api/users/logout',{ method: 'POST' })).status,200)
+  for (const { siteId: id } of routes.filter(route => route.siteId !== 'p1-b')) assert.equal((await invoke(pages[id],'/api/users/logout',{ method: 'POST' })).status,200)
   assert.equal((await context.cookies()).some(cookie => cookie.name === '__Host-site-session'),false)
   const revoked = await fetch('https://cms-site-p1-b.beginos.org/api/categories/990001',{
     headers: { cookie: `__Host-site-session=${cookies.find(cookie => cookie.domain === hosts[2]).value}` },redirect: 'manual',signal: AbortSignal.timeout(10000),
@@ -141,7 +143,7 @@ try {
   assert.equal((await invoke(hub,'/api/users/logout',{ method: 'POST' })).status,200)
   await mcp.assertRevokedSession()
   const report = { event: 'p1_remote_smoke_passed',checkedAt: new Date().toISOString(),remoteDeployment: true,
-    sites: routes.map(route => route.siteId),checks: ['real-dns-tls','independent-central-site-workers','real-d1-schemas','central-password-login','chooser-sso-three-sites','new-site-live-revocation','host-only-cookies',
+    sites: routes.map(route => route.siteId),checks: ['real-dns-tls','independent-central-site-workers','real-d1-schemas','central-password-login','chooser-sso-group','new-site-live-revocation','host-only-cookies',
       'native-editors','same-id-20-concurrent-reads','isolated-create-update','site-password-denied','manager-pause-resume','ambiguous-lifecycle-retry','routing-version-cookie-revocation',
       'live-grant-revocation','native-logout-central-revocation','desktop-mobile','real-sdk-mcp','explicit-site-mcp','mcp-lifecycle','mcp-grant-revocation','mcp-central-logout'],browserErrors }
   writeFileSync('.cloudflare-ci/p1-remote-smoke.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
@@ -153,7 +155,7 @@ try {
   // No permanent permission change from a smoke, including if the network
   // failed after the DELETE was committed but before returning its response.
   try {
-    if (cRevokeAttempted) await centralQuery("INSERT INTO site_runtime_access (site_id,user_id,role) VALUES ('p1-c','7','manager') ON CONFLICT(site_id,user_id) DO UPDATE SET role='manager'")
+    for (const id of pendingRevocations) await centralQuery("INSERT INTO site_runtime_access (site_id,user_id,role) VALUES (?,'7','manager') ON CONFLICT(site_id,user_id) DO UPDATE SET role='manager'",[id])
     if (revokeAttempted) await centralQuery("INSERT INTO site_runtime_access (site_id,user_id,role) VALUES ('p1-a','7','manager') ON CONFLICT(site_id,user_id) DO UPDATE SET role='manager'")
   } finally { await mcp?.close(); await context?.close(); await browser?.close() }
 }

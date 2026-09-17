@@ -5,6 +5,7 @@ import { lookup } from 'node:dns/promises'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { p1Manifests, P1_ACCOUNT, P1_ZONE } from './p1-manifests.mjs'
+import { p1ReleaseRequest,p1EffectiveManifests } from './p1-release-manifests.mjs'
 
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1')
@@ -102,17 +103,20 @@ for (let attempt = 1; attempt <= 96; attempt++) {
   await new Promise(resolve => setTimeout(resolve,5000))
 }
 assert.ok(ready >= 3,'P1 HTTPS deployment did not become ready; forward recovery required')
-execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-provision-finish.ts'],{
-  env: { ...env,P1_SITE_FINISH: '1',P1_TEST_PASSWORD: password },stdio: 'inherit',
+const request = p1ReleaseRequest()
+for (const mode of ['--dry-run','--apply']) execFileSync('pnpm',['run','site:provision','--request',request.path,mode],{
+  env: { ...env,SITE_PROVISION_EMAIL: 'p1-isolation@example.invalid',SITE_PROVISION_PASSWORD: password },stdio: 'inherit',
 })
-deployed.push(JSON.parse(readFileSync('.cloudflare-ci/p1-provision-activation.json','utf8')).deployed)
-// Exercise the public maintenance command against the completed C operation.
-// Both modes must verify the existing state without replaying any provision step.
-for (const mode of ['--dry-run','--apply']) execFileSync('pnpm',['run','site:provision','--request','operations/provision/p1-c.json',mode],{
-  env,stdio: 'inherit',
+execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-group-release.ts'],{
+  env: { ...env,P1_GROUP_RELEASE: '1',P1_TEST_PASSWORD: password },stdio: 'inherit',
 })
+const groupRelease = JSON.parse(readFileSync('.cloudflare-ci/p1-group-release.json','utf8'))
+deployed.push({ role: 'site',worker: configs.site.name,deployment: groupRelease.receipt.deploymentId,
+  versions: [{ version_id: groupRelease.receipt.versionId,percentage: 100 }] })
+// Completed reentry must not create a resource, re-seed or revert this release.
+for (const mode of ['--dry-run','--apply']) execFileSync('pnpm',['run','site:provision','--request',request.path,mode],{ env,stdio: 'inherit' })
 const deployedDomains = await api('workers/domains')
-for (const config of Object.values(configs)) for (const route of config.routes) {
+for (const config of Object.values(p1EffectiveManifests())) for (const route of config.routes) {
   const actual = deployedDomains.find(domain => domain.hostname === route.pattern)
   assert.equal(actual?.service,config.name); assert.equal(actual?.zone_id,P1_ZONE)
 }

@@ -1,5 +1,6 @@
 import { siteLifecycleSchema } from './lifecycleSchema'
 import { siteProvisionSchema } from './provisionSchema'
+import { groupReleaseSchema } from './groupReleaseSchema'
 
 /** Explicit central provisioning migration; never run from a request/onInit hook. */
 export const siteControlSchema = [
@@ -33,6 +34,7 @@ export const siteControlSchema = [
   `CREATE INDEX IF NOT EXISTS site_login_sessions_expiry ON site_login_sessions(expires_at)`,
   ...siteLifecycleSchema,
   ...siteProvisionSchema,
+  ...groupReleaseSchema,
 ] as const
 
 export async function migrateSiteControl(database: D1Database): Promise<void> {

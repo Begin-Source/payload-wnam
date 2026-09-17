@@ -4,7 +4,7 @@ import { ProvisionCloudflare } from './cloudflare'
 import type { GroupDeployment } from './finish'
 import type { GroupManifest, ProvisionRequest } from './manifest'
 
-type Binding = { name: string; type: string; id?: string; text?: string; bucket_name?: string; service?: string; entrypoint?: string }
+type Binding = { name: string; type: string; id?: string; text?: string; bucket_name?: string; service?: string; entrypoint?: string; environment?: string }
 type Settings = { bindings: Binding[]; compatibility_date: string; compatibility_flags: string[] }
 type Deployment = { id: string; versions: { version_id: string; percentage: number }[] }
 const provenanceNames = ['PROVISION_OPERATION','PROVISION_MANIFEST','PROVISION_COMMIT']
@@ -21,11 +21,13 @@ export function assertGroupSettings(actual: Settings,expected: GroupManifest) {
   ]
   const normalize = (b: Binding) => ({ name: b.name,type: b.type,...(b.type === 'plain_text' ? { text: b.text } : {}),
     ...(b.type === 'd1' ? { id: b.id } : {}),...(b.type === 'r2_bucket' ? { bucket_name: b.bucket_name } : {}),
-    ...(b.type === 'service' ? { service: b.service,entrypoint: b.entrypoint } : {}) })
-  assert.deepEqual(actual.bindings.filter(b => !provenanceNames.includes(b.name)).map(normalize).sort((a,b) => a.name.localeCompare(b.name)),
+    ...(b.type === 'service' ? { service: b.service,entrypoint: b.entrypoint,environment: b.environment ?? 'production' } : {}) })
+  assert.deepEqual(actual.bindings.filter(b => ![...provenanceNames,'RELEASE_OPERATION'].includes(b.name)).map(normalize).sort((a,b) => a.name.localeCompare(b.name)),
     bindings.map(normalize).sort((a,b) => a.name.localeCompare(b.name)),'Group bindings differ from reviewed manifest')
   const provenance = actual.bindings.filter(b => provenanceNames.includes(b.name))
   assert.ok(provenance.length === 0 || provenance.length === 3 && provenanceNames.every(name => provenance.filter(b => b.name === name && b.type === 'plain_text').length === 1),'Incomplete group provenance')
+  const release = actual.bindings.filter(b => b.name === 'RELEASE_OPERATION')
+  assert.ok(!release.length || release.length === 1 && release[0].type === 'plain_text' && /^[a-f0-9]{64}$/.test(release[0].text ?? ''),'Invalid group release provenance')
 }
 
 export class ProvisionGroup {
@@ -49,6 +51,15 @@ export class ProvisionGroup {
     assert.equal(value('PROVISION_OPERATION'),plan.operationId); assert.equal(value('PROVISION_MANIFEST'),manifestDigest)
     const commit = value('PROVISION_COMMIT'); assert.ok(commit && /^[a-f0-9]{40}$/.test(commit),'Missing deployed commit')
     return { deploymentId: after.id,versionId: after.versions[0].version_id,manifestDigest,commit,operationId: plan.operationId }
+  }
+  async releaseSnapshot(target: GroupManifest) {
+    const before = await this.inspect(target); assert.ok(before,'Expected provisioned group')
+    const settings = (await this.api.request<Settings>(`workers/scripts/${this.request.plan.workerName}/settings`)).result
+    const values = settings.bindings.filter(binding => binding.name === 'RELEASE_OPERATION')
+    assert.ok(!values.length || values.length === 1 && values[0].type === 'plain_text' && /^[a-f0-9]{64}$/.test(values[0].text ?? ''))
+    assert.equal((await this.deployment()).id,before.deploymentId,'Group changed while reading release identity')
+    const { operationId: _operation,...deployment } = before
+    return { ...deployment,releaseId: values[0]?.text ?? null }
   }
   async resources() {
     const { plan,baseline,central,centralWorkerTag,zoneId } = this.request
