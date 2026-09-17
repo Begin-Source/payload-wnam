@@ -18,10 +18,13 @@ writeFileSync('.cloudflare-ci/wrangler.json', JSON.stringify({
 run(['run', 'ci:check'], { PAYLOAD_TEST_MODE: 'isolated', PAYLOAD_SECRET: 'isolated-test-secret' })
 // Fail new role packaging/runtime checks before spending time on shared regression
 // packaging. Every existing check still gates the same commit-matched marker.
-execFileSync(process.execPath, ['scripts/ci-role-build.mjs'], { stdio: 'inherit', env: process.env })
+execFileSync(process.execPath, ['scripts/ci-role-build.mjs','central'], { stdio: 'inherit', env: process.env })
 run(['exec', 'playwright', 'install', '--only-shell', 'chromium'])
 const browserEnv = browserLibraryEnvironment()
 execFileSync(process.execPath, ['scripts/ci-role-central.mjs'], { stdio: 'inherit', env: { ...process.env, ...browserEnv } })
+// Validate central HTTP/SDK behavior before spending time packaging site roles.
+// Every role and pre-existing check still gates the same release marker.
+execFileSync(process.execPath, ['scripts/ci-role-build.mjs','site'], { stdio: 'inherit', env: process.env })
 execFileSync(process.execPath, ['scripts/ci-role-site.mjs'], { stdio: 'inherit', env: { ...process.env, ...browserEnv } })
 execFileSync(process.execPath, ['scripts/ci-site-isolation.mjs'], { stdio: 'inherit', env: process.env })
 run(['exec', 'opennextjs-cloudflare', 'build'], { PAYLOAD_BUILD_PHASE: '1' })

@@ -4,6 +4,7 @@ import { readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { chromium } from '@playwright/test'
 import { checkLifecycleBrowser } from './p1-lifecycle-browser.mjs'
+import { checkMcpBrowser } from './p1-mcp-browser.mjs'
 
 if (process.env.WORKERS_CI !== '1') throw new Error('Complete role checks require Cloudflare Builds')
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
@@ -28,7 +29,7 @@ const mf = new Miniflare({ host: '127.0.0.1',port: 0,https: true,
   // Match Workers Static Assets routing, not only an ASSETS fetch binding.
   assets: { directory: assets,binding: 'ASSETS',routerConfig: { has_user_worker: true } },
 })
-let browser, page
+let browser, page, mcp
 const assetResponses = [], browserErrors = []
 let stage = 'bootstrap'
 const progress = value => { stage = value; console.log(JSON.stringify({ event: 'central_application_step',stage })) }
@@ -134,6 +135,8 @@ try {
   await chooser.locator('[data-site-id="a"]').getByRole('button',{ name: /^暂停网站 / }).waitFor()
   progress('manager-visible')
   await checkLifecycleBrowser({ hub: page,siteId: 'a',artifactPrefix: '.cloudflare-ci/central-lifecycle' })
+  progress('mcp')
+  mcp = await checkMcpBrowser({ hub: page,siteId: 'a' })
 
   await page.screenshot({ path: '.cloudflare-ci/central-admin-desktop.png',fullPage: true })
   const invoke = (path,init = {}) => page.evaluate(async ({ path,init }) => {
@@ -161,6 +164,7 @@ try {
   await page.screenshot({ path: '.cloudflare-ci/central-admin-mobile.png',fullPage: true })
   assert.deepEqual(failedAssets,[],'Role import map and admin chunks must load')
   await db.prepare('DELETE FROM users_sessions WHERE _parent_id = 7').run()
+  await mcp.assertRevokedSession()
   assert.equal((await invoke('/auth/enter-site',{ method: 'POST',headers: { 'content-type': 'application/x-www-form-urlencoded' },body: 'siteId=a' })).status,401,'Revoked original central session must deny ticket issuance')
   const report = { event: 'central_application_passed',checkedAt: new Date().toISOString(),
     checks: ['complete-worker','canonical-host','closed-signup','browser-password-login','native-admin-assets','master-create-read','no-site-content-api','real-session-ticket','site-grant-denial','desktop-mobile','session-revocation','granted-site-chooser','site-search-empty','paused-site-disabled','directory-retry'],
@@ -173,4 +177,4 @@ try {
     inputs: [...document.querySelectorAll('input')].map(input => ({ type: input.type,name: input.name,id: input.id,filled: input.value.length > 0 })) })).catch(() => null) : null
   console.log(JSON.stringify({ event: 'central_application_failure',dom,assetResponses: assetResponses.slice(-30),browserErrors: browserErrors.slice(-10) }))
   throw error
-} finally { await browser?.close(); await mf.dispose(); clearTimeout(watchdog) }
+} finally { await mcp?.close(); await browser?.close(); await mf.dispose(); clearTimeout(watchdog) }

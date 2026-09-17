@@ -6,9 +6,11 @@ import { encodeWorkerSource } from './encode-worker-source.mjs'
 
 if (process.env.WORKERS_CI !== '1') throw new Error('Role applications build only in Cloudflare Builds')
 const root = process.cwd()
+const roles = process.argv.length > 2 ? process.argv.slice(2) : ['central','site']
+assert.ok(roles.length <= 2 && new Set(roles).size === roles.length && roles.every(role => ['central','site'].includes(role)),'Explicit central/site roles required')
 // Each role has its own source tree, component map and build output. The root
 // shared application's artifacts remain intact for the existing release gate.
-for (const role of ['central','site']) {
+for (const role of roles) {
   const cwd = resolve('.cloudflare-ci/roles',role)
   rmSync(cwd,{ recursive: true,force: true }); mkdirSync(cwd,{ recursive: true })
   cpSync('src',resolve(cwd,'src'),{ recursive: true,filter: path => !['src/app','src/middleware.ts','src/worker.ts','src/payload.config.ts'].map(value => resolve(value)).includes(resolve(path)) })

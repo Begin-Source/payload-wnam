@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs'
 import { chromium } from '@playwright/test'
 import { p1Manifests, P1_ACCOUNT, P1_ORIGIN, P1_EMAIL } from './p1-manifests.mjs'
 import { checkLifecycleBrowser } from './p1-lifecycle-browser.mjs'
+import { checkMcpBrowser } from './p1-mcp-browser.mjs'
 
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1')
 const password = process.env.P1_TEST_PASSWORD, token = process.env.CLOUDFLARE_API_TOKEN
@@ -18,7 +19,7 @@ const centralQuery = async (sql,params = []) => {
   if (!response.ok || !result.success || result.result.some(item => !item.success)) throw new Error(`P1 smoke control query failed (${response.status})`)
   return result.result[0].results
 }
-let browser, context, currentPage, revokeAttempted = false
+let browser, context, currentPage, mcp, revokeAttempted = false
 const browserErrors = [],failedAssets = []
 const invoke = (page,path,init = {}) => page.evaluate(async ({ path,init }) => {
   const response = await fetch(path,init)
@@ -100,6 +101,8 @@ try {
   currentPage = hub
   await checkLifecycleBrowser({ hub,siteId: 'p1-a',otherSiteId: 'p1-b',artifactPrefix: '.cloudflare-ci/remote-lifecycle',
     siteRequest: () => invoke(pages['p1-a'],'/api/categories/990001'),otherSiteRequest: () => invoke(pages['p1-b'],'/api/categories/990001') })
+  mcp = await checkMcpBrowser({ hub,siteId: 'p1-a',otherSiteId: 'p1-b',
+    siteRequest: () => invoke(pages['p1-a'],'/api/categories/990001'),otherSiteRequest: () => invoke(pages['p1-b'],'/api/categories/990001') })
   // A lifecycle change invalidated the old cookie. Enter again through the real
   // chooser before the independent grant-revocation/logout acceptance checks.
   await pages['p1-a'].goto(`${P1_ORIGIN}/admin`)
@@ -109,6 +112,7 @@ try {
   assert.deepEqual(failedAssets,[]); assert.deepEqual(browserErrors,[])
   revokeAttempted = true
   await centralQuery("DELETE FROM site_runtime_access WHERE site_id='p1-a' AND user_id='7'")
+  await mcp.assertRevokedSite()
   assert.equal((await invoke(pages['p1-a'],'/api/categories/990001')).status,403)
   assert.equal((await invoke(pages['p1-a'],'/api/categories/990001',{ method: 'PATCH',headers: { 'content-type': 'application/json' },body: JSON.stringify({ name: 'Denied' }) })).status,403)
   assert.equal((await invoke(pages['p1-b'],'/api/categories/990001')).status,200)
@@ -121,10 +125,12 @@ try {
     headers: { cookie: `__Host-site-session=${cookies.find(cookie => cookie.domain === hosts[2]).value}` },redirect: 'manual',signal: AbortSignal.timeout(10000),
   })
   assert.equal(revoked.status,403); await revoked.body?.cancel()
+  assert.equal((await invoke(hub,'/api/users/logout',{ method: 'POST' })).status,200)
+  await mcp.assertRevokedSession()
   const report = { event: 'p1_remote_smoke_passed',checkedAt: new Date().toISOString(),remoteDeployment: true,
     checks: ['real-dns-tls','independent-central-site-workers','real-d1-schemas','central-password-login','chooser-sso-two-sites','host-only-cookies',
       'native-editors','same-id-20-concurrent-reads','isolated-create-update','site-password-denied','manager-pause-resume','ambiguous-lifecycle-retry','routing-version-cookie-revocation',
-      'live-grant-revocation','native-logout-central-revocation','desktop-mobile'],browserErrors }
+      'live-grant-revocation','native-logout-central-revocation','desktop-mobile','real-sdk-mcp','explicit-site-mcp','mcp-lifecycle','mcp-grant-revocation','mcp-central-logout'],browserErrors }
   writeFileSync('.cloudflare-ci/p1-remote-smoke.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
 } catch (error) {
   const dom = currentPage ? await currentPage.evaluate(() => ({ host: location.hostname,path: location.pathname,title: document.title,text: document.body.innerText.slice(0,600) })).catch(() => null) : null
@@ -135,5 +141,5 @@ try {
   // failed after the DELETE was committed but before returning its response.
   try {
     if (revokeAttempted) await centralQuery("INSERT INTO site_runtime_access (site_id,user_id,role) VALUES ('p1-a','7','manager') ON CONFLICT(site_id,user_id) DO UPDATE SET role='manager'")
-  } finally { await context?.close(); await browser?.close() }
+  } finally { await mcp?.close(); await context?.close(); await browser?.close() }
 }

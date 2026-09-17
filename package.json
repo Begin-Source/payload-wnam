@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@ai-stack/payloadcms": "^3.2.27",
+    "@modelcontextprotocol/sdk": "1.27.1",
     "@opennextjs/cloudflare": "^1.11.0",
     "@payloadcms/db-d1-sqlite": "3.82.1",
     "@payloadcms/next": "3.82.1",
