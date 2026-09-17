@@ -5,6 +5,8 @@ import { userHasTenantGeneralManagerRole } from '../utilities/userRoles'
 import { parseRelationshipId } from '../utilities/parseRelationshipId'
 import { canonicalMasterJSON, masterDigest } from './masterSnapshot'
 import { readSiteRegistration } from './registry'
+import { assertAssetReference, type AssetReference } from './assetSnapshot'
+import { requirePublishedAsset } from './assetPublisher'
 import { assertConfigKind, assertConfigReference, configReference, configSnapshotJSON, projectConfigData, verifyConfigRelease,
   type ConfigBundle, type ConfigKind, type ConfigReference, type ConfigRelease, type ConfigSnapshot } from './configSnapshot'
 
@@ -18,6 +20,7 @@ export async function commitConfigRelease(db: D1Database, snapshot: ConfigSnapsh
   centralOnly()
   if (typeof operationId !== 'string' || !operationId || operationId.length > 128) throw new Error('Explicit configuration operation ID required')
   const json = configSnapshotJSON(snapshot), value = JSON.parse(json) as ConfigSnapshot, digest = await masterDigest(json)
+  if (value.assets?.logo) await requirePublishedAsset(db,value.assets.logo,0)
   await db.prepare(`INSERT INTO central_config_releases(kind,site_id,revision,tenant_id,digest,snapshot_json,operation_id,created_at)
     SELECT ?,?,?,?,?,?,?,? WHERE ?=COALESCE((SELECT MAX(revision) FROM central_config_releases WHERE kind=? AND site_id=?),0)
       AND NOT EXISTS(SELECT 1 FROM central_config_releases WHERE kind=? AND site_id=? AND tenant_id!=?) ON CONFLICT DO NOTHING`)
@@ -34,7 +37,7 @@ export async function readConfigRelease(db: D1Database, ref: ConfigReference): P
   if (!row || row.digest !== ref.digest) throw new Error('Configuration release unavailable')
   return decode(row)
 }
-export type PublishConfigInput = { kind: ConfigKind; sourceRecordId: string; expectedRevision: number; expectedUpdatedAt: string; operationId: string }
+export type PublishConfigInput = { kind: ConfigKind; sourceRecordId: string; expectedRevision: number; expectedUpdatedAt: string; operationId: string; assets?: { logo: AssetReference | null } }
 export async function publishConfigFromPayload(db: D1Database, req: PayloadRequest, input: PublishConfigInput): Promise<ConfigRelease> {
   centralOnly(); assertConfigKind(input.kind)
   if (req.payload.config.custom.payloadRole !== 'central' || !req.user ||
@@ -56,12 +59,20 @@ export async function publishConfigFromPayload(db: D1Database, req: PayloadReque
   if (prior) {
     const release = await decode(prior)
     if (release.kind !== input.kind || release.siteId !== siteId || release.tenantId !== tenantId || release.sourceRecordId !== input.sourceRecordId ||
-      release.sourceUpdatedAt !== input.expectedUpdatedAt || release.revision !== input.expectedRevision+1) throw new Error('Configuration operation conflict')
+      release.sourceUpdatedAt !== input.expectedUpdatedAt || release.revision !== input.expectedRevision+1 ||
+      canonicalMasterJSON(release.assets ?? null) !== canonicalMasterJSON(input.assets ?? null)) throw new Error('Configuration operation conflict')
     return release
   }
   if (source.updatedAt !== input.expectedUpdatedAt) throw new Error('Configuration source changed; refresh before publishing')
-  return commitConfigRelease(db,{ format: 1,kind: input.kind,siteId,tenantId,sourceRecordId: input.sourceRecordId,
-    sourceUpdatedAt: input.expectedUpdatedAt,revision: input.expectedRevision+1,data: projectConfigData(input.kind,source) },input.operationId)
+  if (input.kind === 'admin-branding') {
+    if (!input.assets || Object.keys(input.assets).join(',') !== 'logo') throw new Error('Explicit branding asset mapping required')
+    if (input.assets.logo !== null) assertAssetReference(input.assets.logo)
+    const sourceId = parseRelationshipId(source.logo)
+    if (sourceId === null ? input.assets.logo !== null : input.assets.logo?.recordId !== String(sourceId)) throw new Error('Branding logo source mismatch')
+  } else if (input.assets !== undefined) throw new Error('Unexpected configuration assets')
+  return commitConfigRelease(db,{ format: input.assets ? 2 : 1,kind: input.kind,siteId,tenantId,sourceRecordId: input.sourceRecordId,
+    sourceUpdatedAt: input.expectedUpdatedAt,revision: input.expectedRevision+1,data: projectConfigData(input.kind,source),
+    ...(input.assets ? { assets: input.assets } : {}) },input.operationId)
 }
 
 /** Internal authenticated transport must authorize the calling site's identity. */
@@ -72,6 +83,7 @@ export async function exportConfigBundle(db: D1Database, siteId: string, routing
   const tenant = await db.prepare('SELECT tenant_id FROM sites WHERE runtime_site_id=?').bind(siteId).first<number>('tenant_id')
   if (!Number.isSafeInteger(tenant) || tenant! < 1) throw new Error('Configuration tenant unavailable')
   const release = await readConfigRelease(db,ref)
+  if (release.assets?.logo) await requirePublishedAsset(db,release.assets.logo,0)
   if (release.kind === 'site-quotas' && (release.siteId !== siteId || release.tenantId !== tenant)) throw new Error('Cross-site quota policy rejected')
   const current = await readSiteRegistration(db,siteId)
   const currentTenant = await db.prepare('SELECT tenant_id FROM sites WHERE runtime_site_id=?').bind(siteId).first<number>('tenant_id')

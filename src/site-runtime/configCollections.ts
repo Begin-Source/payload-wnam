@@ -107,7 +107,13 @@ export function siteCollections(strategy: AuthStrategy): CollectionConfig[] {
     collection.access = siteDocumentAccess(['articles','pages'].includes(collection.slug))
     collection.custom = { ...collection.custom, siteOwnership: copies.has(collection.slug) ? 'versioned-copy' : 'site' }
     collection.fields.push(tenantField(collection.slug === 'site-blueprints'))
-    if (copies.has(collection.slug)) collection.fields.push(sourceField())
+    if (copies.has(collection.slug) || collection.slug === 'media') collection.fields.push(sourceField())
+    if (collection.slug === 'media') collection.hooks = { ...collection.hooks,
+      beforeValidate: [args => {
+        if (args.originalDoc?.centralSource?.recordId) throw new Error('Versioned asset media is immutable')
+        return args.data
+      },...(collection.hooks?.beforeValidate ?? [])],
+      beforeDelete: [preventMasterCopyDeletion,...(collection.hooks?.beforeDelete ?? [])] }
     if (copies.has(collection.slug)) collection.hooks = { ...collection.hooks,
       beforeDelete: [preventMasterCopyDeletion,...(collection.hooks?.beforeDelete ?? [])] }
     if (collection.slug === 'site-layouts') {

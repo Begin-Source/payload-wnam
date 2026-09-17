@@ -1,7 +1,11 @@
 import { requireSiteContext } from './context'
 
 /** Payload stores relative filenames. Only this adapter adds the trusted site prefix. */
-export function createSiteR2Proxy(bucket: R2Bucket): R2Bucket {
+export function createSiteR2Proxy(bucket: R2Bucket, permissions: { assetWrites?: boolean } = {}): R2Bucket {
+  const writable = (key: string) => {
+    if (key.split('/')[0] === 'master-assets' && !permissions.assetWrites) throw new Error('Versioned asset writes require the synchronization capability')
+    return key
+  }
   function scope() {
     const owner = requireSiteContext()
     if (!/^[a-zA-Z0-9_-]+$/.test(owner.siteId)) throw new Error('Invalid R2 site ID')
@@ -20,6 +24,7 @@ export function createSiteR2Proxy(bucket: R2Bucket): R2Bucket {
     }
     function object<T extends R2Object | R2ObjectBody | null>(value: T): T {
       if (!value) return value
+      if (value.customMetadata?.assetWithdrawn === '1') return null as T
       return new Proxy(value, {
         get(target, property) {
           assertOwner()
@@ -46,11 +51,11 @@ export function createSiteR2Proxy(bucket: R2Bucket): R2Bucket {
     },
     async put(key: string, value: Parameters<R2Bucket['put']>[1], options?: R2PutOptions) {
       const s = scope()
-      return s.object(await bucket.put(s.key(key), value, options))
+      return s.object(await bucket.put(s.key(writable(key)), value, options))
     },
     async delete(keys: string | string[]) {
       const s = scope()
-      return bucket.delete(Array.isArray(keys) ? keys.map(s.key) : s.key(keys))
+      return bucket.delete(Array.isArray(keys) ? keys.map(key => s.key(writable(key))) : s.key(writable(keys)))
     },
     // Payload server uploads use get/head/put/delete. Reject unused capabilities
     // until they have their own scoped cursor / multipart ownership protocol.

@@ -6,6 +6,7 @@ import { createSiteD1Proxy } from './d1'
 import { authenticatedSiteUser } from './siteIdentity'
 import { assertSitePayloadRequest } from './payloadRequest'
 import { masterCopyColumns } from './masterCopyValidation'
+import { requireAssetCopy, assetCopySQL } from './assetCopies'
 
 type TenantMapping = { localTenantId: number; centralTenantId: string }
 export async function masterOperationContext(req: PayloadRequest) {
@@ -86,6 +87,14 @@ export async function applyMasterRelease(req: PayloadRequest, reference: MasterR
     const bindings: (string | number | null)[] = [...columns.map(column => column.value),tenant.localTenantId,release.recordId,release.revision,at,at,at]
     if (release.collection === 'pipeline-profiles') { names.push('is_default'); values.push('0') }
     if (release.collection === 'tenant-prompt-templates') { names.push('master_enabled'); values.push('0') }
+    if (release.assets) {
+      names.push('headshot_id')
+      if (release.assets.headshot) {
+        await requireAssetCopy(req,release.assets.headshot)
+        values.push(`(${assetCopySQL(release.assets.headshot)})`)
+        complete.push(`EXISTS(${assetCopySQL(release.assets.headshot)})`)
+      } else values.push('NULL')
+    }
     for (const [field,ref] of Object.entries(release.relations)) {
       names.push(field === 'pipelineProfile' ? 'pipeline_profile_id' : 'network_id')
       if (!ref) values.push('NULL')

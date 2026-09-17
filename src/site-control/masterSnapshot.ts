@@ -1,6 +1,8 @@
 /** Versioned wire format shared by the central publisher and site receiver.
  * Every relationship is pinned to a release, never copied as a local numeric ID.
  */
+import { assertAssetReference, type AssetReference } from './assetSnapshot'
+
 export const masterFields = {
   'affiliate-networks': ['name','slug','websiteUrl','status','notes'],
   'social-platforms': ['name','slug','status','notes'],
@@ -20,7 +22,8 @@ export const masterFields = {
 export type MasterCollection = keyof typeof masterFields
 export type MasterReference = { collection: MasterCollection; recordId: string; revision: number; digest: string }
 export type MasterSnapshot = {
-  format: 1; collection: MasterCollection; recordId: string; revision: number; tenantId: number
+  format: 1 | 2; collection: MasterCollection; recordId: string; revision: number; tenantId: number
+  assets?: { headshot: AssetReference | null }
   sourceUpdatedAt: string; data: Record<string, unknown>; relations: Record<string, MasterReference | null>
 }
 export type MasterRelease = MasterSnapshot & { digest: string; operationId: string; createdAt: string }
@@ -95,7 +98,7 @@ export function projectMasterData(collection: MasterCollection, source: Record<s
 }
 export function snapshotJSON(snapshot: MasterSnapshot): string {
   assertMasterReference({ collection: snapshot.collection,recordId: snapshot.recordId,revision: snapshot.revision,digest: '0'.repeat(64) })
-  if (snapshot.format !== 1 || !Number.isSafeInteger(snapshot.tenantId) || snapshot.tenantId < 0 ||
+  if (![1,2].includes(snapshot.format) || !Number.isSafeInteger(snapshot.tenantId) || snapshot.tenantId < 0 ||
     (snapshot.collection === 'site-layouts' ? snapshot.tenantId !== 0 : snapshot.tenantId < 1) ||
     new Date(snapshot.sourceUpdatedAt).toISOString() !== snapshot.sourceUpdatedAt) throw new Error('Invalid master snapshot identity')
   const fields = new Set<string>(masterFields[snapshot.collection])
@@ -111,9 +114,13 @@ export function snapshotJSON(snapshot: MasterSnapshot): string {
     assertMasterReference(ref!)
     if (ref!.collection !== target) throw new Error('Master relationship collection mismatch')
   }
-  const json = canonicalMasterJSON({ format: 1, collection: snapshot.collection, recordId: snapshot.recordId,
+  if (snapshot.format === 2) {
+    if (snapshot.collection !== 'authors' || !snapshot.assets || Object.keys(snapshot.assets).join(',') !== 'headshot') throw new Error('Invalid master asset mapping')
+    if (snapshot.assets.headshot !== null) assertAssetReference(snapshot.assets.headshot)
+  } else if (snapshot.assets !== undefined) throw new Error('Assets require master format 2')
+  const json = canonicalMasterJSON({ format: snapshot.format, collection: snapshot.collection, recordId: snapshot.recordId,
     revision: snapshot.revision, tenantId: snapshot.tenantId, sourceUpdatedAt: snapshot.sourceUpdatedAt,
-    data: snapshot.data, relations: snapshot.relations })
+    data: snapshot.data, relations: snapshot.relations,...(snapshot.format === 2 ? { assets: snapshot.assets } : {}) })
   if (new TextEncoder().encode(json).length > 128_000) throw new Error('Master release exceeds byte limit')
   return json
 }

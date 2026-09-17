@@ -1,7 +1,9 @@
 import { canonicalMasterJSON, masterDigest, masterFields } from './masterSnapshot'
 import { assertSiteId } from './registry'
+import { assertAssetReference, type AssetReference } from './assetSnapshot'
 
 export const configFields = {
+  'admin-branding': ['brandName','primaryColor','supportEmail'],
   'llm-prompts': ['defaultModel','temperature','globalSystemPrompt'],
   'prompt-library': ['entries','skillOverrides'],
   'pipeline-settings': masterFields['pipeline-profiles'].filter(key => !['name','slug','description'].includes(key)),
@@ -10,7 +12,7 @@ export const configFields = {
 } as const
 export type ConfigKind = keyof typeof configFields
 export type ConfigReference = { kind: ConfigKind; siteId: string; revision: number; digest: string }
-export type ConfigSnapshot = { format: 1; kind: ConfigKind; siteId: string; revision: number; tenantId: number;
+export type ConfigSnapshot = { format: 1 | 2; kind: ConfigKind; siteId: string; revision: number; tenantId: number; assets?: { logo: AssetReference | null };
   sourceRecordId: string; sourceUpdatedAt: string; data: Record<string,unknown> }
 export type ConfigRelease = ConfigSnapshot & { digest: string; operationId: string; createdAt: string }
 export type ConfigBundle = { siteId: string; localSiteId: number; routingVersion: number; centralTenantId: number; release: ConfigRelease }
@@ -54,13 +56,17 @@ export function projectConfigData(kind: ConfigKind, source: Record<string,unknow
 }
 export function configSnapshotJSON(value: ConfigSnapshot): string {
   assertConfigReference({ kind: value.kind,siteId: value.siteId,revision: value.revision,digest: '0'.repeat(64) })
-  if (value.format !== 1 || !Number.isSafeInteger(value.tenantId) ||
+  if (![1,2].includes(value.format) || !Number.isSafeInteger(value.tenantId) ||
     (value.kind === 'site-quotas' ? value.tenantId < 1 : value.tenantId !== 0) ||
     typeof value.sourceRecordId !== 'string' || !/^[1-9][0-9]*$/.test(value.sourceRecordId) || !Number.isSafeInteger(Number(value.sourceRecordId)) ||
     new Date(value.sourceUpdatedAt).toISOString() !== value.sourceUpdatedAt) throw new Error('Invalid configuration source')
   if (canonicalMasterJSON(value.data) !== canonicalMasterJSON(projectConfigData(value.kind,value.data))) throw new Error('Invalid configuration fields')
-  const json = canonicalMasterJSON({ format: 1,kind: value.kind,siteId: value.siteId,revision: value.revision,tenantId: value.tenantId,
-    sourceRecordId: value.sourceRecordId,sourceUpdatedAt: value.sourceUpdatedAt,data: value.data })
+  if (value.format === 2) {
+    if (value.kind !== 'admin-branding' || !value.assets || Object.keys(value.assets).join(',') !== 'logo') throw new Error('Invalid branding asset mapping')
+    if (value.assets.logo !== null) assertAssetReference(value.assets.logo)
+  } else if (value.assets !== undefined || value.kind === 'admin-branding') throw new Error('Branding assets require configuration format 2')
+  const json = canonicalMasterJSON({ format: value.format,kind: value.kind,siteId: value.siteId,revision: value.revision,tenantId: value.tenantId,
+    sourceRecordId: value.sourceRecordId,sourceUpdatedAt: value.sourceUpdatedAt,data: value.data,...(value.format === 2 ? { assets: value.assets } : {}) })
   if (new TextEncoder().encode(json).length > 128_000) throw new Error('Configuration release too large')
   return json
 }

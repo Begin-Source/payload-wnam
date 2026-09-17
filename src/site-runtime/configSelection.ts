@@ -4,6 +4,7 @@ import { assertConfigKind, assertConfigReference, projectConfigData, verifyConfi
   type ConfigKind, type ConfigReference, type ConfigRelease } from '../site-control/configSnapshot'
 import { masterOperationContext, assertMasterOperationId } from './masterCopies'
 import { validatedScalarColumns } from './masterCopyValidation'
+import { requireAssetCopy, assetCopySQL } from './assetCopies'
 
 type SQLRow = Record<string,string | number | null>
 export type ConfigReview = { expected: string; data: Record<string,unknown> | null }
@@ -26,7 +27,7 @@ async function reviewData(req: PayloadRequest, kind: ConfigKind, row: SQLRow | n
     ? await req.payload.findByID({ collection: 'site-quotas',id: Number(row.id),req,depth: 0,overrideAccess: false })
     : await req.payload.findGlobal({ slug: kind,req,depth: 0,overrideAccess: false })) as unknown as Record<string,unknown>
   // Only public configuration fields enter the audit; no provider notes/usage.
-  return projectConfigData(kind,source)
+  return { ...projectConfigData(kind,source),...(kind === 'admin-branding' ? { logo: source.logo ?? null } : {}) }
 }
 /** Digest includes actual SQL fields and child rows, not just millisecond
  * timestamps. A same-timestamp editor write must still invalidate review. */
@@ -68,6 +69,12 @@ export async function selectSiteConfig(req: PayloadRequest, reference: ConfigRef
   const config = ref.kind === 'site-quotas' ? req.payload.collections['site-quotas'].config
     : req.payload.config.globals.find(global => global.slug === ref.kind)!
   const columns = await validatedScalarColumns(req,config.fields,data,ref.kind === 'site-quotas' ? { collectionSlug: ref.kind } : { globalSlug: ref.kind })
+  let assetExists = '1'
+  if (release.assets) {
+    const logo = release.assets.logo
+    columns.push({ name: 'logo_id',value: logo ? await requireAssetCopy(req,logo) : null })
+    if (logo) assetExists = `EXISTS(${assetCopySQL(logo)})`
+  }
   const promptEntries = ref.kind === 'prompt-library' ? release.data.entries as { name: string;body: string }[] : []
   if (promptEntries.length > 200) throw new Error('Prompt entry count limit exceeded')
   if (ref.kind === 'prompt-library') {
@@ -102,7 +109,7 @@ export async function selectSiteConfig(req: PayloadRequest, reference: ConfigRef
     for (const [index,entry] of promptEntries.entries()) statements.push(db.prepare(`INSERT INTO prompt_library_entries(id,_order,_parent_id,name,body)
       SELECT ?,?,?,?,? WHERE ${pending}`).bind(crypto.randomUUID(),index+1,id,entry.name,entry.body,operationId,digest))
   }
-  statements.push(db.prepare(`UPDATE site_config_operations SET committed=CASE WHEN ${ownership} AND EXISTS(SELECT 1 FROM ${table}
+  statements.push(db.prepare(`UPDATE site_config_operations SET committed=CASE WHEN ${ownership} AND ${assetExists} AND EXISTS(SELECT 1 FROM ${table}
     WHERE id=? AND central_source_revision=? AND updated_at=?) THEN 1 ELSE -1 END WHERE operation_id=? AND request_digest=? AND committed=0`)
     .bind(id,release.revision,at,operationId,digest))
   await db.batch(statements)

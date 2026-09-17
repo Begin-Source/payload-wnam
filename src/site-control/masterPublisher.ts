@@ -4,6 +4,8 @@ import { userHasUnscopedAdminAccess } from '../utilities/superAdmin'
 import { userHasTenantGeneralManagerRole } from '../utilities/userRoles'
 import { parseRelationshipId } from '../utilities/parseRelationshipId'
 import { readSiteRegistration } from './registry'
+import { assertAssetReference, type AssetReference } from './assetSnapshot'
+import { requirePublishedAsset } from './assetPublisher'
 import { assertMasterCollection, assertMasterReference, canonicalMasterJSON, masterDigest, masterKey, masterReference,
   masterRelations, projectMasterData, snapshotJSON, verifyMasterRelease,
   type MasterBundle, type MasterCollection, type MasterReference, type MasterRelease, type MasterSnapshot } from './masterSnapshot'
@@ -32,6 +34,7 @@ export async function commitMasterRelease(database: D1Database, snapshot: Master
   // Detach caller objects before the first await.
   const value = JSON.parse(json) as MasterSnapshot
   const digest = await masterDigest(json)
+  if (value.assets?.headshot) await requirePublishedAsset(database,value.assets.headshot,value.tenantId)
   for (const ref of Object.values(value.relations)) if (ref) {
     const dependency = await readMasterRelease(database,ref)
     if (dependency.tenantId !== value.tenantId && dependency.tenantId !== 0) throw new Error('Cross-tenant master dependency')
@@ -50,6 +53,7 @@ export async function commitMasterRelease(database: D1Database, snapshot: Master
 export type PublishMasterInput = {
   collection: MasterCollection; recordId: string; expectedRevision: number; expectedUpdatedAt: string
   operationId: string; relations: Record<string,MasterReference | null>
+  assets?: { headshot: AssetReference | null }
 }
 /** Reads through the independent central Payload's actual role/tenant access.
  * No caller-supplied content, local relationship IDs or overrideAccess bypass. */
@@ -68,7 +72,8 @@ export async function publishMasterFromPayload(database: D1Database, req: Payloa
     const release = await decode(prior)
     if (release.collection !== input.collection || release.recordId !== input.recordId || release.revision !== input.expectedRevision + 1 ||
       release.sourceUpdatedAt !== input.expectedUpdatedAt || release.tenantId !== tenantId ||
-      canonicalMasterJSON(release.relations) !== canonicalMasterJSON(input.relations)) throw new Error('Master operation conflict')
+      canonicalMasterJSON(release.relations) !== canonicalMasterJSON(input.relations) ||
+      canonicalMasterJSON(release.assets ?? null) !== canonicalMasterJSON(input.assets ?? null)) throw new Error('Master operation conflict')
     return release
   }
   if (source.updatedAt !== input.expectedUpdatedAt) throw new Error('Master source changed; refresh before publishing')
@@ -78,9 +83,16 @@ export async function publishMasterFromPayload(database: D1Database, req: Payloa
     const sourceId = parseRelationshipId(source[key]), ref = input.relations[key]
     if (sourceId === null ? ref !== null : ref?.recordId !== String(sourceId)) throw new Error('Master relationship source mismatch')
   }
-  return commitMasterRelease(database,{ format: 1, collection: input.collection, recordId: input.recordId, tenantId,
+  if (input.assets) {
+    if (input.collection !== 'authors' || Object.keys(input.assets).join(',') !== 'headshot') throw new Error('Explicit author asset mapping required')
+    if (input.assets.headshot !== null) assertAssetReference(input.assets.headshot)
+    const sourceId = parseRelationshipId(source.headshot)
+    if (sourceId === null ? input.assets.headshot !== null : input.assets.headshot?.recordId !== String(sourceId)) throw new Error('Author headshot source mismatch')
+  }
+  return commitMasterRelease(database,{ format: input.assets ? 2 : 1, collection: input.collection, recordId: input.recordId, tenantId,
     revision: input.expectedRevision + 1, sourceUpdatedAt: input.expectedUpdatedAt,
-    data: projectMasterData(input.collection,source), relations: input.relations },input.operationId)
+    data: projectMasterData(input.collection,input.assets ? { ...source,headshot: null } : source), relations: input.relations,
+    ...(input.assets ? { assets: input.assets } : {}) },input.operationId)
 }
 
 /** Trusted service-binding transport calls this only after authenticating its
@@ -103,6 +115,7 @@ export async function exportMasterBundle(database: D1Database, siteId: string, r
     if (depth > 16 || found.size >= 32) throw new Error('Master bundle dependency limit exceeded')
     const release = await readMasterRelease(database,ref)
     if (release.tenantId !== centralTenantId && release.tenantId !== 0) throw new Error('Cross-tenant master delivery rejected')
+    if (release.assets?.headshot) await requirePublishedAsset(database,release.assets.headshot,release.tenantId)
     bytes += new TextEncoder().encode(canonicalMasterJSON(release)).length
     if (bytes > 512_000) throw new Error('Master bundle byte limit exceeded')
     found.set(key,release)

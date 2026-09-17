@@ -41,7 +41,7 @@ export async function validatedScalarColumns(req: PayloadRequest, fields: Field[
         }
         continue
       }
-      if (!['text','textarea','number','checkbox','select','json','richText'].includes(field.type) ||
+      if (!['text','textarea','email','number','checkbox','select','json','richText'].includes(field.type) ||
         ('hasMany' in field && field.hasMany) || field.localized) throw new Error('Unsupported master field storage')
       if ('validate' in field && typeof field.validate === 'function') {
         const result = await (field.validate as Validate)(value,{ ...field,req,data,siblingData: sibling,blockData: {},
