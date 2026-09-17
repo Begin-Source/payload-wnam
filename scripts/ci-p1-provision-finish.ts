@@ -23,7 +23,7 @@ const manifestDigest = provisionDigest(JSON.stringify(site))
 type Binding = { name: string; type: string; id?: string; text?: string; bucket_name?: string; service?: string; entrypoint?: string }
 type Deployment = { id: string; versions: { version_id: string; percentage: number }[] }
 const activeDeployment = async () => (await api.request<{ deployments: Deployment[] }>(`workers/scripts/${site.name}/deployments`)).result.deployments[0]
-const run = (command: string,args: string[],cwd = process.cwd(),extra: NodeJS.ProcessEnv = {}) => new Promise<void>((resolve,reject) => {
+const run = (command: string,args: string[],cwd = process.cwd(),extra: Record<string,string | undefined> = {}) => new Promise<void>((resolve,reject) => {
   const child = spawn(command,args,{ cwd,env: { ...process.env,...extra },stdio: 'inherit' })
   child.on('error',reject); child.on('exit',code => code === 0 ? resolve() : reject(new Error(`Cloud provision subprocess failed (${code})`)))
 })
@@ -66,7 +66,8 @@ writeFileSync('.cloudflare-ci/provision-finish-central.json',JSON.stringify({ na
   compatibility_date: site.compatibility_date,compatibility_flags: site.compatibility_flags,
   d1_databases: [{ ...central.d1_databases[0],remote: true }] }))
 const proxy = await getPlatformProxy({ configPath: '.cloudflare-ci/provision-finish-central.json',remoteBindings: true,persist: false })
-let inspectionProxy: Awaited<ReturnType<typeof getPlatformProxy>> | undefined
+type InspectionEnvironment = { INSPECT: { inspect: (siteId: string,operationId: string) => ReturnType<typeof inspectProvisionedSite> } }
+let inspectionProxy: { env: InspectionEnvironment; dispose: () => Promise<void> } | undefined
 const database = proxy.env.CENTRAL_D1 as D1Database,journal = new ProvisionJournal(database,{ accountId: P1_ACCOUNT,centralDatabaseId: centralId })
 try {
   const plan = await journal.plan(operationId)
@@ -93,13 +94,13 @@ try {
       writeFileSync('.cloudflare-ci/provision-inspection.json',JSON.stringify({ name: 'payload-wnam-provision-inspection',account_id: P1_ACCOUNT,
         compatibility_date: site.compatibility_date,compatibility_flags: site.compatibility_flags,
         services: [{ binding: 'INSPECT',service: site.name,entrypoint: 'SiteProvisionInspectionService',remote: true }] }))
-      inspectionProxy = await getPlatformProxy({ configPath: '.cloudflare-ci/provision-inspection.json',remoteBindings: true,persist: false })
+      inspectionProxy = await getPlatformProxy<InspectionEnvironment>({ configPath: '.cloudflare-ci/provision-inspection.json',remoteBindings: true,persist: false })
     }
     let proof: Awaited<ReturnType<typeof inspectProvisionedSite>> | undefined
     for (let attempt = 1; attempt <= 96; attempt++) {
       try {
         assert.deepEqual(await inspectGroup(),{ ...deployment,operationId })
-        proof = await (inspectionProxy.env.INSPECT as { inspect: (siteId: string,operationId: string) => ReturnType<typeof inspectProvisionedSite> }).inspect(plan.siteId,operationId)
+        proof = await inspectionProxy.env.INSPECT.inspect(plan.siteId,operationId)
         for (const [key,value] of Object.entries({ siteId: plan.siteId,operationId,releaseCommit: deployment.commit,databaseId: operation!.databaseId,bindingName: plan.bindingName,
           localSiteId: plan.localSiteId,tenantId: plan.tenantId,centralTenantId: String(plan.tenantId),ownerUserId: String(plan.ownerUserId),schemaDigest: plan.schemaDigest,schemaVersion: plan.schemaVersion })) {
           assert.equal(proof[key as keyof typeof proof],value)
@@ -126,6 +127,13 @@ try {
   assert.deepEqual(await journal.read(operationId),before)
   console.log(JSON.stringify({ event: 'p1_provision_finish_preview',...preview }))
   let result
+  const injectUpload = before?.checkpoint === 3 && !await journal.step(operationId,'deploy')
+  if (injectUpload) {
+    await assert.rejects(finishProvisionedSite(plan,'apply',{ ...deps,afterDeploy: async () => { throw new Error('P1 injected post-upload interruption') } }),/P1 injected post-upload interruption/)
+    assert.equal((await journal.read(operationId))?.checkpoint,3)
+    assert.equal((await journal.read(operationId))?.pendingStep,4)
+    console.log(JSON.stringify({ event: 'p1_provision_upload_interrupted',operationId,checkpoint: 3,pendingStep: 4 }))
+  }
   if (before?.completedAt) {
     // Future ordinary releases retain the C source manifest and do not alter
     // completed provisioning receipts or reset its routing version.
@@ -136,7 +144,7 @@ try {
   const actual = await inspectGroup(); assert.ok(actual)
   const report = { event: 'p1_provision_activation_passed',commit,checkedAt: new Date().toISOString(),...result,
     deployed: { role: 'site',worker: site.name,deployment: actual.deploymentId,versions: [{ version_id: actual.versionId,percentage: 100 }] },
-    resumed: before?.checkpoint !== 3 || before?.pendingStep !== null,ordinaryRelease: Boolean(before?.completedAt) }
+    resumed: before?.checkpoint !== 3 || before?.pendingStep !== null,ordinaryRelease: Boolean(before?.completedAt),resumedAfterInjectedUpload: injectUpload }
   writeFileSync('.cloudflare-ci/p1-provision-activation.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
 } finally { await inspectionProxy?.dispose(); await proxy.dispose() }
 process.exit(0)
