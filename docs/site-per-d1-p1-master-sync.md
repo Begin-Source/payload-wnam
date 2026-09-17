@@ -33,8 +33,12 @@
 
 ## 验证与未完成部分
 
+提交 `6e9ccb3` 的 Cloudflare 构建 `e2fc2ca4-348f-404d-a524-236aa1658308` 成功，通过 526 项测试、14 项浏览器检查、原生身份 RPC/HTTPS 与部署后回归。2026-09-17T04:41:04Z 发布检查通过，P0 deployment `8ae6bbf4-4890-4eb0-a179-0f0ed1ea5776`，version `30bbe1eb-18f9-4f6f-938f-1b56e9b9dc94`；生产 deployment 保持 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`。[完整证据及范围](site-per-d1-p1-master-sync-validation.json)区分候选协议原生测试和仍使用共享配置的 P0 发布。
+
 - `masterSync.int.spec.ts` 使用一个中央、两个站点原生 Miniflare D1，覆盖并发发布、CAS/幂等、依赖、跨租户与路由拒绝、异构数字 ID、乱序重试、候选批次回滚、已有修订冲突及本站内容不变。传输能力是 fixture，非实际 RPC。
 - `centralConfig.int.spec.ts` 在完整独立配置中运行真正的发布、总经理租户范围、只读来源时间检查及准确操作重试。
 - `siteConfig.int.spec.ts` 在双库完整独立配置中创建、选择并编辑带租户的方案/预设/模板，同时验证角色和外租户导入边界。
 
 下一步必须把候选应用为本地 Payload 关系副本，持久化明确的中央版本→本地 ID 映射，支持冲突审阅及员工明确选择，不能用“已收候选”代替“可用副本”。还需资产导出/复制及撤回、配额与 Global 版本、传输认证、队列与回执、正式迁移及角色管理界面。全部 DDL 目前仅在隔离测试显式运行；没有请求启动自动迁移，也没有生产主数据同步发布。
+
+应用前已确认两项具体约束：非 pipeline 的域名、分类槽位、信任页包三个提示词读取函数，目前仅按 tenant/key 取一条，没有限定 `pipelineProfile=null`，可能误选限定方案的模板；需与 `loadTenantPromptTemplateBody` 的全局回退规则统一并验证。当前 D1 adapter 未启用 `transactionOptions`，不能假定一个 Payload create/update 及其 hooks 的多次写入整体原子；副本应用必须处理部分写入、恢复与最终可见性，再发布成功回执。
