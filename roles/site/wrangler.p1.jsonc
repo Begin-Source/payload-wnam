@@ -15,7 +15,7 @@
   "vars": {
     "CENTRAL_ORIGIN": "https://p1-hub.beginos.org",
     "WORKER_GROUP": "p1-group-1",
-    "SITE_ROUTES": "[{\"siteId\":\"p1-a\",\"localSiteId\":37,\"bindingName\":\"SITE_D1_A\",\"databaseId\":\"6daecf80-30f5-4010-add6-d67bb556cc42\",\"schemaVersion\":1},{\"siteId\":\"p1-b\",\"localSiteId\":82,\"bindingName\":\"SITE_D1_B\",\"databaseId\":\"b2a1a340-681a-4581-8817-b2f9629a6ed4\",\"schemaVersion\":1}]"
+    "SITE_ROUTES": "[{\"siteId\":\"p1-a\",\"localSiteId\":37,\"bindingName\":\"SITE_D1_A\",\"databaseId\":\"6daecf80-30f5-4010-add6-d67bb556cc42\",\"schemaVersion\":1},{\"siteId\":\"p1-b\",\"localSiteId\":82,\"bindingName\":\"SITE_D1_B\",\"databaseId\":\"b2a1a340-681a-4581-8817-b2f9629a6ed4\",\"schemaVersion\":1},{\"siteId\":\"p1-c\",\"localSiteId\":103,\"bindingName\":\"SITE_D1_C\",\"databaseId\":\"02e8be38-7dfb-4c48-86e1-30e586961fc9\",\"schemaVersion\":1}]"
   },
   "name": "payload-wnam-p1-sites",
   "routes": [
@@ -25,6 +25,10 @@
     },
     {
       "pattern": "cms-site-p1-b.beginos.org",
+      "custom_domain": true
+    },
+    {
+      "pattern": "cms-site-p1-c.beginos.org",
       "custom_domain": true
     }
   ],
@@ -38,6 +42,11 @@
       "binding": "SITE_D1_B",
       "database_name": "payload-wnam-p1-b",
       "database_id": "b2a1a340-681a-4581-8817-b2f9629a6ed4"
+    },
+    {
+      "binding": "SITE_D1_C",
+      "database_name": "payload-p1-c-f8d779c312a4491cb36800f274be2bfd",
+      "database_id": "02e8be38-7dfb-4c48-86e1-30e586961fc9"
     }
   ],
   "r2_buckets": [

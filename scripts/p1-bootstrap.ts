@@ -13,7 +13,7 @@ import { syncSiteIdentityProjection } from '../src/site-runtime/identityProjecti
 import { OpenAIConfig } from '../src/utilities/aiOpenAIConfigImport'
 import { applyP1Schema, type RoleSchema } from './p1-schema'
 import { applyP1CentralSchema } from './p1-central-schema'
-import { p1Manifests, P1_ACCOUNT, P1_EMAIL } from './p1-manifests.mjs'
+import { p1BaseManifests, P1_ACCOUNT, P1_EMAIL } from './p1-manifests.mjs'
 
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
 if (process.env.WORKERS_CI !== '1' || process.env.WORKERS_CI_BRANCH !== 'feat/site-per-d1' ||
@@ -27,7 +27,7 @@ type Manifest = {
   r2_buckets: { binding: string; bucket_name: string }[]
   vars: { WORKER_GROUP: string; SITE_ROUTES: string }
 }
-const { central,site } = p1Manifests() as { central: Manifest; site: Manifest }
+const { central,site } = p1BaseManifests() as { central: Manifest; site: Manifest }
 // The maintenance proxy binds only storage. There is no unauthenticated HTTP
 // bootstrap route and no need for the central Worker to exist yet.
 const maintenance = { name: 'payload-wnam-p1-maintenance',account_id: P1_ACCOUNT,

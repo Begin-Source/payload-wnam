@@ -5,7 +5,6 @@ import { lookup } from 'node:dns/promises'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { p1Manifests, P1_ACCOUNT, P1_ZONE } from './p1-manifests.mjs'
-import { browserLibraryEnvironment } from './ci-browser-libs.mjs'
 
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1')
@@ -61,6 +60,7 @@ execFileSync('pnpm',['exec','payload','run','scripts/p1-bootstrap.ts'],{
 })
 const deployed = []
 for (const [role,config] of Object.entries(configs)) {
+  if (role === 'site') continue // The provision executor owns its upload and receipt.
   const cwd = resolve('.cloudflare-ci/roles',role), configPath = resolve(cwd,'wrangler.p1.jsonc')
   writeFileSync(configPath,JSON.stringify(config,null,2))
   // Reuse the exact role artifacts that passed this commit's browser checks.
@@ -78,12 +78,6 @@ for (const [role,config] of Object.entries(configs)) {
   deployed.push({ role,worker: config.name,deployment: deployment.id,versions: deployment.versions })
   console.log(JSON.stringify({ event: 'p1_role_deployed',...deployed.at(-1) }))
 }
-const deployedDomains = await api('workers/domains')
-for (const config of Object.values(configs)) for (const route of config.routes) {
-  const actual = deployedDomains.find(domain => domain.hostname === route.pattern)
-  assert.equal(actual?.service,config.name); assert.equal(actual?.zone_id,P1_ZONE)
-}
-assert.equal(deployedDomains.find(domain => domain.hostname === 'hub.beginos.org')?.service,'payload-wnam')
 // Wait for actual HTTPS/TLS/domain and secret propagation, then run the full
 // smoke once. Readiness retries make no content changes.
 let ready = 0
@@ -108,12 +102,17 @@ for (let attempt = 1; attempt <= 96; attempt++) {
   await new Promise(resolve => setTimeout(resolve,5000))
 }
 assert.ok(ready >= 3,'P1 HTTPS deployment did not become ready; forward recovery required')
-execFileSync(process.execPath,['scripts/ci-p1-smoke.mjs'],{
-  env: { ...env,...browserLibraryEnvironment(),P1_TEST_PASSWORD: password },stdio: 'inherit',
+execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-provision-finish.ts'],{
+  env: { ...env,P1_SITE_FINISH: '1',P1_TEST_PASSWORD: password },stdio: 'inherit',
 })
-execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-provision-prepare.ts'],{
-  env: { ...env,P1_SITE_PREPARE: '1',P1_CENTRAL_SECRET: secrets.central,P1_SITE_SECRET: secrets.site },stdio: 'inherit',
-})
+deployed.push(JSON.parse(readFileSync('.cloudflare-ci/p1-provision-activation.json','utf8')).deployed)
+const deployedDomains = await api('workers/domains')
+for (const config of Object.values(configs)) for (const route of config.routes) {
+  const actual = deployedDomains.find(domain => domain.hostname === route.pattern)
+  assert.equal(actual?.service,config.name); assert.equal(actual?.zone_id,P1_ZONE)
+}
+assert.equal(deployedDomains.find(domain => domain.hostname === 'hub.beginos.org')?.service,'payload-wnam')
+
 assert.equal((await api('workers/scripts/payload-wnam/deployments')).deployments[0].id,production)
 const report = { event: 'p1_release_passed',commit,checkedAt: new Date().toISOString(),deployed,productionUnchanged: production }
 writeFileSync('.cloudflare-ci/p1-release.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))

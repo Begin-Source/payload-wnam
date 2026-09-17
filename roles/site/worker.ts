@@ -3,6 +3,7 @@
 import nextWorker from './.open-next/worker.js'
 import { siteFetch } from '../../src/application-roles/siteIngress'
 import type { SiteEnvironment } from '../../src/application-roles/siteEnvironment'
+export { SiteProvisionInspectionService } from '../../src/site-runtime/provisionInspectionService'
 
 export default {
   fetch(request: Request, env: SiteEnvironment, ctx: ExecutionContext) {
