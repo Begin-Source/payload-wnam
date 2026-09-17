@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import { readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { chromium } from '@playwright/test'
+import { checkLifecycleBrowser } from './p1-lifecycle-browser.mjs'
 
 if (process.env.WORKERS_CI !== '1') throw new Error('Complete role checks require Cloudflare Builds')
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
@@ -115,6 +116,11 @@ try {
   await page.unroute(intercept)
   await chooser.getByRole('button',{ name: '重新加载' }).click()
   await chooser.locator('[data-site-id="a"]').waitFor()
+
+  await db.prepare("UPDATE site_runtime_access SET role='manager' WHERE site_id='a' AND user_id='7'").run()
+  await chooser.getByRole('button',{ name: '查找',exact: true }).click()
+  await chooser.locator('[data-site-id="a"]').getByRole('button',{ name: /^暂停网站 / }).waitFor()
+  await checkLifecycleBrowser({ hub: page,siteId: 'a',artifactPrefix: '.cloudflare-ci/central-lifecycle' })
 
   await page.screenshot({ path: '.cloudflare-ci/central-admin-desktop.png',fullPage: true })
   const invoke = (path,init = {}) => page.evaluate(async ({ path,init }) => {

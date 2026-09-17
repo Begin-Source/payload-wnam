@@ -3,7 +3,7 @@ import { payloadSessionAuthority } from './payloadSessionAuthority'
 import { CENTRAL_ORIGIN, requireCentralOrigin, privateResponse } from './sessionHttp'
 import { SiteAccessDeniedError, type SiteRole } from './sso'
 
-export type SiteDirectoryEntry = { siteId: string; name: string; role: SiteRole; state: SiteState }
+export type SiteDirectoryEntry = { siteId: string; name: string; role: SiteRole; state: SiteState; routingVersion: number }
 export type SiteDirectoryPage = { sites: SiteDirectoryEntry[]; nextCursor: string | null }
 type Identity = { userId: string; sessionId: string }
 
@@ -15,7 +15,7 @@ export async function listGrantedSites(database: D1Database, identity: Identity,
   const authority = payloadSessionAuthority(database)
   if (!await authority(identity.userId, identity.sessionId)) throw new SiteAccessDeniedError('Central login required')
   const { results } = await database.prepare(`SELECT r.site_id AS siteId, COALESCE(s.name,r.site_id) AS name,
-    a.role, r.migration_state AS state FROM site_runtime_access a
+    a.role, r.migration_state AS state, r.routing_version AS routingVersion FROM site_runtime_access a
     JOIN site_runtime_registry r ON r.site_id = a.site_id
     LEFT JOIN sites s ON s.runtime_site_id = r.site_id
     WHERE a.user_id = ? AND r.site_id > ?
@@ -24,7 +24,7 @@ export async function listGrantedSites(database: D1Database, identity: Identity,
   if (!await authority(identity.userId, identity.sessionId)) throw new SiteAccessDeniedError('Central login required')
   for (const row of results) {
     assertSiteId(row.siteId)
-    if (typeof row.name !== 'string' || !['viewer','editor','publisher','manager'].includes(row.role) ||
+    if (typeof row.name !== 'string' || !Number.isSafeInteger(row.routingVersion) || row.routingVersion < 1 || !['viewer','editor','publisher','manager'].includes(row.role) ||
       !['provisioning','active','paused','migrating','retired'].includes(row.state)) throw new Error('Invalid site directory')
   }
   const sites = results.slice(0,50)

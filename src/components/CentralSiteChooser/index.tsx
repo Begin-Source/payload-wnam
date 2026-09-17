@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@payloadcms/ui'
 import type { SiteDirectoryPage } from '../../site-control/siteDirectory'
+import { LifecycleControl } from './LifecycleControl'
 import './style.scss'
 
 const roles = { viewer: '只读', editor: '编辑', publisher: '发布', manager: '管理' }
@@ -18,6 +19,7 @@ export function CentralSiteChooser() {
   const [loading, setLoading] = useState(true)
   const [retry, setRetry] = useState(0)
   const [entering, setEntering] = useState<string | null>(null)
+  const [notice, setNotice] = useState('')
   const cursor = cursors[cursors.length - 1]
 
   useEffect(() => {
@@ -46,6 +48,7 @@ export function CentralSiteChooser() {
   return <section className="central-sites" aria-labelledby="central-sites-heading">
     <h2 id="central-sites-heading">我的网站</h2>
     <p>选择网站，进入该站编辑后台。</p>
+    {notice && <p role="status">{notice}</p>}
     <form className="central-sites__search" role="search" onSubmit={event => {
       event.preventDefault(); setQuery(input.trim()); setCursors(['']); setRetry(value => value + 1)
     }}>
@@ -65,13 +68,14 @@ export function CentralSiteChooser() {
             <div className="central-sites__identity"><strong>{site.name}</strong><span>站点 ID：{site.siteId}</span></div>
             <span aria-label={`站点角色：${roles[site.role]}`}>{roles[site.role]}</span>
             <span>{states[site.state]}</span>
-            <form action="/auth/enter-site" method="post" onSubmit={() => setEntering(site.siteId)}>
+            <div className="central-sites__actions"><form action="/auth/enter-site" method="post" onSubmit={() => setEntering(site.siteId)}>
               <input type="hidden" name="siteId" value={site.siteId} />
               <Button type="submit" size="small" disabled={site.state !== 'active' || Boolean(entering)}
                 aria-label={`进入网站 ${site.name}`}>
                 {entering === site.siteId ? '正在进入…' : '进入网站'}
               </Button>
-            </form>
+            </form></div>
+            <LifecycleControl site={site} onChanged={message => { setNotice(message); setRetry(value => value + 1) }} />
           </li>)}</ul>}
         <nav className="central-sites__pages" aria-label="网站列表分页">
           <Button buttonStyle="secondary" size="small" disabled={cursors.length === 1 || Boolean(entering)}

@@ -7,7 +7,8 @@ import { getPlatformProxy } from 'wrangler'
 import { migrateCentralRoleState, migrateSiteRoleState } from '../src/application-roles/schema'
 import { createCentralPayloadConfig } from '../src/site-control/config'
 import { createSitePayloadConfig } from '../src/site-runtime/config'
-import { registerSite } from '../src/site-control/registry'
+import { readSiteRegistration, registerSite } from '../src/site-control/registry'
+import { siteLifecycleSchemaObjects } from '../src/site-control/lifecycleSchema'
 import { withSiteContext } from '../src/site-runtime/context'
 import { syncSiteIdentityProjection } from '../src/site-runtime/identityProjection'
 import { OpenAIConfig } from '../src/utilities/aiOpenAIConfigImport'
@@ -43,12 +44,16 @@ try {
   for (const [role,binding] of [['central','CENTRAL_D1'],['site-a','SITE_D1_A'],['site-b','SITE_D1_B']] as const) {
     const schema = JSON.parse(readFileSync(`.cloudflare-ci/role-${role}-schema.json`,'utf8')) as RoleSchema
     assert.equal(schema.role,role)
-    receipts.push(await applyP1Schema(env[binding],schema,`p1-${role}-schema-v1`))
+    const operationId = `p1-${role}-schema-v${role === 'central' ? 2 : 1}`
+    receipts.push(await applyP1Schema(env[binding],schema,operationId,role === 'central' ? {
+      fromDigest: '32d9ac67f25b2dec5326ed868a1e98c5b06e0de87d5312c3b69d8591507604a3',
+      fromOperationId: 'p1-central-schema-v1',addedObjects: siteLifecycleSchemaObjects,
+    } : undefined))
     if (role === 'central') await migrateCentralRoleState(env[binding])
     else await migrateSiteRoleState(env[binding])
     // Validate that all explicit runtime migrations were represented by the
     // checked schema artifact, including after resuming a partial seed.
-    await applyP1Schema(env[binding],schema,`p1-${role}-schema-v1`)
+    await applyP1Schema(env[binding],schema,operationId)
     const singleton = role === 'central' ?
       await env[binding].prepare('SELECT revision AS value FROM central_cost_epoch WHERE id=1').first<{ value: number }>() :
       await env[binding].prepare('SELECT high_id AS value FROM site_asset_id_watermark WHERE singleton=1').first<{ value: number }>()
@@ -82,25 +87,35 @@ try {
   const routes = JSON.parse(site.vars.SITE_ROUTES) as { siteId: string; localSiteId: number; databaseId: string; bindingName: `SITE_D1_${string}`; schemaVersion: number }[]
   for (const [index,route] of routes.entries()) {
     const tenant = index + 1, adminHost = `cms-site-${route.siteId}.beginos.org`
-    await withSiteContext({ ...route,binding: env[route.bindingName],requestHost: adminHost,routingVersion: 1,currentRoutingVersion: () => 1,identity: null },async () => {
+    const registered = await readSiteRegistration(env.CENTRAL_D1,route.siteId)
+    const desired = { ...route,workerGroup: site.vars.WORKER_GROUP,adminHost,routingVersion: 1,
+      migrationState: 'active' as const,timezone: 'UTC',productionEnabled: false,operationId: `p1-provision-${route.siteId}-v1` }
+    if (registered) {
+      for (const key of ['siteId','localSiteId','databaseId','bindingName','workerGroup','adminHost','schemaVersion','timezone','productionEnabled','operationId'] as const) {
+        assert.equal(registered[key],desired[key],`P1 registered ${key} conflict`)
+      }
+      assert.ok(['active','paused'].includes(registered.migrationState),'P1 site is not available for bootstrap')
+    } else await registerSite(env.CENTRAL_D1,desired)
+    // Preserve legitimate lifecycle versions/state. A deployment retry must not
+    // undo a pause or resurrect invalidated site sessions by resetting version 1.
+    const routingVersion = registered?.routingVersion ?? 1
+    await withSiteContext({ ...route,binding: env[route.bindingName],requestHost: adminHost,routingVersion,currentRoutingVersion: () => routingVersion,identity: null },async () => {
       const found = await local.find({ collection: 'tenants',where: { id: { equals: tenant } },limit: 1,depth: 0 })
       if (found.docs.length) assert.equal(found.docs[0].slug,`p1-tenant-${tenant}`)
       else await local.create({ collection: 'tenants',data: { id: tenant,name: `P1 Tenant ${tenant}`,slug: `p1-tenant-${tenant}`,
         centralSource: { recordId: String(tenant),revision: 1,syncedAt: new Date().toISOString() } } as never })
-      await syncSiteIdentityProjection({ siteId: route.siteId,localSiteId: route.localSiteId,userId: '7',displayName: 'P1 Staff',role: 'editor',routingVersion: 1 })
+      await syncSiteIdentityProjection({ siteId: route.siteId,localSiteId: route.localSiteId,userId: '7',displayName: 'P1 Staff',role: 'manager',routingVersion })
       const foundSite = await local.find({ collection: 'sites',where: { id: { equals: route.localSiteId } },limit: 1,depth: 0 })
       if (foundSite.docs.length) assert.equal(foundSite.docs[0].slug,route.siteId)
       else await local.create({ collection: 'sites',data: { id: route.localSiteId,name: `P1 Site ${route.siteId}`,slug: route.siteId,tenant,
         publicLocaleCodes: ['en'],defaultPublicLocale: 'en' } as never })
     })
-    await registerSite(env.CENTRAL_D1,{ ...route,workerGroup: site.vars.WORKER_GROUP,adminHost,routingVersion: 1,
-      migrationState: 'active',timezone: 'UTC',productionEnabled: false,operationId: `p1-provision-${route.siteId}-v1` })
     const found = await payload.find({ collection: 'sites',where: { id: { equals: route.localSiteId } },limit: 1,depth: 0 })
     if (found.docs.length) assert.equal((found.docs[0] as unknown as { runtimeSiteId: string }).runtimeSiteId,route.siteId)
     else await payload.create({ collection: 'sites',user: principal,data: { id: route.localSiteId,name: `P1 Site ${route.siteId}`,tenant,
       runtimeSiteId: route.siteId,primaryDomain: `${route.siteId}.example.invalid`,publicLocaleCodes: ['en'],defaultPublicLocale: 'en' } as never })
-    await env.CENTRAL_D1.prepare(`INSERT INTO site_runtime_access (site_id,user_id,role) VALUES (?,'7','editor')
-      ON CONFLICT(site_id,user_id) DO UPDATE SET role='editor'`).bind(route.siteId).run()
+    await env.CENTRAL_D1.prepare(`INSERT INTO site_runtime_access (site_id,user_id,role) VALUES (?,'7','manager')
+      ON CONFLICT(site_id,user_id) DO UPDATE SET role='manager'`).bind(route.siteId).run()
   }
   const report = { event: 'p1_bootstrap_passed',commit,checkedAt: new Date().toISOString(),schemas: receipts,siteIds: routes.map(route => route.siteId),syntheticUserId: 7 }
   writeFileSync('.cloudflare-ci/p1-bootstrap.json',JSON.stringify(report,null,2))

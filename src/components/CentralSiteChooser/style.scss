@@ -28,7 +28,7 @@
   &__list { margin: 0; padding: 0; list-style: none; }
   &__row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 3rem 4rem auto;
+    grid-template-columns: minmax(0, 1fr) 3rem 4rem auto auto;
     gap: 1rem;
     align-items: center;
     padding-block: 1rem;
@@ -41,13 +41,23 @@
     overflow-wrap: anywhere;
   }
   &__pages { display: flex; align-items: center; gap: 1rem; margin-block-start: 1.25rem; }
+  &__actions { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; }
+  &__confirmation {
+    grid-column: 1 / -1;
+    padding: 1rem;
+    background: var(--theme-elevation-50);
+    border: 1px solid var(--theme-elevation-200);
+    border-radius: var(--style-radius-s);
+    &:focus-visible { outline: 2px solid var(--theme-text); outline-offset: 2px; }
+    p:first-child { margin-block-start: 0; }
+  }
 
   @media (max-width: 600px) {
     &__search {
       label { flex-basis: 100%; }
       input { flex: 1; font-size: max(1rem, 16px); }
     }
-    &__row { grid-template-columns: 3rem minmax(0, 1fr) auto; gap: .75rem; }
+    &__row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
     &__identity { grid-column: 1 / -1; }
   }
 }

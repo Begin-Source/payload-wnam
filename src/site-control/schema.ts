@@ -1,3 +1,5 @@
+import { siteLifecycleSchema } from './lifecycleSchema'
+
 /** Explicit central provisioning migration; never run from a request/onInit hook. */
 export const siteControlSchema = [
   `CREATE TABLE IF NOT EXISTS site_runtime_registry (
@@ -28,6 +30,7 @@ export const siteControlSchema = [
     routing_version INTEGER NOT NULL, expires_at INTEGER NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS site_login_sessions_expiry ON site_login_sessions(expires_at)`,
+  ...siteLifecycleSchema,
 ] as const
 
 export async function migrateSiteControl(database: D1Database): Promise<void> {

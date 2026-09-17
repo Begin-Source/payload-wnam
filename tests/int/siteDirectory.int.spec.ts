@@ -45,7 +45,7 @@ describe('central granted site directory on native D1', () => {
     const first = await listGrantedSites(db,identity)
     expect(first.sites).toHaveLength(50)
     expect(first.nextCursor).toBe('s050')
-    expect(Object.keys(first.sites[0]).sort()).toEqual(['name','role','siteId','state'])
+    expect(Object.keys(first.sites[0]).sort()).toEqual(['name','role','routingVersion','siteId','state'])
     expect(first.sites.find(site => site.siteId === 's003')).toMatchObject({ state: 'paused',role: 'viewer' })
     expect(first.sites.find(site => site.siteId === 's004')).toMatchObject({ state: 'migrating' })
     const second = await listGrantedSites(db,identity,'',first.nextCursor!)
