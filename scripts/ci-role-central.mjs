@@ -89,6 +89,31 @@ try {
   await page.waitForURL(url => url.pathname === '/admin',{ timeout: 45000 })
   await page.getByRole('navigation').first().waitFor()
   console.log(JSON.stringify({ event: 'central_browser_login_passed' }))
+  const chooser = page.getByRole('region',{ name: '我的网站' })
+  await chooser.locator('[data-site-id="a"]').waitFor()
+  assert.equal(await chooser.locator('[data-site-id="b"]').count(),0,'No grant must mean no site row')
+  assert.equal(await chooser.getByRole('button',{ name: '下一页',exact: true }).isDisabled(),true)
+  await chooser.getByLabel('查找网站',{ exact: true }).fill('no-matching-site')
+  await chooser.getByRole('button',{ name: '查找',exact: true }).click()
+  await chooser.getByText('没有匹配的网站。请修改名称或站点 ID 后重试。',{ exact: true }).waitFor()
+  await chooser.getByLabel('查找网站',{ exact: true }).fill('')
+  await chooser.getByRole('button',{ name: '查找',exact: true }).click()
+  await chooser.locator('[data-site-id="a"]').waitFor()
+  await db.prepare("UPDATE site_runtime_registry SET migration_state = 'paused', routing_version = routing_version + 1 WHERE site_id = 'a'").run()
+  await chooser.getByRole('button',{ name: '查找',exact: true }).click()
+  await chooser.getByText('已暂停',{ exact: true }).waitFor()
+  assert.equal(await chooser.locator('[data-site-id="a"]').getByRole('button').isDisabled(),true)
+  await db.prepare("UPDATE site_runtime_registry SET migration_state = 'active', routing_version = routing_version + 1 WHERE site_id = 'a'").run()
+  await chooser.getByRole('button',{ name: '查找',exact: true }).click()
+  await chooser.getByText('可进入',{ exact: true }).waitFor()
+  const intercept = '**/auth/sites?*'
+  await page.route(intercept,route => route.fulfill({ status: 503,contentType: 'text/plain',body: 'Site list unavailable' }))
+  await chooser.getByRole('button',{ name: '查找',exact: true }).click()
+  await chooser.getByRole('button',{ name: '重新加载' }).waitFor()
+  await page.unroute(intercept)
+  await chooser.getByRole('button',{ name: '重新加载' }).click()
+  await chooser.locator('[data-site-id="a"]').waitFor()
+
   await page.screenshot({ path: '.cloudflare-ci/central-admin-desktop.png',fullPage: true })
   const invoke = (path,init = {}) => page.evaluate(async ({ path,init }) => {
     const response = await fetch(path,init)
@@ -117,7 +142,7 @@ try {
   await db.prepare('DELETE FROM users_sessions WHERE _parent_id = 7').run()
   assert.equal((await invoke('/auth/enter-site',{ method: 'POST',headers: { 'content-type': 'application/x-www-form-urlencoded' },body: 'siteId=a' })).status,401,'Revoked original central session must deny ticket issuance')
   const report = { event: 'central_application_passed',checkedAt: new Date().toISOString(),
-    checks: ['complete-worker','canonical-host','closed-signup','browser-password-login','native-admin-assets','master-create-read','no-site-content-api','real-session-ticket','site-grant-denial','desktop-mobile','session-revocation'],
+    checks: ['complete-worker','canonical-host','closed-signup','browser-password-login','native-admin-assets','master-create-read','no-site-content-api','real-session-ticket','site-grant-denial','desktop-mobile','session-revocation','granted-site-chooser','site-search-empty','paused-site-disabled','directory-retry'],
     remoteDeployment: false }
   writeFileSync('.cloudflare-ci/central-application.json',JSON.stringify(report,null,2))
   console.log(JSON.stringify(report))

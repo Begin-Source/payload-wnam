@@ -104,13 +104,10 @@ try {
   for (const id of ['a','b']) {
     const page = currentPage = await context.newPage()
     await page.goto('https://hub.beginos.org/admin')
-    // Exercise real navigation POST and the production ticket handoff HTML.
-    // The central site chooser UI is a separate pending P1 deliverable.
-    await page.evaluate(id => {
-      const form = document.createElement('form'); form.method = 'POST'; form.action = '/auth/enter-site'
-      const input = document.createElement('input'); input.name = 'siteId'; input.value = id
-      form.append(input); document.body.append(form); form.submit()
-    },id)
+    // Navigate through the actual central chooser, with its current grant list.
+    const chooser = page.getByRole('region',{ name: '我的网站' })
+    await chooser.locator(`[data-site-id="${id}"]`).waitFor()
+    await chooser.locator(`[data-site-id="${id}"]`).getByRole('button',{ name: `进入网站 Site ${id}`,exact: true }).click()
     await page.waitForURL(url => url.hostname === `cms-site-${id}.beginos.org` && url.pathname === '/admin',{ timeout: 60000 })
     await page.getByRole('navigation').first().waitFor({ timeout: 45000 })
     await page.waitForLoadState('networkidle')
@@ -176,7 +173,7 @@ try {
   const expired = await siteWorker.fetch('https://cms-site-b.beginos.org/api/categories',{ headers: { cookie: `__Host-site-session=${cookies.find(cookie => cookie.domain === hosts[2]).value}` } })
   assert.equal(expired.status,403,'Copied old browser credential must be centrally revoked')
   const report = { event: 'site_application_passed',checkedAt: new Date().toISOString(),remoteDeployment: false,
-    checks: ['complete-central-site-workers','native-assets','browser-central-password-login','real-ticket-post-handoff','two-host-only-cookies',
+    checks: ['complete-central-site-workers','native-assets','browser-central-password-login','central-chooser-click','real-ticket-post-handoff','two-host-only-cookies',
       'native-site-admin-editors','same-id-concurrent-reads','site-isolated-create-update','no-site-password-login','desktop-mobile',
       'live-grant-revocation','native-logout-revokes-session','revoked-grant-logout'], browserErrors }
   writeFileSync('.cloudflare-ci/site-application.json',JSON.stringify(report,null,2))
