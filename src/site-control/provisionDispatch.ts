@@ -1,0 +1,197 @@
+import { z } from 'zod'
+import { provisionHashSchema,provisionUuidSchema } from './provisionPlan'
+
+const dispatchMessageSchema = z.object({
+  type: z.literal('site.provision.dispatch'),requestId: provisionUuidSchema,inputDigest: provisionHashSchema,
+}).strict()
+export type ProvisionDispatchMessage = z.infer<typeof dispatchMessageSchema>
+
+const buildEventType = z.enum([
+  'cf.workersBuilds.worker.build.started','cf.workersBuilds.worker.build.failed',
+  'cf.workersBuilds.worker.build.canceled','cf.workersBuilds.worker.build.succeeded',
+])
+const buildEventSchema = z.object({
+  type: buildEventType,
+  source: z.object({ type: z.literal('workersBuilds.worker'),workerName: z.string().min(1) }).passthrough(),
+  payload: z.object({
+    buildUuid: z.string().regex(/^[A-Za-z0-9_-]{8,100}$/),status: z.string().min(1),buildOutcome: z.string().nullable(),
+    buildTriggerMetadata: z.object({ buildTriggerSource: z.string().min(1),branch: z.string().min(1),commitHash: z.string().regex(/^[a-f0-9]{7,64}$/),
+      repoName: z.string().min(1),providerAccountName: z.string().min(1),providerType: z.literal('github') }).passthrough(),
+  }).passthrough(),
+  metadata: z.object({ accountId: z.string().regex(/^[a-f0-9]{32}$/),eventSubscriptionId: z.string().min(8),
+    eventSchemaVersion: z.literal(1),eventTimestamp: z.string().datetime({ offset: true }) }).passthrough(),
+}).passthrough()
+export type ProvisionBuildEvent = z.infer<typeof buildEventSchema>
+export type ProvisionQueueMessage = ProvisionDispatchMessage | ProvisionBuildEvent
+
+export type ProvisionDispatchEnvironment = {
+  CENTRAL_D1: D1Database
+  PROVISION_DISPATCH_QUEUE: Queue<ProvisionQueueMessage>
+  PROVISION_DEPLOY_HOOK_URL: string
+  PROVISION_BUILD_ACCOUNT_ID: string
+  PROVISION_BUILD_EVENT_SUBSCRIPTION_ID: string
+  PROVISION_BUILD_WORKER: string
+  PROVISION_BUILD_BRANCH: string
+  PROVISION_BUILD_REPOSITORY: string
+  PROVISION_BUILD_REPOSITORY_OWNER: string
+}
+
+type DispatchRow = { state: string; inputDigest: string; buildUuid: string | null }
+const timestamp = `strftime('%Y-%m-%dT%H:%M:%fZ','now')`
+
+async function sha256(value: string) {
+  const bytes = await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))
+  return [...new Uint8Array(bytes)].map(value => value.toString(16).padStart(2,'0')).join('')
+}
+
+function requireHook(value: string) {
+  let url: URL
+  try { url = new URL(value) } catch { throw new Error('Provision deploy hook unavailable') }
+  if (url.protocol !== 'https:' || url.hostname !== 'api.cloudflare.com' ||
+    !/^\/client\/v4\/workers\/builds\/deploy_hooks\/[A-Za-z0-9_-]+$/.test(url.pathname) || url.search || url.hash) {
+    throw new Error('Provision deploy hook unavailable')
+  }
+  return url.toString()
+}
+
+/** The D1 row stays queued until Queue accepts the message. Repeated cron
+ * messages are harmless because only one conditional claim can enter the
+ * active slot. */
+export async function enqueueProvisionDispatch(database: D1Database,queue: Queue<ProvisionQueueMessage>) {
+  const row = await database.prepare(`SELECT d.request_id AS requestId,d.input_digest AS inputDigest
+    FROM site_provision_dispatches d JOIN site_provision_requests q ON q.request_id=d.request_id
+    WHERE d.state='queued' AND q.state='queued'
+      AND NOT EXISTS (SELECT 1 FROM site_provision_dispatches active
+        WHERE active.state IN ('triggering_unknown','dispatched','running','needs_review'))
+    ORDER BY d.queued_at,d.request_id LIMIT 1`).first<{ requestId: string; inputDigest: string }>()
+  if (!row) return null
+  const body = dispatchMessageSchema.parse({ type: 'site.provision.dispatch',...row })
+  await queue.send(body,{ contentType: 'json' })
+  return body
+}
+
+async function readDispatch(database: D1Database,requestId: string) {
+  return database.prepare(`SELECT state,input_digest AS inputDigest,build_uuid AS buildUuid
+    FROM site_provision_dispatches WHERE request_id=?`).bind(requestId).first<DispatchRow>()
+}
+
+/** Claim before the non-idempotent POST. Any response loss leaves an explicit
+ * unknown result and must never cause an automatic second POST. */
+export async function triggerProvisionBuild(database: D1Database,message: ProvisionDispatchMessage,hook: string,
+  fetcher: typeof fetch = fetch) {
+  const input = dispatchMessageSchema.parse(message),attemptId = crypto.randomUUID(),hookUrl = requireHook(hook)
+  const claimed = await database.prepare(`UPDATE site_provision_dispatches SET state='triggering_unknown',attempt_id=?,
+    attempt_count=attempt_count+1,trigger_started_at=${timestamp},last_error_code='hook_result_unknown'
+    WHERE request_id=? AND input_digest=? AND state='queued'
+      AND EXISTS (SELECT 1 FROM site_provision_requests q WHERE q.request_id=? AND q.state='queued')
+      AND NOT EXISTS (SELECT 1 FROM site_provision_dispatches active WHERE active.request_id!=?
+        AND active.state IN ('triggering_unknown','dispatched','running','needs_review'))`)
+    .bind(attemptId,input.requestId,input.inputDigest,input.requestId,input.requestId).run()
+  if (claimed.meta.changes !== 1) {
+    const current = await readDispatch(database,input.requestId)
+    if (!current || current.inputDigest !== input.inputDigest) throw new Error('Provision dispatch identity unavailable')
+    return { state: current.state,buildUuid: current.buildUuid,triggered: false as const }
+  }
+  try {
+    const response = await fetcher(hookUrl,{ method: 'POST',signal: AbortSignal.timeout(20000) })
+    const body = await response.json() as { success?: unknown; result?: { build_uuid?: unknown; branch?: unknown } }
+    const buildUuid = typeof body.result?.build_uuid === 'string' && /^[A-Za-z0-9_-]{8,100}$/.test(body.result.build_uuid) ? body.result.build_uuid : null
+    if (!response.ok || body.success !== true || !buildUuid) throw new Error('Deploy hook response unavailable')
+    const saved = await database.prepare(`UPDATE site_provision_dispatches SET build_uuid=?,
+      state=CASE WHEN state='triggering_unknown' THEN 'dispatched' ELSE state END,dispatched_at=COALESCE(dispatched_at,${timestamp}),
+      last_error_code=NULL WHERE request_id=? AND attempt_id=? AND (build_uuid IS NULL OR build_uuid=?)`)
+      .bind(buildUuid,input.requestId,attemptId,buildUuid).run()
+    if (saved.meta.changes !== 1) throw new Error('Deploy hook identity could not be persisted')
+    return { state: 'dispatched',buildUuid,triggered: true as const }
+  } catch {
+    // The POST may have created a build. Preserve the pre-POST unknown state;
+    // queue retries must acknowledge this message instead of posting again.
+    return { state: 'triggering_unknown',buildUuid: null,triggered: true as const }
+  }
+}
+
+function eventName(type: ProvisionBuildEvent['type']) {
+  return type.slice(type.lastIndexOf('.')+1) as 'started' | 'failed' | 'canceled' | 'succeeded'
+}
+
+function validateEvent(event: ProvisionBuildEvent,env: ProvisionDispatchEnvironment) {
+  const metadata = event.payload.buildTriggerMetadata
+  const expected = eventName(event.type) === 'started' ? ['running',null] :
+    eventName(event.type) === 'succeeded' ? ['success','success'] :
+      eventName(event.type) === 'failed' ? ['failed','failure'] : ['canceled','canceled']
+  if (event.metadata.accountId !== env.PROVISION_BUILD_ACCOUNT_ID ||
+    event.metadata.eventSubscriptionId !== env.PROVISION_BUILD_EVENT_SUBSCRIPTION_ID ||
+    event.source.workerName !== env.PROVISION_BUILD_WORKER || metadata.branch !== env.PROVISION_BUILD_BRANCH ||
+    metadata.repoName !== env.PROVISION_BUILD_REPOSITORY || metadata.providerAccountName !== env.PROVISION_BUILD_REPOSITORY_OWNER ||
+    metadata.buildTriggerSource !== 'deploy_hook' || event.payload.status !== expected[0] || event.payload.buildOutcome !== expected[1]) {
+    throw new Error('Build event source mismatch')
+  }
+}
+
+/** Accept only the bound Cloudflare event source. A started event may attach
+ * the exact build identity after a lost Hook response because the schema allows
+ * only one unknown active dispatch. */
+export async function observeProvisionBuild(database: D1Database,value: unknown,env: ProvisionDispatchEnvironment) {
+  const event = buildEventSchema.parse(value)
+  validateEvent(event,env)
+  const name = eventName(event.type),digest = await sha256(JSON.stringify(event))
+  const eventKey = `${event.metadata.eventSubscriptionId}:${event.payload.buildUuid}:${name}:${event.metadata.eventTimestamp}`
+  const existing = await database.prepare('SELECT payload_digest AS digest FROM site_provision_build_events WHERE event_key=?')
+    .bind(eventKey).first<{ digest: string }>()
+  if (existing) {
+    if (existing.digest !== digest) throw new Error('Build event identity conflict')
+    return { event: name,replayed: true as const }
+  }
+  const byBuild = await database.prepare('SELECT request_id AS requestId FROM site_provision_dispatches WHERE build_uuid=?')
+    .bind(event.payload.buildUuid).first<{ requestId: string }>()
+  let requestId = byBuild?.requestId
+  if (!requestId) {
+    const attached = await database.prepare(`UPDATE site_provision_dispatches SET build_uuid=?,build_commit=?
+      WHERE state='triggering_unknown' AND build_uuid IS NULL
+      RETURNING request_id AS requestId`).bind(event.payload.buildUuid,event.payload.buildTriggerMetadata.commitHash)
+      .first<{ requestId: string }>()
+    requestId = attached?.requestId
+  }
+  if (!requestId) throw new Error('Build event has no active provision dispatch')
+  const terminal = name !== 'started'
+  let state = name === 'started' ? 'running' : 'needs_review'
+  let error = name === 'failed' ? 'build_failed' : name === 'canceled' ? 'build_canceled' : 'build_succeeded_without_receipt'
+  if (name === 'succeeded') {
+    const completed = await database.prepare('SELECT completed_at AS completedAt FROM site_provision_operations WHERE operation_id=?')
+      .bind(requestId).first<{ completedAt: string | null }>()
+    if (completed?.completedAt) { state = 'succeeded'; error = '' }
+  }
+  const outcome = name === 'succeeded' ? 'success' : name === 'canceled' ? 'canceled' : name === 'failed' ? 'failure' : null
+  const current = await database.prepare('SELECT state,build_outcome AS outcome FROM site_provision_dispatches WHERE request_id=? AND build_uuid=?')
+    .bind(requestId,event.payload.buildUuid).first<{ state: string; outcome: string | null }>()
+  if (!current || (current.outcome && outcome && current.outcome !== outcome) ||
+    (current.state === 'succeeded' && terminal && outcome !== 'success')) {
+    throw new Error('Conflicting build terminal event')
+  }
+  await database.batch([
+    database.prepare(`INSERT INTO site_provision_build_events
+      (event_key,build_uuid,event_type,event_timestamp,payload_digest,received_at) VALUES (?,?,?,?,?,${timestamp})`)
+      .bind(eventKey,event.payload.buildUuid,name,event.metadata.eventTimestamp,digest),
+    database.prepare(`UPDATE site_provision_dispatches SET build_commit=COALESCE(build_commit,?),
+      state=CASE WHEN state IN ('succeeded','needs_review','cancelled') THEN state ELSE ? END,
+      running_at=CASE WHEN ?='started' THEN COALESCE(running_at,?) ELSE running_at END,
+      completed_at=CASE WHEN ? THEN COALESCE(completed_at,?) ELSE completed_at END,
+      build_outcome=COALESCE(?,build_outcome),last_error_code=? WHERE request_id=? AND build_uuid=?`)
+      .bind(event.payload.buildTriggerMetadata.commitHash,state,name,event.metadata.eventTimestamp,
+        terminal ? 1 : 0,event.metadata.eventTimestamp,outcome,error || null,requestId,event.payload.buildUuid),
+  ])
+  return { event: name,requestId,state,replayed: false as const }
+}
+
+export async function provisionDispatchQueue(batch: MessageBatch<unknown>,env: ProvisionDispatchEnvironment) {
+  for (const message of batch.messages) {
+    try {
+      const dispatch = dispatchMessageSchema.safeParse(message.body)
+      if (dispatch.success) await triggerProvisionBuild(env.CENTRAL_D1,dispatch.data,env.PROVISION_DEPLOY_HOOK_URL)
+      else await observeProvisionBuild(env.CENTRAL_D1,message.body,env)
+      message.ack()
+    } catch {
+      message.retry({ delaySeconds: Math.min(300,30+message.attempts*30) })
+    }
+  }
+}

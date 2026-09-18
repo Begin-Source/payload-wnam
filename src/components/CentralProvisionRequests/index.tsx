@@ -10,7 +10,7 @@ import './style.scss'
  * theme tokens, small buttons and inline confirmation. Staff choose tenant and
  * owner, save one immutable request, and inspect its actual durable state.
  * No modal, infrastructure inputs, invented progress or automatic success. */
-const labels = { queued: '等待执行',provisioning: '创建中',cancelled: '已取消',completed: '已建成' }
+const labels = { queued: '等待派发',dispatching: '云端执行中',provisioning: '创建中',review: '需要核查',cancelled: '已取消',completed: '已建成' }
 const failure = (status: number) => status === 401 ? <>登录已失效。<Link href="/admin/login">重新登录</Link>后重试。</> :
   status === 403 ? '你已无权进行这项操作。请刷新页面查看当前权限。' :
     status === 400 ? '请检查站点 ID、名称、租户、负责人和时区。' :

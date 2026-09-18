@@ -27,17 +27,22 @@ async function requireActor(database: D1Database,identity: CentralIdentity,tenan
   if (!row) throw new SiteManagementError(403,'Tenant provisioning permission required')
 }
 type AdmissionRow = { requestId: string; actorUserId: number; inputJson: string; state: 'queued' | 'provisioning' | 'cancelled';
-  createdAt: string; cancelledAt: string | null; checkpoint: number | null; completedAt: string | null }
+  createdAt: string; cancelledAt: string | null; checkpoint: number | null; completedAt: string | null;
+  dispatchState: 'queued' | 'triggering_unknown' | 'dispatched' | 'running' | 'succeeded' | 'needs_review' | 'cancelled' }
 async function row(database: D1Database,requestId: string) {
   return database.prepare(`SELECT q.request_id AS requestId,q.actor_user_id AS actorUserId,q.input_json AS inputJson,
-    q.state,q.created_at AS createdAt,q.cancelled_at AS cancelledAt,o.checkpoint,o.completed_at AS completedAt
-    FROM site_provision_requests q LEFT JOIN site_provision_operations o ON o.operation_id=q.request_id WHERE q.request_id=?`)
+    q.state,q.created_at AS createdAt,q.cancelled_at AS cancelledAt,o.checkpoint,o.completed_at AS completedAt,d.state AS dispatchState
+    FROM site_provision_requests q LEFT JOIN site_provision_operations o ON o.operation_id=q.request_id
+    JOIN site_provision_dispatches d ON d.request_id=q.request_id WHERE q.request_id=?`)
     .bind(requestId).first<AdmissionRow>()
 }
 function summary(value: AdmissionRow) {
-  const { inputJson,...metadata } = value
+  const { inputJson,dispatchState,...metadata } = value
+  const state = value.completedAt ? 'completed' as const : value.state === 'cancelled' ? 'cancelled' as const :
+    value.state === 'provisioning' ? 'provisioning' as const : dispatchState === 'needs_review' ? 'review' as const :
+      ['triggering_unknown','dispatched','running'].includes(dispatchState) ? 'dispatching' as const : value.state
   return { ...metadata,input: parseProvisionAdmission(JSON.parse(inputJson)),
-    state: value.completedAt ? 'completed' as const : value.state }
+    state }
 }
 export type ProvisionAdmissionSummary = ReturnType<typeof summary>
 export type ProvisionAdmissionPage = { requests: ProvisionAdmissionSummary[]; nextCursor: string | null }
@@ -52,8 +57,9 @@ export async function listProvisionAdmissions(database: D1Database,identity: Cen
     throw new SiteManagementError(400,'Invalid request cursor')
   }
   const rows = (await database.prepare(`SELECT q.request_id AS requestId,q.actor_user_id AS actorUserId,q.input_json AS inputJson,
-    q.state,q.created_at AS createdAt,q.cancelled_at AS cancelledAt,o.checkpoint,o.completed_at AS completedAt
+    q.state,q.created_at AS createdAt,q.cancelled_at AS cancelledAt,o.checkpoint,o.completed_at AS completedAt,d.state AS dispatchState
     FROM site_provision_requests q LEFT JOIN site_provision_operations o ON o.operation_id=q.request_id
+    JOIN site_provision_dispatches d ON d.request_id=q.request_id
     WHERE q.tenant_id=? AND (?='' OR (q.created_at,q.request_id)<
       (SELECT created_at,request_id FROM site_provision_requests WHERE request_id=? AND tenant_id=?))
     ORDER BY q.created_at DESC,q.request_id DESC LIMIT 51`).bind(tenantId,after,after,tenantId).all<AdmissionRow>()).results
@@ -128,7 +134,8 @@ export async function cancelProvisionAdmission(database: D1Database,identity: Ce
   await database.prepare(`UPDATE site_provision_requests AS q SET state='cancelled',cancelled_by=?,cancelled_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE request_id=? AND state='queued' AND ${provisionActorPermission('?','q.tenant_id')}
       AND EXISTS (SELECT 1 FROM users_sessions s WHERE s._parent_id=? AND s.id=? AND julianday(s.expires_at)>julianday('now'))
-      AND NOT EXISTS (SELECT 1 FROM site_provision_operations o WHERE o.operation_id=q.request_id)`)
+      AND NOT EXISTS (SELECT 1 FROM site_provision_operations o WHERE o.operation_id=q.request_id)
+      AND EXISTS (SELECT 1 FROM site_provision_dispatches d WHERE d.request_id=q.request_id AND d.state='queued')`)
     .bind(identity.userId,requestId,identity.userId,identity.userId,identity.sessionId).run()
   await requireActor(database,identity,saved.input.tenantId)
   const current = await readProvisionAdmission(database,identity,requestId)

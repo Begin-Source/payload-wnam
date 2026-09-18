@@ -50,7 +50,7 @@ export async function checkAdmissionBrowser({ hub,database }) {
   assert.equal(repeated.status(),200); assert.deepEqual(repeated.request().postDataJSON(),input)
   assert.equal((await repeated.json()).replayed,true)
   const row = region.locator(`[data-request-id="${input.requestId}"]`)
-  await row.getByText('等待执行',{ exact: true }).waitFor()
+  await row.getByText('等待派发',{ exact: true }).waitFor()
   assert.equal(await database.prepare('SELECT COUNT(*) AS n FROM site_provision_requests WHERE request_id=?').bind(input.requestId).first('n'),1)
   assert.equal(await database.prepare('SELECT COUNT(*) AS n FROM site_provision_operations').first('n'),0)
   const read = await invoke(`/auth/site-request?requestId=${input.requestId}`)

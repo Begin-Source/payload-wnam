@@ -12,7 +12,7 @@ export async function checkRemoteAdmission({ hub,centralQuery }) {
   },{ path,body })
   const before = await centralQuery('SELECT operation_id,checkpoint,completed_at FROM site_provision_operations ORDER BY operation_id')
   const schema = await centralQuery('SELECT operation_id,completed FROM p1_schema_bootstrap WHERE id=1')
-  assert.deepEqual(schema,[{ operation_id: 'p1-central-schema-v5',completed: 1 }])
+  assert.deepEqual(schema,[{ operation_id: 'p1-central-schema-v6',completed: 1 }])
   let input
   try {
     await region.getByLabel('所属租户',{ exact: true }).selectOption('1')
@@ -28,7 +28,7 @@ export async function checkRemoteAdmission({ hub,centralQuery }) {
     console.log(JSON.stringify({ event: 'p1_remote_admission_submitted',requestId: input.requestId,siteId: input.siteId }))
     assert.equal((await response).status(),200)
     const row = region.locator(`[data-request-id="${input.requestId}"]`)
-    await row.getByText('等待执行',{ exact: true }).waitFor()
+    await row.getByText('等待派发',{ exact: true }).waitFor()
     const replay = await invoke('/auth/site-request',input)
     assert.equal(replay.status,200); assert.equal(replay.body.replayed,true)
     const read = await invoke(`/auth/site-request?requestId=${input.requestId}`)
@@ -51,7 +51,7 @@ export async function checkRemoteAdmission({ hub,centralQuery }) {
       [{ state: 'cancelled',prepared_request_json: null }])
     assert.deepEqual(await centralQuery('SELECT operation_id,checkpoint,completed_at FROM site_provision_operations ORDER BY operation_id'),before)
     console.log(JSON.stringify({ event: 'p1_remote_admission_passed',checkedAt: new Date().toISOString(),remoteDeployment: true,requestId: input.requestId,
-      checks: ['central-v5','real-ui-submit','same-request-retry','one-durable-request','private-summary','cancel-confirmation','cancel-retry','desktop-mobile','no-provision-effects'] }))
+      checks: ['central-v6','real-ui-submit','same-request-retry','one-durable-request','private-summary','cancel-confirmation','cancel-retry','desktop-mobile','no-provision-effects'] }))
   } finally {
     // Cancellation is idempotent. Reconcile an ambiguous response using this
     // exact synthetic request; never delete history or cancel another request.

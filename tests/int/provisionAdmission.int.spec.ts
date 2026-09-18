@@ -4,6 +4,7 @@ import { readFileSync,realpathSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { afterAll,beforeAll,beforeEach,describe,expect,it } from 'vitest'
 import { provisionAdmissionSchema } from '../../src/site-control/provisionAdmissionSchema'
+import { provisionDispatchSchema } from '../../src/site-control/provisionDispatchSchema'
 import { cancelProvisionAdmission,listProvisionAdmissions,provisionAdmissionChoices,readProvisionAdmission,submitProvisionAdmission } from '../../src/site-control/provisionAdmission'
 import { centralProvisionAdmission } from '../../src/site-control/provisionAdmissionHttp'
 import { ProvisionJournal } from '../../src/site-control/provisionJournal'
@@ -37,12 +38,13 @@ describe('central provision admission and atomic journal handoff on native D1',(
     ])
     await migrateSiteControl(db)
     await db.batch(provisionAdmissionSchema.map(sql => db.prepare(sql)))
+    await db.batch(provisionDispatchSchema.map(sql => db.prepare(sql)))
     const { plan } = parseProvisionRequest(request())
     journal = new ProvisionJournal(db,{ accountId: plan.accountId,centralDatabaseId: plan.centralDatabaseId })
   })
   afterAll(async () => { await mf?.dispose() })
   beforeEach(async () => {
-    await db.batch(['site_provision_requests','site_provision_steps','site_provision_operations','sites','users_sessions','users_roles','users_tenants','users','tenants']
+    await db.batch(['site_provision_build_events','site_provision_dispatches','site_provision_requests','site_provision_steps','site_provision_operations','sites','users_sessions','users_roles','users_tenants','users','tenants']
       .map(table => db.prepare(`DELETE FROM ${table}`)))
     await db.batch([
       db.prepare("INSERT INTO users VALUES (7,'manager@example.invalid',NULL),(8,'owner@example.invalid',NULL),(9,'other@example.invalid',NULL)"),
