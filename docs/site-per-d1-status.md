@@ -23,7 +23,7 @@
 | P0 冷启动、CPU 与内存 | `6f43fba` 启动 30 ms；403 请求无执行错误；CPU P95 87.913 ms；内存 P95 104,548,730 bytes、P99.9 106,280,960 bytes；[原始查询及边界](site-per-d1-p0-runtime-optimization.json) | 小规模原型通过；非容量验收 |
 | P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用和身份映射已实现；[站点 factory](site-per-d1-p1-site-config.md)、[中央 factory/成本账本](site-per-d1-p1-central-config.md)及[主数据发布/候选接收](site-per-d1-p1-master-sync.md)有原生 D1 验证；[副本应用/提示词选择](site-per-d1-p1-master-copies.md)已实现；[运行 Global/配额版本](site-per-d1-p1-config-sync.md)已实现；[媒体复制/撤回、头像与品牌图](site-per-d1-p1-assets.md)已通过原生验证；[交互式内部数据服务](site-per-d1-p1-data-service.md)已通过原生 RPC 验证；[完整中央应用](site-per-d1-p1-central-application.md)已接入并通过云端完整 Worker/后台检查；[完整站点应用](site-per-d1-p1-site-application.md)也已通过云端双站后台检查；[中央站点选择器](site-per-d1-p1-site-chooser.md)已通过实际点击进入验证；[独立远程角色](site-per-d1-p1-remote-roles.md)已部署并通过实际双站后台/SSO；[通用 D 建站与四站普通发布](site-per-d1-p1-provision-d.md)已实际通过；队列投递、其余管理界面和通用多组管理待接入 | 实施中，未通过 |
 | P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；真实中央 Payload 密码登录、JWT 签发站点票据与会话撤销已在完整中央 Worker 中通过；最新 661 项测试通过；完整站点后台、中央选择器实际点击、真实双站 SSO、实时撤权和原生退出已通过云端验证；独立远程中央和双站后台已部署，真实 HTTPS 撤权/退出通过；其余 P1 要求仍待完成 | 实施中，未通过 |
-| P1 建站、进入、暂停/恢复、MCP 明确 siteId | 中央选择器、进入 API 和完整站点接收入口已接入；[经理暂停/恢复与明确目标 API](site-per-d1-p1-lifecycle.md)及[中央 MCP](site-per-d1-p1-mcp.md)已部署并通过真实 HTTPS 验收；[建站日志](site-per-d1-p1-provision-journal.md)和[真实 D1 创建/恢复/schema 准备](site-per-d1-p1-provision-prepare.md)已验证，[资料初始化与跨库恢复](site-per-d1-p1-provision-seed.md)已在原库完成，[分组部署、实际三站 SSO/隔离和 C 激活](site-per-d1-p1-provision-activation.md)已通过云端验证，原操作达到 checkpoint 6；[云端建站命令](site-per-d1-provision-command.md)已接通，已完成站点重入通过实际验证；[首次通用 D 站创建与单组发布协调](site-per-d1-p1-provision-d.md)已通过实际四站验收和上传中断恢复；[多请求历史与逐组协调](site-per-d1-fleet-management.md)已通过原生多组恢复和实际单组四站核验；中央建站入口、动态请求和完整多组云端入口仍待完成 | 实施中，未通过 |
+| P1 建站、进入、暂停/恢复、MCP 明确 siteId | 中央选择器、进入 API 和完整站点接收入口已接入；[经理暂停/恢复与明确目标 API](site-per-d1-p1-lifecycle.md)及[中央 MCP](site-per-d1-p1-mcp.md)已部署并通过真实 HTTPS 验收；[建站日志](site-per-d1-p1-provision-journal.md)和[真实 D1 创建/恢复/schema 准备](site-per-d1-p1-provision-prepare.md)已验证，[资料初始化与跨库恢复](site-per-d1-p1-provision-seed.md)已在原库完成，[分组部署、实际三站 SSO/隔离和 C 激活](site-per-d1-p1-provision-activation.md)已通过云端验证，原操作达到 checkpoint 6；[云端建站命令](site-per-d1-provision-command.md)已接通，已完成站点重入通过实际验证；[首次通用 D 站创建与单组发布协调](site-per-d1-p1-provision-d.md)已通过实际四站验收和上传中断恢复；[多请求历史与逐组协调](site-per-d1-fleet-management.md)已通过原生多组恢复和实际单组四站核验；中央建站申请界面已部署并通过实际提交/取消；动态请求执行和完整多组云端入口仍待完成 | 实施中，未通过 |
 | P2 持久步骤链、公平调度、独立发布队列 | 未实现 | 待实施 |
 | P2 供应商 DO 配额、预算、429、结果不明核查 | 未实现 | 待实施 |
 | P2 180 秒租约/30 秒心跳、版本检查、Outbox、最多 5 次尝试、死信 | 未实现 | 待实施 |
@@ -54,9 +54,19 @@
 
 `62a9106` 的[动态普通发布验证](site-per-d1-dynamic-release-validation.json)于 `2026-09-18T02:33:07.043Z` 成功结束：711 项测试 / 132 个文件、14 项既有浏览器检查及完整角色/主应用回归通过，GitHub 检查成功。发布控制器、有效清单、全部成员运行证明及完整核验目标均改为读取持久历史，移除普通发布前后的固定 D 重入。原生测试证明新增两站后的两组上传中断恢复不重复上传，原回执保留；plain Node 消费者与控制器复用同一历史校验器。运行证明支持多名员工身份投影及暂停状态，整套 P1 浏览器 smoke 仍限合成员工 7 和可进入的测试站点。
 
-该分支按现有触发器只验证，不部署。02:33:56Z 直接核对中央七个申请 schema 对象均不存在，远程仍为 v4，生产和 P1 部署未变化。HTTP、界面及动态发布控制器尚未上线，构建触发和动态执行入口仍待接通；界面明确提示自动执行尚未启用。下一步须移除旧的仅恢复选择后走 Cloudflare 测试资源发布，验证中央 v5/UI/动态普通发布的实际兼容性，再接入申请执行与派发。不能据此宣称中央自动建站已可用。当前已部署版本仍见下方发布记录。
+上述验证分支没有部署；02:33:56Z 的直接核对仍为中央 v4。随后 `86c9306` 移除旧的仅恢复选择，合入 `feat/site-per-d1`，通过下述真实测试资源发布。中央 v5、申请 HTTP/界面和动态普通发布控制器现已部署。申请执行、构建派发及结果对账仍待接通，界面继续明确提示自动执行尚未启用，不能宣称自动建站已可用。
 
-## P1 最新发布：多请求历史清单与逐组发布协调
+## P1 最新发布：中央 v5、申请界面与动态普通发布
+
+`86c9306` / 构建 `9abce112-0fe4-44ec-b111-0a15043229aa` 于 `2026-09-18T03:09:53.160Z` 成功结束，GitHub 检查 completed/success：711 项测试 / 132 个文件、14 项既有浏览器检查、完整角色及主应用检查、P0 实际回归、P1 四站真实 HTTPS 后台验收全部通过。[发布与直接核验证据](site-per-d1-admission-release-validation.json)。全部安装、测试、构建和部署由 Cloudflare Builds 执行；本地仅源码、文档、Git、静态检查和证据摘要比对。
+
+中央从 v4 原子增量升级为 v5，新增七个对象，总计 273 个；实际 schema 摘要与回执一致。中央 deployment `5e2eafa3-b8b6-49f2-b7bb-1e716f6f09bb`，站点 deployment `c4f8bec4-1c5e-45bb-9815-bc1ab7122c6a`，运行提交均为本次源码。动态控制器按完整 C/D 历史发布 A/B/C/D；普通发布完成于 03:09:03Z，重复执行不上传、回执不变。
+
+真实后台提交、同 UUID 重试、唯一持久申请、私有摘要、取消确认/重试和桌面/手机检查通过。合成申请 `fc113d09-0c60-4b09-8083-8948184a2def` 分配数字 ID 105，已取消，prepared 为空，无建站操作或新 D1。取消仍保留编号。四站编辑、同 ID 并发隔离、撤权、暂停/恢复、MCP 和退出均通过，浏览器错误为零。[324 表逐表报告](site-per-d1-admission-release-site-report.json)从 36 段云端记录重建，完整报告与各站摘要均匹配。
+
+03:10:31Z 直接查询确认无未完成发布、组租约归零、C/D 原六步回执摘要不变；四站 active、版本 83/1/2/2、生产关闭、经理权限恢复。生产 deployment 保持 `3046ffb1-b8ad-47ba-a373-9be5d0526c4b`。云端代理有临时连接中断日志，但完整验收与平台终态均成功。此次没有执行动态申请建站或启用自动派发，远程仍为一个四站组；完整 P1 和 P2–P5 未完成。
+
+## P1 前轮发布：多请求历史清单与逐组发布协调
 
 `420558b` / 构建 `1090e048-c523-4ec1-b89d-0ee00ae468f7` 于 `2026-09-17T23:46:05.298Z` 成功结束，661 项测试（129 个文件）、14 项既有浏览器检查、完整角色构建和真实四站回归通过。[多请求历史与逐组协调](site-per-d1-fleet-management.md)按不可变 C/D 日志生成当前四站清单；原生 D1 测试覆盖两组历史解析和三组发布失败后恢复，实际远程验证仍为一个四站组。
 
@@ -72,7 +82,7 @@
 
 [逐表报告](site-per-d1-site-verify-report.json)从云端四站元数据和 36 段库存日志重建；完整报告摘要及四站内容摘要均与云端结果一致。22:32:18Z 直接核验确认无 pending 发布、组租约释放、C/D 原始六步回执和 schema 不变，四站 active、路由版本 65/1/2/2、经理权限恢复、生产关闭。中央 deployment `56184f65-5ca2-4e85-b5a7-a9620acce21c`；生产 deployment 保持原值。历史中断轮仍有 5 条已存会话，其中 3 条未到期，可兑换票据为 0；不宣称历史会话已清空。本轮安装、测试、构建、部署均在 Cloudflare。
 
-当前 `operations/p1-release.json` 显式固定仅恢复选择；后续普通功能发布须移除该选择，否则运行源码变化会拒绝发布。中央建站入口、多组管理、主数据界面/队列、完整数据图与混合版本核验、其余 P1 和 P2–P5 继续实施，完整目标未完成。
+该恢复轮的 `operations/p1-release.json` 曾显式固定仅恢复选择；`86c9306` 已移除，并完成新的普通功能发布。中央建站入口、多组管理、主数据界面/队列、完整数据图与混合版本核验、其余 P1 和 P2–P5 继续实施，完整目标未完成。
 
 ## P1 前轮发布：真实 D 站与普通分组发布
 
