@@ -65,7 +65,7 @@ function requireHook(value: string) {
 export async function enqueueProvisionDispatch(database: D1Database,queue: Queue<ProvisionQueueMessage>) {
   const row = await database.prepare(`SELECT d.request_id AS requestId,d.input_digest AS inputDigest,d.build_branch AS buildBranch
     FROM site_provision_dispatch_runs d JOIN site_provision_requests q ON q.request_id=d.request_id
-    WHERE d.state='queued' AND q.state='queued'
+    WHERE d.state='queued' AND q.state='queued' AND q.actor_user_id=7 AND q.owner_user_id=7 AND q.tenant_id IN (1,2)
       AND NOT EXISTS (SELECT 1 FROM site_provision_dispatch_runs active
         WHERE active.state IN ('triggering_unknown','dispatched','running','needs_review'))
     ORDER BY d.queued_at,d.request_id LIMIT 1`).first<{ requestId: string; inputDigest: string; buildBranch: string }>()
@@ -154,9 +154,10 @@ function validateEvent(event: ProvisionBuildEvent,env: ProvisionDispatchEnvironm
     event.metadata.eventSubscriptionId !== env.PROVISION_BUILD_EVENT_SUBSCRIPTION_ID ||
     event.source.workerName !== env.PROVISION_BUILD_WORKER || metadata.branch !== env.PROVISION_BUILD_BRANCH ||
     metadata.repoName !== env.PROVISION_BUILD_REPOSITORY || metadata.providerAccountName !== env.PROVISION_BUILD_REPOSITORY_OWNER ||
-    metadata.buildTriggerSource !== 'deploy_hook' || event.payload.status !== expected[0] || event.payload.buildOutcome !== expected[1]) {
+    event.payload.status !== expected[0] || event.payload.buildOutcome !== expected[1]) {
     throw new Error('Build event source mismatch')
   }
+  return metadata.buildTriggerSource === 'deploy_hook'
 }
 
 /** Accept only the bound Cloudflare event source. A started event may attach
@@ -164,7 +165,7 @@ function validateEvent(event: ProvisionBuildEvent,env: ProvisionDispatchEnvironm
  * only one unknown active dispatch. */
 export async function observeProvisionBuild(database: D1Database,value: unknown,env: ProvisionDispatchEnvironment) {
   const event = buildEventSchema.parse(value)
-  validateEvent(event,env)
+  if (!validateEvent(event,env)) return { event: eventName(event.type),ignored: true as const }
   const name = eventName(event.type),digest = await sha256(JSON.stringify(event))
   const eventKey = `${event.metadata.eventSubscriptionId}:${event.payload.buildUuid}:${name}:${event.metadata.eventTimestamp}`
   const existing = await database.prepare('SELECT payload_digest AS digest FROM site_provision_build_events WHERE event_key=?')

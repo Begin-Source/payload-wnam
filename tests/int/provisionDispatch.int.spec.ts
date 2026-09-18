@@ -23,7 +23,7 @@ const env = (): ProvisionDispatchEnvironment => ({ CENTRAL_D1: db,PROVISION_DISP
   PROVISION_BUILD_ACCOUNT_ID: account,PROVISION_BUILD_EVENT_SUBSCRIPTION_ID: subscription,
   PROVISION_BUILD_WORKER: 'payload-wnam',PROVISION_BUILD_BRANCH: 'feat/site-per-d1',
   PROVISION_BUILD_REPOSITORY: 'payload-wnam',PROVISION_BUILD_REPOSITORY_OWNER: 'Begin-Source' })
-const input = (siteId: string) => ({ requestId: randomUUID(),siteId,name: `Site ${siteId}`,tenantId: 1,ownerUserId: 8,timezone: 'UTC' })
+const input = (siteId: string) => ({ requestId: randomUUID(),siteId,name: `Site ${siteId}`,tenantId: 1,ownerUserId: 7,timezone: 'UTC' })
 const buildEvent = (buildUuid: string,name: 'started' | 'failed' | 'canceled' | 'succeeded') => ({
   type: `cf.workersBuilds.worker.build.${name}`,
   source: { type: 'workersBuilds.worker',workerName: 'payload-wnam' },
@@ -67,7 +67,7 @@ describe('durable provision build dispatch on native D1',() => {
   })
 
   it('creates the outbox atomically and cancels only an unclaimed dispatch',async () => {
-    const request = input('dispatch-cancel')
+    const request = { ...input('dispatch-cancel'),ownerUserId: 8 }
     await submitProvisionAdmission(db,actor,request)
     expect(await db.prepare('SELECT request_id AS requestId,input_digest AS inputDigest,state,branch FROM site_provision_dispatches')
       .first()).toMatchObject({ requestId: request.requestId,state: 'queued',branch: 'ops/site-provision' })
@@ -76,6 +76,14 @@ describe('durable provision build dispatch on native D1',() => {
     await cancelProvisionAdmission(db,actor,request.requestId)
     expect(await db.prepare('SELECT state,completed_at AS completedAt FROM site_provision_dispatch_runs WHERE request_id=?')
       .bind(request.requestId).first()).toMatchObject({ state: 'cancelled',completedAt: expect.any(String) })
+  })
+
+  it('leaves a real-person request queued until its acceptance protocol exists',async () => {
+    const request = { ...input('dispatch-person'),ownerUserId: 8 }
+    await submitProvisionAdmission(db,actor,request)
+    expect(await enqueueProvisionDispatch(db,queue)).toBeNull()
+    expect(await db.prepare('SELECT state FROM site_provision_dispatch_runs WHERE request_id=?')
+      .bind(request.requestId).first('state')).toBe('queued')
   })
 
   it('posts one Hook for duplicate queue delivery and stores the exact build UUID',async () => {
@@ -110,7 +118,7 @@ describe('durable provision build dispatch on native D1',() => {
   })
 
   it('selects only the exact Cloudflare build UUID for the synthetic P1 owner',async () => {
-    const request = { ...input('dispatch-executor'),ownerUserId: 7 },buildUuid = randomUUID(),commit = 'c'.repeat(40)
+    const request = input('dispatch-executor'),buildUuid = randomUUID(),commit = 'c'.repeat(40)
     await submitProvisionAdmission(db,actor,request)
     const message = await enqueueProvisionDispatch(db,queue)
     await triggerProvisionBuild(db,message!,env().PROVISION_DEPLOY_HOOK_URL,
@@ -134,7 +142,7 @@ describe('durable provision build dispatch on native D1',() => {
     await observeProvisionBuild(db,started,env())
     expect(await observeProvisionBuild(db,started,env())).toMatchObject({ event: 'started',replayed: true })
     const forged = buildEvent(buildUuid,'failed'); forged.payload.buildTriggerMetadata.buildTriggerSource = 'push_event'
-    await expect(observeProvisionBuild(db,forged,env())).rejects.toThrow('source mismatch')
+    await expect(observeProvisionBuild(db,forged,env())).resolves.toEqual({ event: 'failed',ignored: true })
     expect(await observeProvisionBuild(db,buildEvent(buildUuid,'succeeded'),env())).toMatchObject({ state: 'needs_review' })
     await db.prepare(`UPDATE site_provision_requests SET prepared_request_json='{}',prepared_plan_json='{}',prepared_plan_digest='${'b'.repeat(64)}',
       prepared_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE request_id=?`).bind(request.requestId).run()

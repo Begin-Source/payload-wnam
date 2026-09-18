@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "queue": "payload-wnam-p1-provision-dispatch",
+  "deadLetterQueue": "payload-wnam-p1-provision-dispatch-dlq",
+  "subscription": "payload-wnam-p1-provision-builds",
+  "deployHook": "P1 automatic site provision",
+  "buildWorker": "payload-wnam",
+  "buildBranch": "feat/site-per-d1",
+  "repositoryOwner": "Begin-Source",
+  "repository": "payload-wnam",
+  "cron": "*/2 * * * *"
+}

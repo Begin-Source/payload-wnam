@@ -6,6 +6,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { p1Manifests, P1_ACCOUNT, P1_ZONE } from './p1-manifests.mjs'
 import { p1ReleaseRequest,p1EffectiveManifests } from './p1-release-manifests.mjs'
+import { ensureP1DispatchResources,p1DispatchManifest } from './p1-dispatch-resources.mjs'
 
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1')
@@ -26,6 +27,11 @@ const api = async (path,account = true) => {
   if (!response.ok || !result.success) throw new Error(`P1 preflight: ${path} (${response.status})`)
   return result.result
 }
+const dispatchResources = await ensureP1DispatchResources(token)
+configs.central = p1DispatchManifest(configs.central,dispatchResources)
+console.log(JSON.stringify({ event: 'p1_dispatch_resources_ready',queueId: dispatchResources.queueId,
+  deadLetterQueueId: dispatchResources.deadLetterQueueId,subscriptionId: dispatchResources.subscriptionId,
+  branch: dispatchResources.selected.buildBranch,hookConfigured: true }))
 const production = (await api('workers/scripts/payload-wnam/deployments')).deployments[0].id
 if (request.reconcile) assert.equal((await api(`workers/scripts/${configs.central.name}/deployments`)).deployments[0].id,
   request.reconcile.centralDeploymentId,'Reviewed central runtime is no longer deployed')
@@ -72,7 +78,9 @@ for (const [role,config] of Object.entries(configs)) {
     // No role rebuild, no legacy shared-app upload and no implicit CI Worker name.
     execFileSync('pnpm',['exec','opennextjs-cloudflare','deploy','--config',configPath],{ cwd,env,stdio: 'inherit' })
     execFileSync('pnpm',['exec','wrangler','secret','bulk','--config',configPath],{
-      cwd,env,input: JSON.stringify({ PAYLOAD_SECRET: secrets[role] }),stdio: ['pipe','inherit','inherit'],
+      cwd,env,input: JSON.stringify({ PAYLOAD_SECRET: secrets[role],...(role === 'central' ? {
+        PROVISION_DEPLOY_HOOK_URL: dispatchResources.deployHookUrl,
+      } : {}) }),stdio: ['pipe','inherit','inherit'],
     })
   }
   const settings = await api(`workers/scripts/${config.name}/settings`)
@@ -80,6 +88,18 @@ for (const [role,config] of Object.entries(configs)) {
   for (const bucket of config.r2_buckets) assert.ok(settings.bindings.some(b => b.name === bucket.binding && b.type === 'r2_bucket' && b.bucket_name === bucket.bucket_name))
   for (const service of config.services ?? []) assert.ok(settings.bindings.some(b => b.name === service.binding && b.type === 'service' && b.service === service.service && b.entrypoint === service.entrypoint))
   assert.ok(settings.bindings.some(b => b.name === 'CENTRAL_ORIGIN' && b.text === config.vars.CENTRAL_ORIGIN))
+  if (role === 'central') {
+    assert.ok(settings.bindings.some(b => b.name === 'PROVISION_DISPATCH_QUEUE' && b.type === 'queue' && b.queue_name === dispatchResources.selected.queue))
+    assert.ok(settings.bindings.some(b => b.name === 'PROVISION_DEPLOY_HOOK_URL' && b.type === 'secret_text'))
+    for (const [name,text] of Object.entries(config.vars).filter(([name]) => name.startsWith('PROVISION_BUILD_'))) {
+      assert.ok(settings.bindings.some(binding => binding.name === name && binding.type === 'plain_text' && binding.text === text),`Missing ${name}`)
+    }
+    const schedules = await api(`workers/scripts/${config.name}/schedules`)
+    assert.deepEqual(schedules.map(schedule => schedule.cron),[dispatchResources.selected.cron])
+    const consumers = await api(`queues/${dispatchResources.queueId}/consumers`)
+    assert.ok(consumers.some(consumer => consumer.script_name === config.name &&
+      consumer.dead_letter_queue === dispatchResources.selected.deadLetterQueue))
+  }
   const deployment = (await api(`workers/scripts/${config.name}/deployments`)).deployments[0]
   if (request.reconcile) assert.equal(deployment.id,request.reconcile.centralDeploymentId)
   deployed.push({ role,worker: config.name,deployment: deployment.id,versions: deployment.versions,retained: Boolean(request.reconcile) })
