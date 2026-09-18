@@ -3,10 +3,12 @@ import { readFileSync } from 'node:fs'
 import { p1Manifests } from './p1-manifests.mjs'
 import { currentRuntimeSourceDigest } from './p1-runtime-source.mjs'
 import { loadProvisionFleet } from './provision-fleet-input.mjs'
+import { validateP1AdmissionSelection } from './p1-admission-selection.mjs'
 
 export function validateReleaseSelection(selection,sourceDigest) {
   assert.ok(selection && typeof selection === 'object' && !Array.isArray(selection))
-  assert.deepEqual(Object.keys(selection).sort(),selection.reconcile ? ['provisionRequest','reconcile'] : ['provisionRequest'])
+  assert.deepEqual(Object.keys(selection).sort(),selection.admission ? ['admission','provisionRequest'] : selection.reconcile ? ['provisionRequest','reconcile'] : ['provisionRequest'])
+  if (selection.admission) validateP1AdmissionSelection(selection.admission,sourceDigest)
   if (selection.reconcile) {
     assert.deepEqual(Object.keys(selection.reconcile).sort(),['centralDeploymentId','commit','releaseId','sourceDigest'])
     assert.match(selection.reconcile.centralDeploymentId,/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
@@ -20,11 +22,11 @@ export function validateReleaseSelection(selection,sourceDigest) {
 }
 export function p1ReleaseRequest() {
   const selection = JSON.parse(readFileSync('operations/p1-release.json','utf8'))
-  validateReleaseSelection(selection,selection?.reconcile ? currentRuntimeSourceDigest() : undefined)
+  validateReleaseSelection(selection,selection?.admission ? currentRuntimeSourceDigest('admission') : selection?.reconcile ? currentRuntimeSourceDigest() : undefined)
   const request = JSON.parse(readFileSync(selection.provisionRequest,'utf8')),source = p1Manifests()
   assert.deepEqual(request.baseline,source.site,'P1 request baseline must retain the reviewed source group')
   assert.deepEqual(request.central,source.central)
-  return { path: selection.provisionRequest,request,reconcile: selection.reconcile }
+  return { path: selection.provisionRequest,request,reconcile: selection.reconcile,admission: selection.admission }
 }
 
 /** Share the strict TS history validator with plain Node cloud entrypoints.

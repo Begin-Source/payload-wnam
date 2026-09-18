@@ -8,7 +8,7 @@ import { runtimeProofSnapshot } from './runtime-proof'
 
 /** Ordinary release proof for every current member. Provision initialization's
  * single-owner projection check is not valid after other staff have logged in. */
-export async function verifyGroupRuntime(manifest: GroupManifest,receipt: GroupReleaseReceipt,database: D1Database,
+export async function verifyGroupRuntime(manifest: GroupManifest,receipt: Omit<GroupReleaseReceipt,'releaseId'> & { releaseId: string | null },database: D1Database,
   inspect: (siteId: string) => ReturnType<typeof inspectSiteRuntime>) {
   assert.equal(receipt.manifestDigest,provisionDigest(JSON.stringify(manifest)),'Group verification manifest changed')
   const reports = []

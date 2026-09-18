@@ -116,6 +116,11 @@ describe('read-only site verification with native D1 and R2',() => {
       throw new Error('Group verification attempted a write capability')
     } })
     expect(await verifyGroupRuntime(manifest,receipt,readonly,id => inspectSiteRuntime(env,id))).toEqual([expect.objectContaining({ state: 'paused',releaseId: receipt.releaseId })])
+    // A just-provisioned group has provenance but no ordinary release ID yet.
+    const provisionOnly = { ...env,RELEASE_OPERATION: undefined }
+    expect(await verifyGroupRuntime(manifest,{ ...receipt,releaseId: null },readonly,id => inspectSiteRuntime(provisionOnly,id)))
+      .toEqual([expect.objectContaining({ state: 'paused',releaseId: null })])
+    await expect(verifyGroupRuntime(manifest,receipt,readonly,id => inspectSiteRuntime(provisionOnly,id))).rejects.toThrow('runtime proof mismatch')
     await expect(verifyGroupRuntime(manifest,{ ...receipt,commit: 'c'.repeat(40) },readonly,id => inspectSiteRuntime(env,id))).rejects.toThrow('runtime proof mismatch')
     await expect(verifyGroupRuntime(manifest,receipt,readonly,async id => {
       const proof = await inspectSiteRuntime(env,id)

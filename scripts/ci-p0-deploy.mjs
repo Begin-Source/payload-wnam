@@ -15,6 +15,10 @@ if (process.env.WORKERS_CI !== '1' || process.env.WORKERS_CI_COMMIT_SHA !== comm
   marker.commit !== commit || !existsSync('.open-next/worker.js')) throw new Error('P0 requires a successful commit-matched Workers Build')
 // Full commit-matched cloud checks/builds still ran. A reviewed unchanged-source
 // P1 recovery does not need another P0 upload or its unrelated online smoke.
+if (p1ReleaseRequest().admission) {
+  execFileSync(process.execPath,['scripts/ci-p1-admission.mjs'],{ env: process.env,stdio: 'inherit' })
+  process.exit(0)
+}
 if (p1ReleaseRequest().reconcile) {
   console.log(JSON.stringify({ event: 'p1_reviewed_reconciliation_only',commit }))
   execFileSync(process.execPath,['scripts/ci-p1-deploy.mjs'],{ env: process.env,stdio: 'inherit' })
