@@ -72,7 +72,10 @@ function requireHook(value: string) {
 export async function enqueueProvisionDispatch(database: D1Database,queue: Queue<ProvisionQueueMessage>) {
   const row = await database.prepare(`SELECT d.request_id AS requestId,d.input_digest AS inputDigest,d.build_branch AS buildBranch
     FROM site_provision_dispatch_runs d JOIN site_provision_requests q ON q.request_id=d.request_id
-    WHERE d.state='queued' AND q.state='queued' AND q.actor_user_id=7 AND q.owner_user_id=7 AND q.tenant_id IN (1,2)
+    WHERE d.state='queued' AND (q.state='queued' OR (q.state='provisioning' AND EXISTS
+      (SELECT 1 FROM site_provision_operations o WHERE o.operation_id=q.request_id
+        AND o.checkpoint=6 AND o.completed_at IS NOT NULL)))
+      AND q.actor_user_id=7 AND q.owner_user_id=7 AND q.tenant_id IN (1,2)
       AND NOT EXISTS (SELECT 1 FROM site_provision_dispatch_runs active
         WHERE active.state IN ('triggering_unknown','dispatched','running','needs_review'))
     ORDER BY d.queued_at,d.request_id LIMIT 1`).first<{ requestId: string; inputDigest: string; buildBranch: string }>()
@@ -138,8 +141,11 @@ export async function recoverProvisionDispatch(database: D1Database,value: unkno
       buildOutcome: string | null; state: string; triggerStartedAt: string | null; dispatchedAt: string | null;
       runningAt: string | null; completedAt: string | null; requestState: string
     }>()
+  const completed = row?.requestState === 'provisioning' ? Boolean(await database.prepare(
+    'SELECT 1 FROM site_provision_operations WHERE operation_id=? AND checkpoint=6 AND completed_at IS NOT NULL')
+    .bind(recovery.requestId).first()) : false
   if (!row || row.attemptCount !== recovery.attemptCount || !row.attemptId || !row.triggerStartedAt ||
-    !['dispatched','running','needs_review'].includes(row.state) || row.requestState !== 'queued') {
+    !['dispatched','running','needs_review'].includes(row.state) || row.requestState !== 'queued' && !completed) {
     throw new Error('Provision dispatch is not eligible for reviewed recovery')
   }
   const results = await database.batch([
@@ -167,7 +173,10 @@ export async function triggerProvisionBuild(database: D1Database,message: Provis
   const claimed = await database.prepare(`UPDATE site_provision_dispatch_runs SET state='triggering_unknown',attempt_id=?,
     attempt_count=attempt_count+1,trigger_started_at=${timestamp},last_error_code='hook_result_unknown'
     WHERE request_id=? AND input_digest=? AND state='queued'
-      AND EXISTS (SELECT 1 FROM site_provision_requests q WHERE q.request_id=? AND q.state='queued')
+      AND EXISTS (SELECT 1 FROM site_provision_requests q WHERE q.request_id=? AND
+        (q.state='queued' OR (q.state='provisioning' AND EXISTS
+          (SELECT 1 FROM site_provision_operations o WHERE o.operation_id=q.request_id
+            AND o.checkpoint=6 AND o.completed_at IS NOT NULL))))
       AND build_branch=? AND NOT EXISTS (SELECT 1 FROM site_provision_dispatch_runs active WHERE active.request_id!=?
         AND active.state IN ('triggering_unknown','dispatched','running','needs_review'))`)
     .bind(attemptId,input.requestId,input.inputDigest,input.requestId,input.buildBranch,input.requestId).run()
@@ -214,15 +223,15 @@ function validateEvent(event: ProvisionBuildEvent,env: ProvisionDispatchEnvironm
     !states.status.includes(event.payload.status) || !states.outcome.includes(event.payload.buildOutcome)) {
     throw new Error('Build event source mismatch')
   }
-  return metadata.buildTriggerSource === 'deploy_hook'
+  return metadata
 }
 
-/** Accept only the bound Cloudflare event source. A started event may attach
- * the exact build identity after a lost Hook response because the schema allows
- * only one unknown active dispatch. */
+/** Accept only an exact UUID already returned by the Hook. Older deployments
+ * that labeled Hooks distinctly may still attach a lost Hook response; a
+ * push_event without a stored UUID can never claim an ambiguous dispatch. */
 export async function observeProvisionBuild(database: D1Database,value: unknown,env: ProvisionDispatchEnvironment) {
   const event = buildEventSchema.parse(value)
-  if (!validateEvent(event,env)) return { event: eventName(event.type),ignored: true as const }
+  const metadata = validateEvent(event,env)
   const name = eventName(event.type),digest = await sha256(JSON.stringify(event))
   const eventKey = `${event.metadata.eventSubscriptionId}:${event.payload.buildUuid}:${name}:${event.metadata.eventTimestamp}`
   const existing = await database.prepare('SELECT payload_digest AS digest FROM site_provision_build_events WHERE event_key=?')
@@ -244,7 +253,10 @@ export async function observeProvisionBuild(database: D1Database,value: unknown,
       return { event: name,requestId: archived.requestId,archived: true as const,replayed: false as const }
     }
   }
-  if (!requestId) {
+  // Cloudflare currently labels Deploy Hook builds as push_event and leaves
+  // their commit empty. An exact UUID returned by the Hook remains sufficient
+  // authority; an unbound push event must never claim an ambiguous dispatch.
+  if (!requestId && metadata.buildTriggerSource === 'deploy_hook') {
     const attached = await database.prepare(`UPDATE site_provision_dispatch_runs SET build_uuid=?,build_commit=NULLIF(?,'')
       WHERE state='triggering_unknown' AND build_uuid IS NULL AND build_branch=?
       RETURNING request_id AS requestId`).bind(event.payload.buildUuid,event.payload.buildTriggerMetadata.commitHash,
@@ -252,7 +264,7 @@ export async function observeProvisionBuild(database: D1Database,value: unknown,
       .first<{ requestId: string }>()
     requestId = attached?.requestId
   }
-  if (!requestId) throw new Error('Build event has no active provision dispatch')
+  if (!requestId) return { event: name,ignored: true as const }
   const terminal = name !== 'started'
   let state = name === 'started' ? 'running' : 'needs_review'
   let error = name === 'failed' ? 'build_failed' : name === 'canceled' ? 'build_canceled' : 'build_succeeded_without_receipt'

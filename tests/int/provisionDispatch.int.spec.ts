@@ -163,8 +163,44 @@ describe('durable provision build dispatch on native D1',() => {
       async () => Response.json({ success: true,result: { build_uuid: buildUuid } }))
     const failed = buildEvent(buildUuid,'failed')
     failed.payload.status = 'stopped'; failed.payload.buildOutcome = 'fail'
+    failed.payload.buildTriggerMetadata.buildTriggerSource = 'push_event'
     failed.payload.buildTriggerMetadata.commitHash = ''
     await expect(observeProvisionBuild(db,failed,env())).resolves.toMatchObject({ state: 'needs_review' })
+  })
+
+  it('retries verification after a completed six-step operation without reopening resource creation',async () => {
+    const request = input('dispatch-completed-retry'),buildUuid = randomUUID(),recoveryId = randomUUID()
+    await submitProvisionAdmission(db,actor,request)
+    const message = await enqueueProvisionDispatch(db,queue)
+    await triggerProvisionBuild(db,message!,env().PROVISION_DEPLOY_HOOK_URL,
+      async () => Response.json({ success: true,result: { build_uuid: buildUuid } }))
+    await db.prepare(`UPDATE site_provision_requests SET prepared_request_json='{}',prepared_plan_json='{}',prepared_plan_digest='${'b'.repeat(64)}',
+      prepared_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE request_id=?`).bind(request.requestId).run()
+    await db.prepare(`INSERT INTO site_provision_operations
+      (operation_id,site_id,local_site_id,worker_group,binding_name,database_name,plan_json,plan_digest,checkpoint,created_at,completed_at)
+      SELECT request_id,site_id,local_site_id,'p1-group-1','SITE_D1_TEST','dispatch-test-db',prepared_plan_json,prepared_plan_digest,6,
+        strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now')
+      FROM site_provision_requests WHERE request_id=?`).bind(request.requestId).run()
+    const failed = buildEvent(buildUuid,'failed')
+    failed.payload.status = 'stopped'; failed.payload.buildOutcome = 'fail'
+    failed.payload.buildTriggerMetadata.buildTriggerSource = 'push_event'; failed.payload.buildTriggerMetadata.commitHash = ''
+    await expect(observeProvisionBuild(db,failed,env())).resolves.toMatchObject({ state: 'needs_review' })
+    const recovery = { recoveryId,requestId: request.requestId,buildUuid,attemptCount: 1,
+      reason: 'post_provision_smoke_transient_fetch',reviewedAt: new Date().toISOString(),
+      evidence: { status: 'stopped',outcome: 'fail',triggerSource: 'deploy_hook',branch: 'feat/site-per-d1' } }
+    await expect(recoverProvisionDispatch(db,recovery)).resolves.toMatchObject({ replayed: false })
+    const retry = await enqueueProvisionDispatch(db,queue),retryUuid = randomUUID()
+    expect(retry).toMatchObject({ requestId: request.requestId })
+    await triggerProvisionBuild(db,retry!,env().PROVISION_DEPLOY_HOOK_URL,
+      async () => Response.json({ success: true,result: { build_uuid: retryUuid } }))
+    await expect(selectProvisionBuildExecution(db,{ buildUuid: retryUuid,branch: 'feat/site-per-d1',commit: 'c'.repeat(40) }))
+      .resolves.toMatchObject({ requestId: request.requestId,requestState: 'provisioning' })
+    const succeeded = buildEvent(retryUuid,'succeeded')
+    succeeded.payload.status = 'stopped'; succeeded.payload.buildTriggerMetadata.buildTriggerSource = 'push_event'
+    succeeded.payload.buildTriggerMetadata.commitHash = ''
+    await expect(observeProvisionBuild(db,succeeded,env())).resolves.toMatchObject({ state: 'succeeded' })
+    expect(await db.prepare('SELECT checkpoint,completed_at AS completedAt FROM site_provision_operations WHERE operation_id=?')
+      .bind(request.requestId).first()).toMatchObject({ checkpoint: 6,completedAt: expect.any(String) })
   })
 
   it('rejects unrelated events, records retries idempotently and waits for the six-step receipt',async () => {

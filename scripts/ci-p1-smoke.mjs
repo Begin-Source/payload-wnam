@@ -28,6 +28,16 @@ const invoke = (page,path,init = {}) => page.evaluate(async ({ path,init }) => {
   const response = await fetch(path,init)
   return { status: response.status,cacheControl: response.headers.get('cache-control'),body: await response.text() }
 },{ path,init })
+const invokeRead = async (page,path) => {
+  for (let attempt = 1; ; attempt++) {
+    try { return await invoke(page,path) }
+    catch (error) {
+      if (attempt >= 5 || !/Failed to fetch|NetworkError|fetch failed/i.test(String(error))) throw error
+      console.log(JSON.stringify({ event: 'p1_remote_read_retry',host: new URL(page.url()).hostname,path,attempt }))
+      await page.waitForTimeout(250*attempt)
+    }
+  }
+}
 try {
   // Real DNS, real Cloudflare Workers, real TLS. No host resolver, Miniflare,
   // proxy to a fixture, or certificate-error suppression in remote acceptance.
@@ -64,12 +74,12 @@ try {
     await page.getByRole('navigation').first().waitFor({ timeout: 45000 })
     await page.waitForLoadState('networkidle')
     pages[id] = page
-    const me = await invoke(page,'/api/users/me')
+    const me = await invokeRead(page,'/api/users/me')
     assert.equal(me.status,200); assert.equal(JSON.parse(me.body).user.siteId,id); assert.equal(JSON.parse(me.body).user.centralUserId,'7')
     // Stable reserved synthetic content ID. A retry updates only a record whose
     // slug proves it belongs to this smoke; unrelated content is never adopted.
     const documentId = 990001,slug = 'p1-remote-isolation-probe'
-    const existing = await invoke(page,`/api/categories/${documentId}?depth=0`)
+    const existing = await invokeRead(page,`/api/categories/${documentId}?depth=0`)
     assert.ok([200,404].includes(existing.status))
     if (existing.status === 200) assert.equal(JSON.parse(existing.body).slug,slug,'Synthetic content ownership conflict')
     const body = { id: documentId,name: `Remote site ${id}`,slug,locale: 'en',site: route.localSiteId }
@@ -89,12 +99,12 @@ try {
   }
   const results = await Promise.all(Array.from({ length: 20 },(_,index) => {
     const id = routes[index % routes.length].siteId
-    return invoke(pages[id],`/api/categories/${docs[id].id}?depth=0`).then(result => ({ id,result }))
+    return invokeRead(pages[id],`/api/categories/${docs[id].id}?depth=0`).then(result => ({ id,result }))
   }))
   for (const { id,result } of results) { assert.equal(result.status,200); assert.equal(JSON.parse(result.body).name,`Remote site ${id}`) }
   const changed = await invoke(pages['p1-a'],'/api/categories/990001',{ method: 'PATCH',headers: { 'content-type': 'application/json' },body: JSON.stringify({ name: 'Changed only P1 A' }) })
   assert.equal(changed.status,200)
-  for (const { siteId: id } of routes.filter(route => route.siteId !== 'p1-a')) assert.equal(JSON.parse((await invoke(pages[id],'/api/categories/990001')).body).name,`Remote site ${id}`)
+  for (const { siteId: id } of routes.filter(route => route.siteId !== 'p1-a')) assert.equal(JSON.parse((await invokeRead(pages[id],'/api/categories/990001')).body).name,`Remote site ${id}`)
   const cookies = (await context.cookies()).filter(cookie => cookie.name === '__Host-site-session')
   assert.deepEqual(cookies.map(cookie => cookie.domain).sort(),hosts.slice(1).sort())
   assert.ok(cookies.every(cookie => cookie.httpOnly && cookie.secure && cookie.sameSite === 'Strict' && cookie.path === '/'))
@@ -107,32 +117,32 @@ try {
   for (const { siteId: id } of routes.filter(route => !['p1-a','p1-b'].includes(route.siteId))) {
     pendingRevocations.add(id)
     await centralQuery('DELETE FROM site_runtime_access WHERE site_id=? AND user_id=?',[id,'7'])
-    assert.equal((await invoke(pages[id],'/api/categories/990001')).status,403)
+    assert.equal((await invokeRead(pages[id],'/api/categories/990001')).status,403)
     assert.equal((await invoke(pages[id],'/api/categories/990001',{ method: 'PATCH',headers: { 'content-type': 'application/json' },body: JSON.stringify({ name: 'Denied' }) })).status,403)
     const others = routes.filter(route => route.siteId !== id).map(route => route.siteId)
-    for (const other of others) assert.equal((await invoke(pages[other],'/api/categories/990001')).status,200)
+    for (const other of others) assert.equal((await invokeRead(pages[other],'/api/categories/990001')).status,200)
     await centralQuery("INSERT INTO site_runtime_access (site_id,user_id,role) VALUES (?,'7','manager') ON CONFLICT(site_id,user_id) DO UPDATE SET role='manager'",[id])
     pendingRevocations.delete(id)
     console.log(JSON.stringify({ event: 'p1_new_site_revocation_passed',siteId: id,otherSitesUnaffected: others }))
   }
   currentPage = hub
   await checkLifecycleBrowser({ hub,siteId: 'p1-a',otherSiteId: 'p1-b',artifactPrefix: '.cloudflare-ci/remote-lifecycle',
-    siteRequest: () => invoke(pages['p1-a'],'/api/categories/990001'),otherSiteRequest: () => invoke(pages['p1-b'],'/api/categories/990001') })
+    siteRequest: () => invokeRead(pages['p1-a'],'/api/categories/990001'),otherSiteRequest: () => invokeRead(pages['p1-b'],'/api/categories/990001') })
   mcp = await checkMcpBrowser({ hub,siteId: 'p1-a',otherSiteId: 'p1-b',
-    siteRequest: () => invoke(pages['p1-a'],'/api/categories/990001'),otherSiteRequest: () => invoke(pages['p1-b'],'/api/categories/990001') })
+    siteRequest: () => invokeRead(pages['p1-a'],'/api/categories/990001'),otherSiteRequest: () => invokeRead(pages['p1-b'],'/api/categories/990001') })
   // A lifecycle change invalidated the old cookie. Enter again through the real
   // chooser before the independent grant-revocation/logout acceptance checks.
   await pages['p1-a'].goto(`${P1_ORIGIN}/admin`)
   await pages['p1-a'].locator('[data-site-id="p1-a"]').getByRole('button',{ name: /^进入网站 / }).click()
   await pages['p1-a'].waitForURL(url => url.hostname === 'cms-site-p1-a.beginos.org' && url.pathname === '/admin',{ timeout: 60000 })
-  assert.equal((await invoke(pages['p1-a'],'/api/categories/990001')).status,200)
+  assert.equal((await invokeRead(pages['p1-a'],'/api/categories/990001')).status,200)
   assert.deepEqual(failedAssets,[]); assert.deepEqual(browserErrors,[])
   revokeAttempted = true
   await centralQuery("DELETE FROM site_runtime_access WHERE site_id='p1-a' AND user_id='7'")
   await mcp.assertRevokedSite()
-  assert.equal((await invoke(pages['p1-a'],'/api/categories/990001')).status,403)
+  assert.equal((await invokeRead(pages['p1-a'],'/api/categories/990001')).status,403)
   assert.equal((await invoke(pages['p1-a'],'/api/categories/990001',{ method: 'PATCH',headers: { 'content-type': 'application/json' },body: JSON.stringify({ name: 'Denied' }) })).status,403)
-  assert.equal((await invoke(pages['p1-b'],'/api/categories/990001')).status,200)
+  assert.equal((await invokeRead(pages['p1-b'],'/api/categories/990001')).status,200)
   const logout = pages['p1-b'].waitForResponse(response => new URL(response.url()).pathname === '/api/users/logout' && response.request().method() === 'POST')
   await pages['p1-b'].goto('https://cms-site-p1-b.beginos.org/admin/logout')
   assert.equal((await logout).status(),200)

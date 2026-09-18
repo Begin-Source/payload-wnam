@@ -1,11 +1,11 @@
 {
   "enabled": true,
-  "recoveryId": "0da0a2fc-6760-4afc-9be7-f2bbc3b06729",
+  "recoveryId": "ea37b185-fb39-49f8-8487-5ac798252472",
   "requestId": "79d647a4-a4fb-4e8b-8403-8372c67e0452",
-  "buildUuid": "91d63794-9d0f-4b89-b20d-4b8eced3122d",
-  "attemptCount": 1,
-  "reason": "deploy_hook_commit_identity_gate",
-  "reviewedAt": "2026-09-18T08:30:00.000Z",
+  "buildUuid": "9125db52-b7a7-41ac-8cb3-28eb5fe0ea3e",
+  "attemptCount": 2,
+  "reason": "post_provision_smoke_transient_fetch",
+  "reviewedAt": "2026-09-18T09:32:00.000Z",
   "evidence": {
     "status": "stopped",
     "outcome": "fail",
