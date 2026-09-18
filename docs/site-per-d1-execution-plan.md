@@ -214,7 +214,7 @@ P0 是硬门槛，后续不能先默认通过。每阶段实现和检查通过 C
 
 ### 运维命令
 
-- `site:provision`：分配站点、创建 D1、初始化 schema、登记分组与绑定。[云端命令](site-per-d1-provision-command.md)已接通 `--request`、`--dry-run`、`--apply` 与六步恢复；[首次通用 D 站真实创建和单组普通发布](site-per-d1-p1-provision-d.md)已通过云端四站验收、上传中断恢复和完成后只读重入。[多请求历史解析与逐组发布协调](site-per-d1-fleet-management.md)已通过原生多组恢复测试及实际单组四站核验；中央建站入口、动态新请求执行和完整多组云端入口仍待完成。扩组后的历史站点改用独立只读核验。
+- `site:provision`：分配站点、创建 D1、初始化 schema、登记分组与绑定。[云端命令](site-per-d1-provision-command.md)已接通 `--request`、`--dry-run`、`--apply` 与六步恢复；[首次通用 D 站真实创建和单组普通发布](site-per-d1-p1-provision-d.md)已通过云端四站验收、上传中断恢复和完成后只读重入。[多请求历史解析与逐组发布协调](site-per-d1-fleet-management.md)已通过原生多组恢复测试及实际单组核验；[中央申请到 Queue/Cron/Deploy Hook、幂等执行及构建终态对账](site-per-d1-p1-dispatch.md)已通过六站真实云端验收。完整多组云端入口仍待完成，扩组后的历史站点改用独立只读核验。
 - `site:migrate --dry-run`：只检查数据归属、关系和目标准备情况。
 - `site:migrate --apply`：按单站冻结流程复制、核验和切换。
 - `db:fleet-migrate`：按分组、schema 版本渐进迁移。

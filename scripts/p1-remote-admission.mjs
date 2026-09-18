@@ -30,7 +30,7 @@ export async function checkRemoteAdmission({ hub,centralQuery,writeProbe = false
     assert.deepEqual(await centralQuery('SELECT operation_id,checkpoint,completed_at FROM site_provision_operations ORDER BY operation_id'),before)
     await hub.setViewportSize({ width: 1365,height: 900 })
     console.log(JSON.stringify({ event: 'p1_remote_admission_read_only_passed',checkedAt: new Date().toISOString(),remoteDeployment: true,
-      checks: ['central-v7','real-ui-options','bounded-form','desktop-mobile','no-request-write','no-provision-effects'] }))
+      checks: ['central-v8','real-ui-options','bounded-form','desktop-mobile','no-request-write','no-provision-effects'] }))
     return
   }
   let input

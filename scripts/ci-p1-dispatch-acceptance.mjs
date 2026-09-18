@@ -17,7 +17,7 @@ const expectedRequest = {
 export function p1DispatchAcceptance() {
   const value = JSON.parse(readFileSync(acceptancePath,'utf8'))
   assert.deepEqual(Object.keys(value).sort(),['enabled','request'])
-  assert.equal(value.enabled,true)
+  assert.equal(typeof value.enabled,'boolean')
   assert.deepEqual(value.request,expectedRequest)
   return value
 }
@@ -33,7 +33,12 @@ async function submit() {
     console.log(JSON.stringify({ event: 'p1_dispatch_acceptance_skipped',reason: 'dispatch-build',buildUuid: selection.buildUuid }))
     return
   }
-  const { request } = p1DispatchAcceptance(),password = process.env.P1_TEST_PASSWORD
+  const { enabled,request } = p1DispatchAcceptance()
+  if (!enabled) {
+    console.log(JSON.stringify({ event: 'p1_dispatch_acceptance_skipped',reason: 'disabled',buildUuid: selection.buildUuid }))
+    return
+  }
+  const password = process.env.P1_TEST_PASSWORD
   assert.ok(password && password.length >= 32,'Synthetic P1 acceptance credential unavailable')
   const browserEnv = { ...process.env,...browserLibraryEnvironment() }
   const browser = await chromium.launch({ headless: true,args: ['--disable-background-networking'],env: browserEnv })

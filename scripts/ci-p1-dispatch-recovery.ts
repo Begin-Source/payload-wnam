@@ -15,9 +15,13 @@ const operation = JSON.parse(readFileSync('operations/p1-dispatch-recovery.json'
   enabled: boolean; recoveryId: string; requestId: string; buildUuid: string; attemptCount: number;
   reason: string; reviewedAt: string; evidence: { status: string; outcome: string; triggerSource: string; branch: string }
 }
-assert.equal(operation.enabled,true)
 assert.deepEqual(Object.keys(operation).sort(),['attemptCount','buildUuid','enabled','evidence','reason','recoveryId','requestId','reviewedAt'])
+assert.equal(typeof operation.enabled,'boolean')
 assert.deepEqual(operation.evidence,{ status: 'stopped',outcome: 'fail',triggerSource: 'deploy_hook',branch: 'feat/site-per-d1' })
+if (!operation.enabled) {
+  console.log(JSON.stringify({ event: 'p1_dispatch_recovery_skipped',reason: 'disabled',recoveryId: operation.recoveryId }))
+  process.exit(0)
+}
 const { central } = p1Manifests(),configPath = '.cloudflare-ci/p1-dispatch-recovery-central.json'
 writeFileSync(configPath,JSON.stringify({ name: 'payload-wnam-p1-dispatch-recovery',account_id: P1_ACCOUNT,
   compatibility_date: central.compatibility_date,compatibility_flags: central.compatibility_flags,
