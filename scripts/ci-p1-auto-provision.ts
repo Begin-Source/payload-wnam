@@ -4,11 +4,12 @@ import { readFileSync,writeFileSync } from 'node:fs'
 import { getPlatformProxy } from 'wrangler'
 import { selectProvisionBuildExecution } from '../src/site-control/provisionDispatch'
 import { P1_ACCOUNT,P1_EMAIL,p1Manifests } from './p1-manifests.mjs'
+import { workersCiCommit } from './workers-ci-identity.mjs'
 
 assert.equal(process.env.WORKERS_CI,'1')
 assert.equal(process.env.P1_AUTO_PROVISION,'1')
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
-assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit)
+assert.equal(workersCiCommit(),commit)
 assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
 const buildUuid = process.env.WORKERS_CI_BUILD_UUID,branch = process.env.WORKERS_CI_BRANCH
 assert.match(buildUuid ?? '',/^[a-f0-9]{8}-[a-f0-9-]{27,}$/)

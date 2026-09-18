@@ -12,10 +12,11 @@ import { p1BaseManifests, P1_ACCOUNT, P1_ORIGIN } from './p1-manifests.mjs'
 import { roleSchemaDigest, type RoleSchema } from './p1-schema'
 import { ProvisionCloudflare } from './site-operations/cloudflare'
 import { prepareSiteDatabase } from './site-operations/prepare'
+import { workersCiCommit } from './workers-ci-identity.mjs'
 
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1')
-assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit); assert.equal(process.env.P1_SITE_PREPARE,'1')
+assert.equal(workersCiCommit(),commit); assert.equal(process.env.P1_SITE_PREPARE,'1')
 assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
 const { central,site } = p1BaseManifests()
 const centralId = central.d1_databases[0].database_id as string

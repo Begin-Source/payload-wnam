@@ -9,7 +9,7 @@ import { provisionDispatchSchema } from '../../src/site-control/provisionDispatc
 import { provisionDispatchRunSchema } from '../../src/site-control/provisionDispatchRunSchema'
 import { submitProvisionAdmission,cancelProvisionAdmission } from '../../src/site-control/provisionAdmission'
 import { enqueueProvisionDispatch,observeProvisionBuild,triggerProvisionBuild,
-  selectProvisionBuildExecution,type ProvisionDispatchEnvironment,type ProvisionQueueMessage } from '../../src/site-control/provisionDispatch'
+  recoverProvisionDispatch,selectProvisionBuildExecution,type ProvisionDispatchEnvironment,type ProvisionQueueMessage } from '../../src/site-control/provisionDispatch'
 
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
 const { Miniflare } = require('miniflare')
@@ -55,7 +55,7 @@ describe('durable provision build dispatch on native D1',() => {
   afterAll(async () => { await mf?.dispose() })
   beforeEach(async () => {
     sent.length = 0; vi.mocked(queue.send).mockClear()
-    await db.batch(['site_provision_build_events','site_provision_dispatch_runs','site_provision_dispatches','site_provision_requests','site_provision_steps',
+    await db.batch(['site_provision_build_events','site_provision_dispatch_attempts','site_provision_dispatch_runs','site_provision_dispatches','site_provision_requests','site_provision_steps',
       'site_provision_operations','sites','users_sessions','users_roles','users_tenants','users','tenants']
       .map(table => db.prepare(`DELETE FROM ${table}`)))
     await db.batch([
@@ -130,6 +130,41 @@ describe('durable provision build dispatch on native D1',() => {
     })
     expect(await db.prepare('SELECT build_commit FROM site_provision_dispatch_runs WHERE request_id=?')
       .bind(request.requestId).first('build_commit')).toBe(commit)
+  })
+
+  it('archives an externally verified failed Hook build before one reviewed retry',async () => {
+    const request = input('dispatch-recovery'),buildUuid = randomUUID(),recoveryId = randomUUID()
+    await submitProvisionAdmission(db,actor,request)
+    const message = await enqueueProvisionDispatch(db,queue)
+    await triggerProvisionBuild(db,message!,env().PROVISION_DEPLOY_HOOK_URL,
+      async () => Response.json({ success: true,result: { build_uuid: buildUuid } }))
+    const recovery = { recoveryId,requestId: request.requestId,buildUuid,attemptCount: 1,
+      reason: 'verified_build_failure',reviewedAt: new Date().toISOString(),
+      evidence: { status: 'stopped',outcome: 'fail',triggerSource: 'deploy_hook',branch: 'feat/site-per-d1' } }
+    await expect(recoverProvisionDispatch(db,recovery)).resolves.toMatchObject({ replayed: false })
+    expect(await db.prepare('SELECT state,build_uuid AS buildUuid,attempt_count AS attemptCount FROM site_provision_dispatch_runs WHERE request_id=?')
+      .bind(request.requestId).first()).toEqual({ state: 'queued',buildUuid: null,attemptCount: 1 })
+    expect(await db.prepare('SELECT build_uuid AS buildUuid,recovery_id AS recoveryId FROM site_provision_dispatch_attempts')
+      .first()).toEqual({ buildUuid,recoveryId })
+    await expect(recoverProvisionDispatch(db,recovery)).resolves.toMatchObject({ replayed: true })
+    const retry = await enqueueProvisionDispatch(db,queue),retryUuid = randomUUID()
+    await triggerProvisionBuild(db,retry!,env().PROVISION_DEPLOY_HOOK_URL,
+      async () => Response.json({ success: true,result: { build_uuid: retryUuid } }))
+    expect(await db.prepare('SELECT state,build_uuid AS buildUuid,attempt_count AS attemptCount FROM site_provision_dispatch_runs WHERE request_id=?')
+      .bind(request.requestId).first()).toEqual({ state: 'dispatched',buildUuid: retryUuid,attemptCount: 2 })
+    await expect(recoverProvisionDispatch(db,recovery)).resolves.toMatchObject({ replayed: true })
+  })
+
+  it('accepts the stopped/fail metadata emitted by commit-less Deploy Hooks',async () => {
+    const request = input('dispatch-hook-event'),buildUuid = randomUUID()
+    await submitProvisionAdmission(db,actor,request)
+    const message = await enqueueProvisionDispatch(db,queue)
+    await triggerProvisionBuild(db,message!,env().PROVISION_DEPLOY_HOOK_URL,
+      async () => Response.json({ success: true,result: { build_uuid: buildUuid } }))
+    const failed = buildEvent(buildUuid,'failed')
+    failed.payload.status = 'stopped'; failed.payload.buildOutcome = 'fail'
+    failed.payload.buildTriggerMetadata.commitHash = ''
+    await expect(observeProvisionBuild(db,failed,env())).resolves.toMatchObject({ state: 'needs_review' })
   })
 
   it('rejects unrelated events, records retries idempotently and waits for the six-step receipt',async () => {

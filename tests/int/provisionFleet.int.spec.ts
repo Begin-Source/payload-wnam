@@ -97,7 +97,7 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
     journal = new ProvisionJournal(db,{ accountId: source.plan.accountId,centralDatabaseId: centralId })
   })
   beforeEach(async () => {
-    for (const table of ['site_provision_build_events','site_provision_dispatch_runs','site_provision_dispatches','site_provision_requests','site_group_releases','site_group_leases','site_provision_steps','site_provision_operations','site_runtime_access','site_runtime_registry']) await db.prepare(`DELETE FROM ${table}`).run()
+    for (const table of ['site_provision_build_events','site_provision_dispatch_attempts','site_provision_dispatch_runs','site_provision_dispatches','site_provision_requests','site_group_releases','site_group_leases','site_provision_steps','site_provision_operations','site_runtime_access','site_runtime_registry']) await db.prepare(`DELETE FROM ${table}`).run()
   })
   afterAll(async () => { await mf?.dispose() })
   it('assembles two groups and three completed histories through a read-only database capability',async () => {

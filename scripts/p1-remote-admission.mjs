@@ -13,7 +13,7 @@ export async function checkRemoteAdmission({ hub,centralQuery,writeProbe = false
   },{ path,body })
   const before = await centralQuery('SELECT operation_id,checkpoint,completed_at FROM site_provision_operations ORDER BY operation_id')
   const schema = await centralQuery('SELECT operation_id,completed FROM p1_schema_bootstrap WHERE id=1')
-  assert.deepEqual(schema,[{ operation_id: 'p1-central-schema-v7',completed: 1 }])
+  assert.deepEqual(schema,[{ operation_id: 'p1-central-schema-v8',completed: 1 }])
   if (!writeProbe) {
     await region.getByLabel('所属租户',{ exact: true }).selectOption('1')
     await region.getByRole('button',{ name: '申请建站',exact: true }).click()

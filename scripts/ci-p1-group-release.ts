@@ -19,10 +19,11 @@ import { releaseProvisionFleet } from './site-operations/fleet'
 import { resolveAdmissionFleet } from './site-operations/admission-fleet'
 import { fleetReleaseArtifact } from './site-operations/fleet-artifact'
 import { verifyGroupRuntime } from './site-operations/verify-group-runtime'
+import { workersCiCommit } from './workers-ci-identity.mjs'
 
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1'); assert.equal(process.env.P1_GROUP_RELEASE,'1')
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
-assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit); assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
+assert.equal(workersCiCommit(),commit); assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
 assert.equal(process.env.WRANGLER_CI_OVERRIDE_NAME,undefined); assert.equal(process.env.WRANGLER_CI_MATCH_TAG,undefined)
 const selection = p1ReleaseRequest(),anchor = parseProvisionRequest(selection.request),{ plan: anchorPlan,baseline,central } = anchor
 const api = new ProvisionCloudflare(anchorPlan.accountId,process.env.CLOUDFLARE_API_TOKEN ?? '')

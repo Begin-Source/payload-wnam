@@ -11,10 +11,11 @@ import { p1Manifests, p1BaseManifests, P1_ACCOUNT, P1_EMAIL } from './p1-manifes
 import { provisionBrowserAcceptance } from './site-operations/acceptance'
 import { browserLibraryEnvironment } from './ci-browser-libs.mjs'
 import type { inspectProvisionedSite } from '../src/site-runtime/provisionInspection'
+import { workersCiCommit } from './workers-ci-identity.mjs'
 
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1')
-assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit); assert.equal(process.env.P1_SITE_FINISH,'1')
+assert.equal(workersCiCommit(),commit); assert.equal(process.env.P1_SITE_FINISH,'1')
 assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
 const { central,site } = p1Manifests(),base = p1BaseManifests().site
 const centralId = central.d1_databases[0].database_id as string

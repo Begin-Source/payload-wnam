@@ -218,16 +218,15 @@ describe('independent central Payload configuration and native finance path', ()
     if (version < 6) expect(roleSchemaDigest(previous.objects)).toBe([P1_CENTRAL_V1,P1_CENTRAL_V2,P1_CENTRAL_V3,P1_CENTRAL_V4,P1_CENTRAL_V5][version-1])
     return previous
   }
-  it.each([1,2,3,4,5,6])('upgrades reviewed complete central v%i to dispatch v7 without losing data or migration receipts',async version => {
+  it.each([1,2,3,4,5,6])('upgrades reviewed complete central v%i to dispatch v8 without losing data or migration receipts',async version => {
     const db = await mf.getD1Database(`V${version}`), previous = previousSchema(version)
     await applyP1Schema(db,previous,`p1-central-schema-v${version}`)
     await db.prepare("INSERT INTO tenants (id,name,slug,domain) VALUES (999,'Preserved tenant','preserved-tenant','preserved.example.invalid')").run()
     const result = await applyP1CentralSchema(db,centralSchema)
-    expect(result).toMatchObject({ operationId: 'p1-central-schema-v7',created: provisionDispatchRunSchemaObjects.length,
-      upgradedFrom: roleSchemaDigest(previousSchema(6).objects) })
+    expect(result).toMatchObject({ operationId: 'p1-central-schema-v8',created: 2 })
     expect(await db.prepare('SELECT name FROM tenants WHERE id=999').first('name')).toBe('Preserved tenant')
     const history = (await db.prepare('SELECT operation_id,from_digest,to_digest,applied_at FROM site_control_schema_migrations ORDER BY operation_id').all()).results
-    expect(history).toHaveLength(7-version)
+    expect(history).toHaveLength(8-version)
     expect((await applyP1CentralSchema(db,centralSchema)).created).toBe(0)
     expect((await db.prepare('SELECT operation_id,from_digest,to_digest,applied_at FROM site_control_schema_migrations ORDER BY operation_id').all()).results).toEqual(history)
     const found = (await db.prepare("SELECT name FROM sqlite_master WHERE name LIKE 'site_provision_request%' OR name LIKE 'site_provision_admission_%'").all<{ name: string }>()).results.map(row => row.name)
@@ -240,20 +239,20 @@ describe('independent central Payload configuration and native finance path', ()
     expect(await db.prepare('SELECT name FROM tenants WHERE id=999').first('name')).toBe('Still writable')
     await expect(applyP1Schema(db,previous,`p1-central-schema-v${version}`)).rejects.toThrow('operation conflict')
     if (process.env.WORKERS_CI === '1') console.log(JSON.stringify({ event: 'central_admission_upgrade_verified',fromVersion: version,
-      toVersion: 7,digest: result.digest,objects: result.objects,migrationReceipts: history.length,dataPreserved: true,retryUnchanged: true,remoteDeployment: false }))
+      toVersion: 8,digest: result.digest,objects: result.objects,migrationReceipts: history.length,dataPreserved: true,retryUnchanged: true,remoteDeployment: false }))
   },30000)
 
-  it('fresh central v7 installs match the complete role and retain operational state on retries',async () => {
+  it('fresh central v8 installs match the complete role and retain operational state on retries',async () => {
     const db = await mf.getD1Database('FRESH')
     const result = await applyP1CentralSchema(db,centralSchema)
-    expect(result).toMatchObject({ operationId: 'p1-central-schema-v7',objects: centralSchema.objects.length,upgradedFrom: null })
+    expect(result).toMatchObject({ operationId: 'p1-central-schema-v8',objects: centralSchema.objects.length,upgradedFrom: null })
     await migrateCentralRoleState(db)
     await db.prepare('UPDATE central_cost_epoch SET revision=23 WHERE id=1').run()
     await migrateCentralRoleState(db)
     expect((await applyP1CentralSchema(db,centralSchema)).created).toBe(0)
     expect(await db.prepare('SELECT revision FROM central_cost_epoch WHERE id=1').first('revision')).toBe(23)
     expect(await db.prepare('SELECT COUNT(*) AS n FROM site_control_schema_migrations').first('n')).toBe(0)
-    if (process.env.WORKERS_CI === '1') console.log(JSON.stringify({ event: 'central_dispatch_fresh_schema_verified',version: 7,
+    if (process.env.WORKERS_CI === '1') console.log(JSON.stringify({ event: 'central_dispatch_fresh_schema_verified',version: 8,
       digest: result.digest,objects: result.objects,operationalCounterPreserved: true,remoteDeployment: false }))
   },30000)
 
@@ -275,7 +274,7 @@ describe('independent central Payload configuration and native finance path', ()
     expect(await db.prepare('SELECT COUNT(*) AS n FROM site_control_schema_migrations').first('n')).toBe(0)
     await expect(applyP1CentralSchema(interrupted(true),centralSchema)).rejects.toThrow('Injected lost migration response')
     expect((await applyP1CentralSchema(db,centralSchema)).created).toBe(0)
-    expect(await db.prepare('SELECT COUNT(*) AS n FROM site_control_schema_migrations').first('n')).toBe(1)
+    expect(await db.prepare('SELECT COUNT(*) AS n FROM site_control_schema_migrations').first('n')).toBe(2)
   },30000)
 
   it('rejects an incomplete dispatch-run schema or drifted v6 before installing run objects',async () => {

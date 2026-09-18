@@ -21,11 +21,12 @@ import { finishProvisionedSite, type GroupDeployment } from './finish'
 import { validateProvisionSchema } from './schema'
 import { provisionSite, type ProvisionMode } from './provision'
 import { provisionBrowserAcceptance } from './acceptance'
+import { workersCiCommit } from '../workers-ci-identity.mjs'
 import { verifyProvisionAdmissionHandoff } from './admission'
 
 assert.equal(process.env.WORKERS_CI,'1'); assert.ok(['feat/site-per-d1','main'].includes(process.env.WORKERS_CI_BRANCH ?? ''))
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
-assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit)
+assert.equal(workersCiCommit(),commit)
 assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
 assert.ok(process.env.SITE_PROVISION_REQUEST && ['dry-run','apply'].includes(process.env.SITE_PROVISION_MODE ?? ''))
 const rawRequest: unknown = JSON.parse(readFileSync(process.env.SITE_PROVISION_REQUEST,'utf8'))

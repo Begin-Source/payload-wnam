@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "recoveryId": "0da0a2fc-6760-4afc-9be7-f2bbc3b06729",
+  "requestId": "79d647a4-a4fb-4e8b-8403-8372c67e0452",
+  "buildUuid": "91d63794-9d0f-4b89-b20d-4b8eced3122d",
+  "attemptCount": 1,
+  "reason": "deploy_hook_commit_identity_gate",
+  "reviewedAt": "2026-09-18T08:30:00.000Z",
+  "evidence": {
+    "status": "stopped",
+    "outcome": "fail",
+    "triggerSource": "deploy_hook",
+    "branch": "feat/site-per-d1"
+  }
+}

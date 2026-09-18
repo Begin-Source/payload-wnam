@@ -13,11 +13,12 @@ import { ProvisionCloudflare } from './cloudflare'
 import { parseProvisionFleet } from './fleet'
 import { parseProvisionRequest } from './manifest'
 import { validateProvisionSchema } from './schema'
+import { workersCiCommit } from '../workers-ci-identity.mjs'
 
 assert.equal(process.env.WORKERS_CI,'1')
 assert.ok(['feat/site-per-d1','main'].includes(process.env.WORKERS_CI_BRANCH ?? ''))
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
-assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit)
+assert.equal(workersCiCommit(),commit)
 assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
 assert.equal(process.env.WRANGLER_CI_OVERRIDE_NAME,undefined)
 assert.equal(process.env.WRANGLER_CI_MATCH_TAG,undefined)

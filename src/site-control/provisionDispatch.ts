@@ -16,7 +16,7 @@ const buildEventSchema = z.object({
   source: z.object({ type: z.literal('workersBuilds.worker'),workerName: z.string().min(1) }).passthrough(),
   payload: z.object({
     buildUuid: z.string().regex(/^[A-Za-z0-9_-]{8,100}$/),status: z.string().min(1),buildOutcome: z.string().nullable(),
-    buildTriggerMetadata: z.object({ buildTriggerSource: z.string().min(1),branch: z.string().min(1),commitHash: z.string().regex(/^[a-f0-9]{7,64}$/),
+    buildTriggerMetadata: z.object({ buildTriggerSource: z.string().min(1),branch: z.string().min(1),commitHash: z.string().regex(/^(?:[a-f0-9]{7,64})?$/),
       repoName: z.string().min(1),providerAccountName: z.string().min(1),providerType: z.literal('github') }).passthrough(),
   }).passthrough(),
   metadata: z.object({ accountId: z.string().regex(/^[a-f0-9]{32}$/),eventSubscriptionId: z.string().min(8),
@@ -27,6 +27,13 @@ export type ProvisionQueueMessage = ProvisionDispatchMessage | ProvisionBuildEve
 
 const buildExecutionSchema = z.object({
   buildUuid: z.string().uuid(),branch: z.string().min(1).max(255),commit: z.string().regex(/^[a-f0-9]{40}$/),
+}).strict()
+
+const dispatchRecoverySchema = z.object({
+  recoveryId: provisionUuidSchema,requestId: provisionUuidSchema,buildUuid: z.string().uuid(),attemptCount: z.number().int().positive(),
+  reason: z.string().regex(/^[a-z0-9_]{3,100}$/),reviewedAt: z.string().datetime({ offset: true }),
+  evidence: z.object({ status: z.literal('stopped'),outcome: z.literal('fail'),triggerSource: z.literal('deploy_hook'),
+    branch: z.literal('feat/site-per-d1') }).strict(),
 }).strict()
 
 export type ProvisionDispatchEnvironment = {
@@ -105,6 +112,53 @@ export async function selectProvisionBuildExecution(database: D1Database,value: 
     buildUuid: build.buildUuid,branch: build.branch,commit: build.commit }
 }
 
+/** A retry is a reviewed maintenance action. Archive the complete prior build
+ * identity before clearing the active slot; the immutable trigger permits only
+ * that exact atomic transition. Replays return the existing recovery receipt. */
+export async function recoverProvisionDispatch(database: D1Database,value: unknown) {
+  const recovery = dispatchRecoverySchema.parse(value)
+  const archived = await database.prepare(`SELECT request_id AS requestId,attempt_count AS attemptCount
+    FROM site_provision_dispatch_attempts WHERE recovery_id=?`).bind(recovery.recoveryId)
+    .first<{ requestId: string; attemptCount: number }>()
+  if (archived) {
+    if (archived.requestId !== recovery.requestId || archived.attemptCount !== recovery.attemptCount) {
+      throw new Error('Provision dispatch recovery identity conflict')
+    }
+    const current = await readDispatch(database,recovery.requestId)
+    if (!current || current.buildUuid === recovery.buildUuid) throw new Error('Provision dispatch recovery replay mismatch')
+    return { ...recovery,replayed: true as const }
+  }
+  const row = await database.prepare(`SELECT r.request_id AS requestId,r.attempt_count AS attemptCount,r.attempt_id AS attemptId,
+      r.build_uuid AS buildUuid,r.build_commit AS buildCommit,r.build_outcome AS buildOutcome,r.state,
+      r.trigger_started_at AS triggerStartedAt,r.dispatched_at AS dispatchedAt,r.running_at AS runningAt,
+      r.completed_at AS completedAt,q.state AS requestState
+    FROM site_provision_dispatch_runs r JOIN site_provision_requests q ON q.request_id=r.request_id
+    WHERE r.request_id=? AND r.build_uuid=?`).bind(recovery.requestId,recovery.buildUuid).first<{
+      requestId: string; attemptCount: number; attemptId: string | null; buildUuid: string; buildCommit: string | null;
+      buildOutcome: string | null; state: string; triggerStartedAt: string | null; dispatchedAt: string | null;
+      runningAt: string | null; completedAt: string | null; requestState: string
+    }>()
+  if (!row || row.attemptCount !== recovery.attemptCount || !row.attemptId || !row.triggerStartedAt ||
+    !['dispatched','running','needs_review'].includes(row.state) || row.requestState !== 'queued') {
+    throw new Error('Provision dispatch is not eligible for reviewed recovery')
+  }
+  const results = await database.batch([
+    database.prepare(`INSERT INTO site_provision_dispatch_attempts
+      (request_id,attempt_count,attempt_id,build_uuid,build_commit,build_outcome,dispatch_state,trigger_started_at,
+       dispatched_at,running_at,completed_at,recovery_id,recovery_reason,recovery_evidence_status,recovery_evidence_outcome,
+       recovery_trigger_source,reviewed_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(row.requestId,row.attemptCount,row.attemptId,row.buildUuid,row.buildCommit,
+        row.buildOutcome,row.state,row.triggerStartedAt,row.dispatchedAt,row.runningAt,row.completedAt,recovery.recoveryId,
+        recovery.reason,recovery.evidence.status,recovery.evidence.outcome,recovery.evidence.triggerSource,recovery.reviewedAt),
+    database.prepare(`UPDATE site_provision_dispatch_runs SET state='queued',attempt_id=NULL,build_uuid=NULL,build_commit=NULL,
+      build_outcome=NULL,trigger_started_at=NULL,dispatched_at=NULL,running_at=NULL,completed_at=NULL,last_error_code=NULL
+      WHERE request_id=? AND build_uuid=? AND attempt_count=? AND state IN ('dispatched','running','needs_review')`)
+      .bind(recovery.requestId,recovery.buildUuid,recovery.attemptCount),
+  ])
+  if (results[0].meta.changes !== 1 || results[1].meta.changes !== 1) throw new Error('Provision dispatch recovery was not committed')
+  return { ...recovery,replayed: false as const }
+}
+
 /** Claim before the non-idempotent POST. Any response loss leaves an explicit
  * unknown result and must never cause an automatic second POST. */
 export async function triggerProvisionBuild(database: D1Database,message: ProvisionDispatchMessage,hook: string,
@@ -147,14 +201,17 @@ function eventName(type: ProvisionBuildEvent['type']) {
 
 function validateEvent(event: ProvisionBuildEvent,env: ProvisionDispatchEnvironment) {
   const metadata = event.payload.buildTriggerMetadata
-  const expected = eventName(event.type) === 'started' ? ['running',null] :
-    eventName(event.type) === 'succeeded' ? ['success','success'] :
-      eventName(event.type) === 'failed' ? ['failed','failure'] : ['canceled','canceled']
+  const states: { status: readonly string[]; outcome: readonly (string | null)[] } = {
+    started: { status: ['started','queued','running','building'],outcome: [null] },
+    succeeded: { status: ['success','succeeded','stopped'],outcome: ['success'] },
+    failed: { status: ['fail','failed','failure','stopped'],outcome: ['fail','failure'] },
+    canceled: { status: ['cancelled','canceled','stopped'],outcome: ['cancelled','canceled'] },
+  }[eventName(event.type)]
   if (event.metadata.accountId !== env.PROVISION_BUILD_ACCOUNT_ID ||
     event.metadata.eventSubscriptionId !== env.PROVISION_BUILD_EVENT_SUBSCRIPTION_ID ||
     event.source.workerName !== env.PROVISION_BUILD_WORKER || metadata.branch !== env.PROVISION_BUILD_BRANCH ||
     metadata.repoName !== env.PROVISION_BUILD_REPOSITORY || metadata.providerAccountName !== env.PROVISION_BUILD_REPOSITORY_OWNER ||
-    event.payload.status !== expected[0] || event.payload.buildOutcome !== expected[1]) {
+    !states.status.includes(event.payload.status) || !states.outcome.includes(event.payload.buildOutcome)) {
     throw new Error('Build event source mismatch')
   }
   return metadata.buildTriggerSource === 'deploy_hook'
@@ -178,7 +235,17 @@ export async function observeProvisionBuild(database: D1Database,value: unknown,
     .bind(event.payload.buildUuid).first<{ requestId: string }>()
   let requestId = byBuild?.requestId
   if (!requestId) {
-    const attached = await database.prepare(`UPDATE site_provision_dispatch_runs SET build_uuid=?,build_commit=?
+    const archived = await database.prepare('SELECT request_id AS requestId FROM site_provision_dispatch_attempts WHERE build_uuid=?')
+      .bind(event.payload.buildUuid).first<{ requestId: string }>()
+    if (archived) {
+      await database.prepare(`INSERT INTO site_provision_build_events
+        (event_key,build_uuid,event_type,event_timestamp,payload_digest,received_at) VALUES (?,?,?,?,?,${timestamp})`)
+        .bind(eventKey,event.payload.buildUuid,name,event.metadata.eventTimestamp,digest).run()
+      return { event: name,requestId: archived.requestId,archived: true as const,replayed: false as const }
+    }
+  }
+  if (!requestId) {
+    const attached = await database.prepare(`UPDATE site_provision_dispatch_runs SET build_uuid=?,build_commit=NULLIF(?,'')
       WHERE state='triggering_unknown' AND build_uuid IS NULL AND build_branch=?
       RETURNING request_id AS requestId`).bind(event.payload.buildUuid,event.payload.buildTriggerMetadata.commitHash,
         event.payload.buildTriggerMetadata.branch)
@@ -205,7 +272,7 @@ export async function observeProvisionBuild(database: D1Database,value: unknown,
     database.prepare(`INSERT INTO site_provision_build_events
       (event_key,build_uuid,event_type,event_timestamp,payload_digest,received_at) VALUES (?,?,?,?,?,${timestamp})`)
       .bind(eventKey,event.payload.buildUuid,name,event.metadata.eventTimestamp,digest),
-    database.prepare(`UPDATE site_provision_dispatch_runs SET build_commit=COALESCE(build_commit,?),
+    database.prepare(`UPDATE site_provision_dispatch_runs SET build_commit=COALESCE(build_commit,NULLIF(?,'')),
       state=CASE WHEN state IN ('succeeded','needs_review','cancelled') THEN state ELSE ? END,
       running_at=CASE WHEN ?='started' THEN COALESCE(running_at,?) ELSE running_at END,
       completed_at=CASE WHEN ? THEN COALESCE(completed_at,?) ELSE completed_at END,

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { planningArguments } from './site-plan.mjs'
+import { workersCiCommit } from './workers-ci-identity.mjs'
 
 export function provisionArguments(args) {
   let mode,request
@@ -30,7 +31,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   assert.equal(process.env.WORKERS_CI,'1','Provision runs only inside Cloudflare Builds')
   assert.ok(['feat/site-per-d1','main'].includes(process.env.WORKERS_CI_BRANCH))
   const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
-  assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit)
+  assert.equal(workersCiCommit(),commit)
   assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
   const env = { ...process.env,
     CLOUDFLARE_ACCOUNT_ID: 'd487cf34c606620b442632a72272014d',CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: 'false' }

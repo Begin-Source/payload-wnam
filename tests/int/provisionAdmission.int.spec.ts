@@ -46,7 +46,7 @@ describe('central provision admission and atomic journal handoff on native D1',(
   })
   afterAll(async () => { await mf?.dispose() })
   beforeEach(async () => {
-    await db.batch(['site_provision_build_events','site_provision_dispatch_runs','site_provision_dispatches','site_provision_requests','site_provision_steps','site_provision_operations','sites','users_sessions','users_roles','users_tenants','users','tenants']
+    await db.batch(['site_provision_build_events','site_provision_dispatch_attempts','site_provision_dispatch_runs','site_provision_dispatches','site_provision_requests','site_provision_steps','site_provision_operations','sites','users_sessions','users_roles','users_tenants','users','tenants']
       .map(table => db.prepare(`DELETE FROM ${table}`)))
     await db.batch([
       db.prepare("INSERT INTO users VALUES (7,'manager@example.invalid',NULL),(8,'owner@example.invalid',NULL),(9,'other@example.invalid',NULL)"),

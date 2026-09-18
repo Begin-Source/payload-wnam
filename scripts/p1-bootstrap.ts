@@ -14,10 +14,11 @@ import { OpenAIConfig } from '../src/utilities/aiOpenAIConfigImport'
 import { applyP1Schema, type RoleSchema } from './p1-schema'
 import { applyP1CentralSchema } from './p1-central-schema'
 import { p1BaseManifests, P1_ACCOUNT, P1_EMAIL } from './p1-manifests.mjs'
+import { workersCiCommit } from './workers-ci-identity.mjs'
 
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
 if (process.env.WORKERS_CI !== '1' || process.env.WORKERS_CI_BRANCH !== 'feat/site-per-d1' ||
-  process.env.WORKERS_CI_COMMIT_SHA !== commit || process.env.PAYLOAD_P1_BOOTSTRAP !== '1' ||
+  workersCiCommit() !== commit || process.env.PAYLOAD_P1_BOOTSTRAP !== '1' ||
   JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit !== commit) throw new Error('P1 bootstrap requires the checked Cloudflare release')
 const password = process.env.P1_TEST_PASSWORD, secret = process.env.P1_CENTRAL_SECRET
 if (!password || password.length < 32 || !secret || secret.length < 32) throw new Error('P1 bootstrap credentials unavailable')
@@ -44,7 +45,7 @@ try {
   for (const [role,binding] of [['central','CENTRAL_D1'],['site-a','SITE_D1_A'],['site-b','SITE_D1_B']] as const) {
     const schema = JSON.parse(readFileSync(`.cloudflare-ci/role-${role}-schema.json`,'utf8')) as RoleSchema
     assert.equal(schema.role,role)
-    const operationId = `p1-${role}-schema-v${role === 'central' ? 7 : 1}`
+    const operationId = `p1-${role}-schema-v${role === 'central' ? 8 : 1}`
     receipts.push(role === 'central' ? await applyP1CentralSchema(env[binding],schema) : await applyP1Schema(env[binding],schema,operationId))
     if (role === 'central') await migrateCentralRoleState(env[binding])
     else await migrateSiteRoleState(env[binding])

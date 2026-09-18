@@ -4,6 +4,7 @@ import { p1Manifests } from './p1-manifests.mjs'
 import { currentRuntimeSourceDigest } from './p1-runtime-source.mjs'
 import { loadProvisionFleet } from './provision-fleet-input.mjs'
 import { validateP1AdmissionSelection } from './p1-admission-selection.mjs'
+import { workersCiCommit } from './workers-ci-identity.mjs'
 
 export function validateReleaseSelection(selection,sourceDigest) {
   assert.ok(selection && typeof selection === 'object' && !Array.isArray(selection))
@@ -41,7 +42,7 @@ export async function readFleetReleaseArtifact(path,reviewed,commit) {
 export async function p1EffectiveManifests() {
   assert.equal(process.env.WORKERS_CI,'1')
   const source = p1Manifests(),{ request } = p1ReleaseRequest()
-  const fleet = await readFleetReleaseArtifact('.cloudflare-ci/p1-effective-site.json',loadProvisionFleet('operations/fleet/p1.json'),process.env.WORKERS_CI_COMMIT_SHA)
+  const fleet = await readFleetReleaseArtifact('.cloudflare-ci/p1-effective-site.json',loadProvisionFleet('operations/fleet/p1.json'),workersCiCommit())
   assert.equal(fleet.groups.length,1,'P1 owns one reviewed group')
   const managed = fleet.groups[0]
   assert.equal(managed.workerGroup,request.plan.workerGroup)

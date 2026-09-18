@@ -7,10 +7,11 @@ import { resolve } from 'node:path'
 import { p1Manifests, P1_ACCOUNT, P1_ZONE } from './p1-manifests.mjs'
 import { p1ReleaseRequest,p1EffectiveManifests } from './p1-release-manifests.mjs'
 import { ensureP1DispatchResources,p1DispatchManifest } from './p1-dispatch-resources.mjs'
+import { workersCiCommit } from './workers-ci-identity.mjs'
 
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1')
-assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit)
+assert.equal(workersCiCommit(),commit)
 assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
 if (process.env.WRANGLER_CI_MATCH_TAG) assert.equal(process.env.WRANGLER_CI_MATCH_TAG,'a53ec5c30f6f4623909113bf36ca914f')
 const configs = p1Manifests()
@@ -67,6 +68,9 @@ const password = randomBytes(32).toString('hex')
 const secrets = { central: randomBytes(32).toString('hex'),site: randomBytes(32).toString('hex') }
 execFileSync('pnpm',['exec','payload','run','scripts/p1-bootstrap.ts'],{
   env: { ...env,PAYLOAD_P1_BOOTSTRAP: '1',P1_TEST_PASSWORD: password,P1_CENTRAL_SECRET: secrets.central },stdio: 'inherit',
+})
+execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-dispatch-recovery.ts'],{
+  env: { ...env,P1_DISPATCH_RECOVERY: '1' },stdio: 'inherit',
 })
 const deployed = []
 for (const [role,config] of Object.entries(configs)) {

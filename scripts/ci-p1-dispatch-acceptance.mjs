@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
 import { browserLibraryEnvironment } from './ci-browser-libs.mjs'
 import { P1_EMAIL,P1_ORIGIN } from './p1-manifests.mjs'
+import { workersCiCommit } from './workers-ci-identity.mjs'
 
 const acceptancePath = 'operations/p1-dispatch-acceptance.json'
 const expectedRequest = {
@@ -24,7 +25,7 @@ export function p1DispatchAcceptance() {
 async function submit() {
   assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1')
   const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
-  assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit)
+  assert.equal(workersCiCommit(),commit)
   assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
   const selection = JSON.parse(readFileSync('.cloudflare-ci/p1-dispatch-selection.json','utf8'))
   assert.equal(selection.buildUuid,process.env.WORKERS_CI_BUILD_UUID)
