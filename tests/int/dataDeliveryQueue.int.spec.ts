@@ -48,6 +48,7 @@ describe('site data delivery Queue consumer',() => {
     await site.batch([
       site.prepare('CREATE TABLE tenants(id INTEGER PRIMARY KEY,central_source_record_id TEXT)'),
       site.prepare('CREATE TABLE sites(id INTEGER PRIMARY KEY,tenant_id INTEGER)'),
+      site.prepare('CREATE TABLE site_quotas(id INTEGER PRIMARY KEY,site_id INTEGER)'),
       site.prepare(`CREATE TABLE media(id INTEGER PRIMARY KEY,filename TEXT,central_source_record_id TEXT,central_source_revision INTEGER)`),
       site.prepare("INSERT INTO tenants VALUES(1,'1')"),site.prepare('INSERT INTO sites VALUES(37,1)'),
     ])
