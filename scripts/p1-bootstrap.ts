@@ -44,7 +44,7 @@ try {
   for (const [role,binding] of [['central','CENTRAL_D1'],['site-a','SITE_D1_A'],['site-b','SITE_D1_B']] as const) {
     const schema = JSON.parse(readFileSync(`.cloudflare-ci/role-${role}-schema.json`,'utf8')) as RoleSchema
     assert.equal(schema.role,role)
-    const operationId = `p1-${role}-schema-v${role === 'central' ? 4 : 1}`
+    const operationId = `p1-${role}-schema-v${role === 'central' ? 5 : 1}`
     receipts.push(role === 'central' ? await applyP1CentralSchema(env[binding],schema) : await applyP1Schema(env[binding],schema,operationId))
     if (role === 'central') await migrateCentralRoleState(env[binding])
     else await migrateSiteRoleState(env[binding])

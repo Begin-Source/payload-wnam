@@ -63,3 +63,9 @@ export const provisionAdmissionSchema = [
   `CREATE TRIGGER IF NOT EXISTS site_provision_admission_reserved AFTER INSERT ON site_provision_operations
     BEGIN UPDATE site_provision_requests SET state='provisioning' WHERE request_id=NEW.operation_id AND state='queued'; END`,
 ] as const
+
+export const provisionAdmissionSchemaObjects = [
+  'site_provision_requests','site_provision_request_active_site','site_provision_request_tenant_queue',
+  'site_provision_request_prepared_group','site_provision_request_immutable',
+  'site_provision_admission_guard','site_provision_admission_reserved',
+] as const

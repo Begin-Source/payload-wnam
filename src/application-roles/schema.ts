@@ -5,6 +5,7 @@ import { migrateCentralMasters, migrateSiteMasters } from '../site-control/maste
 import { migrateCentralConfigs, migrateSiteConfigs } from '../site-control/configSchema'
 import { migrateCentralAssets, migrateSiteAssets } from '../site-control/assetSchema'
 import { migrateSiteMasterCopies } from '../site-runtime/masterCopySchema'
+import { provisionAdmissionSchema } from '../site-control/provisionAdmissionSchema'
 
 /** Explicit operational initialization, never imported by request ingress.
  * Keep schema-only artifacts and migration-owned singleton/high-watermark data
@@ -16,6 +17,7 @@ export async function migrateCentralRoleState(database: D1Database): Promise<voi
   await migrateCentralConfigs(database)
   await migrateCentralAssets(database)
   await database.batch(centralCommissionGuardSchema.map(sql => database.prepare(sql)))
+  await database.batch(provisionAdmissionSchema.map(sql => database.prepare(sql)))
 }
 
 export async function migrateSiteRoleState(database: D1Database): Promise<void> {

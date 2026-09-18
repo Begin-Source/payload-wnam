@@ -13,11 +13,18 @@ import { OpenAIConfig } from '../../src/utilities/aiOpenAIConfigImport'
 import { Users } from '../../src/collections/Users'
 import { publishMasterFromPayload } from '../../src/site-control/masterPublisher'
 import { masterReference } from '../../src/site-control/masterSnapshot'
+import { applyP1CentralSchema, P1_CENTRAL_V1, P1_CENTRAL_V2, P1_CENTRAL_V3, P1_CENTRAL_V4 } from '../../scripts/p1-central-schema'
+import { applyP1Schema, roleSchemaDigest, type RoleSchema } from '../../scripts/p1-schema'
+import { provisionAdmissionSchemaObjects } from '../../src/site-control/provisionAdmissionSchema'
+import { groupReleaseSchemaObjects } from '../../src/site-control/groupReleaseSchema'
+import { siteProvisionSchemaObjects } from '../../src/site-control/provisionSchema'
+import { siteLifecycleSchemaObjects } from '../../src/site-control/lifecycleSchema'
 
 vi.mock('../../src/payload.config', () => { throw new Error('Central role imported shared configuration') })
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
 const { Miniflare } = require('miniflare')
 let mf: { getD1Database: (name: string) => Promise<D1Database>; getR2Bucket: (name: string) => Promise<R2Bucket>; dispose: () => Promise<void> }
+let centralSchema: RoleSchema
 let database: D1Database, config: SanitizedConfig, payload: Payload
 let admin: NonNullable<Awaited<ReturnType<Payload['auth']>>['user']>
 const capability = vi.fn(async () => { throw new Error('Unexpected AI capability') })
@@ -27,7 +34,7 @@ describe('independent central Payload configuration and native finance path', ()
   beforeAll(async () => {
     const fieldsBefore = Users.fields.length
     mf = new Miniflare({ modules: true, script: 'export default { fetch() { return new Response("fixture") } }',
-      compatibilityDate: '2025-08-15', d1Databases: { CENTRAL: 'complete-central-config' }, r2Buckets: { R2: 'central-assets' } })
+      compatibilityDate: '2025-08-15', d1Databases: { CENTRAL: 'complete-central-config', ...Object.fromEntries(['V1','V2','V3','V4','FRESH','INTERRUPT','DRIFT'].map(name => [name,`central-upgrade-${name}`])) }, r2Buckets: { R2: 'central-assets' } })
     database = await mf.getD1Database('CENTRAL')
     const startupSQL = vi.fn((sql: string) => database.prepare(sql))
     const boundDatabase = new Proxy(database, { get(target,key) {
@@ -50,6 +57,8 @@ describe('independent central Payload configuration and native finance path', ()
     const statements = await kit.generateMigration(adapter.defaultDrizzleSnapshot,await kit.generateDrizzleJson(adapter.schema))
     for (let offset = 0; offset < statements.length; offset += 25) await database.batch(statements.slice(offset,offset + 25).map(sql => database.prepare(sql)))
     await migrateCentralRoleState(database)
+    centralSchema = { role: 'central',objects: (await database.prepare("SELECT name,type,sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT GLOB 'sqlite_*' AND name NOT GLOB '_cf_*' ORDER BY CASE type WHEN 'table' THEN 0 WHEN 'index' THEN 1 ELSE 2 END,rowid")
+      .all<RoleSchema['objects'][number]>()).results }
     for (const id of [1,2]) await payload.create({ collection: 'tenants', data: { id, name: `Tenant ${id}`, slug: `tenant-${id}`, domain: `tenant-${id}.example.invalid` } })
     // Explicit trusted bootstrap fixture. Anonymous central API signup is denied.
     const bootstrap = { id: 7, collection: 'users', email: 'admin@example.invalid', roles: ['super-admin'] } as typeof admin
@@ -193,5 +202,78 @@ describe('independent central Payload configuration and native finance path', ()
       expect(await database.prepare('SELECT name FROM sqlite_master WHERE type=? AND name=?').bind('table',table).first('name')).toBe(table)
     }
   })
+
+  const previousSchema = (version: number): RoleSchema => {
+    const excluded = new Set<string>([
+      ...provisionAdmissionSchemaObjects,
+      ...(version < 4 ? groupReleaseSchemaObjects : []),
+      ...(version < 3 ? siteProvisionSchemaObjects : []),
+      ...(version < 2 ? siteLifecycleSchemaObjects : []),
+    ])
+    const previous = { ...centralSchema,objects: centralSchema.objects.filter(item => !excluded.has(item.name)) }
+    expect(roleSchemaDigest(previous.objects)).toBe([P1_CENTRAL_V1,P1_CENTRAL_V2,P1_CENTRAL_V3,P1_CENTRAL_V4][version-1])
+    return previous
+  }
+  it.each([1,2,3,4])('upgrades reviewed complete central v%i to admission v5 without losing data or migration receipts',async version => {
+    const db = await mf.getD1Database(`V${version}`), previous = previousSchema(version)
+    await applyP1Schema(db,previous,`p1-central-schema-v${version}`)
+    await db.prepare("INSERT INTO tenants (id,name,slug) VALUES (999,'Preserved tenant','preserved-tenant')").run()
+    const result = await applyP1CentralSchema(db,centralSchema)
+    expect(result).toMatchObject({ operationId: 'p1-central-schema-v5',created: 7,upgradedFrom: P1_CENTRAL_V4 })
+    expect(await db.prepare('SELECT name FROM tenants WHERE id=999').first('name')).toBe('Preserved tenant')
+    const history = (await db.prepare('SELECT operation_id,from_digest,to_digest,applied_at FROM site_control_schema_migrations ORDER BY operation_id').all()).results
+    expect(history).toHaveLength(5-version)
+    expect((await applyP1CentralSchema(db,centralSchema)).created).toBe(0)
+    expect((await db.prepare('SELECT operation_id,from_digest,to_digest,applied_at FROM site_control_schema_migrations ORDER BY operation_id').all()).results).toEqual(history)
+    const found = (await db.prepare("SELECT name FROM sqlite_master WHERE name LIKE 'site_provision_request%' OR name LIKE 'site_provision_admission_%'").all<{ name: string }>()).results.map(row => row.name)
+    expect(found.sort()).toEqual([...provisionAdmissionSchemaObjects].sort())
+    // Old application code may run during the additive migration. Its tables,
+    // counters and rows retain the same columns and remain writable.
+    await db.prepare("UPDATE tenants SET name='Still writable' WHERE id=999").run()
+    expect(await db.prepare('SELECT name FROM tenants WHERE id=999').first('name')).toBe('Still writable')
+    await expect(applyP1Schema(db,previous,`p1-central-schema-v${version}`)).rejects.toThrow('operation conflict')
+  },30000)
+
+  it('fresh central v5 installs match the complete role and retain operational state on retries',async () => {
+    const db = await mf.getD1Database('FRESH')
+    expect(await applyP1CentralSchema(db,centralSchema)).toMatchObject({ operationId: 'p1-central-schema-v5',objects: centralSchema.objects.length,upgradedFrom: null })
+    await migrateCentralRoleState(db)
+    await db.prepare('UPDATE central_cost_epoch SET revision=23 WHERE id=1').run()
+    await migrateCentralRoleState(db)
+    expect((await applyP1CentralSchema(db,centralSchema)).created).toBe(0)
+    expect(await db.prepare('SELECT revision FROM central_cost_epoch WHERE id=1').first('revision')).toBe(23)
+    expect(await db.prepare('SELECT COUNT(*) AS n FROM site_control_schema_migrations').first('n')).toBe(0)
+  },30000)
+
+  it('rolls back the full admission migration on DDL failure and resumes an already committed lost response',async () => {
+    const db = await mf.getD1Database('INTERRUPT')
+    await applyP1Schema(db,previousSchema(4),'p1-central-schema-v4')
+    const interrupted = (lost: boolean) => new Proxy(db,{ get(target,key) {
+      if (key === 'batch') return async (statements: D1PreparedStatement[]) => {
+        const result = await target.batch(lost ? statements : [...statements,target.prepare('SELECT * FROM injected_missing_table')])
+        if (lost) throw new Error('Injected lost migration response')
+        return result
+      }
+      const value = Reflect.get(target,key); return typeof value === 'function' ? value.bind(target) : value
+    } })
+    await expect(applyP1CentralSchema(interrupted(false),centralSchema)).rejects.toThrow('injected_missing_table')
+    expect(await db.prepare("SELECT name FROM sqlite_master WHERE name='site_provision_requests'").first()).toBeNull()
+    expect(await db.prepare('SELECT digest FROM p1_schema_bootstrap WHERE id=1').first('digest')).toBe(P1_CENTRAL_V4)
+    expect(await db.prepare('SELECT COUNT(*) AS n FROM site_control_schema_migrations').first('n')).toBe(0)
+    await expect(applyP1CentralSchema(interrupted(true),centralSchema)).rejects.toThrow('Injected lost migration response')
+    expect((await applyP1CentralSchema(db,centralSchema)).created).toBe(0)
+    expect(await db.prepare('SELECT COUNT(*) AS n FROM site_control_schema_migrations').first('n')).toBe(1)
+  },30000)
+
+  it('rejects an unreviewed base or drifted v4 before installing any admission objects',async () => {
+    const db = await mf.getD1Database('DRIFT')
+    await applyP1Schema(db,previousSchema(4),'p1-central-schema-v4')
+    await expect(applyP1CentralSchema(db,{ ...centralSchema,objects: centralSchema.objects.filter(item => item.name !== 'site_provision_admission_guard') })).rejects.toThrow('Incomplete central admission schema')
+    await expect(applyP1CentralSchema(db,{ ...centralSchema,objects: centralSchema.objects.filter(item => item.name !== 'site_group_release_pending') })).rejects.toThrow('Unexpected central v4 base')
+    await db.prepare('DROP INDEX site_group_release_pending').run()
+    await expect(applyP1CentralSchema(db,centralSchema)).rejects.toThrow('source schema drift')
+    expect(await db.prepare("SELECT name FROM sqlite_master WHERE name='site_provision_requests'").first()).toBeNull()
+    expect(await db.prepare('SELECT digest FROM p1_schema_bootstrap WHERE id=1').first('digest')).toBe(P1_CENTRAL_V4)
+  },30000)
 
 })
