@@ -1,0 +1,2383 @@
+{
+  "event": "site_verification_passed",
+  "operationId": "ec8e2762-5c44-4c09-b88a-cc0c66966fa9",
+  "checkedAt": "2026-09-18T04:34:44.603Z",
+  "commit": "05cf0c427526bf4e4ec247325478aa65acec0779",
+  "accountId": "d487cf34c606620b442632a72272014d",
+  "workerGroup": "p1-group-1",
+  "deployment": {
+    "id": "b79c8306-a5a3-4fd1-aadd-0919124a6a90",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "happygammon@gmail.com",
+    "annotations": {
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "217a9b0f-58a8-4593-b6de-3c9e0de4d7e8",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-09-18T04:26:00.591938Z"
+  },
+  "mutations": false,
+  "reports": [
+    {
+      "siteId": "p1-a",
+      "localSiteId": 37,
+      "tenantId": 1,
+      "schemaVersion": 1,
+      "schemaDigest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "tables": [
+        {
+          "table": "_site_blueprints_v",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_version_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_version_steps_dependencies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "admin_branding",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "affiliate_networks",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "articles",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "articles_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "audit_logs",
+          "rows": 1,
+          "digest": "69186a02d335c2dcf639bc138bd7305fd417fc2332579022777107a09a1063be"
+        },
+        {
+          "table": "authors",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "authors_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "automation_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "automation_triggers",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "categories",
+          "rows": 1,
+          "digest": "a83f04d7c2e4df9cb7cefc7eff0108295fc2f36a790984833f089d9fcec4c5b9"
+        },
+        {
+          "table": "click_events",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "content_briefs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "keyword_batch_presets",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "keywords",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "knowledge_base",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "knowledge_base_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "llm_prompts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "media",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "offers",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "offers_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "original_evidence",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "page_link_graph",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pages",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pages_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs_log",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_kv",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_locked_documents",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_locked_documents_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_migrations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_preferences",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_preferences_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pipeline_profiles",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pipeline_settings",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "plugin_ai_instructions",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "plugin_ai_instructions_images",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "private_media",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "prompt_library",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "prompt_library_entries",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "public_landing",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "quota_rules",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "rankings",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "redirects",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "serp_snapshots",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_copies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_id_watermark",
+          "rows": 1,
+          "digest": "0ee180ae6a69c648d4af232711b77df109b88887117f355b068c32142baff59c"
+        },
+        {
+          "table": "site_asset_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_withdrawals",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_blueprints",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_config_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_config_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_layouts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_copies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_heads",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_id_watermarks",
+          "rows": 8,
+          "digest": "58ecc09f16814121d19c95e40b5b9076ba4beabaa62d777e94b1143e7d2f6e78"
+        },
+        {
+          "table": "site_master_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_portfolios",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_quotas",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "sites",
+          "rows": 1,
+          "digest": "a9dcda8da24e3618d1cb8c42e990db363b0f21e35832eaacf5352e839ee69991"
+        },
+        {
+          "table": "sites_public_locale_codes",
+          "rows": 1,
+          "digest": "400eddbe4c2ebb3357bbea64be7d5dbc43085c978b90e4db32b80d34ec45c1ee"
+        },
+        {
+          "table": "sites_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "social_accounts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "social_platforms",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "tenant_prompt_templates",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "tenants",
+          "rows": 1,
+          "digest": "376e8a924c4e919db1c6d4ac5a68d92c352e4c7e2465b4cc1a2cc3927f9f1f4f"
+        },
+        {
+          "table": "users",
+          "rows": 1,
+          "digest": "24d7eb132c7bc017af089e91ae963bb8e7f7ade8e0b8ebd0a93519551e7a1e14"
+        },
+        {
+          "table": "workflow_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_logs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_step_results",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_steps_dependencies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "contentDigest": "40ac64d780bff05e72bd85256aa0949ee3975c2b76f7eea70cfd9692765980b1",
+      "sqlRelationships": "passed",
+      "media": {
+        "objects": 0,
+        "pendingMedia": 0,
+        "withdrawnMedia": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "tasks": [
+        {
+          "table": "payload_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs_log",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_logs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_step_results",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "consistency": "two-matching-inventories-not-a-transactional-snapshot",
+      "runtime": {
+        "siteId": "p1-a",
+        "localSiteId": 37,
+        "bindingName": "SITE_D1_A",
+        "databaseId": "6daecf80-30f5-4010-add6-d67bb556cc42",
+        "schemaVersion": 1,
+        "workerGroup": "p1-group-1",
+        "adminHost": "cms-site-p1-a.beginos.org",
+        "routingVersion": 89,
+        "state": "active",
+        "tenantId": 1,
+        "releaseCommit": "05cf0c427526bf4e4ec247325478aa65acec0779",
+        "releaseId": "e93df4a88931fec8642ac1b5d75811a16bff6866ce47f74caa867139561806ac"
+      },
+      "identityProjections": 1
+    },
+    {
+      "siteId": "p1-b",
+      "localSiteId": 82,
+      "tenantId": 2,
+      "schemaVersion": 1,
+      "schemaDigest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "tables": [
+        {
+          "table": "_site_blueprints_v",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_version_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_version_steps_dependencies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "admin_branding",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "affiliate_networks",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "articles",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "articles_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "audit_logs",
+          "rows": 1,
+          "digest": "116d016fbf0d6080ef47585cb48a34a28c84c919025a9a34169349e0cd7184df"
+        },
+        {
+          "table": "authors",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "authors_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "automation_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "automation_triggers",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "categories",
+          "rows": 1,
+          "digest": "da043df2c3e1cabe86821936ec5cde272bdac1e0c7c78d7c85bd3701438d1b83"
+        },
+        {
+          "table": "click_events",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "content_briefs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "keyword_batch_presets",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "keywords",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "knowledge_base",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "knowledge_base_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "llm_prompts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "media",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "offers",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "offers_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "original_evidence",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "page_link_graph",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pages",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pages_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs_log",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_kv",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_locked_documents",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_locked_documents_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_migrations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_preferences",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_preferences_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pipeline_profiles",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pipeline_settings",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "plugin_ai_instructions",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "plugin_ai_instructions_images",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "private_media",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "prompt_library",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "prompt_library_entries",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "public_landing",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "quota_rules",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "rankings",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "redirects",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "serp_snapshots",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_copies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_id_watermark",
+          "rows": 1,
+          "digest": "0ee180ae6a69c648d4af232711b77df109b88887117f355b068c32142baff59c"
+        },
+        {
+          "table": "site_asset_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_withdrawals",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_blueprints",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_config_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_config_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_layouts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_copies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_heads",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_id_watermarks",
+          "rows": 8,
+          "digest": "58ecc09f16814121d19c95e40b5b9076ba4beabaa62d777e94b1143e7d2f6e78"
+        },
+        {
+          "table": "site_master_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_portfolios",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_quotas",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "sites",
+          "rows": 1,
+          "digest": "27b538868ab3be9264f78adc23d85118243239d7e8dc2587e2392495f2bfd17e"
+        },
+        {
+          "table": "sites_public_locale_codes",
+          "rows": 1,
+          "digest": "46904e9c9d3b7a42c200ff7111b5c355e4be165f29078e09cbbc4267f3a1df75"
+        },
+        {
+          "table": "sites_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "social_accounts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "social_platforms",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "tenant_prompt_templates",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "tenants",
+          "rows": 1,
+          "digest": "b958ecacd0f248ff39f4d03a2766e30bcb4c278d6c86353c576b7434bba0ea1b"
+        },
+        {
+          "table": "users",
+          "rows": 1,
+          "digest": "b409699c7903efd02c2921d3f726b45d5e518d83fc15879288a09dcaf6c60fab"
+        },
+        {
+          "table": "workflow_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_logs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_step_results",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_steps_dependencies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "contentDigest": "195d4cd52a03a30376a4159451f9989a67cb5cdcc107894020b70778e722c9ce",
+      "sqlRelationships": "passed",
+      "media": {
+        "objects": 0,
+        "pendingMedia": 0,
+        "withdrawnMedia": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "tasks": [
+        {
+          "table": "payload_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs_log",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_logs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_step_results",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "consistency": "two-matching-inventories-not-a-transactional-snapshot",
+      "runtime": {
+        "siteId": "p1-b",
+        "localSiteId": 82,
+        "bindingName": "SITE_D1_B",
+        "databaseId": "b2a1a340-681a-4581-8817-b2f9629a6ed4",
+        "schemaVersion": 1,
+        "workerGroup": "p1-group-1",
+        "adminHost": "cms-site-p1-b.beginos.org",
+        "routingVersion": 1,
+        "state": "active",
+        "tenantId": 2,
+        "releaseCommit": "05cf0c427526bf4e4ec247325478aa65acec0779",
+        "releaseId": "e93df4a88931fec8642ac1b5d75811a16bff6866ce47f74caa867139561806ac"
+      },
+      "identityProjections": 1
+    },
+    {
+      "siteId": "p1-c",
+      "localSiteId": 103,
+      "tenantId": 1,
+      "schemaVersion": 1,
+      "schemaDigest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "tables": [
+        {
+          "table": "_site_blueprints_v",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_version_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_version_steps_dependencies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "admin_branding",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "affiliate_networks",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "articles",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "articles_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "audit_logs",
+          "rows": 1,
+          "digest": "0422669727583ee1df23c4dfba37b4258d9d244d4eb2671a49f3c4b78174c2f6"
+        },
+        {
+          "table": "authors",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "authors_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "automation_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "automation_triggers",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "categories",
+          "rows": 1,
+          "digest": "891144710d19fda8855ab21e644fc6466ba634cd3dcaa2f67e4e396d254470ec"
+        },
+        {
+          "table": "click_events",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "content_briefs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "keyword_batch_presets",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "keywords",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "knowledge_base",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "knowledge_base_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "llm_prompts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "media",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "offers",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "offers_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "original_evidence",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "page_link_graph",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pages",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pages_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs_log",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_kv",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_locked_documents",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_locked_documents_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_migrations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_preferences",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_preferences_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pipeline_profiles",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pipeline_settings",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "plugin_ai_instructions",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "plugin_ai_instructions_images",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "private_media",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "prompt_library",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "prompt_library_entries",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "public_landing",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "quota_rules",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "rankings",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "redirects",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "serp_snapshots",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_copies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_id_watermark",
+          "rows": 1,
+          "digest": "0ee180ae6a69c648d4af232711b77df109b88887117f355b068c32142baff59c"
+        },
+        {
+          "table": "site_asset_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_withdrawals",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_blueprints",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_config_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_config_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_layouts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_copies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_heads",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_id_watermarks",
+          "rows": 8,
+          "digest": "58ecc09f16814121d19c95e40b5b9076ba4beabaa62d777e94b1143e7d2f6e78"
+        },
+        {
+          "table": "site_master_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_portfolios",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_quotas",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "sites",
+          "rows": 1,
+          "digest": "ea3adb15b1af065f44a56e1cb5f7ea050b6e9e4dd98d424070d4494889f22c9e"
+        },
+        {
+          "table": "sites_public_locale_codes",
+          "rows": 1,
+          "digest": "10798eacb069b7b8c6829871e0cc3a76b0dde6eb4f0e53c2c1bd1e50adc2f3fe"
+        },
+        {
+          "table": "sites_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "social_accounts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "social_platforms",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "tenant_prompt_templates",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "tenants",
+          "rows": 1,
+          "digest": "fefc49d04aafe3584ce9840952f9ffda2142995b7ff37c8a891a79d5659b32ad"
+        },
+        {
+          "table": "users",
+          "rows": 1,
+          "digest": "2d5150e7bea06785e719b398bf0759897e12221125932e3317091f904d3a67a4"
+        },
+        {
+          "table": "workflow_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_logs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_step_results",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_steps_dependencies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "contentDigest": "82ef8f147dd03ae3723d60d5f82d6b98bf92c4595261ad07f016ba0a4f6af76e",
+      "sqlRelationships": "passed",
+      "media": {
+        "objects": 0,
+        "pendingMedia": 0,
+        "withdrawnMedia": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "tasks": [
+        {
+          "table": "payload_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs_log",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_logs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_step_results",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "consistency": "two-matching-inventories-not-a-transactional-snapshot",
+      "runtime": {
+        "siteId": "p1-c",
+        "localSiteId": 103,
+        "bindingName": "SITE_D1_C",
+        "databaseId": "02e8be38-7dfb-4c48-86e1-30e586961fc9",
+        "schemaVersion": 1,
+        "workerGroup": "p1-group-1",
+        "adminHost": "cms-site-p1-c.beginos.org",
+        "routingVersion": 2,
+        "state": "active",
+        "tenantId": 1,
+        "releaseCommit": "05cf0c427526bf4e4ec247325478aa65acec0779",
+        "releaseId": "e93df4a88931fec8642ac1b5d75811a16bff6866ce47f74caa867139561806ac"
+      },
+      "identityProjections": 1
+    },
+    {
+      "siteId": "p1-d",
+      "localSiteId": 104,
+      "tenantId": 2,
+      "schemaVersion": 1,
+      "schemaDigest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "tables": [
+        {
+          "table": "_site_blueprints_v",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_version_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_version_steps_dependencies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "admin_branding",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "affiliate_networks",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "articles",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "articles_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "audit_logs",
+          "rows": 1,
+          "digest": "3fd7aeae906c0c709c076c3388d68c3aa2d8a8b0e8e7a1da3c353b2e9afa1356"
+        },
+        {
+          "table": "authors",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "authors_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "automation_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "automation_triggers",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "categories",
+          "rows": 1,
+          "digest": "7254ba3ab856553f11d4d2c34e59fc63847e329213c32b1ae856144c50a30894"
+        },
+        {
+          "table": "click_events",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "content_briefs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "keyword_batch_presets",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "keywords",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "knowledge_base",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "knowledge_base_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "llm_prompts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "media",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "offers",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "offers_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "original_evidence",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "page_link_graph",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pages",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pages_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs_log",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_kv",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_locked_documents",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_locked_documents_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_migrations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_preferences",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_preferences_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pipeline_profiles",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pipeline_settings",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "plugin_ai_instructions",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "plugin_ai_instructions_images",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "private_media",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "prompt_library",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "prompt_library_entries",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "public_landing",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "quota_rules",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "rankings",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "redirects",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "serp_snapshots",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_copies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_id_watermark",
+          "rows": 1,
+          "digest": "0ee180ae6a69c648d4af232711b77df109b88887117f355b068c32142baff59c"
+        },
+        {
+          "table": "site_asset_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_withdrawals",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_blueprints",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_config_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_config_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_layouts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_copies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_heads",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_id_watermarks",
+          "rows": 8,
+          "digest": "58ecc09f16814121d19c95e40b5b9076ba4beabaa62d777e94b1143e7d2f6e78"
+        },
+        {
+          "table": "site_master_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_portfolios",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_quotas",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "sites",
+          "rows": 1,
+          "digest": "7d7f72b4c579637bba762f15ca6c37780de708baffd30a4c6c72eeca218b1607"
+        },
+        {
+          "table": "sites_public_locale_codes",
+          "rows": 1,
+          "digest": "964860aed2f3bf5c4a7d5745fa4888d05645adda713675c7e192adca12734bb4"
+        },
+        {
+          "table": "sites_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "social_accounts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "social_platforms",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "tenant_prompt_templates",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "tenants",
+          "rows": 1,
+          "digest": "092d8416bed0e80894c1b02ff8ef874e43acd1f6463376ae37fdc5b9e4aa11c8"
+        },
+        {
+          "table": "users",
+          "rows": 1,
+          "digest": "471f7983e75705bc2aeab29bae61a07cc7b5953deaa76c4bfec324dd3ab4a320"
+        },
+        {
+          "table": "workflow_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_logs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_step_results",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_steps_dependencies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "contentDigest": "819fd60380886dc3690e9aaf33cb314c9f451d04b494485c50f81108c0ef55c4",
+      "sqlRelationships": "passed",
+      "media": {
+        "objects": 0,
+        "pendingMedia": 0,
+        "withdrawnMedia": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "tasks": [
+        {
+          "table": "payload_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs_log",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_logs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_step_results",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "consistency": "two-matching-inventories-not-a-transactional-snapshot",
+      "runtime": {
+        "siteId": "p1-d",
+        "localSiteId": 104,
+        "bindingName": "SITE_D1_D",
+        "databaseId": "40885d2c-87a7-4801-91cd-73f3d760c9f9",
+        "schemaVersion": 1,
+        "workerGroup": "p1-group-1",
+        "adminHost": "cms-site-p1-d.beginos.org",
+        "routingVersion": 2,
+        "state": "active",
+        "tenantId": 2,
+        "releaseCommit": "05cf0c427526bf4e4ec247325478aa65acec0779",
+        "releaseId": "e93df4a88931fec8642ac1b5d75811a16bff6866ce47f74caa867139561806ac"
+      },
+      "identityProjections": 1
+    },
+    {
+      "siteId": "p1-e",
+      "localSiteId": 106,
+      "tenantId": 1,
+      "schemaVersion": 1,
+      "schemaDigest": "43eb3dc76008dde6a751154b3c624ad7a46c1bdf36f48210d2772ba09434304e",
+      "tables": [
+        {
+          "table": "_site_blueprints_v",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_version_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "_workflows_v_version_steps_dependencies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "admin_branding",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "affiliate_networks",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "articles",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "articles_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "audit_logs",
+          "rows": 1,
+          "digest": "bdd00b9ca335426e4a58a6e2077d27fb01ec5227f0f70cdf35c304a9a84d9a05"
+        },
+        {
+          "table": "authors",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "authors_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "automation_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "automation_triggers",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "categories",
+          "rows": 1,
+          "digest": "30b492489b601f5c22f4cbff521a1892863efc366757fa6e2751bc20ea5b7064"
+        },
+        {
+          "table": "click_events",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "content_briefs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "keyword_batch_presets",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "keywords",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "knowledge_base",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "knowledge_base_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "llm_prompts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "media",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "offers",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "offers_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "original_evidence",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "page_link_graph",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pages",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pages_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs_log",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_kv",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_locked_documents",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_locked_documents_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_migrations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_preferences",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_preferences_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pipeline_profiles",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "pipeline_settings",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "plugin_ai_instructions",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "plugin_ai_instructions_images",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "private_media",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "prompt_library",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "prompt_library_entries",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "public_landing",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "quota_rules",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "rankings",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "redirects",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "serp_snapshots",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_copies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_id_watermark",
+          "rows": 1,
+          "digest": "0ee180ae6a69c648d4af232711b77df109b88887117f355b068c32142baff59c"
+        },
+        {
+          "table": "site_asset_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_asset_withdrawals",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_blueprints",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_config_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_config_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_layouts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_copies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_heads",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_id_watermarks",
+          "rows": 8,
+          "digest": "58ecc09f16814121d19c95e40b5b9076ba4beabaa62d777e94b1143e7d2f6e78"
+        },
+        {
+          "table": "site_master_operations",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_master_releases",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_portfolios",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "site_quotas",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "sites",
+          "rows": 1,
+          "digest": "113a98cdbca578d284761cf73f498f716a1692791f9ed8717fb72cf936acf3de"
+        },
+        {
+          "table": "sites_public_locale_codes",
+          "rows": 1,
+          "digest": "3b8e6c82bfa65867fb9b0e7622e4a4a236a2ba61b9bf66c499cf5d1f5a271bf2"
+        },
+        {
+          "table": "sites_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "social_accounts",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "social_platforms",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "tenant_prompt_templates",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "tenants",
+          "rows": 1,
+          "digest": "2ebed9a8d8e63a5b983ce5585cf667b7df0d30bd74c9e88ec21cb06df2a74452"
+        },
+        {
+          "table": "users",
+          "rows": 1,
+          "digest": "4a37bd0daa0b736e96c878dd05a7867240f07f1e796d864a82b2bc8880d974be"
+        },
+        {
+          "table": "workflow_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_logs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_step_results",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_rels",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_steps",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflows_steps_dependencies",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "contentDigest": "80804bc9e3b24934650066fe6a14b5ee8c5976651766f01712262ca531e87b83",
+      "sqlRelationships": "passed",
+      "media": {
+        "objects": 0,
+        "pendingMedia": 0,
+        "withdrawnMedia": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "tasks": [
+        {
+          "table": "payload_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "payload_jobs_log",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_jobs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_logs",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "table": "workflow_runs_step_results",
+          "rows": 0,
+          "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "consistency": "two-matching-inventories-not-a-transactional-snapshot",
+      "runtime": {
+        "siteId": "p1-e",
+        "localSiteId": 106,
+        "bindingName": "SITE_D1_91C2C4F0FC5B41C29B7258C6DCA303C0",
+        "databaseId": "39e5d04a-a3ff-48ac-9b59-d20530a06d15",
+        "schemaVersion": 1,
+        "workerGroup": "p1-group-1",
+        "adminHost": "cms-site-p1-e.beginos.org",
+        "routingVersion": 2,
+        "state": "active",
+        "tenantId": 1,
+        "releaseCommit": "05cf0c427526bf4e4ec247325478aa65acec0779",
+        "releaseId": "e93df4a88931fec8642ac1b5d75811a16bff6866ce47f74caa867139561806ac"
+      },
+      "identityProjections": 1
+    }
+  ],
+  "limits": [
+    "No source-database migration comparison",
+    "SQL foreign keys and explicit task site references; arbitrary embedded HTML/SVG/JSON relations need migration graph validation",
+    "Pending media without filenames counted separately; media objects larger than 64 MiB rejected",
+    "P2 scheduling and vendor execution are not implemented or certified"
+  ]
+}
