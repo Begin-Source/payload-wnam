@@ -17,7 +17,7 @@ const { central } = p1Manifests()
 const configPath = '.cloudflare-ci/p1-dispatch-selection-central.json'
 writeFileSync(configPath,JSON.stringify({ name: 'payload-wnam-p1-dispatch-selection',account_id: P1_ACCOUNT,
   compatibility_date: central.compatibility_date,compatibility_flags: central.compatibility_flags,
-  d1_databases: central.d1_databases.map(database => ({ ...database,remote: true })) }))
+  d1_databases: central.d1_databases.map((database: { binding: string; database_name: string; database_id: string }) => ({ ...database,remote: true })) }))
 const proxy = await getPlatformProxy<{ CENTRAL_D1: D1Database }>({ configPath,remoteBindings: true,persist: false })
 try {
   const installed = await proxy.env.CENTRAL_D1.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='site_provision_dispatch_runs'").first('name')

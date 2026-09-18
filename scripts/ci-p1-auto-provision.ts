@@ -17,7 +17,7 @@ const { central } = p1Manifests()
 writeFileSync('.cloudflare-ci/p1-auto-provision-central.json',JSON.stringify({
   name: 'payload-wnam-p1-auto-provision',account_id: P1_ACCOUNT,
   compatibility_date: central.compatibility_date,compatibility_flags: central.compatibility_flags,
-  d1_databases: central.d1_databases.map(database => ({ ...database,remote: true })),
+  d1_databases: central.d1_databases.map((database: { binding: string; database_name: string; database_id: string }) => ({ ...database,remote: true })),
 }))
 const proxy = await getPlatformProxy<{ CENTRAL_D1: D1Database }>({
   configPath: '.cloudflare-ci/p1-auto-provision-central.json',remoteBindings: true,persist: false,
