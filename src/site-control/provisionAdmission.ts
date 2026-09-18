@@ -39,6 +39,52 @@ function summary(value: AdmissionRow) {
   return { ...metadata,input: parseProvisionAdmission(JSON.parse(inputJson)),
     state: value.completedAt ? 'completed' as const : value.state }
 }
+export type ProvisionAdmissionSummary = ReturnType<typeof summary>
+export type ProvisionAdmissionPage = { requests: ProvisionAdmissionSummary[]; nextCursor: string | null }
+export type ProvisionChoicePage = { choices: { id: number; label: string }[]; nextAfter: number | null }
+
+/** Paginate one authorized tenant in durable creation order, including cancelled
+ * requests. No prepared resource manifests or site database fan-out. */
+export async function listProvisionAdmissions(database: D1Database,identity: CentralIdentity,tenantId: number,after = ''): Promise<ProvisionAdmissionPage> {
+  if (!positive.safeParse(tenantId).success || after && !provisionUuidSchema.safeParse(after).success) throw new SiteManagementError(400,'Invalid request page')
+  await requireActor(database,identity,tenantId)
+  if (after && !await database.prepare('SELECT 1 FROM site_provision_requests WHERE request_id=? AND tenant_id=?').bind(after,tenantId).first()) {
+    throw new SiteManagementError(400,'Invalid request cursor')
+  }
+  const rows = (await database.prepare(`SELECT q.request_id AS requestId,q.actor_user_id AS actorUserId,q.input_json AS inputJson,
+    q.state,q.created_at AS createdAt,q.cancelled_at AS cancelledAt,o.checkpoint,o.completed_at AS completedAt
+    FROM site_provision_requests q LEFT JOIN site_provision_operations o ON o.operation_id=q.request_id
+    WHERE q.tenant_id=? AND (?='' OR (q.created_at,q.request_id)<
+      (SELECT created_at,request_id FROM site_provision_requests WHERE request_id=? AND tenant_id=?))
+    ORDER BY q.created_at DESC,q.request_id DESC LIMIT 51`).bind(tenantId,after,after,tenantId).all<AdmissionRow>()).results
+  await requireActor(database,identity,tenantId)
+  return { requests: rows.slice(0,50).map(summary),nextCursor: rows.length > 50 ? rows[49].requestId : null }
+}
+
+/** Only names needed for an authorized form; password/session fields are never
+ * selected. Empty tenant choices hide creation from ordinary site managers. */
+export async function provisionAdmissionChoices(database: D1Database,identity: CentralIdentity,kind: 'tenants' | 'owners',tenantId?: number,after = 0): Promise<ProvisionChoicePage> {
+  centralOnly()
+  if (!Number.isSafeInteger(after) || after < 0 || !['tenants','owners'].includes(kind) ||
+    (kind === 'owners' && !positive.safeParse(tenantId).success) || (kind === 'tenants' && tenantId !== undefined)) throw new SiteManagementError(400,'Invalid form choices')
+  const authority = payloadSessionAuthority(database)
+  if (!await authority(identity.userId,identity.sessionId)) throw new SiteManagementError(401,'Central login required')
+  if (kind === 'owners') await requireActor(database,identity,tenantId!)
+  const rows = kind === 'tenants' ?
+    (await database.prepare(`SELECT t.id,t.name AS label FROM tenants t WHERE t.id>? AND ${provisionActorPermission('?','t.id')} ORDER BY t.id LIMIT 51`)
+      .bind(after,identity.userId).all<{ id: number; label: string }>()).results :
+    (await database.prepare(`SELECT u.id,u.email AS label FROM users u WHERE u.id>? AND ${provisionOwnerPermission('u.id','?')} ORDER BY u.id LIMIT 51`)
+      .bind(after,tenantId!).all<{ id: number; label: string }>()).results
+  if (!await authority(identity.userId,identity.sessionId)) throw new SiteManagementError(401,'Central login required')
+  if (kind === 'owners') await requireActor(database,identity,tenantId!)
+  // Recheck the tenant choices after the async query before returning names.
+  if (kind === 'tenants' && rows.length) {
+    const count = await database.prepare(`SELECT COUNT(*) AS n FROM tenants t WHERE t.id IN (${rows.map(() => '?').join(',')})
+      AND ${provisionActorPermission('?','t.id')}`).bind(...rows.map(row => row.id),identity.userId).first<number>('n')
+    if (count !== rows.length) throw new SiteManagementError(403,'Tenant provisioning permission changed')
+  }
+  return { choices: rows.slice(0,50),nextAfter: rows.length > 50 ? rows[49].id : null }
+}
 /** Public summaries omit prepared infrastructure manifests and lease details. */
 export async function readProvisionAdmission(database: D1Database,identity: CentralIdentity,requestId: string) {
   centralOnly()

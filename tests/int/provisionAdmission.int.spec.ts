@@ -4,7 +4,8 @@ import { readFileSync,realpathSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { afterAll,beforeAll,beforeEach,describe,expect,it } from 'vitest'
 import { provisionAdmissionSchema } from '../../src/site-control/provisionAdmissionSchema'
-import { cancelProvisionAdmission,readProvisionAdmission,submitProvisionAdmission } from '../../src/site-control/provisionAdmission'
+import { cancelProvisionAdmission,listProvisionAdmissions,provisionAdmissionChoices,readProvisionAdmission,submitProvisionAdmission } from '../../src/site-control/provisionAdmission'
+import { centralProvisionAdmission } from '../../src/site-control/provisionAdmissionHttp'
 import { ProvisionJournal } from '../../src/site-control/provisionJournal'
 import { migrateSiteControl } from '../../src/site-control/schema'
 import { prepareProvisionAdmission } from '../../scripts/site-operations/admission'
@@ -31,7 +32,7 @@ describe('central provision admission and atomic journal handoff on native D1',(
       db.prepare('CREATE TABLE users_sessions (id TEXT PRIMARY KEY,_parent_id INTEGER,expires_at TEXT)'),
       db.prepare('CREATE TABLE users_roles (parent_id INTEGER,value TEXT)'),
       db.prepare('CREATE TABLE users_tenants (_parent_id INTEGER,tenant_id INTEGER)'),
-      db.prepare('CREATE TABLE tenants (id INTEGER PRIMARY KEY)'),
+      db.prepare('CREATE TABLE tenants (id INTEGER PRIMARY KEY,name TEXT)'),
       db.prepare('CREATE TABLE sites (id INTEGER PRIMARY KEY,runtime_site_id TEXT)'),
     ])
     await migrateSiteControl(db)
@@ -48,7 +49,7 @@ describe('central provision admission and atomic journal handoff on native D1',(
       db.prepare("INSERT INTO users_sessions VALUES ('central-session',7,'2099-01-01'),('other-session',9,'2099-01-01')"),
       db.prepare("INSERT INTO users_roles VALUES (7,'general-manager'),(8,'site-manager'),(9,'general-manager')"),
       db.prepare('INSERT INTO users_tenants VALUES (7,1),(8,1),(9,2)'),
-      db.prepare('INSERT INTO tenants VALUES (1),(2)'),
+      db.prepare("INSERT INTO tenants VALUES (1,'First tenant'),(2,'Second tenant')"),
       db.prepare("INSERT INTO sites VALUES (102,'existing-numeric-id')"),
     ])
   })
@@ -64,6 +65,66 @@ describe('central provision admission and atomic journal handoff on native D1',(
     await expect(submitProvisionAdmission(db,actor,{ ...human,requestId: randomUUID() })).rejects.toMatchObject({ status: 409 })
     expect(await db.prepare('SELECT COUNT(*) AS n FROM site_provision_operations').first('n')).toBe(0)
     expect(await db.prepare('SELECT COUNT(*) AS n FROM site_provision_requests').first('n')).toBe(1)
+  })
+  it('returns only eligible tenant and owner choices from the live central authority',async () => {
+    expect(await provisionAdmissionChoices(db,actor,'tenants')).toEqual({ choices: [{ id: 1,label: 'First tenant' }],nextAfter: null })
+    expect((await provisionAdmissionChoices(db,actor,'owners',1)).choices.map(row => row.id)).toEqual([7,8])
+    await expect(provisionAdmissionChoices(db,actor,'owners',2)).rejects.toMatchObject({ status: 403 })
+    await db.prepare("UPDATE users SET lock_until='2099-01-01' WHERE id=8").run()
+    expect((await provisionAdmissionChoices(db,actor,'owners',1)).choices.map(row => row.id)).toEqual([7])
+    await db.prepare("UPDATE users_roles SET value='site-manager' WHERE parent_id=7").run()
+    expect((await provisionAdmissionChoices(db,actor,'tenants')).choices).toEqual([])
+    await db.prepare("UPDATE users_roles SET value='super-admin' WHERE parent_id=7").run()
+    expect((await provisionAdmissionChoices(db,actor,'tenants')).choices.map(row => row.id)).toEqual([1,2])
+    await db.prepare('DELETE FROM users_sessions WHERE _parent_id=7').run()
+    await expect(provisionAdmissionChoices(db,actor,'tenants')).rejects.toMatchObject({ status: 401 })
+  })
+  it('paginates durable requests without leaking another tenant or dropping cancelled entries',async () => {
+    const base = input(request())
+    const humans = Array.from({ length: 52 },(_,index) => ({ ...base,requestId: randomUUID(),siteId: `page-${index}` }))
+    await Promise.all(humans.map(human => submitProvisionAdmission(db,actor,human)))
+    await cancelProvisionAdmission(db,actor,humans[0].requestId)
+    const foreign = { ...base,requestId: randomUUID(),siteId: 'foreign-page',tenantId: 2,ownerUserId: 9 }
+    await submitProvisionAdmission(db,{ userId: '9',sessionId: 'other-session' },foreign)
+    const first = await listProvisionAdmissions(db,actor,1),second = await listProvisionAdmissions(db,actor,1,first.nextCursor!)
+    expect(first.requests).toHaveLength(50); expect(second.requests).toHaveLength(2); expect(second.nextCursor).toBeNull()
+    const all = [...first.requests,...second.requests]
+    expect(new Set(all.map(value => value.requestId)).size).toBe(52)
+    expect(all.every(value => value.input.tenantId === 1)).toBe(true)
+    expect(all.find(value => value.requestId === humans[0].requestId)?.state).toBe('cancelled')
+    expect(JSON.stringify(all)).not.toMatch(/prepared|databaseId|bindingName|workerGroup/)
+    await expect(listProvisionAdmissions(db,actor,1,foreign.requestId)).rejects.toMatchObject({ status: 400 })
+    await expect(listProvisionAdmissions(db,actor,2)).rejects.toMatchObject({ status: 403 })
+    await db.prepare('DELETE FROM users_tenants WHERE _parent_id=7').run()
+    await expect(listProvisionAdmissions(db,actor,1)).rejects.toMatchObject({ status: 403 })
+  },30000)
+  it('bounds the HTTP transport, authenticates central sessions and keeps submit/read/cancel private',async () => {
+    const origin = 'https://p1-hub.beginos.org',human = input(request())
+    const call = (path: string,init: RequestInit = {},authenticated = true) => centralProvisionAdmission(new Request(origin+path,init),{
+      centralOrigin: origin,database: db,authenticate: async () => authenticated ? actor : null })
+    const post = (body: unknown,extra: Record<string,string> = {}) => ({ method: 'POST',headers: { 'content-type': 'application/json',origin,...extra },body: JSON.stringify(body) })
+    expect((await call('/auth/site-request',post(human),false)).status).toBe(401)
+    expect((await call('/auth/site-request',post(human,{ origin: 'https://foreign.example' }))).status).toBe(403)
+    expect((await call('/auth/site-request',{ ...post(human),headers: { 'content-type': 'application/json' } })).status).toBe(403)
+    expect((await call('/auth/site-request',post({ ...human,name: 'x'.repeat(2200) }))).status).toBe(400)
+    expect((await call('/auth/site-request',post({ ...human,workerName: 'forged' }))).status).toBe(400)
+    expect((await call('/auth/site-request?requestId=forged',post(human))).status).toBe(400)
+    expect((await call('/auth/site-requests?tenantId=1&tenantId=2')).status).toBe(400)
+    expect((await call('/auth/site-provision-options?kind=tenants&tenantId=2')).status).toBe(400)
+    expect((await call('/auth/site-requests',{ method: 'POST' })).status).toBe(405)
+    expect((await call('/auth/site-request-other')).status).toBe(404)
+    const saved = await call('/auth/site-request',post(human))
+    expect(saved.status).toBe(200); expect(saved.headers.get('cache-control')).toBe('private, no-store')
+    expect(await saved.json()).toMatchObject({ state: 'queued',replayed: false })
+    expect(await (await call('/auth/site-request',post(human))).json()).toMatchObject({ replayed: true })
+    expect(await (await call(`/auth/site-request?requestId=${human.requestId}`)).json()).toMatchObject({ input: human,state: 'queued' })
+    expect(await (await call('/auth/site-requests?tenantId=1')).json()).toMatchObject({ requests: [{ input: human }] })
+    expect((await call('/auth/site-request-cancel',post({ requestId: human.requestId,extra: true }))).status).toBe(400)
+    expect(await (await call('/auth/site-request-cancel',post({ requestId: human.requestId }))).json()).toMatchObject({ state: 'cancelled' })
+    expect(await (await call('/auth/site-request-cancel',post({ requestId: human.requestId }))).json()).toMatchObject({ state: 'cancelled' })
+    expect(await journal.read(human.requestId)).toBeNull()
+    await db.prepare('DELETE FROM users_sessions WHERE _parent_id=7').run()
+    expect((await call(`/auth/site-request?requestId=${human.requestId}`)).status).toBe(401)
   })
   it('allocates unique stable numeric IDs atomically and never reuses cancelled IDs',async () => {
     const first = input(request())

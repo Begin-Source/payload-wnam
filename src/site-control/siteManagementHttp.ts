@@ -3,7 +3,7 @@ import { changeSiteLifecycle, getManagedSite, SiteManagementError, type CentralI
 
 /** Bounded JSON read without trusting Content-Length. No credentials or target
  * selection are accepted from forwarded headers, URL defaults or body user IDs. */
-async function readInput(request: Request): Promise<unknown> {
+export async function readManagementInput(request: Request): Promise<unknown> {
   if (request.headers.get('content-type')?.split(';')[0].trim() !== 'application/json') throw new SiteManagementError(400,'JSON required')
   const reader = request.body?.getReader()
   if (!reader) throw new SiteManagementError(400,'Request body required')
@@ -31,7 +31,7 @@ export async function centralSiteManagement(request: Request, options: {
   if ((write && request.headers.get('origin') !== origin) || (!write && request.headers.has('origin') && request.headers.get('origin') !== origin)) return privateResponse('Access denied',403)
   try {
     if (write ? Boolean(url.search) : [...url.searchParams.keys()].join(',') !== 'siteId') throw new SiteManagementError(400,'Explicit siteId required')
-    const input = write ? await readInput(request) : url.searchParams.get('siteId')!
+    const input = write ? await readManagementInput(request) : url.searchParams.get('siteId')!
     const identity = await options.authenticate(request)
     if (!identity) return privateResponse('Central login required',401)
     const result = write ? await changeSiteLifecycle(options.database,identity,input) : await getManagedSite(options.database,identity,input as string)

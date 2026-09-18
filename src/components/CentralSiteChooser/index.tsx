@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Button } from '@payloadcms/ui'
 import type { SiteDirectoryPage } from '../../site-control/siteDirectory'
 import { LifecycleControl } from './LifecycleControl'
+import { CentralProvisionRequests } from '../CentralProvisionRequests'
 import './style.scss'
 
 const roles = { viewer: '只读', editor: '编辑', publisher: '发布', manager: '管理' }
@@ -45,7 +46,7 @@ export function CentralSiteChooser() {
     return () => window.removeEventListener('pageshow', reset)
   }, [])
 
-  return <section className="central-sites" aria-labelledby="central-sites-heading">
+  return <><section className="central-sites" aria-labelledby="central-sites-heading">
     <h2 id="central-sites-heading">我的网站</h2>
     <p>选择网站，进入该站编辑后台。</p>
     {notice && <p role="status">{notice}</p>}
@@ -86,5 +87,5 @@ export function CentralSiteChooser() {
         </nav>
       </>}
     </div>
-  </section>
+  </section><CentralProvisionRequests /></>
 }

@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import { chromium } from '@playwright/test'
 import { checkLifecycleBrowser } from './p1-lifecycle-browser.mjs'
 import { checkMcpBrowser } from './p1-mcp-browser.mjs'
+import { checkAdmissionBrowser } from './p1-admission-browser.mjs'
 
 if (process.env.WORKERS_CI !== '1') throw new Error('Complete role checks require Cloudflare Builds')
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
@@ -137,6 +138,8 @@ try {
   await checkLifecycleBrowser({ hub: page,siteId: 'a',artifactPrefix: '.cloudflare-ci/central-lifecycle' })
   progress('mcp')
   mcp = await checkMcpBrowser({ hub: page,siteId: 'a' })
+  progress('admission')
+  await checkAdmissionBrowser({ hub: page,database: db })
 
   await page.screenshot({ path: '.cloudflare-ci/central-admin-desktop.png',fullPage: true })
   const invoke = (path,init = {}) => page.evaluate(async ({ path,init }) => {
@@ -165,6 +168,7 @@ try {
   assert.deepEqual(failedAssets,[],'Role import map and admin chunks must load')
   await db.prepare('DELETE FROM users_sessions WHERE _parent_id = 7').run()
   await mcp.assertRevokedSession()
+  assert.equal((await invoke('/auth/site-requests?tenantId=1')).status,401,'Revoked central session must deny admission reads')
   assert.equal((await invoke('/auth/enter-site',{ method: 'POST',headers: { 'content-type': 'application/x-www-form-urlencoded' },body: 'siteId=a' })).status,401,'Revoked original central session must deny ticket issuance')
   const report = { event: 'central_application_passed',checkedAt: new Date().toISOString(),
     checks: ['complete-worker','canonical-host','closed-signup','browser-password-login','native-admin-assets','master-create-read','no-site-content-api','real-session-ticket','site-grant-denial','desktop-mobile','session-revocation','granted-site-chooser','site-search-empty','paused-site-disabled','directory-retry'],
