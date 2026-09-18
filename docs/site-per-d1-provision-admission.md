@@ -45,6 +45,12 @@ pnpm run site:plan --request-id <申请UUID> --group p1-group-1 --fleet operatio
 
 `df7610c` 的构建 `d17f4928-61b6-42f9-907a-0d30e1b1e766` 于 `2026-09-18T02:02:39.151Z` 成功结束，GitHub 检查 completed/success：696 项测试 / 131 个文件、14 项既有浏览器检查及完整角色/主应用回归全部通过。新增资源检查器 12 项测试覆盖最新 D1、绑定/域名错配、读副本、账号归属、公开桶、中央 workers.dev、部署切换及多版本分流拒绝。原生分组测试现为 12 项，新增仅 SELECT 能力预览、无持久修改、准备后原样重入和撤权拒绝。[云端规划验证证据](site-per-d1-cloud-planning-validation.json)区分受控 API 响应、原生 D1 与未执行的远程建站；02:02:40Z 直接核对生产/P1 部署未变，中央 v4 和七个新对象缺失状态未变。
 
+### 从申请 ID 进入六步执行器
+
+`4675520` 的验证分支接通 [`site:provision --request-id ... --group ... --fleet ...`](site-per-d1-provision-command.md#按持久申请-id-执行)。预览调用只读规划，apply 先持久准备再进入既有六步执行器；交接时与各阶段 preflight 均重新读取中央原申请并核对完整不可变计划。取消/撤权与预约的最终竞争仍由数据库触发器原子处理。原生完整 Payload/D1 测试已跑通持久申请的六步中断恢复，真实外部创建和自动派发尚未执行。
+
+该提交的[构建证据](site-per-d1-admission-executor-validation.json)确认 `a48b6ada-92ec-43c9-bb43-eebc00cc5647` 于 `2026-09-18T03:31:02.317Z` 成功结束，714 项测试 / 132 个文件、14 项既有浏览器检查和完整应用回归通过，GitHub 检查成功。远程中央与四站部署未变化；未把原生六步恢复当成真实申请建站通过。
+
 ### 后续构建触发方式
 
 2026-09-18 核实：Workers Builds 的 Deploy Hook 可绑定指定分支，由服务端 POST 启动构建；Hook URL 本身是凭据。平台只在构建 queued/initializing 时合并重复触发，运行后的再次 POST 可产生新构建。[Cloudflare 官方说明](https://developers.cloudflare.com/workers/ci-cd/builds/deploy-hooks/)

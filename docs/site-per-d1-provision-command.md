@@ -6,7 +6,7 @@
 
 `operations/p1-release.json` 当前选择 `operations/provision/p1-d.json`，它是固定 D 站操作，不是可重复创建新站的模板。`operations/provision/p1-c.json` 保留 C 的历史输入；四站清单上线后，旧 C 请求不包含 D，会因清单/来源不匹配而拒绝执行。不能通过修改旧计划或回执绕过检查。扩组后的历史站点由独立的 [`site:verify`](site-per-d1-site-verify.md) 按当前完整清单和各站原始所有权凭证核验。
 
-当前选择还显式固定了超时轮已上传的分组发布，使用源码摘要保护的仅恢复模式补完验收，不重复上传。恢复的执行提交与站点运行提交分别记录；后续普通功能发布必须移除该恢复选择，否则应用源码变化会使发布拒绝执行。历史建站回执保持原值。
+旧恢复轮曾通过源码摘要保护的仅恢复模式补完验收。`86c9306` 已移除该选择并完成中央 v5、申请界面和动态控制器的实际发布，历史建站回执保持原值。D 文件现在是审定历史锚点，普通发布读取中央完整历史，不再固定重入 D。
 
 计划 JSON 严格包含以下字段，不接受密码、Token、任意执行命令或部署代码路径：
 
@@ -26,6 +26,25 @@ pnpm run site:provision --request operations/provision/p1-d.json --apply
 
 执行前核验账户/区域归属、中央与分组 Worker tag、数据库名称/UUID/读副本、R2 归属和关闭的公开入口、完整绑定集合、既有域名和目标 DNS。明确源清单遗漏已登记站点、原 deployment 已改变、已有域名不归本组等情况均中止，不能用当前 CLI 默认账户或自动创建替代。
 
+## 按持久申请 ID 执行
+
+`4675520` 在验证分支 `feat/site-admission-executor` 接通以下入口：
+
+```sh
+pnpm run site:provision --request-id <申请UUID> --group p1-group-1 --fleet operations/fleet/p1.json --dry-run
+pnpm run site:provision --request-id <申请UUID> --group p1-group-1 --fleet operations/fleet/p1.json --apply
+```
+
+文件来源和申请来源必须二选一，重复选项、额外资源字段、任意 fleet 路径和未明确的模式均拒绝。分组与 fleet 来自受限云端维护选择，不由普通浏览器请求指定。入口先调用同一云端规划器：预览仅检查，apply 先保存不可变计划，再调用既有六步执行器；不需要人员导出、编辑基础设施 JSON。
+
+规划器生成的文件只用于两个云端进程之间交接。执行器在初始检查和各阶段 preflight 中重新读取中央申请，核对原 UUID、分配的数字 ID、人员输入及完整准备请求。apply 要求计划已持久化；文件被替换、中央计划不一致或申请已取消时拒绝。未准备的预览重新检查当前提交人/负责人资格，不保存计划。真正预约仍由同一条 D1 INSERT 中的触发器重新核对取消与权限，交接检查不替代这一原子保护。
+
+中断后再次运行同一 UUID：规划器重用原准备请求，执行器从原六步日志恢复。完成后预览/apply 沿用原只读核验边界；如果分组后来又加入其他站，历史请求不能覆盖或重新解释新的完整清单，应使用独立 `site:verify`。自动派发及面向人员的后续状态对账仍待实现。
+
+本入口尚未用于真实新申请建站；负责人浏览器验收仍要求云端临时环境中的对应登录凭据，不重置真人密码。原生完整 Payload/D1 测试已把真实持久申请接入全部六步，覆盖资料写入与上传回执前中断、一次建库/上传、完成后只读重入及原回执保持；Cloudflare 创建 API、上传和浏览器验收在该测试中仍为受控替身。
+
+构建 `a48b6ada-92ec-43c9-bb43-eebc00cc5647` 于 `2026-09-18T03:31:02.317Z` 成功结束，GitHub 检查 completed/success：714 项测试 / 132 个文件、14 项既有浏览器检查及完整中央/站点/主应用和内部服务通信回归通过。申请层 12 项、命令边界 6 项、完整 Payload seed/恢复 5 项均通过。[本轮证据](site-per-d1-admission-executor-validation.json)包含终态及直接部署核对；远程生产和 P1 部署未变，唯一远程申请仍为前轮已取消的合成记录。
+
 ## 恢复语义
 
 编排器重新读取持久 checkpoint，不接受调用方指定进度。checkpoint 0/1 进入建库/schema，2 进入 seed，3/4/5 进入部署核验与激活。每个原有阶段仍持有自己的中央租约与不可变回执，未明的外部创建或上传只核对来源，不盲目重放。
@@ -34,7 +53,7 @@ pnpm run site:provision --request operations/provision/p1-d.json --apply
 
 checkpoint 6 的 `--apply` 也只读：核验当前部署/绑定、实际远程检查服务、域名、原站点归属及 active 路由，返回 `mutations: false`，不重跑 seed、不重传、不更改原六步回执。后续正常发布可能使用新 Worker 版本；历史建站 deployment 仍保留在回执中，不伪装成最新发布。
 
-部署使用本提交已构建的共享站点产物，增加目标绑定和域名并保留原组全部成员。云端生成 `.cloudflare-ci/provision/<operationId>/target.json` 和对应模式的报告。P1 的[普通分组发布](site-per-d1-p1-provision-d.md)现通过[多请求历史解析与逐组发布协调](site-per-d1-fleet-management.md)读取 `operations/fleet/p1.json` 中的 C/D 完整日志，生成四站清单，并核对最后 D 请求与原部署入口一致；建站预约和普通发布通过中央日志互斥。后续同一发布入口继续保留 D，不能把旧三站清单强行上传。原生多组恢复和真实单组四站核验均已通过；中央建站界面、动态新请求执行与完整多组云端入口仍需接通。
+部署使用本提交已构建的共享站点产物，增加目标绑定和域名并保留原组全部成员。云端生成 `.cloudflare-ci/provision/<operationId>/target.json` 和对应模式的报告。P1 的[普通分组发布](site-per-d1-p1-provision-d.md)通过[动态完整历史与逐组发布协调](site-per-d1-fleet-management.md)，从 `operations/fleet/p1.json` 中的 C/D 审定锚点接入中央已完成申请，生成当前全部成员清单。建站预约和普通发布通过中央日志互斥，不能把旧三站清单强行上传。中央申请界面已部署；按申请 ID 的执行入口本轮接通，真实新增申请执行、自动派发及完整多组云端入口仍待验收。
 
 ## 激活验收与边界
 
