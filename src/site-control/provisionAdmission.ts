@@ -71,16 +71,16 @@ export async function provisionAdmissionChoices(database: D1Database,identity: C
   if (!await authority(identity.userId,identity.sessionId)) throw new SiteManagementError(401,'Central login required')
   if (kind === 'owners') await requireActor(database,identity,tenantId!)
   const rows = kind === 'tenants' ?
-    (await database.prepare(`SELECT t.id,t.name AS label FROM tenants t WHERE t.id>? AND ${provisionActorPermission('?','t.id')} ORDER BY t.id LIMIT 51`)
+    (await database.prepare(`SELECT candidate.id,candidate.name AS label FROM tenants candidate WHERE candidate.id>? AND ${provisionActorPermission('?','candidate.id')} ORDER BY candidate.id LIMIT 51`)
       .bind(after,identity.userId).all<{ id: number; label: string }>()).results :
-    (await database.prepare(`SELECT u.id,u.email AS label FROM users u WHERE u.id>? AND ${provisionOwnerPermission('u.id','?')} ORDER BY u.id LIMIT 51`)
+    (await database.prepare(`SELECT candidate.id,candidate.email AS label FROM users candidate WHERE candidate.id>? AND ${provisionOwnerPermission('candidate.id','?')} ORDER BY candidate.id LIMIT 51`)
       .bind(after,tenantId!).all<{ id: number; label: string }>()).results
   if (!await authority(identity.userId,identity.sessionId)) throw new SiteManagementError(401,'Central login required')
   if (kind === 'owners') await requireActor(database,identity,tenantId!)
   // Recheck the tenant choices after the async query before returning names.
   if (kind === 'tenants' && rows.length) {
-    const count = await database.prepare(`SELECT COUNT(*) AS n FROM tenants t WHERE t.id IN (${rows.map(() => '?').join(',')})
-      AND ${provisionActorPermission('?','t.id')}`).bind(...rows.map(row => row.id),identity.userId).first<number>('n')
+    const count = await database.prepare(`SELECT COUNT(*) AS n FROM tenants candidate WHERE candidate.id IN (${rows.map(() => '?').join(',')})
+      AND ${provisionActorPermission('?','candidate.id')}`).bind(...rows.map(row => row.id),identity.userId).first<number>('n')
     if (count !== rows.length) throw new SiteManagementError(403,'Tenant provisioning permission changed')
   }
   return { choices: rows.slice(0,50),nextAfter: rows.length > 50 ? rows[49].id : null }
