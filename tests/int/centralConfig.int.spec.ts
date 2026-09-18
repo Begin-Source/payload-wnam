@@ -36,7 +36,7 @@ describe('independent central Payload configuration and native finance path', ()
   beforeAll(async () => {
     const fieldsBefore = Users.fields.length
     mf = new Miniflare({ modules: true, script: 'export default { fetch() { return new Response("fixture") } }',
-      compatibilityDate: '2025-08-15', d1Databases: { CENTRAL: 'complete-central-config', ...Object.fromEntries(['V1','V2','V3','V4','V5','FRESH','INTERRUPT','DRIFT'].map(name => [name,`central-upgrade-${name}`])) }, r2Buckets: { R2: 'central-assets' } })
+      compatibilityDate: '2025-08-15', d1Databases: { CENTRAL: 'complete-central-config', ...Object.fromEntries(['V1','V2','V3','V4','V5','V6','FRESH','INTERRUPT','DRIFT'].map(name => [name,`central-upgrade-${name}`])) }, r2Buckets: { R2: 'central-assets' } })
     database = await mf.getD1Database('CENTRAL')
     const startupSQL = vi.fn((sql: string) => database.prepare(sql))
     const boundDatabase = new Proxy(database, { get(target,key) {
