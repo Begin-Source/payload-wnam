@@ -13,7 +13,12 @@ import { withSiteContext } from '../src/site-runtime/context'
 import { syncSiteIdentityProjection } from '../src/site-runtime/identityProjection'
 import { OpenAIConfig } from '../src/utilities/aiOpenAIConfigImport'
 import { commitMasterRelease } from '../src/site-control/masterPublisher'
-import { masterReference,projectMasterData } from '../src/site-control/masterSnapshot'
+import { masterDigest,masterReference,projectMasterData } from '../src/site-control/masterSnapshot'
+import { commitConfigRelease } from '../src/site-control/configPublisher'
+import { configReference,projectConfigData,verifyConfigRelease,type ConfigRelease } from '../src/site-control/configSnapshot'
+import { readAssetRelease } from '../src/site-control/assetPublisher'
+import { assetArchiveKey,assetBytesDigest,assetReference,assetSnapshotJSON,verifyAssetBytes,
+  type AssetRelease,type AssetSnapshot } from '../src/site-control/assetSnapshot'
 import { applyP1Schema, type RoleSchema } from './p1-schema'
 import { applyP1CentralSchema } from './p1-central-schema'
 import { p1BaseManifests, P1_ACCOUNT, P1_EMAIL } from './p1-manifests.mjs'
@@ -41,7 +46,8 @@ const maintenance = { name: 'payload-wnam-p1-maintenance',account_id: P1_ACCOUNT
 }
 writeFileSync('.cloudflare-ci/p1-maintenance.json',JSON.stringify(maintenance))
 const proxy = await getPlatformProxy({ configPath: '.cloudflare-ci/p1-maintenance.json',remoteBindings: true,persist: false })
-const env = proxy.env as unknown as { CENTRAL_D1: D1Database; CENTRAL_MEDIA: R2Bucket; SITE_PUBLIC: R2Bucket; SITE_PRIVATE: R2Bucket; [key: `SITE_D1_${string}`]: D1Database }
+const env = proxy.env as unknown as { CENTRAL_D1: D1Database; CENTRAL_MEDIA: R2Bucket; MASTER_ASSET_ARCHIVE: R2Bucket;
+  SITE_PUBLIC: R2Bucket; SITE_PRIVATE: R2Bucket; [key: `SITE_D1_${string}`]: D1Database }
 const receipts = []
 let centralPayload: Awaited<ReturnType<typeof getPayload>> | undefined, sitePayload: typeof centralPayload
 try {
@@ -82,6 +88,46 @@ try {
   const deliveryRelease = await commitMasterRelease(env.CENTRAL_D1,{ format: 1,collection: 'authors',recordId: '990001',revision: 1,tenantId: 1,
     sourceUpdatedAt: '2026-09-18T13:00:00.000Z',data: projectMasterData('authors',{ displayName: 'P1 delivery candidate',
       gdprRegion: 'other',gdprLawfulBasis: 'not_applicable' }),relations: {} },'p1-data-delivery-author-v1')
+  const configOperationId = `p1-data-delivery-config-${commit.slice(0,12)}`
+  const existingConfig = await env.CENTRAL_D1.prepare(`SELECT snapshot_json AS snapshot,digest,operation_id AS operationId,created_at AS createdAt
+    FROM central_config_releases WHERE operation_id=?`).bind(configOperationId)
+    .first<{ snapshot: string;digest: string;operationId: string;createdAt: string }>()
+  let deliveryConfig: ConfigRelease
+  if (existingConfig) deliveryConfig = await verifyConfigRelease({ ...JSON.parse(existingConfig.snapshot),digest: existingConfig.digest,
+    operationId: existingConfig.operationId,createdAt: existingConfig.createdAt })
+  else {
+    const revision = 1+(await env.CENTRAL_D1.prepare("SELECT COALESCE(MAX(revision),0) AS revision FROM central_config_releases WHERE kind='llm-prompts' AND site_id=''")
+      .first<number>('revision') ?? 0)
+    deliveryConfig = await commitConfigRelease(env.CENTRAL_D1,{ format: 1,kind: 'llm-prompts',siteId: '',revision,tenantId: 0,
+      sourceRecordId: '990003',sourceUpdatedAt: '2026-09-18T14:00:00.000Z',data: projectConfigData('llm-prompts',{
+        defaultModel: 'p1/queue-fixture',temperature: 0.25,globalSystemPrompt: `P1 Queue ${commit.slice(0,12)}`,
+      }) },configOperationId)
+  }
+  const png = new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6K0AAAAASUVORK5CYII=','base64'))
+  const assetRecordId = String(900000000+parseInt(commit.slice(0,7),16)%100000000)
+  const assetOperationId = `p1-data-delivery-asset-${commit.slice(0,12)}`
+  let deliveryAsset: AssetRelease
+  const existingAsset = await env.CENTRAL_D1.prepare('SELECT 1 FROM central_asset_releases WHERE record_id=? AND revision=1')
+    .bind(assetRecordId).first()
+  if (existingAsset) deliveryAsset = await readAssetRelease(env.CENTRAL_D1,{ recordId: assetRecordId,revision: 1,
+    digest: await env.CENTRAL_D1.prepare('SELECT digest FROM central_asset_releases WHERE record_id=? AND revision=1')
+      .bind(assetRecordId).first<string>('digest') ?? '' })
+  else {
+    const snapshot: AssetSnapshot = { format: 1,recordId: assetRecordId,revision: 1,tenantId: 1,
+      sourceUpdatedAt: '2026-09-18T14:00:00.000Z',alt: 'P1 Queue delivery fixture',mimeType: 'image/png',size: png.byteLength,
+      sha256: await assetBytesDigest(png),width: 1,height: 1 }
+    const snapshotJSON = assetSnapshotJSON(snapshot),digest = await masterDigest(snapshotJSON),createdAt = new Date().toISOString()
+    deliveryAsset = { ...snapshot,digest,operationId: assetOperationId,createdAt }
+    await verifyAssetBytes(deliveryAsset,png)
+    await env.MASTER_ASSET_ARCHIVE.put(assetArchiveKey(deliveryAsset),png,{ onlyIf: { etagDoesNotMatch: '*' },sha256: deliveryAsset.sha256,
+      httpMetadata: { contentType: deliveryAsset.mimeType,cacheControl: 'private, no-store' } })
+    await env.CENTRAL_D1.prepare(`INSERT INTO central_asset_releases(record_id,revision,tenant_id,digest,snapshot_json,operation_id,created_at)
+      VALUES(?,?,?,?,?,?,?)`).bind(deliveryAsset.recordId,deliveryAsset.revision,deliveryAsset.tenantId,deliveryAsset.digest,
+      snapshotJSON,deliveryAsset.operationId,deliveryAsset.createdAt).run()
+    deliveryAsset = await readAssetRelease(env.CENTRAL_D1,assetReference(deliveryAsset))
+  }
+  const archivedAsset = await env.MASTER_ASSET_ARCHIVE.get(assetArchiveKey(deliveryAsset))
+  assert.ok(archivedAsset); await verifyAssetBytes(deliveryAsset,new Uint8Array(await archivedAsset.arrayBuffer()))
   const unavailable = async () => { throw new Error('No external capability during P1 bootstrap') }
   sitePayload = await getPayload({ key: 'p1-sites-bootstrap',disableOnInit: true,config: await createSitePayloadConfig({ secret,
     identity: { authenticate: unavailable,redeem: unavailable,logout: unavailable },
@@ -121,10 +167,17 @@ try {
     await env.CENTRAL_D1.prepare(`INSERT INTO site_runtime_access (site_id,user_id,role) VALUES (?,'7','manager')
       ON CONFLICT(site_id,user_id) DO UPDATE SET role='manager'`).bind(route.siteId).run()
   }
-  const operationHash = createHash('sha256').update(`p1-data-delivery:${commit}`).digest('hex')
-  const deliveryOperationId = `${operationHash.slice(0,8)}-${operationHash.slice(8,12)}-4${operationHash.slice(13,16)}-8${operationHash.slice(17,20)}-${operationHash.slice(20,32)}`
+  const deliveryOperationId = (kind: string) => {
+    const hash = createHash('sha256').update(`p1-data-delivery:${kind}:${commit}`).digest('hex')
+    return `${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-8${hash.slice(17,20)}-${hash.slice(20,32)}`
+  }
   const report = { event: 'p1_bootstrap_passed',commit,checkedAt: new Date().toISOString(),schemas: receipts,siteIds: routes.map(route => route.siteId),syntheticUserId: 7,
-    delivery: { operationId: deliveryOperationId,reference: masterReference(deliveryRelease) } }
+    deliveries: {
+      master: { operationId: deliveryOperationId('master'),reference: masterReference(deliveryRelease) },
+      config: { operationId: deliveryOperationId('config'),reference: configReference(deliveryConfig) },
+      asset: { operationId: deliveryOperationId('asset'),reference: assetReference(deliveryAsset) },
+      withdrawal: { operationId: deliveryOperationId('withdrawal'),reference: assetReference(deliveryAsset) },
+    } }
   writeFileSync('.cloudflare-ci/p1-bootstrap.json',JSON.stringify(report,null,2))
   console.log(JSON.stringify(report))
 } finally {

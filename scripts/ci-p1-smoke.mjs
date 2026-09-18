@@ -73,25 +73,51 @@ try {
   console.log(JSON.stringify({ event: 'p1_remote_central_login_passed' }))
   const [deliveryRoute] = await centralQuery("SELECT routing_version AS routingVersion FROM site_runtime_registry WHERE site_id='p1-a'")
   assert.ok(Number.isSafeInteger(deliveryRoute?.routingVersion) && deliveryRoute.routingVersion > 0)
-  const deliveryInput = { operationId: bootstrap.delivery.operationId,siteId: 'p1-a',routingVersion: deliveryRoute.routingVersion,
-    kind: 'master',reference: bootstrap.delivery.reference }
-  const deliveryRequest = await invoke(hub,'/auth/site-data-delivery',{ method: 'POST',headers: { 'content-type': 'application/json' },body: JSON.stringify(deliveryInput) })
-  assert.equal(deliveryRequest.status,200,`P1 data delivery request (${deliveryRequest.status})`)
-  let delivered
-  for (let attempt = 1; attempt <= 60; attempt++) {
-    const [row] = await centralQuery('SELECT state,attempt_count AS attemptCount,receipt_json AS receipt FROM site_data_deliveries WHERE operation_id=?',[deliveryInput.operationId])
-    if (row?.state === 'succeeded') { delivered = row; break }
-    await hub.waitForTimeout(1000)
-  }
-  assert.equal(delivered?.state,'succeeded','P1 data delivery Queue did not complete')
   const siteA = JSON.parse(site.vars.SITE_ROUTES).find(route => route.siteId === 'p1-a')
+  const deliver = async (kind,fixture) => {
+    const input = { operationId: fixture.operationId,siteId: 'p1-a',routingVersion: deliveryRoute.routingVersion,kind,reference: fixture.reference }
+    const requested = await invoke(hub,'/auth/site-data-delivery',{ method: 'POST',headers: { 'content-type': 'application/json' },body: JSON.stringify(input) })
+    assert.equal(requested.status,200,`P1 ${kind} delivery request (${requested.status})`)
+    let delivered
+    for (let attempt = 1; attempt <= 60; attempt++) {
+      const [row] = await centralQuery('SELECT state,attempt_count AS attemptCount,receipt_json AS receipt,last_error_code AS error FROM site_data_deliveries WHERE operation_id=?',[input.operationId])
+      if (row?.state === 'succeeded') { delivered = row; break }
+      if (row?.state === 'dead') throw new Error(`P1 ${kind} delivery dead: ${row.error}`)
+      await hub.waitForTimeout(1000)
+    }
+    assert.equal(delivered?.state,'succeeded',`P1 ${kind} data delivery Queue did not complete`)
+    const read = await invokeRead(hub,`/auth/site-data-delivery?operationId=${input.operationId}`)
+    assert.equal(read.status,200); assert.equal(JSON.parse(read.body).state,'succeeded')
+    console.log(JSON.stringify({ event: 'p1_data_delivery_queue_passed',operationId: input.operationId,siteId: 'p1-a',kind,
+      attemptCount: delivered.attemptCount,reference: input.reference }))
+    return delivered
+  }
+  await deliver('master',bootstrap.deliveries.master)
   const [candidate] = await databaseQuery(siteA.databaseId,`SELECT digest FROM site_master_releases
-    WHERE collection=? AND record_id=? AND revision=?`,[bootstrap.delivery.reference.collection,bootstrap.delivery.reference.recordId,bootstrap.delivery.reference.revision])
-  assert.equal(candidate?.digest,bootstrap.delivery.reference.digest)
-  const deliveryRead = await invokeRead(hub,`/auth/site-data-delivery?operationId=${deliveryInput.operationId}`)
-  assert.equal(deliveryRead.status,200); assert.equal(JSON.parse(deliveryRead.body).state,'succeeded')
-  console.log(JSON.stringify({ event: 'p1_data_delivery_queue_passed',operationId: deliveryInput.operationId,siteId: 'p1-a',
-    attemptCount: delivered.attemptCount,reference: bootstrap.delivery.reference }))
+    WHERE collection=? AND record_id=? AND revision=?`,[bootstrap.deliveries.master.reference.collection,
+      bootstrap.deliveries.master.reference.recordId,bootstrap.deliveries.master.reference.revision])
+  assert.equal(candidate?.digest,bootstrap.deliveries.master.reference.digest)
+  await deliver('config',bootstrap.deliveries.config)
+  const [configCandidate] = await databaseQuery(siteA.databaseId,`SELECT digest FROM site_config_releases
+    WHERE kind=? AND site_id=? AND revision=?`,[bootstrap.deliveries.config.reference.kind,
+      bootstrap.deliveries.config.reference.siteId,bootstrap.deliveries.config.reference.revision])
+  assert.equal(configCandidate?.digest,bootstrap.deliveries.config.reference.digest)
+  await deliver('asset',bootstrap.deliveries.asset)
+  const [assetCandidate] = await databaseQuery(siteA.databaseId,`SELECT digest FROM site_asset_releases
+    WHERE record_id=? AND revision=?`,[bootstrap.deliveries.asset.reference.recordId,bootstrap.deliveries.asset.reference.revision])
+  assert.equal(assetCandidate?.digest,bootstrap.deliveries.asset.reference.digest)
+  const withdrawnAt = '2026-09-18T14:30:00.000Z',withdrawalOperation = `p1-queue-withdraw-${bootstrap.commit.slice(0,12)}`
+  await centralQuery(`INSERT INTO central_asset_withdrawals(record_id,revision,digest,operation_id,withdrawn_at,reason)
+    VALUES(?,?,?,?,?,'P1 Queue withdrawal fixture') ON CONFLICT DO NOTHING`,[bootstrap.deliveries.asset.reference.recordId,
+      bootstrap.deliveries.asset.reference.revision,bootstrap.deliveries.asset.reference.digest,withdrawalOperation,withdrawnAt])
+  const [centralWithdrawal] = await centralQuery(`SELECT operation_id AS operationId,digest FROM central_asset_withdrawals
+    WHERE record_id=? AND revision=?`,[bootstrap.deliveries.asset.reference.recordId,bootstrap.deliveries.asset.reference.revision])
+  assert.deepEqual(centralWithdrawal,{ operationId: withdrawalOperation,digest: bootstrap.deliveries.asset.reference.digest })
+  await deliver('asset',bootstrap.deliveries.withdrawal)
+  const [siteWithdrawal] = await databaseQuery(siteA.databaseId,`SELECT operation_id AS operationId,digest FROM site_asset_withdrawals
+    WHERE record_id=? AND revision=?`,[bootstrap.deliveries.asset.reference.recordId,bootstrap.deliveries.asset.reference.revision])
+  assert.deepEqual(siteWithdrawal,{ operationId: withdrawalOperation,digest: bootstrap.deliveries.asset.reference.digest })
+  console.log(JSON.stringify({ event: 'p1_data_delivery_matrix_passed',siteId: 'p1-a',kinds: ['master','config','asset','withdrawal'] }))
   await checkRemoteAdmission({ hub,centralQuery })
   const pages = {},docs = {}
   for (const route of routes) {
@@ -186,7 +212,7 @@ try {
   await mcp.assertRevokedSession()
   const report = { event: 'p1_remote_smoke_passed',checkedAt: new Date().toISOString(),remoteDeployment: true,
     sites: routes.map(route => route.siteId),checks: ['real-dns-tls','independent-central-site-workers','real-d1-schemas','central-password-login','chooser-sso-group','new-site-live-revocation','host-only-cookies',
-      'native-editors','same-id-20-concurrent-reads','isolated-create-update','site-password-denied','data-delivery-queue-candidate-receipt','manager-pause-resume','ambiguous-lifecycle-retry','routing-version-cookie-revocation',
+      'native-editors','same-id-20-concurrent-reads','isolated-create-update','site-password-denied','data-delivery-queue-master-config-asset-withdrawal','manager-pause-resume','ambiguous-lifecycle-retry','routing-version-cookie-revocation',
       'live-grant-revocation','native-logout-central-revocation','desktop-mobile','real-sdk-mcp','explicit-site-mcp','mcp-lifecycle','mcp-grant-revocation','mcp-central-logout'],browserErrors }
   writeFileSync('.cloudflare-ci/p1-remote-smoke.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
 } catch (error) {
