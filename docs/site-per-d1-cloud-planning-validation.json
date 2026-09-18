@@ -1,0 +1,205 @@
+{
+  "checkedAt": "2026-09-18T02:03:18.096Z",
+  "commit": "df7610cabdcf7468d39fb719cfd510f7e55053db",
+  "branch": "feat/site-provision-admission",
+  "build": {
+    "id": "d17f4928-61b6-42f9-907a-0d30e1b1e766",
+    "status": "stopped",
+    "outcome": "success",
+    "createdAt": "2026-09-18T01:52:53.541Z",
+    "stoppedAt": "2026-09-18T02:02:39.151Z",
+    "url": "https://dash.cloudflare.com/d487cf34c606620b442632a72272014d/workers/services/view/payload-wnam/production/builds/d17f4928-61b6-42f9-907a-0d30e1b1e766"
+  },
+  "validation": {
+    "tests": 696,
+    "files": 131,
+    "existingBrowserTests": 14,
+    "resourceInspectorTests": 12,
+    "nativeFleetTests": 12,
+    "commandBoundaryTests": 5,
+    "events": [
+      {
+        "at": "2026-09-18T01:54:44.490Z",
+        "line": " ✓ tests/int/provisionFleet.int.spec.ts (12 tests) 24022ms"
+      },
+      {
+        "at": "2026-09-18T01:55:04.863Z",
+        "line": " ✓ tests/unit/admissionInspector.spec.ts (12 tests) 139ms"
+      },
+      {
+        "at": "2026-09-18T01:55:08.019Z",
+        "line": " ✓ tests/unit/provisionCommand.spec.ts (5 tests) 62ms"
+      },
+      {
+        "at": "2026-09-18T01:55:37.553Z",
+        "line": " Test Files  131 passed (131)"
+      },
+      {
+        "at": "2026-09-18T01:55:37.553Z",
+        "line": "      Tests  696 passed (696)"
+      },
+      {
+        "at": "2026-09-18T01:57:24.601Z",
+        "line": "{\"event\":\"role_build_passed\",\"role\":\"central\"}"
+      },
+      {
+        "at": "2026-09-18T01:57:59.688Z",
+        "line": "{\"event\":\"central_admission_browser_passed\",\"checkedAt\":\"2026-09-18T01:57:59.687Z\",\"remoteDeployment\":false,\"requestId\":\"be21f2ae-732d-4901-8555-59a9dbaed8f9\",\"checks\":[\"tenant-owner-form\",\"invalid-timezone-recovery\",\"committed-response-loss\",\"same-request-retry\",\"one-durable-request\",\"no-provision-effects\",\"private-summary\",\"cancel-confirmation\",\"cancel-lost-response-retry\",\"desktop-mobile\",\"live-role-revocation\"]}"
+      },
+      {
+        "at": "2026-09-18T01:58:00.442Z",
+        "line": "{\"event\":\"central_application_passed\",\"checkedAt\":\"2026-09-18T01:58:00.442Z\",\"checks\":[\"complete-worker\",\"canonical-host\",\"closed-signup\",\"browser-password-login\",\"native-admin-assets\",\"master-create-read\",\"no-site-content-api\",\"real-session-ticket\",\"site-grant-denial\",\"desktop-mobile\",\"session-revocation\",\"granted-site-chooser\",\"site-search-empty\",\"paused-site-disabled\",\"directory-retry\"],\"remoteDeployment\":false}"
+      },
+      {
+        "at": "2026-09-18T01:59:52.442Z",
+        "line": "{\"event\":\"role_build_passed\",\"role\":\"site\"}"
+      },
+      {
+        "at": "2026-09-18T02:00:13.637Z",
+        "line": "{\"event\":\"site_application_passed\",\"checkedAt\":\"2026-09-18T02:00:13.636Z\",\"remoteDeployment\":false,\"checks\":[\"complete-central-site-workers\",\"native-assets\",\"browser-central-password-login\",\"central-chooser-click\",\"real-ticket-post-handoff\",\"two-host-only-cookies\",\"native-site-admin-editors\",\"same-id-concurrent-reads\",\"site-isolated-create-update\",\"no-site-password-login\",\"desktop-mobile\",\"live-grant-revocation\",\"native-logout-revokes-session\",\"revoked-grant-logout\"],\"browserErrors\":[]}"
+      },
+      {
+        "at": "2026-09-18T02:02:24.889Z",
+        "line": "  14 passed (6.3s)"
+      },
+      {
+        "at": "2026-09-18T02:02:30.283Z",
+        "line": "{\"event\":\"site_identity_rpc_transport_passed\",\"concurrentRedemptions\":20,\"concurrentSiteRequests\":20}"
+      },
+      {
+        "at": "2026-09-18T02:02:31.780Z",
+        "line": "{\"event\":\"site_data_workerd_rpc\",\"ok\":true,\"commit\":\"df7610cabdcf7468d39fb719cfd510f7e55053db\",\"workers\":2,\"databases\":3,\"r2Buckets\":3,\"concurrentAssetCopies\":5,\"checks\":[\"named read-only RPC\",\"HTTP and publishing denied\",\"live manager grant\",\"forged destination denied\",\"tenant-private master and asset isolation\",\"global configuration to two sites\",\"candidate persistence\",\"binary asset transport and local media mapping\",\"concurrent copy deduplication\",\"withdrawal and retry\",\"live revocation\"],\"scope\":\"Cloudflare Builds native service bindings with minimal role schemas. Full independent Payload behavior has separate native integration tests; formal roles, UI and queue delivery are not deployed.\"}"
+      },
+      {
+        "at": "2026-09-18T02:02:31.888Z",
+        "line": "{\"event\":\"site_identity_workerd_rpc\",\"ok\":true,\"commit\":\"df7610cabdcf7468d39fb719cfd510f7e55053db\",\"workers\":2,\"databases\":3,\"concurrentRedemptions\":20,\"concurrentSiteRequests\":20,\"checks\":[\"named RPC capability\",\"no RPC issuer\",\"HTTP capability denied\",\"POST handoff\",\"Chromium form/CSP/cookie navigation\",\"single-use ticket\",\"host/origin binding\",\"explicit local site ID mapping\",\"credential-free projections\",\"live role changes\",\"immediate revocation\",\"site logout\",\"central logout\",\"central outage fails closed\",\"independent public response\"],\"scope\":\"Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance\"}"
+      },
+      {
+        "at": "2026-09-18T02:02:32.002Z",
+        "line": "Success: Build command completed"
+      },
+      {
+        "at": "2026-09-18T02:02:32.255Z",
+        "line": "Executing user deploy command: if [ \"$WORKERS_CI_BRANCH\" = \"feat/site-per-d1\" ]; then node scripts/ci-p0-deploy.mjs; else node -e \"console.log('Cloudflare validation complete')\"; fi"
+      },
+      {
+        "at": "2026-09-18T02:02:32.374Z",
+        "line": "Cloudflare validation complete"
+      }
+    ]
+  },
+  "remoteDeployments": {
+    "checkedAt": "2026-09-18T02:02:40.976Z",
+    "deployments": {
+      "payload-wnam": {
+        "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+        "versions": [
+          {
+            "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-16T13:17:17.77796Z"
+      },
+      "payload-wnam-p1-central": {
+        "id": "2dcf80c8-a92d-4492-87d0-c7b202195989",
+        "versions": [
+          {
+            "version_id": "2e15c1a1-00ca-43b4-bc33-767aa14f7aeb",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-17T23:04:21.744526Z"
+      },
+      "payload-wnam-p1-sites": {
+        "id": "b88d798e-6080-460d-affc-ab85dc5301d3",
+        "versions": [
+          {
+            "version_id": "c9b5e663-61f5-426b-908e-13e6a4266fd2",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-17T23:08:14.968748Z"
+      }
+    }
+  },
+  "remoteCentralSchema": {
+    "checkedAt": "2026-09-18T02:02:45.354Z",
+    "databaseId": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d",
+    "sql": "SELECT name FROM sqlite_master WHERE name IN ('site_provision_requests','site_provision_request_active_site','site_provision_request_tenant_queue','site_provision_request_prepared_group','site_provision_request_immutable','site_provision_admission_guard','site_provision_admission_reserved') ORDER BY name",
+    "objects": [
+      "site_provision_requests",
+      "site_provision_request_active_site",
+      "site_provision_request_tenant_queue",
+      "site_provision_request_prepared_group",
+      "site_provision_request_immutable",
+      "site_provision_admission_guard",
+      "site_provision_admission_reserved"
+    ],
+    "result": [
+      {
+        "results": [],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "WNAM",
+          "served_by_colo": "SEA",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.9317
+          },
+          "duration": 0.9317,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 1314816,
+          "rows_read": 305,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ],
+    "receipt": [
+      {
+        "results": [
+          {
+            "role": "central",
+            "digest": "a7c3aadae00b64d214635f59147438ad9b44798f5b8fd241483b5f10728c539f",
+            "operation_id": "p1-central-schema-v4",
+            "completed": 1
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "WNAM",
+          "served_by_colo": "SEA",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.335
+          },
+          "duration": 0.335,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 1314816,
+          "rows_read": 1,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  "limits": [
+    "Cloud-only planning CLI is implemented and typechecked but has not run against remote central v5; remote remains v4.",
+    "Resource inspector tests exercise the account-scoped HTTP client with controlled API responses, not live resource creation.",
+    "Native D1 preview uses SELECT-only capability and checks unchanged durable state; preparation/retry and revoked preview authority are tested.",
+    "No local dependency installation, tests or application builds; no remote provisioning, Worker upload or schema migration in this validation branch.",
+    "P1 ordinary release still pins D; integrate complete admission history across deploy, effective manifest, smoke and verification before executing new admissions.",
+    "Automatic build dispatch/result reconciliation, human owner acceptance and the rest of P1/P2–P5 remain incomplete."
+  ],
+  "githubCheck": {
+    "status": "completed",
+    "conclusion": "success"
+  }
+}
