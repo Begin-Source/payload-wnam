@@ -1,18 +1,3 @@
 {
-  "provisionRequest": "operations/provision/p1-d.json",
-  "admission": {
-    "request": {
-      "requestId": "91c2c4f0-fc5b-41c2-9b72-58c6dca303c0",
-      "siteId": "p1-e",
-      "name": "P1 Site E",
-      "tenantId": 1,
-      "ownerUserId": 7,
-      "timezone": "Europe/Berlin"
-    },
-    "workerGroup": "p1-group-1",
-    "fleetPath": "operations/fleet/p1.json",
-    "centralDeploymentId": "5e2eafa3-b8b6-49f2-b7bb-1e716f6f09bb",
-    "centralCommit": "86c9306534fca854ed6b0d031f96e75b2cd2ba6e",
-    "sourceDigest": "a5f20448d7b2e0318d7c3445e4ddc77dc770125a01dd3fa05b4dca6e744c9e72"
-  }
+  "provisionRequest": "operations/provision/p1-d.json"
 }
