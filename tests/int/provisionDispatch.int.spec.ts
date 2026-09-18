@@ -212,8 +212,8 @@ describe('durable provision build dispatch on native D1',() => {
     const started = buildEvent(buildUuid,'started')
     await observeProvisionBuild(db,started,env())
     expect(await observeProvisionBuild(db,started,env())).toMatchObject({ event: 'started',replayed: true })
-    const forged = buildEvent(buildUuid,'failed'); forged.payload.buildTriggerMetadata.buildTriggerSource = 'push_event'
-    await expect(observeProvisionBuild(db,forged,env())).resolves.toEqual({ event: 'failed',ignored: true })
+    const unrelated = buildEvent(randomUUID(),'failed'); unrelated.payload.buildTriggerMetadata.buildTriggerSource = 'push_event'
+    await expect(observeProvisionBuild(db,unrelated,env())).resolves.toEqual({ event: 'failed',ignored: true })
     expect(await observeProvisionBuild(db,buildEvent(buildUuid,'succeeded'),env())).toMatchObject({ state: 'needs_review' })
     await db.prepare(`UPDATE site_provision_requests SET prepared_request_json='{}',prepared_plan_json='{}',prepared_plan_digest='${'b'.repeat(64)}',
       prepared_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE request_id=?`).bind(request.requestId).run()
