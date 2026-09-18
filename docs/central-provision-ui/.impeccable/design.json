@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-18T01:38:27Z",
+  "title": "Design System: Central provision request component",
+  "extensions": {
+    "breakpoints": [{ "name": "stacked-admission", "value": "600px" }]
+  },
+  "components": [
+    {
+      "name": "Admission field",
+      "kind": "input",
+      "refersTo": "admission-field",
+      "description": "Observed field styling; inherits the surrounding Payload theme. Static example only.",
+      "html": "<div class=\"ds-admission-field\"><label for=\"ds-admission-name\">网站名称</label><input id=\"ds-admission-name\" required maxlength=\"120\" value=\"户外装备指南\"></div>",
+      "css": ".ds-admission-field{display:flex;flex-direction:column;gap:.5rem;min-width:0;color:var(--theme-text)}.ds-admission-field input{width:100%;min-width:0;min-height:44px;padding:.65rem .8rem;font:inherit;color:inherit;background:var(--theme-input-bg);border:1px solid var(--theme-elevation-300);border-radius:var(--style-radius-s)}.ds-admission-field input:focus-visible{outline:2px solid var(--theme-text);outline-offset:2px}.ds-admission-field input:disabled{opacity:.7;cursor:not-allowed}@media(max-width:600px){.ds-admission-field input{font-size:max(1rem,16px)}}"
+    },
+    {
+      "name": "Inline cancellation confirmation surface",
+      "kind": "custom",
+      "refersTo": "inline-confirmation",
+      "description": "Observed confirmation container only. The React component supplies native Payload action buttons and focus management.",
+      "html": "<div class=\"ds-admission-confirmation\" tabindex=\"-1\" role=\"group\" aria-label=\"确认取消户外装备指南\"><p>取消「户外装备指南」的建站申请？如果创建已经开始，这次取消不会执行。</p></div>",
+      "css": ".ds-admission-confirmation{grid-column:1/-1;padding:1rem;color:var(--theme-text);background:var(--theme-elevation-50);border:1px solid var(--theme-elevation-200);border-radius:var(--style-radius-s)}.ds-admission-confirmation:focus-visible{outline:2px solid var(--theme-text);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "overview": "This is a scoped record of the implemented 建站申请 extension inside the existing central Payload dashboard. Preserve the incumbent native Payload theme, typography, small buttons, and inline confirmations. It does not establish a new product identity or replace any project-wide design document.",
+    "dos": [
+      "Do preserve Payload theme variables, typography, small buttons, and inline confirmations.",
+      "Do preserve real durable states and retry the same request when an outcome is uncertain.",
+      "Do keep the automatic-execution limitation visible until the execution path is actually enabled."
+    ],
+    "donts": [
+      "Don't add infrastructure credentials, Worker IDs, or D1 IDs to the human-input form.",
+      "Don't introduce a modal, invented progress, or a completion claim based only on saving an application.",
+      "Don't generalize this component review into approval of the whole dashboard, dark theme, accessibility coverage, or remote rollout."
+    ]
+  }
+}

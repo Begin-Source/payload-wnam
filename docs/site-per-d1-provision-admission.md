@@ -1,6 +1,6 @@
 # 中央建站申请与执行交接
 
-中央建站界面需要把人员输入交给受限云端建站流程。`src/site-control/provisionAdmission.ts` 实现持久申请、按租户读取和取消；`scripts/site-operations/admission.ts` 保存经过云端规划器核对的完整请求；新增 D1 触发器把申请与现有 `ProvisionJournal.reserve` 原子连接。当前代码位于 `feat/site-provision-admission`，尚未挂载 HTTP/界面，也未安装到远程中央数据库，不能当作已可用的建站入口。
+中央建站界面需要把人员输入交给受限云端建站流程。`src/site-control/provisionAdmission.ts` 实现持久申请、按租户读取和取消；`scripts/site-operations/admission.ts` 保存经过云端规划器核对的完整请求；新增 D1 触发器把申请与现有 `ProvisionJournal.reserve` 原子连接。当前代码位于 `feat/site-provision-admission`。申请 HTTP 与后台表单已接线并通过云端验证；尚未部署到远程中央服务，也未启用自动云端建站，不能当作已完成的建站入口。
 
 ## 输入与权限
 
@@ -34,6 +34,24 @@
 
 据此选择后续由中央服务端保存固定分支的 Hook secret，人员申请先持久化，再由有状态的投递记录触发；Hook URL 不进入浏览器、申请 JSON、源码或日志。需要保存 build UUID、核对构建终态并处理触发结果不明，不能把一次 POST 成功当作建站成功，也不能依赖 Hook 的短暂去重替代原子预约和恢复。此触发适配器尚未实现或创建 Hook；本轮只完成文档与接口核实，没有改动远程构建配置。
 
+## 中央表单与 HTTP 接口
+
+`CentralProvisionRequests` 扩展现有中央“我的网站”后台，沿用 Payload 主题和按钮。人员显式选择所属租户、负责人，填写站点 ID、名称和时区；候选项仅来自其建站权限范围。普通站点经理没有授权租户时不显示申请区。提交返回的是持久申请，页面明确说明自动执行尚未启用，不能把等待状态当作建站完成。
+
+所有接口只挂在中央角色，要求真实 Payload JWT 原会话；读取结果为 `private, no-store`，写入要求严格同源 Origin、2 KiB 内 JSON，拒绝额外字段、重复或未知查询参数。没有 Cloudflare Token、Worker 或 D1 ID 的浏览器字段，也没有在请求路径调用资源创建器。
+
+- `GET /auth/site-provision-options?kind=tenants[&after=<id>]`：按权限分页返回租户名称；`kind=owners&tenantId=<id>` 返回该租户可选负责人邮箱。每页最多 50 条。
+- `GET /auth/site-requests?tenantId=<id>[&after=<requestId>]`：按创建时间和请求 ID 倒序分页，保留取消记录；每页最多 50 条，不读取站点 D1。
+- `GET /auth/site-request?requestId=<uuid>`：读取当前申请摘要；完成状态来自原建站日志。
+- `POST /auth/site-request`：严格六项人员输入，复用原申请编号及原子分配的站内数字 ID。
+- `POST /auth/site-request-cancel`：仅接受 requestId；预约开始后取消返回冲突，不伪装外部资源回滚。
+
+表单提交结果不明时锁定原输入并重试同一请求 ID，避免重复创建。输入错误允许修正；取消采用行内确认，取消响应丢失后仍可重试同一申请。切换租户清理负责人选择和列表分页；撤权后的读取拒绝并清空列表。自动执行、规划器的真实资源检查、派发及状态对账仍待下一步接通。
+
+首轮 `3b26d05` 的原生权限测试发现负责人候选 SQL 别名被子查询遮蔽，误返回其他租户人员，681/682 通过且构建失败未部署。`6abeabe` 为所有候选查询使用与内部权限查询不同的别名，保留原断言；构建 `88fc3f39-7f92-4d10-8ac8-9a7c9041641f` 于 `2026-09-18T01:39:05.186Z` 成功结束，GitHub 检查 completed/success，682 项测试 / 130 个文件、14 项既有浏览器检查及完整中央/站点/主应用回归全部通过。[本轮完整证据](site-per-d1-admission-ui-validation.json)保留失败及修复范围。真实中央 Worker 浏览器检查通过提交、已提交响应丢失重试、仅一份持久申请、无建站操作、取消确认及取消响应丢失重试、手机布局和即时撤权。01:38Z 直接核对生产/P1 deployment 未变，远程中央库仍是 v4，七个新申请对象均不存在。
+
+[桌面截图](site-per-d1-admission-desktop.jpg)和[手机截图](site-per-d1-admission-mobile.jpg)来自本次 Cloudflare 完整中央 Worker 的合成数据区域。独立 impeccable 界面复核为 `ship`，限于本次表单/状态列表，无重大修复项；不覆盖完整后台、深色主题、完整辅助技术验收或远程上线。[组件约定](central-provision-ui/DESIGN.md)记录实际 Payload 主题和恢复交互，静态检查无发现。
+
 ## 中央 v5 迁移接入
 
 迁移实现 `e657b9a` 将七个申请 schema 对象纳入 `migrateCentralRoleState`，完整中央角色测试产物也因此包含这些对象。`applyP1CentralSchema` 固定核对原 v4 摘要 `a7c3aadae00b64d214635f59147438ad9b44798f5b8fd241483b5f10728c539f`；新库使用 v5，v1–v4 按逐版增量迁移保留每步回执。每步的 DDL、迁移记录和版本推进同属原子 batch，现有表结构不改动。启动请求路径不执行迁移，正式云端 bootstrap 明确选择 v5。
@@ -50,6 +68,6 @@
 
 构建 `d8869001-a0c0-441e-bad8-c484c6b8965c` 于 `2026-09-18T00:17:48.159Z` 成功结束，GitHub 对应检查 completed/success，完整角色构建、原生中央/站点浏览器回归、主应用构建、14 项既有浏览器检查及内部服务通信检查均通过。[构建与直接核验证据](site-per-d1-provision-admission-validation.json)包含对应提交、阶段日志和验证范围。00:18:51Z 直接核对确认生产、P1 中央及站点 deployment/version 均保持前轮值；随后直接查询中央数据库，六个新申请 schema 对象均不存在，未将原生 fixture 验证当作远程迁移。
 
-远程中央迁移、HTTP 与 Payload 表单、状态列表、动态规划器的真实 Cloudflare 检查适配器、构建触发与执行请求选择仍需接通，随后才可进行真实新站全链路验收。数字 ID 分配和动态完整历史已在维护模块实现，尚未进入远程建站入口。尤其不能继续使用固定 D 请求生成有效清单，否则新增站点会在后续普通发布中丢失；新申请完成后必须进入同一持久分组历史。普通部署前还须移除前轮的仅恢复选择，不能修改摘要来保留与新源码不同的旧运行代码。
+HTTP、Payload 表单和状态列表已在验证分支接线；远程中央迁移、动态规划器的真实 Cloudflare 检查适配器、构建触发与执行请求选择仍需接通，随后才可进行真实新站全链路验收。数字 ID 分配和动态完整历史已在维护模块实现，尚未进入远程建站入口。尤其不能继续使用固定 D 请求生成有效清单，否则新增站点会在后续普通发布中丢失；新申请完成后必须进入同一持久分组历史。普通部署前还须移除前轮的仅恢复选择，不能修改摘要来保留与新源码不同的旧运行代码。
 
 本阶段依赖安装、测试与构建均由 Cloudflare Builds 执行。验证分支按现有非生产触发器只检查，不上传 Worker；待功能衔接完成后再合入 `feat/site-per-d1` 走审定的测试资源部署链路。

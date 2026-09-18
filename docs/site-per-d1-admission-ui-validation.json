@@ -1,0 +1,216 @@
+{
+  "checkedAt": "2026-09-18T01:40:19.543Z",
+  "commit": "6abeabe25274578fba658d64d708aefd2c7318d0",
+  "implementationCommit": "3b26d055466f9d38edd0905159aab02cd37dfbc6",
+  "branch": "feat/site-provision-admission",
+  "build": {
+    "id": "88fc3f39-7f92-4d10-8ac8-9a7c9041641f",
+    "status": "stopped",
+    "outcome": "success",
+    "createdAt": "2026-09-18T01:27:39.511Z",
+    "stoppedAt": "2026-09-18T01:39:05.186Z",
+    "url": "https://dash.cloudflare.com/d487cf34c606620b442632a72272014d/workers/services/view/payload-wnam/production/builds/88fc3f39-7f92-4d10-8ac8-9a7c9041641f"
+  },
+  "githubCheck": {
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "failures": [
+    {
+      "buildId": "143aa7a3-8646-4ae0-9308-080fbbc1ec8c",
+      "commit": "3b26d055466f9d38edd0905159aab02cd37dfbc6",
+      "status": "stopped",
+      "outcome": "fail",
+      "stoppedAt": "2026-09-18T01:27:12.140Z",
+      "testsPassed": 681,
+      "testsFailed": 1,
+      "error": "Permission subquery alias shadowing returned foreign-tenant owner 9 alongside authorized 7/8. Native choice assertions caught it (681/682 passed). Candidate aliases now remain distinct from inner authority aliases.",
+      "deployed": false
+    }
+  ],
+  "validation": {
+    "tests": 682,
+    "files": 130,
+    "existingBrowserTests": 14,
+    "admissionNativeTests": 10,
+    "events": [
+      {
+        "at": "2026-09-18T01:30:55.822Z",
+        "line": " Test Files  130 passed (130)"
+      },
+      {
+        "at": "2026-09-18T01:30:55.823Z",
+        "line": "      Tests  682 passed (682)"
+      },
+      {
+        "at": "2026-09-18T01:33:04.326Z",
+        "line": "{\"event\":\"role_build_passed\",\"role\":\"central\"}"
+      },
+      {
+        "at": "2026-09-18T01:33:34.049Z",
+        "line": "{\"event\":\"central_admission_browser_passed\",\"checkedAt\":\"2026-09-18T01:33:34.048Z\",\"remoteDeployment\":false,\"requestId\":\"ec22edea-c558-4c83-9c82-09505f4a47a5\",\"checks\":[\"tenant-owner-form\",\"invalid-timezone-recovery\",\"committed-response-loss\",\"same-request-retry\",\"one-durable-request\",\"no-provision-effects\",\"private-summary\",\"cancel-confirmation\",\"cancel-lost-response-retry\",\"desktop-mobile\",\"live-role-revocation\"]}"
+      },
+      {
+        "at": "2026-09-18T01:33:35.218Z",
+        "line": "{\"event\":\"central_application_passed\",\"checkedAt\":\"2026-09-18T01:33:35.217Z\",\"checks\":[\"complete-worker\",\"canonical-host\",\"closed-signup\",\"browser-password-login\",\"native-admin-assets\",\"master-create-read\",\"no-site-content-api\",\"real-session-ticket\",\"site-grant-denial\",\"desktop-mobile\",\"session-revocation\",\"granted-site-chooser\",\"site-search-empty\",\"paused-site-disabled\",\"directory-retry\"],\"remoteDeployment\":false}"
+      },
+      {
+        "at": "2026-09-18T01:35:39.260Z",
+        "line": "{\"event\":\"role_build_passed\",\"role\":\"site\"}"
+      },
+      {
+        "at": "2026-09-18T01:36:13.037Z",
+        "line": "{\"event\":\"site_application_passed\",\"checkedAt\":\"2026-09-18T01:36:13.036Z\",\"remoteDeployment\":false,\"checks\":[\"complete-central-site-workers\",\"native-assets\",\"browser-central-password-login\",\"central-chooser-click\",\"real-ticket-post-handoff\",\"two-host-only-cookies\",\"native-site-admin-editors\",\"same-id-concurrent-reads\",\"site-isolated-create-update\",\"no-site-password-login\",\"desktop-mobile\",\"live-grant-revocation\",\"native-logout-revokes-session\",\"revoked-grant-logout\"],\"browserErrors\":[]}"
+      },
+      {
+        "at": "2026-09-18T01:38:46.120Z",
+        "line": "  14 passed (7.5s)"
+      },
+      {
+        "at": "2026-09-18T01:38:54.566Z",
+        "line": "{\"event\":\"site_data_workerd_rpc\",\"ok\":true,\"commit\":\"6abeabe25274578fba658d64d708aefd2c7318d0\",\"workers\":2,\"databases\":3,\"r2Buckets\":3,\"concurrentAssetCopies\":5,\"checks\":[\"named read-only RPC\",\"HTTP and publishing denied\",\"live manager grant\",\"forged destination denied\",\"tenant-private master and asset isolation\",\"global configuration to two sites\",\"candidate persistence\",\"binary asset transport and local media mapping\",\"concurrent copy deduplication\",\"withdrawal and retry\",\"live revocation\"],\"scope\":\"Cloudflare Builds native service bindings with minimal role schemas. Full independent Payload behavior has separate native integration tests; formal roles, UI and queue delivery are not deployed.\"}"
+      },
+      {
+        "at": "2026-09-18T01:38:54.719Z",
+        "line": "{\"event\":\"site_identity_workerd_rpc\",\"ok\":true,\"commit\":\"6abeabe25274578fba658d64d708aefd2c7318d0\",\"workers\":2,\"databases\":3,\"concurrentRedemptions\":20,\"concurrentSiteRequests\":20,\"checks\":[\"named RPC capability\",\"no RPC issuer\",\"HTTP capability denied\",\"POST handoff\",\"Chromium form/CSP/cookie navigation\",\"single-use ticket\",\"host/origin binding\",\"explicit local site ID mapping\",\"credential-free projections\",\"live role changes\",\"immediate revocation\",\"site logout\",\"central logout\",\"central outage fails closed\",\"independent public response\"],\"scope\":\"Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance\"}"
+      }
+    ]
+  },
+  "screenshots": {
+    "buildId": "88fc3f39-7f92-4d10-8ac8-9a7c9041641f",
+    "commit": "6abeabe25274578fba658d64d708aefd2c7318d0",
+    "scope": "Scoped central admission region, same filled draft and cancelled synthetic request at two viewport widths, Cloudflare native Worker browser only.",
+    "desktop": {
+      "path": "docs/site-per-d1-admission-desktop.jpg",
+      "viewportWidth": 1365,
+      "sha256": "d4467bc5bf51e6b483606d6a4de403a429295ef83bda6da2e99935988a3a8b88"
+    },
+    "mobile": {
+      "path": "docs/site-per-d1-admission-mobile.jpg",
+      "viewportWidth": 390,
+      "sha256": "c34e94339e407d3a85f14b0dcccd57048d16f5855588b86ee2347acadb64a9d1"
+    },
+    "detector": {
+      "command": "node /root/.agents/skills/impeccable/scripts/detect.mjs --json --no-design-system src/components/CentralProvisionRequests/index.tsx src/components/CentralProvisionRequests/style.scss src/components/CentralSiteChooser/index.tsx",
+      "findings": [],
+      "scope": "Static source only; unrelated ancestor design system intentionally excluded."
+    }
+  },
+  "review": {
+    "disposition": "ship",
+    "scope": "Narrow central admission form/status Operate extension",
+    "materialFixes": [],
+    "screenshots": [
+      "docs/site-per-d1-admission-desktop.jpg",
+      "docs/site-per-d1-admission-mobile.jpg"
+    ],
+    "limits": [
+      "Full dashboard composition excluded",
+      "Dark theme not rendered",
+      "Comprehensive assistive-technology testing not performed",
+      "Remote rollout excluded"
+    ],
+    "reviewer": "Independent impeccable_finish_reviewer; fresh context, source and two scoped Cloudflare screenshots inspected."
+  },
+  "remote": {
+    "deployments": {
+      "checkedAt": "2026-09-18T01:38:31.822Z",
+      "deployments": {
+        "payload-wnam": {
+          "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+          "versions": [
+            {
+              "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+              "percentage": 100
+            }
+          ],
+          "createdAt": "2026-09-16T13:17:17.77796Z"
+        },
+        "payload-wnam-p1-central": {
+          "id": "2dcf80c8-a92d-4492-87d0-c7b202195989",
+          "versions": [
+            {
+              "version_id": "2e15c1a1-00ca-43b4-bc33-767aa14f7aeb",
+              "percentage": 100
+            }
+          ],
+          "createdAt": "2026-09-17T23:04:21.744526Z"
+        },
+        "payload-wnam-p1-sites": {
+          "id": "b88d798e-6080-460d-affc-ab85dc5301d3",
+          "versions": [
+            {
+              "version_id": "c9b5e663-61f5-426b-908e-13e6a4266fd2",
+              "percentage": 100
+            }
+          ],
+          "createdAt": "2026-09-17T23:08:14.968748Z"
+        }
+      }
+    },
+    "schema": {
+      "checkedAt": "2026-09-18T01:38:34.557Z",
+      "databaseId": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d",
+      "sql": "SELECT name FROM sqlite_master WHERE name IN ('site_provision_requests','site_provision_request_active_site','site_provision_request_tenant_queue','site_provision_request_prepared_group','site_provision_request_immutable','site_provision_admission_guard','site_provision_admission_reserved') ORDER BY name;SELECT role,digest,operation_id,completed FROM p1_schema_bootstrap WHERE id=1",
+      "result": [
+        {
+          "results": [],
+          "success": true,
+          "meta": {
+            "served_by": "v3-prod",
+            "served_by_region": "WNAM",
+            "served_by_colo": "SEA",
+            "served_by_primary": true,
+            "timings": {
+              "sql_duration_ms": 1.471
+            },
+            "duration": 1.471,
+            "changes": 0,
+            "last_row_id": 0,
+            "changed_db": false,
+            "size_after": 1314816,
+            "rows_read": 305,
+            "rows_written": 0,
+            "total_attempts": 1
+          }
+        },
+        {
+          "results": [
+            {
+              "role": "central",
+              "digest": "a7c3aadae00b64d214635f59147438ad9b44798f5b8fd241483b5f10728c539f",
+              "operation_id": "p1-central-schema-v4",
+              "completed": 1
+            }
+          ],
+          "success": true,
+          "meta": {
+            "served_by": "v3-prod",
+            "served_by_region": "WNAM",
+            "served_by_colo": "SEA",
+            "served_by_primary": true,
+            "timings": {
+              "sql_duration_ms": 0.569
+            },
+            "duration": 0.569,
+            "changes": 0,
+            "last_row_id": 0,
+            "changed_db": false,
+            "size_after": 1314816,
+            "rows_read": 1,
+            "rows_written": 0,
+            "total_attempts": 1
+          }
+        }
+      ]
+    }
+  },
+  "scope": "Complete central Worker browser and native D1 within Cloudflare Builds, including real Payload JWT sessions. This branch does not upload Workers or migrate remote databases. No Cloudflare provision API was called by the admission flow.",
+  "remaining": [
+    "Remote central database remains v4; no admission objects installed there.",
+    "Automatic execution is explicitly disabled in the UI.",
+    "Real planner inspection adapter, build dispatch, dynamic execution/release selection and remote full-chain verification remain.",
+    "Full execution plan P1-P5 remains incomplete."
+  ],
+  "execution": "All dependency installs, tests and application builds on Cloudflare; local source/docs/Git/static checks only."
+}
