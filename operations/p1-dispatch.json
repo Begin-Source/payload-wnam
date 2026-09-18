@@ -1,8 +1,12 @@
 {
   "enabled": true,
   "queue": "payload-wnam-p1-provision-dispatch",
+  "queueId": "77a4a2fb48a74fb38b35f386f7ae4120",
   "deadLetterQueue": "payload-wnam-p1-provision-dispatch-dlq",
+  "deadLetterQueueId": "02e5a98229d24a548d511343679fd459",
   "subscription": "payload-wnam-p1-provision-builds",
+  "subscriptionId": "7b5f032aa0974ce0978b232b2e770fc5",
+  "events": ["build.started", "build.failed", "build.canceled", "build.succeeded"],
   "deployHook": "P1 automatic site provision",
   "buildWorker": "payload-wnam",
   "buildBranch": "feat/site-per-d1",
