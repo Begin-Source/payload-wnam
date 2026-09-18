@@ -5,7 +5,7 @@ import { ProvisionJournal } from '../../src/site-control/provisionJournal'
 import { provisionDigest } from '../../src/site-control/provisionPlan'
 import { readPreparedProvisionAdmission } from './admission'
 import { parseProvisionFleet,resolveProvisionFleet } from './fleet'
-import { parseProvisionRequest,provisionManifest } from './manifest'
+import { parseProvisionRequest,provisionManifest,type GroupManifest } from './manifest'
 
 /** Extend explicitly selected, reviewed groups using completed central requests.
  * Link by full baseline identity, not timestamps or an operator-maintained latest
@@ -22,7 +22,7 @@ export async function resolveAdmissionFleet(input: unknown,database: D1Database)
       WHERE o.worker_group=? AND o.completed_at IS NOT NULL ORDER BY q.request_id LIMIT 51`)
       .bind(group.workerGroup).all<{ request_id: string }>()).results
     assert.ok(rows.length <= 50,'Too many completed admissions in one group')
-    const pending = []
+    const pending: Awaited<ReturnType<typeof readPreparedProvisionAdmission>>[] = []
     for (const row of rows) {
       const saved = await readPreparedProvisionAdmission(database,row.request_id)
       assert.ok(saved.request && saved.raw,'Completed admission has no prepared request')
@@ -33,7 +33,7 @@ export async function resolveAdmissionFleet(input: unknown,database: D1Database)
     }
     const operation = await journal.read(last.plan.operationId)
     assert.ok(operation?.databaseId && operation.completedAt,'Reviewed fleet baseline is incomplete')
-    let manifest = provisionManifest(last,operation.databaseId)
+    let manifest: GroupManifest = provisionManifest(last,operation.databaseId)
     while (pending.length) {
       const next = pending.filter(saved => isDeepStrictEqual(saved.request!.baseline,manifest))
       assert.equal(next.length,1,'Completed admission history has a gap or fork')
