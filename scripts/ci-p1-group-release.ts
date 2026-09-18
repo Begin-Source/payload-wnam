@@ -6,7 +6,7 @@ import { resolve } from 'node:path'
 import { getPlatformProxy } from 'wrangler'
 import { ProvisionJournal } from '../src/site-control/provisionJournal'
 import { GroupReleaseJournal,groupReleaseId,type GroupReleaseReceipt } from '../src/site-control/groupReleaseJournal'
-import type { inspectProvisionedSite } from '../src/site-runtime/provisionInspection'
+import type { inspectSiteRuntime } from '../src/site-runtime/runtimeInspection'
 import { ProvisionCloudflare } from './site-operations/cloudflare'
 import { ProvisionGroup } from './site-operations/group'
 import { groupRoutes,parseProvisionRequest } from './site-operations/manifest'
@@ -18,6 +18,7 @@ import { loadProvisionFleet } from './provision-fleet-input.mjs'
 import { releaseProvisionFleet } from './site-operations/fleet'
 import { resolveAdmissionFleet } from './site-operations/admission-fleet'
 import { fleetReleaseArtifact } from './site-operations/fleet-artifact'
+import { verifyGroupRuntime } from './site-operations/verify-group-runtime'
 
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1'); assert.equal(process.env.P1_GROUP_RELEASE,'1')
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
@@ -26,7 +27,7 @@ assert.equal(process.env.WRANGLER_CI_OVERRIDE_NAME,undefined); assert.equal(proc
 const selection = p1ReleaseRequest(),anchor = parseProvisionRequest(selection.request),{ plan: anchorPlan,baseline,central } = anchor
 const api = new ProvisionCloudflare(anchorPlan.accountId,process.env.CLOUDFLARE_API_TOKEN ?? '')
 await new ProvisionGroup(api,anchor).resources()
-type Environment = { CENTRAL_D1: D1Database; INSPECT: { inspect: (siteId: string,operationId: string) => ReturnType<typeof inspectProvisionedSite> } }
+type Environment = { CENTRAL_D1: D1Database; INSPECT: { verify: (siteId: string) => ReturnType<typeof inspectSiteRuntime> } }
 const configPath = '.cloudflare-ci/group-release-proxy.json'
 writeFileSync(configPath,JSON.stringify({ name: 'payload-wnam-group-release-maintenance',account_id: anchorPlan.accountId,
   compatibility_date: baseline.compatibility_date,compatibility_flags: baseline.compatibility_flags,
@@ -80,11 +81,9 @@ try {
     for (let attempt = 1; attempt <= 96; attempt++) {
       try {
         assert.deepEqual(await group.releaseSnapshot(site),receipt)
-        const proof = await proxy.env.INSPECT.inspect(plan.siteId,plan.operationId)
-        for (const [key,value] of Object.entries({ siteId: plan.siteId,operationId: plan.operationId,releaseCommit: receipt.commit,databaseId,
-          bindingName: plan.bindingName,localSiteId: plan.localSiteId,tenantId: plan.tenantId,centralTenantId: String(plan.tenantId),ownerUserId: String(plan.ownerUserId),
-          schemaDigest: plan.schemaDigest,schemaVersion: plan.schemaVersion,state: 'active' })) assert.equal(proof[key as keyof typeof proof],value)
-        console.log(JSON.stringify({ event: 'p1_group_binding_verified',attempt,...proof,releaseId: receipt.releaseId,deploymentId: receipt.deploymentId }))
+        const proofs = await verifyGroupRuntime(site,receipt,database,siteId => proxy.env.INSPECT.verify(siteId))
+        assert.deepEqual(await group.releaseSnapshot(site),receipt,'Group changed during member verification')
+        console.log(JSON.stringify({ event: 'p1_group_binding_verified',attempt,proofs,releaseId: receipt.releaseId,deploymentId: receipt.deploymentId }))
         return
       } catch (error) {
         if (attempt === 96) throw error

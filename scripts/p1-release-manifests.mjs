@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs'
 import { p1Manifests } from './p1-manifests.mjs'
 import { currentRuntimeSourceDigest } from './p1-runtime-source.mjs'
 import { loadProvisionFleet } from './provision-fleet-input.mjs'
-import { tsImport } from 'tsx/esm/api'
 
 export function validateReleaseSelection(selection,sourceDigest) {
   assert.ok(selection && typeof selection === 'object' && !Array.isArray(selection))
@@ -32,7 +31,7 @@ export function p1ReleaseRequest() {
  * Scoped loading avoids a second, weaker JavaScript manifest validator. */
 let artifactValidator
 export async function readFleetReleaseArtifact(path,reviewed,commit) {
-  artifactValidator ??= tsImport('./site-operations/fleet-artifact.ts',import.meta.url)
+  artifactValidator ??= import('tsx/esm/api').then(({ tsImport }) => tsImport('./site-operations/fleet-artifact.ts',import.meta.url))
   const { validateFleetReleaseArtifact } = await artifactValidator
   return validateFleetReleaseArtifact(JSON.parse(readFileSync(path,'utf8')),reviewed,commit)
 }

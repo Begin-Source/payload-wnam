@@ -1,13 +1,18 @@
 // @vitest-environment node
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { realpathSync } from 'node:fs'
+import { readFileSync,realpathSync } from 'node:fs'
 import { afterEach,beforeEach,describe,expect,it } from 'vitest'
 import { roleSchemaDigest,type RoleSchema } from '../../scripts/p1-schema'
 import { verifySiteDatabase } from '../../scripts/site-operations/verify-database'
 import { inspectSiteRuntime } from '../../src/site-runtime/runtimeInspection'
 import type { SiteEnvironment } from '../../src/application-roles/siteEnvironment'
 import type { SiteRegistration } from '../../src/site-control/registry'
+import { registerSite } from '../../src/site-control/registry'
+import { siteControlSchema } from '../../src/site-control/schema'
+import { provisionDigest } from '../../src/site-control/provisionPlan'
+import { verifyGroupRuntime } from '../../scripts/site-operations/verify-group-runtime'
+import type { GroupManifest } from '../../scripts/site-operations/manifest'
 
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
 const { Miniflare } = require('miniflare')
@@ -17,7 +22,7 @@ let db: D1Database,publicBucket: R2Bucket,privateBucket: R2Bucket,site: SiteRegi
 const options = () => ({ database: db,site,schema,schemaDigest: digest,accountId,ownership: { kind: 'provision' as const,operationId: site.operationId },publicBucket,privateBucket })
 describe('read-only site verification with native D1 and R2',() => {
   beforeEach(async () => {
-    mf = new Miniflare({ modules: true,script: 'export default {fetch(){return new Response("fixture")}}',compatibilityDate: '2025-08-15',d1Databases: ['SITE'],r2Buckets: ['PUBLIC','PRIVATE'] })
+    mf = new Miniflare({ modules: true,script: 'export default {fetch(){return new Response("fixture")}}',compatibilityDate: '2025-08-15',d1Databases: ['SITE','CENTRAL'],r2Buckets: ['PUBLIC','PRIVATE'] })
     db = await mf.getD1Database('SITE'); publicBucket = await mf.getR2Bucket('PUBLIC'); privateBucket = await mf.getR2Bucket('PRIVATE')
     site = { siteId: 'historical',localSiteId: 103,databaseId: randomUUID(),bindingName: 'SITE_D1_C',workerGroup: 'group-1',adminHost: 'cms-site-historical.beginos.org',
       schemaVersion: 1,routingVersion: 9,migrationState: 'active',timezone: 'UTC',productionEnabled: false,operationId: randomUUID() }
@@ -93,11 +98,31 @@ describe('read-only site verification with native D1 and R2',() => {
     const unavailable = async () => { throw new Error('Unexpected external capability') }
     const env = { PAYLOAD_SECRET: 'x'.repeat(32),CENTRAL_ORIGIN: 'https://p1-hub.beginos.org',WORKER_GROUP: site.workerGroup,
       SITE_ROUTES: JSON.stringify([{ siteId: site.siteId,localSiteId: site.localSiteId,databaseId: site.databaseId,bindingName: site.bindingName,schemaVersion: 1 }]),
-      SITE_D1_C: db,SITE_PUBLIC: publicBucket,SITE_PRIVATE: privateBucket,PROVISION_OPERATION: randomUUID(),PROVISION_COMMIT: commit,
+      SITE_D1_C: db,SITE_PUBLIC: publicBucket,SITE_PRIVATE: privateBucket,PROVISION_OPERATION: randomUUID(),PROVISION_COMMIT: commit,RELEASE_OPERATION: 'b'.repeat(64),
       ROUTING: { resolve: async () => ({ ...site,migrationState: 'paused' }) },IDENTITY: { authenticate: unavailable,redeem: unavailable,logout: unavailable },
       DATA: { readMaster: unavailable,readConfig: unavailable,readAsset: unavailable } } as unknown as SiteEnvironment
     expect(await inspectSiteRuntime(env,site.siteId)).toMatchObject({ databaseId: site.databaseId,tenantId: 1,state: 'paused',releaseCommit: commit })
     await expect(inspectSiteRuntime(env,'foreign')).rejects.toThrow('not bound')
+    const central = await mf.getD1Database('CENTRAL')
+    await central.prepare(siteControlSchema[0]).run()
+    await registerSite(central,{ ...site,migrationState: 'paused' })
+    const manifest = JSON.parse(readFileSync('operations/provision/p1-c.json','utf8')).baseline as GroupManifest
+    manifest.vars.WORKER_GROUP = site.workerGroup; manifest.vars.SITE_ROUTES = env.SITE_ROUTES
+    manifest.d1_databases = [{ binding: site.bindingName,database_id: site.databaseId,database_name: 'fixture-site' }]
+    manifest.routes = [{ pattern: site.adminHost,custom_domain: true }]
+    const receipt = { deploymentId: randomUUID(),versionId: randomUUID(),commit,releaseId: 'b'.repeat(64),manifestDigest: provisionDigest(JSON.stringify(manifest)) }
+    const readonly = new Proxy(central,{ get(target,key) {
+      if (key === 'prepare') return (sql: string) => { expect(sql.trim().startsWith('SELECT')).toBe(true); return target.prepare(sql) }
+      throw new Error('Group verification attempted a write capability')
+    } })
+    expect(await verifyGroupRuntime(manifest,receipt,readonly,id => inspectSiteRuntime(env,id))).toEqual([expect.objectContaining({ state: 'paused',releaseId: receipt.releaseId })])
+    await expect(verifyGroupRuntime(manifest,{ ...receipt,commit: 'c'.repeat(40) },readonly,id => inspectSiteRuntime(env,id))).rejects.toThrow('runtime proof mismatch')
+    await expect(verifyGroupRuntime(manifest,receipt,readonly,async id => {
+      const proof = await inspectSiteRuntime(env,id)
+      await central.prepare('UPDATE site_runtime_registry SET routing_version=routing_version+1 WHERE site_id=?').bind(id).run()
+      return proof
+    })).rejects.toThrow('changed during verification')
+    console.log(JSON.stringify({ event: 'ordinary_group_runtime_verified',multipleIdentityProjections: 2,paused: true,readOnly: true,staleReleaseRejected: true,concurrentRouteChangeRejected: true,remoteDeployment: false }))
     let calls = 0
     env.ROUTING.resolve = async () => ({ ...site,routingVersion: ++calls === 1 ? 9 : 10 })
     await expect(inspectSiteRuntime(env,site.siteId)).rejects.toThrow('route changed during inspection')
