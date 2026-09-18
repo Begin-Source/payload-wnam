@@ -1,8 +1,9 @@
 import { WorkerEntrypoint } from 'cloudflare:workers'
-import { createDataDelivery, type DataDeliveryAuth, type SiteDataRPC } from './dataDelivery'
+import { createDataDelivery, createMachineDataDelivery, type DataDeliveryAuth, type SiteDataRPC } from './dataDelivery'
 import type { MasterReference } from './masterSnapshot'
 import type { ConfigReference } from './configSnapshot'
 import type { AssetReference } from './assetSnapshot'
+import type { DataDeliveryReceipt } from './dataDeliveryJournal'
 
 /** Dedicated service binding, with a private archive binding. No HTTP download,
  * publisher, login issuer, arbitrary query or account-management capability. */
@@ -16,5 +17,14 @@ export class SiteDataService extends WorkerEntrypoint<{ CENTRAL_D1: D1Database; 
   }
   readAsset(auth: DataDeliveryAuth, ref: AssetReference) {
     return createDataDelivery(this.env.CENTRAL_D1,this.env.MASTER_ASSET_ARCHIVE).readAsset(auth,ref)
+  }
+  readDelivery(operationId: string, capability: string) {
+    return createMachineDataDelivery(this.env.CENTRAL_D1,this.env.MASTER_ASSET_ARCHIVE).readDelivery(operationId,capability)
+  }
+  acknowledgeDelivery(operationId: string, capability: string, receipt: DataDeliveryReceipt) {
+    return createMachineDataDelivery(this.env.CENTRAL_D1,this.env.MASTER_ASSET_ARCHIVE).acknowledgeDelivery(operationId,capability,receipt)
+  }
+  failDelivery(operationId: string, capability: string, errorCode: string) {
+    return createMachineDataDelivery(this.env.CENTRAL_D1,this.env.MASTER_ASSET_ARCHIVE).failDelivery(operationId,capability,errorCode)
   }
 }

@@ -7,13 +7,38 @@ import { assertAssetReference, type AssetReference, type AssetTransfer } from '.
 import { exportMasterBundle } from './masterPublisher'
 import { exportConfigBundle } from './configPublisher'
 import { exportAssetTransfer } from './assetPublisher'
+import { acknowledgeMachineDataDelivery, readMachineDataDelivery, recordMachineDeliveryFailure,
+  type DataDeliveryReceipt, type DataDeliverySummary, type MachineDataDelivery } from './dataDeliveryJournal'
 
 export type DataDeliveryAuth = { session: string; siteId: string; adminHost: string; routingVersion: number }
 export type DataDeliveryResult<T> = { ok: true; principal: SitePrincipal; value: T } | { ok: false; reason: 'denied' | 'unavailable' }
+export type MachineDataDeliveryResult<T> = { ok: true; value: T } | { ok: false; reason: 'denied' | 'unavailable' }
 export interface SiteDataRPC {
   readMaster(auth: DataDeliveryAuth, ref: MasterReference): Promise<DataDeliveryResult<MasterBundle>>
   readConfig(auth: DataDeliveryAuth, ref: ConfigReference): Promise<DataDeliveryResult<ConfigBundle>>
   readAsset(auth: DataDeliveryAuth, ref: AssetReference): Promise<DataDeliveryResult<AssetTransfer>>
+  readDelivery?(operationId: string, capability: string): Promise<MachineDataDeliveryResult<MachineDataDelivery>>
+  acknowledgeDelivery?(operationId: string, capability: string, receipt: DataDeliveryReceipt): Promise<MachineDataDeliveryResult<DataDeliverySummary>>
+  failDelivery?(operationId: string, capability: string, errorCode: string): Promise<MachineDataDeliveryResult<DataDeliverySummary>>
+}
+
+/** Machine methods are available only through the private service binding. The
+ * capability is single-operation material delivered to a target group queue;
+ * failures never include central SQL, storage or credential details. */
+export function createMachineDataDelivery(db: D1Database, archive: R2Bucket) {
+  const run = async <T>(action: () => Promise<T>): Promise<MachineDataDeliveryResult<T>> => {
+    try {
+      if (optionalSiteContext()) throw new Error('Central data service inside site request')
+      return { ok: true,value: await action() }
+    } catch { return { ok: false,reason: 'unavailable' } }
+  }
+  return Object.freeze({
+    readDelivery: (operationId: string, capability: string) => run(() => readMachineDataDelivery(db,archive,operationId,capability)),
+    acknowledgeDelivery: (operationId: string, capability: string, receipt: DataDeliveryReceipt) =>
+      run(() => acknowledgeMachineDataDelivery(db,operationId,capability,receipt)),
+    failDelivery: (operationId: string, capability: string, errorCode: string) =>
+      run(() => recordMachineDeliveryFailure(db,operationId,capability,errorCode)),
+  })
 }
 
 /** Central-only read capability. Every request checks the original live central

@@ -8,6 +8,7 @@ import { migrateSiteMasterCopies } from '../site-runtime/masterCopySchema'
 import { provisionAdmissionSchema } from '../site-control/provisionAdmissionSchema'
 import { provisionDispatchSchema } from '../site-control/provisionDispatchSchema'
 import { provisionDispatchRunSchema } from '../site-control/provisionDispatchRunSchema'
+import { migrateDataDeliveries } from '../site-control/dataDeliverySchema'
 
 /** Explicit operational initialization, never imported by request ingress.
  * Keep schema-only artifacts and migration-owned singleton/high-watermark data
@@ -22,6 +23,7 @@ export async function migrateCentralRoleState(database: D1Database): Promise<voi
   await database.batch(provisionAdmissionSchema.map(sql => database.prepare(sql)))
   await database.batch(provisionDispatchSchema.map(sql => database.prepare(sql)))
   await database.batch(provisionDispatchRunSchema.map(sql => database.prepare(sql)))
+  await migrateDataDeliveries(database)
   await database.prepare(`INSERT OR IGNORE INTO site_provision_dispatches
     (request_id,input_digest,branch,state,queued_at,completed_at,build_outcome,last_error_code)
     SELECT q.request_id,q.input_digest,'ops/site-provision',

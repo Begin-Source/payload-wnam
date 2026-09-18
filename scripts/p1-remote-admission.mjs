@@ -13,7 +13,7 @@ export async function checkRemoteAdmission({ hub,centralQuery,writeProbe = false
   },{ path,body })
   const before = await centralQuery('SELECT operation_id,checkpoint,completed_at FROM site_provision_operations ORDER BY operation_id')
   const schema = await centralQuery('SELECT operation_id,completed FROM p1_schema_bootstrap WHERE id=1')
-  assert.deepEqual(schema,[{ operation_id: 'p1-central-schema-v8',completed: 1 }])
+  assert.deepEqual(schema,[{ operation_id: 'p1-central-schema-v9',completed: 1 }])
   if (!writeProbe) {
     await region.getByLabel('所属租户',{ exact: true }).selectOption('1')
     await region.getByRole('button',{ name: '申请建站',exact: true }).click()
@@ -30,7 +30,7 @@ export async function checkRemoteAdmission({ hub,centralQuery,writeProbe = false
     assert.deepEqual(await centralQuery('SELECT operation_id,checkpoint,completed_at FROM site_provision_operations ORDER BY operation_id'),before)
     await hub.setViewportSize({ width: 1365,height: 900 })
     console.log(JSON.stringify({ event: 'p1_remote_admission_read_only_passed',checkedAt: new Date().toISOString(),remoteDeployment: true,
-      checks: ['central-v8','real-ui-options','bounded-form','desktop-mobile','no-request-write','no-provision-effects'] }))
+      checks: ['central-v9','real-ui-options','bounded-form','desktop-mobile','no-request-write','no-provision-effects'] }))
     return
   }
   let input
