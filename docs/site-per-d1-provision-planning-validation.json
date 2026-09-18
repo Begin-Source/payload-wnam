@@ -1,0 +1,163 @@
+{
+  "checkedAt": "2026-09-18T00:48:37.454Z",
+  "commit": "4568591684af37b2c6033fd69c0f02972bbabb05",
+  "branch": "feat/site-provision-admission",
+  "build": {
+    "id": "f2ea9f46-cb15-47ef-bd2d-616553c21703",
+    "status": "stopped",
+    "outcome": "success",
+    "createdAt": "2026-09-18T00:35:33.965Z",
+    "stoppedAt": "2026-09-18T00:43:28.390Z",
+    "url": "https://dash.cloudflare.com/d487cf34c606620b442632a72272014d/workers/services/view/payload-wnam/production/builds/f2ea9f46-cb15-47ef-bd2d-616553c21703"
+  },
+  "githubCheck": {
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "failures": [
+    {
+      "buildId": "d5c48f0e-c19a-4fa2-a489-f32666226061",
+      "commit": "e2377dd022abfacfe97348a3828d92b7d68a7666",
+      "status": "stopped",
+      "outcome": "fail",
+      "stoppedAt": "2026-09-18T00:30:49.209Z",
+      "stage": "TypeScript checking",
+      "error": "TS7022: circular inference for next in admission-fleet.ts; added explicit pending array and manifest types",
+      "deployed": false
+    },
+    {
+      "buildId": "b940fea1-2f9e-4812-a39e-f8332a9a7831",
+      "commit": "827846181919fbe5e456d299afb9463582791b2d",
+      "status": "stopped",
+      "outcome": "fail",
+      "stoppedAt": "2026-09-18T00:34:57.850Z",
+      "stage": "Native integration tests",
+      "error": "Two dynamic-history tests exceeded Vitest's default 5000 ms; 670/672 passed. Both multi-operation tests now have a 30000 ms test-only timeout; all assertions and operational limits unchanged.",
+      "deployed": false
+    }
+  ],
+  "validation": {
+    "tests": 672,
+    "files": 130,
+    "browserTests": 14,
+    "admissionNativeTests": 7,
+    "fleetNativeTests": 11,
+    "scope": "Cloudflare Builds native D1; external planner inspection and provisioning resource receipts are controlled test substitutes. No real new site created.",
+    "events": [
+      {
+        "at": "2026-09-18T00:37:48.833Z",
+        "line": " Test Files  130 passed (130)"
+      },
+      {
+        "at": "2026-09-18T00:37:48.833Z",
+        "line": "      Tests  672 passed (672)"
+      },
+      {
+        "at": "2026-09-18T00:39:17.035Z",
+        "line": "{\"event\":\"role_build_passed\",\"role\":\"central\"}"
+      },
+      {
+        "at": "2026-09-18T00:39:40.696Z",
+        "line": "{\"event\":\"central_application_passed\",\"checkedAt\":\"2026-09-18T00:39:40.695Z\",\"checks\":[\"complete-worker\",\"canonical-host\",\"closed-signup\",\"browser-password-login\",\"native-admin-assets\",\"master-create-read\",\"no-site-content-api\",\"real-session-ticket\",\"site-grant-denial\",\"desktop-mobile\",\"session-revocation\",\"granted-site-chooser\",\"site-search-empty\",\"paused-site-disabled\",\"directory-retry\"],\"remoteDeployment\":false}"
+      },
+      {
+        "at": "2026-09-18T00:41:03.964Z",
+        "line": "{\"event\":\"role_build_passed\",\"role\":\"site\"}"
+      },
+      {
+        "at": "2026-09-18T00:41:23.960Z",
+        "line": "{\"event\":\"site_application_passed\",\"checkedAt\":\"2026-09-18T00:41:23.959Z\",\"remoteDeployment\":false,\"checks\":[\"complete-central-site-workers\",\"native-assets\",\"browser-central-password-login\",\"central-chooser-click\",\"real-ticket-post-handoff\",\"two-host-only-cookies\",\"native-site-admin-editors\",\"same-id-concurrent-reads\",\"site-isolated-create-update\",\"no-site-password-login\",\"desktop-mobile\",\"live-grant-revocation\",\"native-logout-revokes-session\",\"revoked-grant-logout\"],\"browserErrors\":[]}"
+      },
+      {
+        "at": "2026-09-18T00:43:13.532Z",
+        "line": "  14 passed (5.4s)"
+      },
+      {
+        "at": "2026-09-18T00:43:19.292Z",
+        "line": "{\"event\":\"site_data_workerd_rpc\",\"ok\":true,\"commit\":\"4568591684af37b2c6033fd69c0f02972bbabb05\",\"workers\":2,\"databases\":3,\"r2Buckets\":3,\"concurrentAssetCopies\":5,\"checks\":[\"named read-only RPC\",\"HTTP and publishing denied\",\"live manager grant\",\"forged destination denied\",\"tenant-private master and asset isolation\",\"global configuration to two sites\",\"candidate persistence\",\"binary asset transport and local media mapping\",\"concurrent copy deduplication\",\"withdrawal and retry\",\"live revocation\"],\"scope\":\"Cloudflare Builds native service bindings with minimal role schemas. Full independent Payload behavior has separate native integration tests; formal roles, UI and queue delivery are not deployed.\"}"
+      },
+      {
+        "at": "2026-09-18T00:43:19.384Z",
+        "line": "{\"event\":\"site_identity_workerd_rpc\",\"ok\":true,\"commit\":\"4568591684af37b2c6033fd69c0f02972bbabb05\",\"workers\":2,\"databases\":3,\"concurrentRedemptions\":20,\"concurrentSiteRequests\":20,\"checks\":[\"named RPC capability\",\"no RPC issuer\",\"HTTP capability denied\",\"POST handoff\",\"Chromium form/CSP/cookie navigation\",\"single-use ticket\",\"host/origin binding\",\"explicit local site ID mapping\",\"credential-free projections\",\"live role changes\",\"immediate revocation\",\"site logout\",\"central logout\",\"central outage fails closed\",\"independent public response\"],\"scope\":\"Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance\"}"
+      }
+    ]
+  },
+  "deployments": {
+    "checkedAt": "2026-09-18T00:48:01.972Z",
+    "deployments": {
+      "payload-wnam": {
+        "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+        "versions": [
+          {
+            "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-16T13:17:17.77796Z"
+      },
+      "payload-wnam-p1-central": {
+        "id": "2dcf80c8-a92d-4492-87d0-c7b202195989",
+        "versions": [
+          {
+            "version_id": "2e15c1a1-00ca-43b4-bc33-767aa14f7aeb",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-17T23:04:21.744526Z"
+      },
+      "payload-wnam-p1-sites": {
+        "id": "b88d798e-6080-460d-affc-ab85dc5301d3",
+        "versions": [
+          {
+            "version_id": "c9b5e663-61f5-426b-908e-13e6a4266fd2",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-17T23:08:14.968748Z"
+      }
+    }
+  },
+  "admissionSchema": {
+    "checkedAt": "2026-09-18T00:48:17.018Z",
+    "databaseId": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d",
+    "sql": "SELECT name FROM sqlite_master WHERE name IN ('site_provision_requests','site_provision_request_active_site','site_provision_request_tenant_queue','site_provision_request_prepared_group','site_provision_request_immutable','site_provision_admission_guard','site_provision_admission_reserved') ORDER BY name",
+    "objects": [
+      "site_provision_requests",
+      "site_provision_request_active_site",
+      "site_provision_request_tenant_queue",
+      "site_provision_request_prepared_group",
+      "site_provision_request_immutable",
+      "site_provision_admission_guard",
+      "site_provision_admission_reserved"
+    ],
+    "result": [
+      {
+        "results": [],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "WNAM",
+          "served_by_colo": "SEA",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.4283
+          },
+          "duration": 0.4283,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 1314816,
+          "rows_read": 305,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "Validation branch does not upload Workers.",
+    "Admission schema, HTTP/UI, actual cloud inspection, build dispatch and dynamic executor selection are not deployed.",
+    "Full execution plan remains incomplete."
+  ],
+  "execution": "Local source/docs/Git/static checks only; dependencies, tests and builds on Cloudflare."
+}
