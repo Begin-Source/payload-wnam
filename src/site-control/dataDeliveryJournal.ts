@@ -20,7 +20,7 @@ export type DataDeliverySummary = DataDeliveryInput & { actorUserId: string; wor
   attemptCount: number; createdAt: string; updatedAt: string; completedAt: string | null; lastErrorCode: string | null;
   receipt: DataDeliveryReceipt | null }
 export type MachineDataDelivery = { operationId: string; siteId: string; routingVersion: number; workerGroup: string;
-  kind: DataDeliveryKind; reference: DataDeliveryReference; value: DataDeliveryValue; attemptCount: number }
+  kind: DataDeliveryKind; reference: DataDeliveryReference; referenceDigest: string; value: DataDeliveryValue; attemptCount: number }
 
 type DeliveryRow = {
   operationId: string; siteId: string; actorUserId: string; workerGroup: string; routingVersion: number; kind: DataDeliveryKind;
@@ -163,7 +163,7 @@ export async function readMachineDataDelivery(database: D1Database, archive: R2B
     const current = await database.prepare(`SELECT state,lease_expires_at AS leaseExpiresAt FROM site_data_deliveries
       WHERE operation_id=? AND capability_hash=?`).bind(operationId,hash).first<{ state: DataDeliveryState; leaseExpiresAt: number | null }>()
     if (!current || current.state !== 'leased' || !current.leaseExpiresAt || current.leaseExpiresAt <= now) throw new Error('Delivery lease changed')
-    return { ...input,workerGroup: row.workerGroup,value,attemptCount: row.attemptCount }
+    return { ...input,workerGroup: row.workerGroup,referenceDigest: row.referenceDigest,value,attemptCount: row.attemptCount }
   } catch (error) {
     await recordMachineDeliveryFailure(database,operationId,capability,'source_unavailable',now)
     throw error

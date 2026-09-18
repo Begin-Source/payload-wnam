@@ -56,7 +56,7 @@ describe('durable pinned site data delivery journal',() => {
     expect(first).toMatchObject({ operationId: id,siteId: 'a',workerGroup: 'group-1',attemptCount: 1,reference,
       value: { root: reference,centralTenantId: 1 } })
     expect((await readMachineDataDelivery(db,archive,id,capability,1_000_001)).attemptCount).toBe(1)
-    const receipt = { receivedDigest: reference.digest,receivedAt: '2026-09-18T12:01:00.000Z' }
+    const receipt = { receivedDigest: first.referenceDigest,receivedAt: '2026-09-18T12:01:00.000Z' }
     expect(await acknowledgeMachineDataDelivery(db,id,capability,receipt,1_000_002)).toMatchObject({ state: 'succeeded',receipt })
     expect(await acknowledgeMachineDataDelivery(db,id,capability,receipt,1_000_003)).toMatchObject({ state: 'succeeded',attemptCount: 1 })
     await expect(db.prepare('DELETE FROM site_data_deliveries WHERE operation_id=?').bind(id).run()).rejects.toThrow('immutable')
