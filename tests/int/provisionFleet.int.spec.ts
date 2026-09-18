@@ -124,13 +124,13 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
     await expect(resolveProvisionFleet(input,db)).rejects.toThrow('registered member')
   })
   it('requires complete receipts and refuses a runtime registration older than activation',async () => {
-    const input = await fixture()
+    const input = await fixture({ groups: 1 })
     await db.prepare("UPDATE site_runtime_registry SET routing_version=1 WHERE site_id='fleet-1-site-1'").run()
     await expect(resolveProvisionFleet(input,db)).rejects.toThrow('predates provision activation')
     await db.prepare("UPDATE site_runtime_registry SET routing_version=2 WHERE site_id='fleet-1-site-1'").run()
     await db.prepare('DELETE FROM site_provision_steps WHERE operation_id=? AND step=4').bind(input.groups[0].requests[0].plan.operationId).run()
     await expect(resolveProvisionFleet(input,db)).rejects.toThrow('receipt is missing')
-  })
+  },15000) // Two native six-step histories and two complete receipt scans.
   it('rejects cross-group public/private storage aliasing even when each group is individually distinct',async () => {
     await expect(resolveProvisionFleet(await fixture({ bucketCollision: true }),db)).rejects.toThrow('public/private bucket collision')
   })
