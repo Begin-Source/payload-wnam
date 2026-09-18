@@ -236,7 +236,7 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
     } })).rejects.toThrow('registered member')
     expect(await db.prepare('SELECT prepared_request_json FROM site_provision_requests WHERE request_id=?').bind(human.requestId).first('prepared_request_json')).toBeNull()
     expect(await journal.read(human.requestId)).toBeNull()
-  })
+  },30000) // Three native histories and four rejected planning attempts.
   it('resumes only the exact prepared schema and reviewed group without retargeting',async () => {
     const input = await fixture(),deps = planner(input),human = await admit('resume-identity')
     const prepared = await planProvisionAdmission(human.requestId,'fleet-1',deps)
