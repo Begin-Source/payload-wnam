@@ -56,8 +56,12 @@ export async function submitProvisionAdmission(database: D1Database,identity: Ce
   const input = parseProvisionAdmission(value),json = JSON.stringify(input)
   await requireActor(database,identity,input.tenantId)
   const inserted = await database.prepare(`INSERT INTO site_provision_requests
-    (request_id,site_id,actor_user_id,tenant_id,owner_user_id,input_json,input_digest,created_at)
-    SELECT ?,?,?,?, ?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now')
+    (request_id,site_id,actor_user_id,tenant_id,owner_user_id,input_json,input_digest,created_at,local_site_id)
+    SELECT ?,?,?,?, ?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now'),
+      (SELECT COALESCE(MAX(id),0)+1 FROM (
+        SELECT id FROM sites UNION ALL SELECT local_site_id AS id FROM site_runtime_registry
+        UNION ALL SELECT local_site_id AS id FROM site_provision_operations
+        UNION ALL SELECT local_site_id AS id FROM site_provision_requests))
     WHERE ${provisionActorPermission('?','?')} AND ${provisionOwnerPermission('?','?')}
       AND EXISTS (SELECT 1 FROM users_sessions s WHERE s._parent_id=? AND s.id=? AND julianday(s.expires_at)>julianday('now'))
       AND EXISTS (SELECT 1 FROM tenants t WHERE t.id=?)

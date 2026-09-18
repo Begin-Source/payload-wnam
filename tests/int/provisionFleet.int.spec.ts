@@ -11,6 +11,10 @@ import { registerSite } from '../../src/site-control/registry'
 import { parseProvisionRequest,provisionManifest,type GroupManifest } from '../../scripts/site-operations/manifest'
 import { resolveProvisionFleet,releaseProvisionFleet } from '../../scripts/site-operations/fleet'
 import type { ReleaseSnapshot } from '../../scripts/site-operations/release'
+import { provisionAdmissionSchema } from '../../src/site-control/provisionAdmissionSchema'
+import { submitProvisionAdmission } from '../../src/site-control/provisionAdmission'
+import { planProvisionAdmission,type AdmissionPlannerDependencies } from '../../scripts/site-operations/admission-plan'
+import { resolveAdmissionFleet } from '../../scripts/site-operations/admission-fleet'
 
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
 const { Miniflare } = require('miniflare')
@@ -18,6 +22,38 @@ const source = JSON.parse(readFileSync('operations/provision/p1-c.json','utf8'))
 const central = structuredClone(source.central),centralId = randomUUID(),commit = 'c'.repeat(40)
 central.d1_databases[0].database_id = centralId
 let mf: { getD1Database: (name: string) => Promise<D1Database>; dispose: () => Promise<void> },db: D1Database,journal: ProvisionJournal
+
+async function admit(siteId: string) {
+  const input = { requestId: randomUUID(),siteId,name: `Site ${siteId}`,tenantId: 1,ownerUserId: 7,timezone: 'UTC' }
+  await submitProvisionAdmission(db,{ userId: '7',sessionId: 'planner-session' },input)
+  return input
+}
+function planner(fleetInput: unknown): AdmissionPlannerDependencies {
+  const deploymentId = randomUUID()
+  return { database: db,fleetInput,schema: { version: source.plan.schemaVersion,digest: source.plan.schemaDigest },
+    inspect: async group => ({ deploymentId,manifestDigest: group.manifestDigest }) }
+}
+
+async function completeRequest(raw: unknown) {
+  const request = parseProvisionRequest(raw),plan = request.plan,databaseId = randomUUID(),target = provisionManifest(request,databaseId)
+  await journal.reserve(plan)
+  const lease = await journal.claim(plan.operationId),deploymentId = randomUUID(),digest = 'a'.repeat(64)
+  const receipts = [{ databaseId,databaseName: plan.databaseName,readReplication: 'disabled' },
+    { databaseId,schemaDigest: plan.schemaDigest,schemaVersion: plan.schemaVersion,objects: 504 },
+    { databaseId,siteId: plan.siteId,localSiteId: plan.localSiteId,tenantId: plan.tenantId,ownerUserId: plan.ownerUserId,contentDigest: digest },
+    { deploymentId,versionId: randomUUID(),manifestDigest: provisionDigest(JSON.stringify(target)),commit },
+    { deploymentId,reportDigest: digest,checkedAt: new Date().toISOString() },{ siteId: plan.siteId,routingVersion: 2 }]
+  for (const [stepIndex,step] of provisionSteps.entries()) {
+    await journal.begin(lease,step,digest)
+    if (step === 'activate') {
+      await registerSite(db,{ siteId: plan.siteId,localSiteId: plan.localSiteId,databaseId,bindingName: plan.bindingName,workerGroup: plan.workerGroup,
+        adminHost: plan.adminHost,schemaVersion: 1,routingVersion: 2,migrationState: 'active',timezone: plan.timezone,productionEnabled: false,operationId: plan.operationId })
+      await db.prepare('INSERT INTO site_runtime_access VALUES (?,?,?)').bind(plan.siteId,'7','manager').run()
+    }
+    await journal.finish(lease,step,digest,receipts[stepIndex])
+  }
+  return target
+}
 
 async function fixture(options: { bucketCollision?: boolean; workerCollision?: boolean; groups?: number } = {}) {
   let localId = 1000
@@ -35,24 +71,7 @@ async function fixture(options: { bucketCollision?: boolean; workerCollision?: b
       const raw = { ...structuredClone(source),central,baseline,plan: { ...source.plan,operationId: randomUUID(),centralDatabaseId: centralId,
         siteId: `fleet-${index}-site-${n}`,localSiteId: ++localId,workerGroup,workerName,workerTag: String(index).repeat(32),bindingName: `SITE_D1_${n}`,
         expectedDeploymentId: randomUUID(),baselineManifestDigest: provisionDigest(JSON.stringify(baseline)) } }
-      const request = parseProvisionRequest(raw),plan = request.plan,databaseId = randomUUID(),target = provisionManifest(request,databaseId)
-      await journal.reserve(plan)
-      const lease = await journal.claim(plan.operationId),deploymentId = randomUUID(),digest = 'a'.repeat(64)
-      const receipts = [{ databaseId,databaseName: plan.databaseName,readReplication: 'disabled' },
-        { databaseId,schemaDigest: plan.schemaDigest,schemaVersion: plan.schemaVersion,objects: 504 },
-        { databaseId,siteId: plan.siteId,localSiteId: plan.localSiteId,tenantId: plan.tenantId,ownerUserId: plan.ownerUserId,contentDigest: digest },
-        { deploymentId,versionId: randomUUID(),manifestDigest: provisionDigest(JSON.stringify(target)),commit },
-        { deploymentId,reportDigest: digest,checkedAt: new Date().toISOString() },{ siteId: plan.siteId,routingVersion: 2 }]
-      for (const [stepIndex,step] of provisionSteps.entries()) {
-        await journal.begin(lease,step,digest)
-        if (step === 'activate') {
-          await registerSite(db,{ siteId: plan.siteId,localSiteId: plan.localSiteId,databaseId,bindingName: plan.bindingName,workerGroup,
-            adminHost: plan.adminHost,schemaVersion: 1,routingVersion: 2,migrationState: 'active',timezone: 'UTC',productionEnabled: false,operationId: plan.operationId })
-          await db.prepare('INSERT INTO site_runtime_access VALUES (?,?,?)').bind(plan.siteId,'7','manager').run()
-        }
-        await journal.finish(lease,step,digest,receipts[stepIndex])
-      }
-      requests.push(raw); baseline = target
+      baseline = await completeRequest(raw); requests.push(raw)
     }
     groups.push({ workerGroup,baselineSites: [],requests })
   }
@@ -62,13 +81,18 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
   beforeAll(async () => {
     mf = new Miniflare({ modules: true,script: 'export default {fetch(){return new Response("fixture")}}',compatibilityDate: '2025-08-15',d1Databases: ['CENTRAL'] })
     db = await mf.getD1Database('CENTRAL')
-    await db.batch([db.prepare('CREATE TABLE users (id INTEGER PRIMARY KEY)'),db.prepare('CREATE TABLE tenants (id INTEGER PRIMARY KEY)'),
-      db.prepare('CREATE TABLE sites (id INTEGER PRIMARY KEY,runtime_site_id TEXT UNIQUE)'),db.prepare('INSERT INTO users VALUES (7)'),db.prepare('INSERT INTO tenants VALUES (1)')])
+    await db.batch([db.prepare('CREATE TABLE users (id INTEGER PRIMARY KEY,email TEXT,lock_until TEXT)'),db.prepare('CREATE TABLE tenants (id INTEGER PRIMARY KEY)'),
+      db.prepare('CREATE TABLE users_sessions (id TEXT PRIMARY KEY,_parent_id INTEGER,expires_at TEXT)'),
+      db.prepare('CREATE TABLE users_roles (parent_id INTEGER,value TEXT)'),db.prepare('CREATE TABLE users_tenants (_parent_id INTEGER,tenant_id INTEGER)'),
+      db.prepare("INSERT INTO users_sessions VALUES ('planner-session',7,'2099-01-01')"),
+      db.prepare("INSERT INTO users_roles VALUES (7,'super-admin')"),
+      db.prepare('CREATE TABLE sites (id INTEGER PRIMARY KEY,runtime_site_id TEXT UNIQUE)'),db.prepare("INSERT INTO users VALUES (7,'planner@example.invalid',NULL)"),db.prepare('INSERT INTO tenants VALUES (1)')])
     await migrateSiteControl(db)
+    await db.batch(provisionAdmissionSchema.map(sql => db.prepare(sql)))
     journal = new ProvisionJournal(db,{ accountId: source.plan.accountId,centralDatabaseId: centralId })
   })
   beforeEach(async () => {
-    for (const table of ['site_group_releases','site_group_leases','site_provision_steps','site_provision_operations','site_runtime_access','site_runtime_registry']) await db.prepare(`DELETE FROM ${table}`).run()
+    for (const table of ['site_provision_requests','site_group_releases','site_group_leases','site_provision_steps','site_provision_operations','site_runtime_access','site_runtime_registry']) await db.prepare(`DELETE FROM ${table}`).run()
   })
   afterAll(async () => { await mf?.dispose() })
   it('assembles two groups and three completed histories through a read-only database capability',async () => {
@@ -116,6 +140,70 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
       await db.prepare("UPDATE site_runtime_registry SET migration_state=? WHERE site_id='fleet-1-site-1'").bind(state).run()
       await expect(resolveProvisionFleet(input,db)).rejects.toThrow('unavailable site')
     }
+  })
+  it('plans consecutive admissions from complete current history and retains both in later fleet releases',async () => {
+    const input = await fixture(),deps = planner(input)
+    const originalReceipts = (await db.prepare('SELECT * FROM site_provision_steps ORDER BY operation_id,step').all()).results
+    const first = await admit('admitted-first'),prepared = await planProvisionAdmission(first.requestId,'fleet-1',deps)
+    expect(prepared.reused).toBe(false)
+    expect(prepared.request.plan).toMatchObject({ localSiteId: 1004,siteId: first.siteId,workerGroup: 'fleet-1',ownerUserId: 7 })
+    expect(prepared.request.baseline.d1_databases).toHaveLength(2)
+    expect(await planProvisionAdmission(first.requestId,'fleet-1',deps)).toMatchObject({ reused: true,request: prepared.request })
+    await completeRequest(prepared.raw)
+    const second = await admit('admitted-second'),next = await planProvisionAdmission(second.requestId,'fleet-1',deps)
+    expect(next.request.baseline.d1_databases).toHaveLength(3)
+    expect(next.request.plan.localSiteId).toBe(1005)
+    await completeRequest(next.raw)
+    const resolved = await resolveAdmissionFleet(input,db)
+    expect(resolved.groups.map(group => group.manifest.d1_databases.length)).toEqual([4,1])
+    expect(resolved.groups[0].verification.sites.map(site => site.siteId)).toEqual(['fleet-1-site-1','fleet-1-site-2','admitted-first','admitted-second'])
+    expect((await resolveAdmissionFleet(input,db)).groups).toEqual(resolved.groups)
+    expect(await planProvisionAdmission(first.requestId,'fleet-1',deps)).toMatchObject({ reused: true,request: prepared.request })
+    for (const receipt of originalReceipts) expect((await db.prepare('SELECT * FROM site_provision_steps WHERE operation_id=? AND step=?')
+      .bind(receipt.operation_id,receipt.step).first())).toEqual(receipt)
+    await expect(resolveProvisionFleet(input,db)).rejects.toThrow('registered member')
+    await db.prepare('DELETE FROM site_provision_steps WHERE operation_id=? AND step=4').bind(second.requestId).run()
+    await expect(resolveAdmissionFleet(input,db)).rejects.toThrow('receipt is missing')
+  })
+  it('serializes competing prepared plans in one group while allowing another group to prepare',async () => {
+    const input = await fixture(),deps = planner(input),a = await admit('competing-a'),b = await admit('competing-b')
+    const outcomes = await Promise.allSettled([a,b].map(value => planProvisionAdmission(value.requestId,'fleet-1',deps)))
+    expect(outcomes.filter(value => value.status === 'fulfilled')).toHaveLength(1)
+    expect(await db.prepare('SELECT COUNT(*) AS n FROM site_provision_requests WHERE prepared_request_json IS NOT NULL').first('n')).toBe(1)
+    const winner = outcomes.find(value => value.status === 'fulfilled')
+    if (winner?.status !== 'fulfilled') throw new Error('Expected one prepared request')
+    const other = await admit('other-group'),independent = await planProvisionAdmission(other.requestId,'fleet-2',deps)
+    expect(independent.request.plan.workerName).toBe('payload-wnam-fleet-2')
+    expect(independent.request.plan.localSiteId).not.toBe(winner.value.request.plan.localSiteId)
+    await completeRequest(winner.value.raw)
+    const loser = outcomes[0].status === 'rejected' ? a : b
+    const retried = await planProvisionAdmission(loser.requestId,'fleet-1',deps)
+    expect(retried.request.baseline.d1_databases).toHaveLength(3)
+  })
+  it('refuses unknown groups, schema changes and stale external bindings without preparing an operation',async () => {
+    const input = await fixture(),deps = planner(input),human = await admit('inspection-rejected')
+    await expect(planProvisionAdmission(human.requestId,'not-reviewed',deps)).rejects.toThrow('reviewed fleet')
+    await expect(planProvisionAdmission(human.requestId,'fleet-1',{ ...deps,schema: { ...deps.schema,version: 2 } })).rejects.toThrow('schema migration')
+    await expect(planProvisionAdmission(human.requestId,'fleet-1',{ ...deps,inspect: async () => ({ deploymentId: randomUUID(),manifestDigest: '0'.repeat(64) }) }))
+      .rejects.toThrow('Deployed group differs')
+    await expect(planProvisionAdmission(human.requestId,'fleet-1',{ ...deps,inspect: async group => {
+      await db.prepare("UPDATE site_runtime_registry SET binding_name='SITE_D1_CHANGED' WHERE site_id='fleet-1-site-1'").run()
+      return { deploymentId: randomUUID(),manifestDigest: group.manifestDigest }
+    } })).rejects.toThrow('registered member')
+    expect(await db.prepare('SELECT prepared_request_json FROM site_provision_requests WHERE request_id=?').bind(human.requestId).first('prepared_request_json')).toBeNull()
+    expect(await journal.read(human.requestId)).toBeNull()
+  })
+  it('resumes only the exact prepared schema and reviewed group without retargeting',async () => {
+    const input = await fixture(),deps = planner(input),human = await admit('resume-identity')
+    const prepared = await planProvisionAdmission(human.requestId,'fleet-1',deps)
+    await journal.reserve(prepared.request.plan)
+    const resumed = await planProvisionAdmission(human.requestId,'fleet-1',{ ...deps,inspect: async () => { throw new Error('Do not replan an owned operation') } })
+    expect(resumed.request).toEqual(prepared.request); expect(resumed.reused).toBe(true)
+    await expect(planProvisionAdmission(human.requestId,'fleet-2',deps)).rejects.toThrow('another group')
+    await expect(planProvisionAdmission(human.requestId,'fleet-1',{ ...deps,schema: { ...deps.schema,digest: 'f'.repeat(64) } })).rejects.toThrow('schema digest changed')
+    const changed = structuredClone(input); changed.groups[0].requests[0].plan.workerTag = 'f'.repeat(32)
+    await expect(planProvisionAdmission(human.requestId,'fleet-1',{ ...deps,fleetInput: changed })).rejects.toThrow('Worker tag changed')
+    expect((await journal.read(human.requestId))?.checkpoint).toBe(0)
   })
   it('stops a batch on failed acceptance and resumes without re-uploading either group',async () => {
     const fleet = await resolveProvisionFleet(await fixture({ groups: 3 }),db),groups = new GroupReleaseJournal(db)

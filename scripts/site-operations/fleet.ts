@@ -12,12 +12,13 @@ const fleetSchema = z.object({ operationId: provisionUuidSchema,groups: z.array(
 }).strict()).min(1).max(20) }).strict()
 type Registration = { siteId: string; localSiteId: number; databaseId: string; bindingName: string; workerGroup: string;
   schemaVersion: number; routingVersion: number; state: string; adminHost: string }
+export const parseProvisionFleet = (input: unknown) => fleetSchema.parse(input)
 
 /** Assemble current groups from their ordered, immutable provision history.
  * A request is historical evidence, never an instruction to re-upload its old
  * smaller manifest. No D1/Worker/R2 creation or journal mutation occurs here. */
 export async function resolveProvisionFleet(input: unknown,database: D1Database) {
-  const parsed = fleetSchema.parse(input)
+  const parsed = parseProvisionFleet(input)
   const groups = parsed.groups.map(group => ({ ...group,requests: group.requests.map(parseProvisionRequest) }))
   const first = groups[0].requests[0],central = first.central
   assert.equal(new Set(groups.map(group => group.workerGroup)).size,groups.length,'Duplicate fleet group')

@@ -19,6 +19,7 @@ export const provisionOwnerPermission = (user: string,tenant: string) => `EXISTS
 export const provisionAdmissionSchema = [
   `CREATE TABLE IF NOT EXISTS site_provision_requests (
     request_id TEXT PRIMARY KEY, site_id TEXT NOT NULL,
+    local_site_id INTEGER NOT NULL UNIQUE CHECK(local_site_id BETWEEN 1 AND 9007199254740991),
     actor_user_id INTEGER NOT NULL, tenant_id INTEGER NOT NULL, owner_user_id INTEGER NOT NULL,
     input_json TEXT NOT NULL CHECK(json_valid(input_json)), input_digest TEXT NOT NULL,
     state TEXT NOT NULL DEFAULT 'queued' CHECK(state IN ('queued','provisioning','cancelled')),
@@ -29,8 +30,11 @@ export const provisionAdmissionSchema = [
   `CREATE UNIQUE INDEX IF NOT EXISTS site_provision_request_active_site
     ON site_provision_requests(site_id) WHERE state!='cancelled'`,
   `CREATE INDEX IF NOT EXISTS site_provision_request_tenant_queue ON site_provision_requests(tenant_id,state,created_at,request_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS site_provision_request_prepared_group
+    ON site_provision_requests(json_extract(prepared_plan_json,'$.workerGroup'))
+    WHERE state='queued' AND prepared_plan_json IS NOT NULL`,
   `CREATE TRIGGER IF NOT EXISTS site_provision_request_immutable BEFORE UPDATE ON site_provision_requests
-    WHEN NEW.request_id IS NOT OLD.request_id OR NEW.site_id IS NOT OLD.site_id
+    WHEN NEW.request_id IS NOT OLD.request_id OR NEW.site_id IS NOT OLD.site_id OR NEW.local_site_id IS NOT OLD.local_site_id
       OR NEW.actor_user_id IS NOT OLD.actor_user_id OR NEW.tenant_id IS NOT OLD.tenant_id
       OR NEW.owner_user_id IS NOT OLD.owner_user_id OR NEW.input_json IS NOT OLD.input_json
       OR NEW.input_digest IS NOT OLD.input_digest OR NEW.created_at IS NOT OLD.created_at
@@ -45,10 +49,10 @@ export const provisionAdmissionSchema = [
   `CREATE TRIGGER IF NOT EXISTS site_provision_admission_guard BEFORE INSERT ON site_provision_operations
     WHEN NOT EXISTS (SELECT 1 FROM site_provision_operations o WHERE o.operation_id=NEW.operation_id)
       AND EXISTS (SELECT 1 FROM site_provision_requests q WHERE q.request_id=NEW.operation_id
-        OR (q.site_id=NEW.site_id AND q.state!='cancelled'))
+        OR q.local_site_id=NEW.local_site_id OR (q.site_id=NEW.site_id AND q.state!='cancelled'))
     BEGIN
       SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM site_provision_requests q
-        WHERE q.request_id=NEW.operation_id AND q.site_id=NEW.site_id AND q.state='queued'
+        WHERE q.request_id=NEW.operation_id AND q.site_id=NEW.site_id AND q.local_site_id=NEW.local_site_id AND q.state='queued'
           AND q.prepared_request_json IS NOT NULL AND q.prepared_plan_json=NEW.plan_json
           AND q.prepared_plan_digest=NEW.plan_digest
           AND ${provisionActorPermission('q.actor_user_id','q.tenant_id')}

@@ -49,6 +49,7 @@ describe('central provision admission and atomic journal handoff on native D1',(
       db.prepare("INSERT INTO users_roles VALUES (7,'general-manager'),(8,'site-manager'),(9,'general-manager')"),
       db.prepare('INSERT INTO users_tenants VALUES (7,1),(8,1),(9,2)'),
       db.prepare('INSERT INTO tenants VALUES (1),(2)'),
+      db.prepare("INSERT INTO sites VALUES (102,'existing-numeric-id')"),
     ])
   })
   it('deduplicates concurrent submissions and keeps infrastructure out of input and summaries',async () => {
@@ -63,6 +64,21 @@ describe('central provision admission and atomic journal handoff on native D1',(
     await expect(submitProvisionAdmission(db,actor,{ ...human,requestId: randomUUID() })).rejects.toMatchObject({ status: 409 })
     expect(await db.prepare('SELECT COUNT(*) AS n FROM site_provision_operations').first('n')).toBe(0)
     expect(await db.prepare('SELECT COUNT(*) AS n FROM site_provision_requests').first('n')).toBe(1)
+  })
+  it('allocates unique stable numeric IDs atomically and never reuses cancelled IDs',async () => {
+    const first = input(request())
+    const inputs = Array.from({ length: 12 },(_,index) => ({ ...first,requestId: randomUUID(),siteId: `allocated-${index}` }))
+    await Promise.all(inputs.map(value => submitProvisionAdmission(db,actor,value)))
+    const before = (await db.prepare('SELECT request_id,local_site_id FROM site_provision_requests ORDER BY local_site_id').all<{ request_id: string; local_site_id: number }>()).results
+    expect(before.map(row => row.local_site_id)).toEqual(Array.from({ length: 12 },(_,index) => index+103))
+    await cancelProvisionAdmission(db,actor,inputs[0].requestId)
+    await submitProvisionAdmission(db,actor,{ ...inputs[0],requestId: randomUUID() })
+    expect(await db.prepare('SELECT MAX(local_site_id) AS n FROM site_provision_requests').first('n')).toBe(115)
+    await submitProvisionAdmission(db,actor,inputs[1])
+    expect(await db.prepare('SELECT local_site_id FROM site_provision_requests WHERE request_id=?').bind(inputs[1].requestId).first('local_site_id'))
+      .toBe(before.find(row => row.request_id === inputs[1].requestId)!.local_site_id)
+    const reused = request(); reused.plan.siteId = 'foreign-site'; reused.plan.localSiteId = before.find(row => row.request_id === inputs[0].requestId)!.local_site_id
+    await expect(journal.reserve(parseProvisionRequest(reused).plan)).rejects.toThrow('admission')
   })
   it('requires live sessions and tenant-scoped manager/owner authority',async () => {
     const human = input(request())
@@ -81,7 +97,7 @@ describe('central provision admission and atomic journal handoff on native D1',(
     const prepared = await prepareProvisionAdmission(db,value)
     await prepareProvisionAdmission(db,value)
     const changed = structuredClone(value); changed.plan.localSiteId++
-    await expect(prepareProvisionAdmission(db,changed)).rejects.toThrow('different prepared plan')
+    await expect(prepareProvisionAdmission(db,changed)).rejects.toThrow('allocated site ID')
     const operations = await Promise.all(Array.from({ length: 8 },() => journal.reserve(prepared.plan)))
     expect(operations.every(operation => operation.checkpoint === 0)).toBe(true)
     const summary = await readProvisionAdmission(db,actor,human.requestId)
