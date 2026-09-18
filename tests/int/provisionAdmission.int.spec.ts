@@ -8,7 +8,7 @@ import { cancelProvisionAdmission,listProvisionAdmissions,provisionAdmissionChoi
 import { centralProvisionAdmission } from '../../src/site-control/provisionAdmissionHttp'
 import { ProvisionJournal } from '../../src/site-control/provisionJournal'
 import { migrateSiteControl } from '../../src/site-control/schema'
-import { prepareProvisionAdmission } from '../../scripts/site-operations/admission'
+import { prepareProvisionAdmission,verifyProvisionAdmissionHandoff } from '../../scripts/site-operations/admission'
 import { parseProvisionRequest } from '../../scripts/site-operations/manifest'
 
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
@@ -166,6 +166,43 @@ describe('central provision admission and atomic journal handoff on native D1',(
     expect(summary).not.toHaveProperty('prepared_request_json')
     await expect(cancelProvisionAdmission(db,actor,human.requestId)).rejects.toMatchObject({ status: 409 })
     expect(await db.prepare('SELECT COUNT(*) AS n FROM site_provision_operations').first('n')).toBe(1)
+  })
+  it('keeps request-ID previews read-only and requires the exact durable plan before apply',async () => {
+    const value = request(),human = input(value)
+    await submitProvisionAdmission(db,actor,human)
+    const before = (await db.prepare('SELECT * FROM site_provision_requests').all()).results
+    await verifyProvisionAdmissionHandoff(db,human.requestId,value,'dry-run')
+    expect((await db.prepare('SELECT * FROM site_provision_requests').all()).results).toEqual(before)
+    expect(await journal.read(human.requestId)).toBeNull()
+    await expect(verifyProvisionAdmissionHandoff(db,human.requestId,value,'apply')).rejects.toThrow('persisted prepared')
+    await expect(verifyProvisionAdmissionHandoff(db,randomUUID(),value,'apply')).rejects.toThrow('selection mismatch')
+    const wrongOwner = structuredClone(value); wrongOwner.plan.ownerUserId = 7
+    await expect(verifyProvisionAdmissionHandoff(db,human.requestId,wrongOwner,'dry-run')).rejects.toThrow('human request')
+    await prepareProvisionAdmission(db,value)
+    await verifyProvisionAdmissionHandoff(db,human.requestId,value,'apply')
+    const foreignCapability = structuredClone(value); foreignCapability.central.r2_buckets[0].bucket_name = 'foreign-central-media'
+    await expect(verifyProvisionAdmissionHandoff(db,human.requestId,foreignCapability,'apply')).rejects.toThrow('immutable prepared')
+    const differentDeployment = structuredClone(value); differentDeployment.plan.expectedDeploymentId = randomUUID()
+    await expect(verifyProvisionAdmissionHandoff(db,human.requestId,differentDeployment,'apply')).rejects.toThrow('immutable prepared')
+    const cancelled = await cancelProvisionAdmission(db,actor,human.requestId)
+    expect(cancelled.state).toBe('cancelled')
+    await expect(verifyProvisionAdmissionHandoff(db,human.requestId,value,'apply')).rejects.toThrow('cancelled')
+    expect(await journal.read(human.requestId)).toBeNull()
+  })
+  it('rechecks preview eligibility and resumes the original reservation after a lost handoff response',async () => {
+    const value = request(),human = input(value)
+    await submitProvisionAdmission(db,actor,human)
+    await db.prepare('DELETE FROM users_tenants WHERE _parent_id=7').run()
+    await expect(verifyProvisionAdmissionHandoff(db,human.requestId,value,'dry-run')).rejects.toThrow('lost permission')
+    await db.prepare('INSERT INTO users_tenants VALUES (7,1)').run()
+    await prepareProvisionAdmission(db,value)
+    await verifyProvisionAdmissionHandoff(db,human.requestId,value,'apply')
+    // Losing the executor's response does not permit a new operation or plan.
+    const reserved = await journal.reserve(parseProvisionRequest(value).plan)
+    await verifyProvisionAdmissionHandoff(db,human.requestId,JSON.parse(JSON.stringify(value)),'apply')
+    expect(await journal.reserve(parseProvisionRequest(value).plan)).toEqual(reserved)
+    expect(await db.prepare('SELECT COUNT(*) AS n FROM site_provision_operations').first('n')).toBe(1)
+    expect(await readProvisionAdmission(db,actor,human.requestId)).toMatchObject({ state: 'provisioning',checkpoint: 0 })
   })
   it('serializes cancellation versus reservation and never creates an operation for the cancelled winner',async () => {
     const value = request(),human = input(value)

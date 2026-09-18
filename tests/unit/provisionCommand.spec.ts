@@ -24,6 +24,19 @@ describe('reviewed provision command boundaries',() => {
       expect(() => provisionArguments(args)).toThrow()
     }
   })
+  it('selects one durable admission without accepting caller-chosen resource paths or mixed sources',() => {
+    const requestId = 'c85c2cdd-7ee4-4f8b-ae68-811f887701e0'
+    const selection = ['--request-id',requestId,'--group','p1-group-1','--fleet','operations/fleet/p1.json']
+    for (const mode of ['dry-run','apply']) expect(provisionArguments([...selection,`--${mode}`])).toEqual({
+      admission: { requestId,workerGroup: 'p1-group-1',fleetPath: 'operations/fleet/p1.json' },mode })
+    for (const args of [selection,[...selection,'--prepare'],[...selection,'--apply','--request','plan.json'],
+      [...selection,'--apply','--request-id',requestId],[...selection,'--apply','--group','other'],
+      [...selection,'--apply','--fleet','operations/fleet/other.json'],[...selection,'--apply','--dry-run'],
+      ['--request-id',requestId,'--apply'],['--request-id','../other',...selection.slice(2),'--apply'],
+      [...selection.slice(0,5),'../other.json','--apply'],[...selection,'--apply','--database-id',requestId]]) {
+      expect(() => provisionArguments(args)).toThrow()
+    }
+  })
   it('adds one reviewed site while preserving all prior bindings and the immutable C manifest digest',() => {
     const request = parseProvisionRequest(source()),before = structuredClone(request.baseline)
     const manifest = provisionManifest(request,'02e8be38-7dfb-4c48-86e1-30e586961fc9')

@@ -21,13 +21,15 @@ import { finishProvisionedSite, type GroupDeployment } from './finish'
 import { validateProvisionSchema } from './schema'
 import { provisionSite, type ProvisionMode } from './provision'
 import { provisionBrowserAcceptance } from './acceptance'
+import { verifyProvisionAdmissionHandoff } from './admission'
 
 assert.equal(process.env.WORKERS_CI,'1'); assert.ok(['feat/site-per-d1','main'].includes(process.env.WORKERS_CI_BRANCH ?? ''))
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
 assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit)
 assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
 assert.ok(process.env.SITE_PROVISION_REQUEST && ['dry-run','apply'].includes(process.env.SITE_PROVISION_MODE ?? ''))
-const request = parseProvisionRequest(JSON.parse(readFileSync(process.env.SITE_PROVISION_REQUEST,'utf8')))
+const rawRequest: unknown = JSON.parse(readFileSync(process.env.SITE_PROVISION_REQUEST,'utf8'))
+const request = parseProvisionRequest(rawRequest)
 const { plan,baseline,central } = request,mode = process.env.SITE_PROVISION_MODE as ProvisionMode
 assert.equal(process.env.CLOUDFLARE_ACCOUNT_ID,plan.accountId)
 assert.equal(process.env.WRANGLER_CI_OVERRIDE_NAME,undefined); assert.equal(process.env.WRANGLER_CI_MATCH_TAG,undefined)
@@ -55,6 +57,7 @@ const manifest = async (): Promise<GroupManifest | undefined> => {
 }
 const inspect = async () => group.inspect(await manifest())
 const preflight = async () => {
+  if (process.env.SITE_PROVISION_ADMISSION_ID) await verifyProvisionAdmissionHandoff(database,process.env.SITE_PROVISION_ADMISSION_ID,rawRequest,mode)
   await journal.preview(plan)
   const target = await manifest(),routes = groupRoutes(target ?? baseline)
   if (target) assert.equal((await api.database(target.d1_databases.at(-1)!.database_id)).name,plan.databaseName)
@@ -168,7 +171,8 @@ try {
   if (!result.mutations) assert.deepEqual(await journal.read(plan.operationId),before,'Read-only provision command changed journal')
   const target = await manifest()
   if (target) writeFileSync(resolve(directory,'target.json'),JSON.stringify(target,null,2))
-  const report = { event: 'site_provision_completed',commit,mode,checkedAt: new Date().toISOString(),...result }
+  const report = { event: 'site_provision_completed',commit,mode,checkedAt: new Date().toISOString(),...result,
+    ...(process.env.SITE_PROVISION_ADMISSION_ID ? { admissionRequestId: process.env.SITE_PROVISION_ADMISSION_ID } : {}) }
   writeFileSync(resolve(directory,`${mode}.json`),JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
 } finally { await inspection?.dispose(); await proxy.dispose() }
 process.exit(0)

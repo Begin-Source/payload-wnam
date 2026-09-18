@@ -71,3 +71,23 @@ export async function readPreparedProvisionAdmission(database: D1Database,reques
     'Prepared plan differs from the human request')
   return { input,localSiteId: row.local_site_id,request,raw }
 }
+
+/** A cloud planner's file is only transport between processes. Re-read central
+ * authority before execution and during stage preflight. Reservation still
+ * checks cancellation and current actor/owner authority atomically in D1. */
+export async function verifyProvisionAdmissionHandoff(database: D1Database,requestId: string,value: unknown,mode: 'dry-run' | 'apply') {
+  assert.ok(['dry-run','apply'].includes(mode),'Explicit provision mode required')
+  provisionUuidSchema.parse(requestId)
+  const { plan } = parseProvisionRequest(value)
+  assert.equal(plan.operationId,requestId,'Provision admission selection mismatch')
+  const saved = await readPreparedProvisionAdmission(database,requestId)
+  assert.equal(plan.localSiteId,saved.localSiteId,'Allocated site ID changed')
+  assert.deepEqual({ requestId: plan.operationId,siteId: plan.siteId,name: plan.name,tenantId: plan.tenantId,
+    ownerUserId: plan.ownerUserId,timezone: plan.timezone },saved.input,'Provision handoff differs from human request')
+  if (saved.request) {
+    assert.equal(JSON.stringify(value),JSON.stringify(saved.raw),'Provision handoff differs from immutable prepared request')
+  } else {
+    assert.equal(mode,'dry-run','Apply requires a persisted prepared request')
+    await prepareProvisionAdmission(database,value,{ preview: true })
+  }
+}
