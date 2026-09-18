@@ -153,3 +153,8 @@ assert.equal((await api('workers/scripts/payload-wnam/deployments')).deployments
 if (request.reconcile) assert.equal((await api(`workers/scripts/${configs.central.name}/deployments`)).deployments[0].id,request.reconcile.centralDeploymentId)
 const report = { event: 'p1_release_passed',commit,checkedAt: new Date().toISOString(),deployed,productionUnchanged: production }
 writeFileSync('.cloudflare-ci/p1-release.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
+// Submit the fixed synthetic F-site request only after the ordinary release is
+// fully verified. The Cron/Queue/Hook path owns every later state transition.
+execFileSync(process.execPath,['scripts/ci-p1-dispatch-acceptance.mjs'],{
+  env: { ...env,P1_TEST_PASSWORD: password },stdio: 'inherit',
+})

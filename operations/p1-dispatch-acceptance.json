@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "request": {
+    "requestId": "79d647a4-a4fb-4e8b-8403-8372c67e0452",
+    "siteId": "p1-f",
+    "name": "P1 Automatic F",
+    "tenantId": 1,
+    "ownerUserId": 7,
+    "timezone": "Europe/Berlin"
+  }
+}
