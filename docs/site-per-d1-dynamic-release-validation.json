@@ -1,0 +1,254 @@
+{
+  "checkedAt": "2026-09-18T02:34:25.821Z",
+  "commit": "62a9106d447b9a030444686232501d649e26f8dc",
+  "implementationCommit": "07d751ac075042c80738b525da89693a127cfcd1",
+  "runtimeFixCommit": "bf9aec88420976743087dacd2e6414a8206d7c04",
+  "branch": "feat/site-provision-admission",
+  "build": {
+    "id": "77b84d8e-5889-4ee3-96b4-c7bcc08d77db",
+    "status": "stopped",
+    "outcome": "success",
+    "createdAt": "2026-09-18T02:24:22.591Z",
+    "stoppedAt": "2026-09-18T02:33:07.043Z",
+    "url": "https://dash.cloudflare.com/d487cf34c606620b442632a72272014d/workers/services/view/payload-wnam/production/builds/77b84d8e-5889-4ee3-96b4-c7bcc08d77db"
+  },
+  "githubCheck": {
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "failures": [
+    {
+      "buildId": "a53a6eab-fb7a-4abd-b140-5fac04bc6c3d",
+      "commit": "07d751ac075042c80738b525da89693a127cfcd1",
+      "status": "stopped",
+      "outcome": "fail",
+      "stoppedAt": "2026-09-18T02:17:43.840Z",
+      "testsPassed": 708,
+      "testsFailed": 0,
+      "failedSuites": 1,
+      "error": "Eager tsx/esbuild import caused TextEncoder/Uint8Array realm invariant failure while collecting the three existing reconciliation-selection tests. Load scoped TypeScript tooling only when reading the artifact. The 15 artifact tests, including plain Node import, already passed.",
+      "deployed": false
+    },
+    {
+      "buildId": "92bae25d-80ba-4d1f-bee4-b5ef2f3ded8c",
+      "commit": "bf9aec88420976743087dacd2e6414a8206d7c04",
+      "status": "stopped",
+      "outcome": "fail",
+      "stoppedAt": "2026-09-18T02:23:32.379Z",
+      "testsPassed": 710,
+      "testsFailed": 1,
+      "failedSuites": 1,
+      "error": "One existing multi-scenario native D1 planning rejection test exceeded Vitest's default 5000 ms limit (5127 ms observed). Only that test now has 30000 ms; all assertions and production timing limits retained.",
+      "deployed": false
+    }
+  ],
+  "validation": {
+    "tests": 711,
+    "files": 132,
+    "existingBrowserTests": 14,
+    "fleetArtifactTests": 15,
+    "nativeFleetTests": 12,
+    "nativeVerificationTests": 7,
+    "events": [
+      {
+        "at": "2026-09-18T02:25:34.707Z",
+        "line": "stdout | tests/int/provisionFleet.int.spec.ts > provision fleet assembly and ordered native D1 releases > plans consecutive admissions from complete current history and retains both in later fleet releases"
+      },
+      {
+        "at": "2026-09-18T02:25:34.707Z",
+        "line": "{\"event\":\"admission_fleet_release_recovery_passed\",\"members\":[[\"fleet-1-site-1\",\"fleet-1-site-2\",\"admitted-first\",\"admitted-second\"],[\"fleet-2-site-1\"]],\"uploads\":[\"fleet-1\",\"fleet-2\"],\"repeatUploaded\":false,\"remoteDeployment\":false}"
+      },
+      {
+        "at": "2026-09-18T02:25:46.408Z",
+        "line": " ✓ tests/int/provisionFleet.int.spec.ts (12 tests) 26347ms"
+      },
+      {
+        "at": "2026-09-18T02:26:08.534Z",
+        "line": "stdout | tests/int/siteVerification.int.spec.ts > read-only site verification with native D1 and R2 > proves an older site binding after a different site was provisioned, including multiple users and paused state"
+      },
+      {
+        "at": "2026-09-18T02:26:08.535Z",
+        "line": "{\"event\":\"ordinary_group_runtime_verified\",\"multipleIdentityProjections\":2,\"paused\":true,\"readOnly\":true,\"staleReleaseRejected\":true,\"concurrentRouteChangeRejected\":true,\"remoteDeployment\":false}"
+      },
+      {
+        "at": "2026-09-18T02:26:08.556Z",
+        "line": " ✓ tests/int/siteVerification.int.spec.ts (7 tests) 6598ms"
+      },
+      {
+        "at": "2026-09-18T02:26:22.571Z",
+        "line": " ✓ tests/unit/fleetArtifact.spec.ts (15 tests) 783ms"
+      },
+      {
+        "at": "2026-09-18T02:26:30.677Z",
+        "line": " ✓ tests/unit/p1ReviewedReconciliation.spec.ts (3 tests) 23ms"
+      },
+      {
+        "at": "2026-09-18T02:26:50.161Z",
+        "line": " Test Files  132 passed (132)"
+      },
+      {
+        "at": "2026-09-18T02:26:50.161Z",
+        "line": "      Tests  711 passed (711)"
+      },
+      {
+        "at": "2026-09-18T02:28:29.603Z",
+        "line": "{\"event\":\"role_build_passed\",\"role\":\"central\"}"
+      },
+      {
+        "at": "2026-09-18T02:28:53.200Z",
+        "line": "{\"event\":\"central_admission_browser_passed\",\"checkedAt\":\"2026-09-18T02:28:53.199Z\",\"remoteDeployment\":false,\"requestId\":\"3d770762-e9f5-4098-b736-784610136d7f\",\"checks\":[\"tenant-owner-form\",\"invalid-timezone-recovery\",\"committed-response-loss\",\"same-request-retry\",\"one-durable-request\",\"no-provision-effects\",\"private-summary\",\"cancel-confirmation\",\"cancel-lost-response-retry\",\"desktop-mobile\",\"live-role-revocation\"]}"
+      },
+      {
+        "at": "2026-09-18T02:28:53.919Z",
+        "line": "{\"event\":\"central_application_passed\",\"checkedAt\":\"2026-09-18T02:28:53.918Z\",\"checks\":[\"complete-worker\",\"canonical-host\",\"closed-signup\",\"browser-password-login\",\"native-admin-assets\",\"master-create-read\",\"no-site-content-api\",\"real-session-ticket\",\"site-grant-denial\",\"desktop-mobile\",\"session-revocation\",\"granted-site-chooser\",\"site-search-empty\",\"paused-site-disabled\",\"directory-retry\"],\"remoteDeployment\":false}"
+      },
+      {
+        "at": "2026-09-18T02:30:29.368Z",
+        "line": "{\"event\":\"role_build_passed\",\"role\":\"site\"}"
+      },
+      {
+        "at": "2026-09-18T02:30:51.486Z",
+        "line": "{\"event\":\"site_application_passed\",\"checkedAt\":\"2026-09-18T02:30:51.486Z\",\"remoteDeployment\":false,\"checks\":[\"complete-central-site-workers\",\"native-assets\",\"browser-central-password-login\",\"central-chooser-click\",\"real-ticket-post-handoff\",\"two-host-only-cookies\",\"native-site-admin-editors\",\"same-id-concurrent-reads\",\"site-isolated-create-update\",\"no-site-password-login\",\"desktop-mobile\",\"live-grant-revocation\",\"native-logout-revokes-session\",\"revoked-grant-logout\"],\"browserErrors\":[]}"
+      },
+      {
+        "at": "2026-09-18T02:32:51.601Z",
+        "line": "  14 passed (5.4s)"
+      },
+      {
+        "at": "2026-09-18T02:32:56.542Z",
+        "line": "{\"event\":\"site_identity_rpc_transport_passed\",\"concurrentRedemptions\":20,\"concurrentSiteRequests\":20}"
+      },
+      {
+        "at": "2026-09-18T02:32:57.927Z",
+        "line": "{\"event\":\"site_data_workerd_rpc\",\"ok\":true,\"commit\":\"62a9106d447b9a030444686232501d649e26f8dc\",\"workers\":2,\"databases\":3,\"r2Buckets\":3,\"concurrentAssetCopies\":5,\"checks\":[\"named read-only RPC\",\"HTTP and publishing denied\",\"live manager grant\",\"forged destination denied\",\"tenant-private master and asset isolation\",\"global configuration to two sites\",\"candidate persistence\",\"binary asset transport and local media mapping\",\"concurrent copy deduplication\",\"withdrawal and retry\",\"live revocation\"],\"scope\":\"Cloudflare Builds native service bindings with minimal role schemas. Full independent Payload behavior has separate native integration tests; formal roles, UI and queue delivery are not deployed.\"}"
+      },
+      {
+        "at": "2026-09-18T02:32:58.028Z",
+        "line": "{\"event\":\"site_identity_workerd_rpc\",\"ok\":true,\"commit\":\"62a9106d447b9a030444686232501d649e26f8dc\",\"workers\":2,\"databases\":3,\"concurrentRedemptions\":20,\"concurrentSiteRequests\":20,\"checks\":[\"named RPC capability\",\"no RPC issuer\",\"HTTP capability denied\",\"POST handoff\",\"Chromium form/CSP/cookie navigation\",\"single-use ticket\",\"host/origin binding\",\"explicit local site ID mapping\",\"credential-free projections\",\"live role changes\",\"immediate revocation\",\"site logout\",\"central logout\",\"central outage fails closed\",\"independent public response\"],\"scope\":\"Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance\"}"
+      },
+      {
+        "at": "2026-09-18T02:32:58.125Z",
+        "line": "Success: Build command completed"
+      },
+      {
+        "at": "2026-09-18T02:32:58.396Z",
+        "line": "Executing user deploy command: if [ \"$WORKERS_CI_BRANCH\" = \"feat/site-per-d1\" ]; then node scripts/ci-p0-deploy.mjs; else node -e \"console.log('Cloudflare validation complete')\"; fi"
+      },
+      {
+        "at": "2026-09-18T02:32:58.497Z",
+        "line": "Cloudflare validation complete"
+      }
+    ]
+  },
+  "remoteDeployments": {
+    "checkedAt": "2026-09-18T02:33:56.821Z",
+    "deployments": {
+      "payload-wnam": {
+        "id": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b",
+        "versions": [
+          {
+            "version_id": "34efc5b4-0c21-4dd7-a61d-f279b49068f5",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-16T13:17:17.77796Z"
+      },
+      "payload-wnam-p1-central": {
+        "id": "2dcf80c8-a92d-4492-87d0-c7b202195989",
+        "versions": [
+          {
+            "version_id": "2e15c1a1-00ca-43b4-bc33-767aa14f7aeb",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-17T23:04:21.744526Z"
+      },
+      "payload-wnam-p1-sites": {
+        "id": "b88d798e-6080-460d-affc-ab85dc5301d3",
+        "versions": [
+          {
+            "version_id": "c9b5e663-61f5-426b-908e-13e6a4266fd2",
+            "percentage": 100
+          }
+        ],
+        "createdAt": "2026-09-17T23:08:14.968748Z"
+      }
+    }
+  },
+  "remoteCentralSchema": {
+    "checkedAt": "2026-09-18T02:34:01.405Z",
+    "databaseId": "c1e4ef96-e6ca-4457-93b3-55af5b572c0d",
+    "sql": "SELECT name FROM sqlite_master WHERE name IN ('site_provision_requests','site_provision_request_active_site','site_provision_request_tenant_queue','site_provision_request_prepared_group','site_provision_request_immutable','site_provision_admission_guard','site_provision_admission_reserved') ORDER BY name",
+    "objects": [
+      "site_provision_requests",
+      "site_provision_request_active_site",
+      "site_provision_request_tenant_queue",
+      "site_provision_request_prepared_group",
+      "site_provision_request_immutable",
+      "site_provision_admission_guard",
+      "site_provision_admission_reserved"
+    ],
+    "result": [
+      {
+        "results": [],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "WNAM",
+          "served_by_colo": "SEA",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.4424
+          },
+          "duration": 0.4424,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 1314816,
+          "rows_read": 305,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ],
+    "receipt": [
+      {
+        "results": [
+          {
+            "role": "central",
+            "digest": "a7c3aadae00b64d214635f59147438ad9b44798f5b8fd241483b5f10728c539f",
+            "operation_id": "p1-central-schema-v4",
+            "completed": 1
+          }
+        ],
+        "success": true,
+        "meta": {
+          "served_by": "v3-prod",
+          "served_by_region": "WNAM",
+          "served_by_colo": "SEA",
+          "served_by_primary": true,
+          "timings": {
+            "sql_duration_ms": 0.2351
+          },
+          "duration": 0.2351,
+          "changes": 0,
+          "last_row_id": 0,
+          "changed_db": false,
+          "size_after": 1314816,
+          "rows_read": 1,
+          "rows_written": 0,
+          "total_attempts": 1
+        }
+      }
+    ]
+  },
+  "limits": [
+    "Validation branch performs no remote Worker upload or schema migration; actual P1 runtime still uses the prior four-site static controller and central v4.",
+    "Artifact fixture replays P1 A/B/C/D plus two synthetic admissions; native release fixture uses two groups with five sites after admissions and controlled upload/acceptance adapters. Neither is a six-site or multi-group remote deployment.",
+    "Whole-history artifact validation runs in a plain Node subprocess using existing scoped tsx loading. Central D1 receipts and registrations are still verified live by the release controller; an artifact alone is not remote ownership proof.",
+    "Ordinary runtime verification now supports multiple identity projections and paused state. Full P1 browser smoke still uses synthetic user 7 and accessible test sites; arbitrary human-owner/paused-site release acceptance remains incomplete.",
+    "Remove the old reconciliation selection before a new runtime deployment; never rewrite its source digest to retain incompatible runtime.",
+    "Dynamic request execution, automatic build dispatch/result reconciliation, remaining P1 work and P2–P5 remain incomplete.",
+    "All dependency installation, tests and builds ran in Cloudflare; local actions were source/docs/Git/static checks only."
+  ]
+}
