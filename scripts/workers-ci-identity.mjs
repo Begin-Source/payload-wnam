@@ -7,6 +7,7 @@ const buildPattern = /^[a-f0-9]{8}-[a-f0-9-]{27,}$/
 /** Resolve the checked-out commit after the dispatch selector has bound an
  * otherwise commit-less Deploy Hook build to its durable D1 run. Ordinary
  * push builds continue to use Cloudflare's native commit identity. */
+/** @param {Record<string, string | undefined>} environment */
 export function workersCiCommit(environment = process.env) {
   assert.equal(environment.WORKERS_CI,'1')
   const selected = environment.P1_DISPATCH_COMMIT_SHA
@@ -16,6 +17,7 @@ export function workersCiCommit(environment = process.env) {
     assert.match(selected,commitPattern)
     return selected
   }
-  assert.match(environment.WORKERS_CI_COMMIT_SHA ?? '',commitPattern)
-  return environment.WORKERS_CI_COMMIT_SHA
+  const native = environment.WORKERS_CI_COMMIT_SHA ?? ''
+  assert.match(native,commitPattern)
+  return native
 }
