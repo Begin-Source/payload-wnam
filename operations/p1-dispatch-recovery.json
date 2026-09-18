@@ -1,11 +1,11 @@
 {
   "enabled": true,
-  "recoveryId": "ea37b185-fb39-49f8-8487-5ac798252472",
+  "recoveryId": "9ccf52a0-7c1c-46b9-9fd2-957d90c31b1f",
   "requestId": "79d647a4-a4fb-4e8b-8403-8372c67e0452",
-  "buildUuid": "9125db52-b7a7-41ac-8cb3-28eb5fe0ea3e",
-  "attemptCount": 2,
-  "reason": "post_provision_smoke_transient_fetch",
-  "reviewedAt": "2026-09-18T09:32:00.000Z",
+  "buildUuid": "f6fb6457-1bd8-4f4b-9134-a599978ffa90",
+  "attemptCount": 3,
+  "reason": "overlapping_cloud_build_test_contention",
+  "reviewedAt": "2026-09-18T10:05:00.000Z",
   "evidence": {
     "status": "stopped",
     "outcome": "fail",

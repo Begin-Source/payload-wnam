@@ -69,9 +69,6 @@ const secrets = { central: randomBytes(32).toString('hex'),site: randomBytes(32)
 execFileSync('pnpm',['exec','payload','run','scripts/p1-bootstrap.ts'],{
   env: { ...env,PAYLOAD_P1_BOOTSTRAP: '1',P1_TEST_PASSWORD: password,P1_CENTRAL_SECRET: secrets.central },stdio: 'inherit',
 })
-execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-dispatch-recovery.ts'],{
-  env: { ...env,P1_DISPATCH_RECOVERY: '1' },stdio: 'inherit',
-})
 const deployed = []
 for (const [role,config] of Object.entries(configs)) {
   if (role === 'site') continue // The provision executor owns its upload and receipt.
@@ -161,4 +158,11 @@ writeFileSync('.cloudflare-ci/p1-release.json',JSON.stringify(report,null,2)); c
 // fully verified. The Cron/Queue/Hook path owns every later state transition.
 execFileSync(process.execPath,['scripts/ci-p1-dispatch-acceptance.mjs'],{
   env: { ...env,P1_TEST_PASSWORD: password },stdio: 'inherit',
+})
+// Release and remote verification must finish before a reviewed dispatch is
+// requeued. Otherwise Cron can start the Hook build while this build is still
+// consuming the same Cloudflare build resources and make local-runtime tests
+// contend for CPU. Recovery remains the final durable mutation in this build.
+execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-dispatch-recovery.ts'],{
+  env: { ...env,P1_DISPATCH_RECOVERY: '1' },stdio: 'inherit',
 })
