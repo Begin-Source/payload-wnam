@@ -17,6 +17,7 @@ import { applyP1CentralSchema, P1_CENTRAL_V1, P1_CENTRAL_V2, P1_CENTRAL_V3, P1_C
 import { applyP1Schema, roleSchemaDigest, type RoleSchema } from '../../scripts/p1-schema'
 import { provisionAdmissionSchemaObjects } from '../../src/site-control/provisionAdmissionSchema'
 import { provisionDispatchSchemaObjects } from '../../src/site-control/provisionDispatchSchema'
+import { provisionDispatchRunSchemaObjects } from '../../src/site-control/provisionDispatchRunSchema'
 import { groupReleaseSchemaObjects } from '../../src/site-control/groupReleaseSchema'
 import { siteProvisionSchemaObjects } from '../../src/site-control/provisionSchema'
 import { siteLifecycleSchemaObjects } from '../../src/site-control/lifecycleSchema'
@@ -206,57 +207,60 @@ describe('independent central Payload configuration and native finance path', ()
 
   const previousSchema = (version: number): RoleSchema => {
     const excluded = new Set<string>([
-      ...provisionDispatchSchemaObjects,
+      ...provisionDispatchRunSchemaObjects,
+      ...(version < 6 ? provisionDispatchSchemaObjects : []),
       ...(version < 5 ? provisionAdmissionSchemaObjects : []),
       ...(version < 4 ? groupReleaseSchemaObjects : []),
       ...(version < 3 ? siteProvisionSchemaObjects : []),
       ...(version < 2 ? siteLifecycleSchemaObjects : []),
     ])
     const previous = { ...centralSchema,objects: centralSchema.objects.filter(item => !excluded.has(item.name)) }
-    expect(roleSchemaDigest(previous.objects)).toBe([P1_CENTRAL_V1,P1_CENTRAL_V2,P1_CENTRAL_V3,P1_CENTRAL_V4,P1_CENTRAL_V5][version-1])
+    if (version < 6) expect(roleSchemaDigest(previous.objects)).toBe([P1_CENTRAL_V1,P1_CENTRAL_V2,P1_CENTRAL_V3,P1_CENTRAL_V4,P1_CENTRAL_V5][version-1])
     return previous
   }
-  it.each([1,2,3,4,5])('upgrades reviewed complete central v%i to dispatch v6 without losing data or migration receipts',async version => {
+  it.each([1,2,3,4,5,6])('upgrades reviewed complete central v%i to dispatch v7 without losing data or migration receipts',async version => {
     const db = await mf.getD1Database(`V${version}`), previous = previousSchema(version)
     await applyP1Schema(db,previous,`p1-central-schema-v${version}`)
     await db.prepare("INSERT INTO tenants (id,name,slug,domain) VALUES (999,'Preserved tenant','preserved-tenant','preserved.example.invalid')").run()
     const result = await applyP1CentralSchema(db,centralSchema)
-    expect(result).toMatchObject({ operationId: 'p1-central-schema-v6',created: provisionDispatchSchemaObjects.length,upgradedFrom: P1_CENTRAL_V5 })
+    expect(result).toMatchObject({ operationId: 'p1-central-schema-v7',created: provisionDispatchRunSchemaObjects.length,
+      upgradedFrom: roleSchemaDigest(previousSchema(6).objects) })
     expect(await db.prepare('SELECT name FROM tenants WHERE id=999').first('name')).toBe('Preserved tenant')
     const history = (await db.prepare('SELECT operation_id,from_digest,to_digest,applied_at FROM site_control_schema_migrations ORDER BY operation_id').all()).results
-    expect(history).toHaveLength(6-version)
+    expect(history).toHaveLength(7-version)
     expect((await applyP1CentralSchema(db,centralSchema)).created).toBe(0)
     expect((await db.prepare('SELECT operation_id,from_digest,to_digest,applied_at FROM site_control_schema_migrations ORDER BY operation_id').all()).results).toEqual(history)
     const found = (await db.prepare("SELECT name FROM sqlite_master WHERE name LIKE 'site_provision_request%' OR name LIKE 'site_provision_admission_%'").all<{ name: string }>()).results.map(row => row.name)
     expect(found.sort()).toEqual([...provisionAdmissionSchemaObjects].sort())
     const dispatch = (await db.prepare("SELECT name FROM sqlite_master WHERE name LIKE 'site_provision_dispatch%' OR name LIKE 'site_provision_build_event%'").all<{ name: string }>()).results.map(row => row.name)
-    expect(dispatch.sort()).toEqual([...provisionDispatchSchemaObjects].sort())
+    expect(dispatch.sort()).toEqual([...provisionDispatchSchemaObjects,...provisionDispatchRunSchemaObjects].sort())
     // Old application code may run during the additive migration. Its tables,
     // counters and rows retain the same columns and remain writable.
     await db.prepare("UPDATE tenants SET name='Still writable' WHERE id=999").run()
     expect(await db.prepare('SELECT name FROM tenants WHERE id=999').first('name')).toBe('Still writable')
     await expect(applyP1Schema(db,previous,`p1-central-schema-v${version}`)).rejects.toThrow('operation conflict')
     if (process.env.WORKERS_CI === '1') console.log(JSON.stringify({ event: 'central_admission_upgrade_verified',fromVersion: version,
-      toVersion: 6,digest: result.digest,objects: result.objects,migrationReceipts: history.length,dataPreserved: true,retryUnchanged: true,remoteDeployment: false }))
+      toVersion: 7,digest: result.digest,objects: result.objects,migrationReceipts: history.length,dataPreserved: true,retryUnchanged: true,remoteDeployment: false }))
   },30000)
 
-  it('fresh central v6 installs match the complete role and retain operational state on retries',async () => {
+  it('fresh central v7 installs match the complete role and retain operational state on retries',async () => {
     const db = await mf.getD1Database('FRESH')
     const result = await applyP1CentralSchema(db,centralSchema)
-    expect(result).toMatchObject({ operationId: 'p1-central-schema-v6',objects: centralSchema.objects.length,upgradedFrom: null })
+    expect(result).toMatchObject({ operationId: 'p1-central-schema-v7',objects: centralSchema.objects.length,upgradedFrom: null })
     await migrateCentralRoleState(db)
     await db.prepare('UPDATE central_cost_epoch SET revision=23 WHERE id=1').run()
     await migrateCentralRoleState(db)
     expect((await applyP1CentralSchema(db,centralSchema)).created).toBe(0)
     expect(await db.prepare('SELECT revision FROM central_cost_epoch WHERE id=1').first('revision')).toBe(23)
     expect(await db.prepare('SELECT COUNT(*) AS n FROM site_control_schema_migrations').first('n')).toBe(0)
-    if (process.env.WORKERS_CI === '1') console.log(JSON.stringify({ event: 'central_dispatch_fresh_schema_verified',version: 6,
+    if (process.env.WORKERS_CI === '1') console.log(JSON.stringify({ event: 'central_dispatch_fresh_schema_verified',version: 7,
       digest: result.digest,objects: result.objects,operationalCounterPreserved: true,remoteDeployment: false }))
   },30000)
 
-  it('rolls back the full dispatch migration on DDL failure and resumes an already committed lost response',async () => {
+  it('rolls back the full dispatch-run migration on DDL failure and resumes an already committed lost response',async () => {
     const db = await mf.getD1Database('INTERRUPT')
-    await applyP1Schema(db,previousSchema(5),'p1-central-schema-v5')
+    const previous = previousSchema(6),previousDigest = roleSchemaDigest(previous.objects)
+    await applyP1Schema(db,previous,'p1-central-schema-v6')
     const interrupted = (lost: boolean) => new Proxy(db,{ get(target,key) {
       if (key === 'batch') return async (statements: D1PreparedStatement[]) => {
         const result = await target.batch(lost ? statements : [...statements,target.prepare('SELECT * FROM injected_missing_table')])
@@ -266,23 +270,23 @@ describe('independent central Payload configuration and native finance path', ()
       const value = Reflect.get(target,key); return typeof value === 'function' ? value.bind(target) : value
     } })
     await expect(applyP1CentralSchema(interrupted(false),centralSchema)).rejects.toThrow('injected_missing_table')
-    expect(await db.prepare("SELECT name FROM sqlite_master WHERE name='site_provision_dispatches'").first()).toBeNull()
-    expect(await db.prepare('SELECT digest FROM p1_schema_bootstrap WHERE id=1').first('digest')).toBe(P1_CENTRAL_V5)
+    expect(await db.prepare("SELECT name FROM sqlite_master WHERE name='site_provision_dispatch_runs'").first()).toBeNull()
+    expect(await db.prepare('SELECT digest FROM p1_schema_bootstrap WHERE id=1').first('digest')).toBe(previousDigest)
     expect(await db.prepare('SELECT COUNT(*) AS n FROM site_control_schema_migrations').first('n')).toBe(0)
     await expect(applyP1CentralSchema(interrupted(true),centralSchema)).rejects.toThrow('Injected lost migration response')
     expect((await applyP1CentralSchema(db,centralSchema)).created).toBe(0)
     expect(await db.prepare('SELECT COUNT(*) AS n FROM site_control_schema_migrations').first('n')).toBe(1)
   },30000)
 
-  it('rejects an incomplete dispatch schema or drifted v5 before installing dispatch objects',async () => {
+  it('rejects an incomplete dispatch-run schema or drifted v6 before installing run objects',async () => {
     const db = await mf.getD1Database('DRIFT')
-    await applyP1Schema(db,previousSchema(5),'p1-central-schema-v5')
-    await expect(applyP1CentralSchema(db,{ ...centralSchema,objects: centralSchema.objects.filter(item => item.name !== 'site_provision_dispatch_requested') })).rejects.toThrow('Incomplete central dispatch schema')
-    await expect(applyP1CentralSchema(db,{ ...centralSchema,objects: centralSchema.objects.filter(item => item.name !== 'site_group_release_pending') })).rejects.toThrow('Unexpected central v5 base')
-    await db.prepare('DROP TRIGGER site_provision_admission_guard').run()
+    const previous = previousSchema(6),previousDigest = roleSchemaDigest(previous.objects)
+    await applyP1Schema(db,previous,'p1-central-schema-v6')
+    await expect(applyP1CentralSchema(db,{ ...centralSchema,objects: centralSchema.objects.filter(item => item.name !== 'site_provision_dispatch_run_requested') })).rejects.toThrow('Incomplete central dispatch run schema')
+    await db.prepare('DROP TRIGGER site_provision_dispatch_requested').run()
     await expect(applyP1CentralSchema(db,centralSchema)).rejects.toThrow('source schema drift')
-    expect(await db.prepare("SELECT name FROM sqlite_master WHERE name='site_provision_dispatches'").first()).toBeNull()
-    expect(await db.prepare('SELECT digest FROM p1_schema_bootstrap WHERE id=1').first('digest')).toBe(P1_CENTRAL_V5)
+    expect(await db.prepare("SELECT name FROM sqlite_master WHERE name='site_provision_dispatch_runs'").first()).toBeNull()
+    expect(await db.prepare('SELECT digest FROM p1_schema_bootstrap WHERE id=1').first('digest')).toBe(previousDigest)
   },30000)
 
 })

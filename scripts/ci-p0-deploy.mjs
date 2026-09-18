@@ -13,6 +13,16 @@ const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).
 const marker = JSON.parse(readFileSync('.cloudflare-ci/release.json', 'utf8'))
 if (process.env.WORKERS_CI !== '1' || process.env.WORKERS_CI_COMMIT_SHA !== commit ||
   marker.commit !== commit || !existsSync('.open-next/worker.js')) throw new Error('P0 requires a successful commit-matched Workers Build')
+execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-dispatch-selection.ts'],{
+  env: { ...process.env,P1_DISPATCH_SELECTION: '1' },stdio: 'inherit',
+})
+const dispatchSelection = JSON.parse(readFileSync('.cloudflare-ci/p1-dispatch-selection.json','utf8'))
+if (dispatchSelection.selected) {
+  console.log(JSON.stringify({ event: 'p1_dispatch_build_skips_p0',buildUuid: dispatchSelection.buildUuid,
+    requestId: dispatchSelection.selected.requestId }))
+  execFileSync(process.execPath,['scripts/ci-p1-deploy.mjs'],{ env: process.env,stdio: 'inherit' })
+  process.exit(0)
+}
 // Full commit-matched cloud checks/builds still ran. A reviewed unchanged-source
 // P1 recovery does not need another P0 upload or its unrelated online smoke.
 if (p1ReleaseRequest().admission) {

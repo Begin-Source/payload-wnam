@@ -53,7 +53,7 @@ const schema = JSON.parse(readFileSync('.cloudflare-ci/role-central-schema.json'
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const schemaDigest = hash([...schema.objects].sort((a,b) => a.name.localeCompare(b.name)))
 assert.deepEqual(await query('SELECT role,digest,operation_id,completed FROM p1_schema_bootstrap WHERE id=1'),
-  [{ role: 'central',digest: schemaDigest,operation_id: 'p1-central-schema-v6',completed: 1 }])
+  [{ role: 'central',digest: schemaDigest,operation_id: 'p1-central-schema-v7',completed: 1 }])
 const objects = await query("SELECT name,type,sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT GLOB 'sqlite_*' AND name NOT GLOB '_cf_*' AND name!='p1_schema_bootstrap'")
 assert.equal(hash(objects.sort((a,b) => a.name.localeCompare(b.name))),schemaDigest,'Live central schema differs from checked runtime')
 assert.deepEqual(await query('SELECT release_id FROM site_group_releases WHERE completed_at IS NULL'),[],'Finish pending ordinary releases first')

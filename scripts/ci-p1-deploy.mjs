@@ -109,6 +109,11 @@ for (let attempt = 1; attempt <= 96; attempt++) {
   await new Promise(resolve => setTimeout(resolve,5000))
 }
 assert.ok(ready >= 3,'P1 HTTPS deployment did not become ready; forward recovery required')
+// A normal push build has no matching dispatch UUID and this remains read-only.
+// A Deploy Hook build executes exactly its durable synthetic P1 admission.
+execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-auto-provision.ts'],{
+  env: { ...env,P1_AUTO_PROVISION: '1',P1_TEST_PASSWORD: password },stdio: 'inherit',
+})
 // Ordinary releases resolve completed D and every later admission from central
 // history. Re-running a historical provision would reject the expanded group.
 execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-group-release.ts'],{

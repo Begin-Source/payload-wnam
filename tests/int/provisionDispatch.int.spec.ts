@@ -6,9 +6,10 @@ import { afterAll,beforeAll,beforeEach,describe,expect,it,vi } from 'vitest'
 import { migrateSiteControl } from '../../src/site-control/schema'
 import { provisionAdmissionSchema } from '../../src/site-control/provisionAdmissionSchema'
 import { provisionDispatchSchema } from '../../src/site-control/provisionDispatchSchema'
+import { provisionDispatchRunSchema } from '../../src/site-control/provisionDispatchRunSchema'
 import { submitProvisionAdmission,cancelProvisionAdmission } from '../../src/site-control/provisionAdmission'
 import { enqueueProvisionDispatch,observeProvisionBuild,triggerProvisionBuild,
-  type ProvisionDispatchEnvironment,type ProvisionQueueMessage } from '../../src/site-control/provisionDispatch'
+  selectProvisionBuildExecution,type ProvisionDispatchEnvironment,type ProvisionQueueMessage } from '../../src/site-control/provisionDispatch'
 
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
 const { Miniflare } = require('miniflare')
@@ -49,11 +50,12 @@ describe('durable provision build dispatch on native D1',() => {
     await migrateSiteControl(db)
     await db.batch(provisionAdmissionSchema.map(sql => db.prepare(sql)))
     await db.batch(provisionDispatchSchema.map(sql => db.prepare(sql)))
+    await db.batch(provisionDispatchRunSchema.map(sql => db.prepare(sql)))
   })
   afterAll(async () => { await mf?.dispose() })
   beforeEach(async () => {
     sent.length = 0; vi.mocked(queue.send).mockClear()
-    await db.batch(['site_provision_build_events','site_provision_dispatches','site_provision_requests','site_provision_steps',
+    await db.batch(['site_provision_build_events','site_provision_dispatch_runs','site_provision_dispatches','site_provision_requests','site_provision_steps',
       'site_provision_operations','sites','users_sessions','users_roles','users_tenants','users','tenants']
       .map(table => db.prepare(`DELETE FROM ${table}`)))
     await db.batch([
@@ -69,8 +71,10 @@ describe('durable provision build dispatch on native D1',() => {
     await submitProvisionAdmission(db,actor,request)
     expect(await db.prepare('SELECT request_id AS requestId,input_digest AS inputDigest,state,branch FROM site_provision_dispatches')
       .first()).toMatchObject({ requestId: request.requestId,state: 'queued',branch: 'ops/site-provision' })
+    expect(await db.prepare('SELECT request_id AS requestId,state,build_branch AS buildBranch FROM site_provision_dispatch_runs')
+      .first()).toEqual({ requestId: request.requestId,state: 'queued',buildBranch: 'feat/site-per-d1' })
     await cancelProvisionAdmission(db,actor,request.requestId)
-    expect(await db.prepare('SELECT state,completed_at AS completedAt FROM site_provision_dispatches WHERE request_id=?')
+    expect(await db.prepare('SELECT state,completed_at AS completedAt FROM site_provision_dispatch_runs WHERE request_id=?')
       .bind(request.requestId).first()).toMatchObject({ state: 'cancelled',completedAt: expect.any(String) })
   })
 
@@ -83,7 +87,7 @@ describe('durable provision build dispatch on native D1',() => {
     const results = await Promise.all(Array.from({ length: 8 },() => triggerProvisionBuild(db,message!,env().PROVISION_DEPLOY_HOOK_URL,fetcher)))
     expect(fetcher).toHaveBeenCalledOnce()
     expect(results.filter(result => result.triggered)).toHaveLength(1)
-    expect(await db.prepare('SELECT state,build_uuid AS buildUuid,attempt_count AS attemptCount FROM site_provision_dispatches WHERE request_id=?')
+    expect(await db.prepare('SELECT state,build_uuid AS buildUuid,attempt_count AS attemptCount FROM site_provision_dispatch_runs WHERE request_id=?')
       .bind(request.requestId).first()).toEqual({ state: 'dispatched',buildUuid,attemptCount: 1 })
   })
 
@@ -95,14 +99,29 @@ describe('durable provision build dispatch on native D1',() => {
     await triggerProvisionBuild(db,message!,env().PROVISION_DEPLOY_HOOK_URL,fetcher)
     await triggerProvisionBuild(db,message!,env().PROVISION_DEPLOY_HOOK_URL,fetcher)
     expect(fetcher).toHaveBeenCalledOnce()
-    expect(await db.prepare('SELECT state,build_uuid AS buildUuid FROM site_provision_dispatches WHERE request_id=?')
+    expect(await db.prepare('SELECT state,build_uuid AS buildUuid FROM site_provision_dispatch_runs WHERE request_id=?')
       .bind(request.requestId).first()).toEqual({ state: 'triggering_unknown',buildUuid: null })
     await expect(cancelProvisionAdmission(db,actor,request.requestId)).rejects.toMatchObject({ status: 409 })
     await submitProvisionAdmission(db,actor,input('dispatch-waits'))
     expect(await enqueueProvisionDispatch(db,queue)).toBeNull()
     expect(await observeProvisionBuild(db,buildEvent(buildUuid,'started'),env())).toMatchObject({ requestId: request.requestId,state: 'running' })
-    expect(await db.prepare('SELECT state,build_uuid AS buildUuid FROM site_provision_dispatches WHERE request_id=?')
+    expect(await db.prepare('SELECT state,build_uuid AS buildUuid FROM site_provision_dispatch_runs WHERE request_id=?')
       .bind(request.requestId).first()).toEqual({ state: 'running',buildUuid })
+  })
+
+  it('selects only the exact Cloudflare build UUID for the synthetic P1 owner',async () => {
+    const request = { ...input('dispatch-executor'),ownerUserId: 7 },buildUuid = randomUUID(),commit = 'c'.repeat(40)
+    await submitProvisionAdmission(db,actor,request)
+    const message = await enqueueProvisionDispatch(db,queue)
+    await triggerProvisionBuild(db,message!,env().PROVISION_DEPLOY_HOOK_URL,
+      async () => Response.json({ success: true,result: { build_uuid: buildUuid,branch: 'feat/site-per-d1' } }))
+    await expect(selectProvisionBuildExecution(db,{ buildUuid: randomUUID(),branch: 'feat/site-per-d1',commit })).resolves.toBeNull()
+    await expect(selectProvisionBuildExecution(db,{ buildUuid,branch: 'main',commit })).rejects.toThrow('identity mismatch')
+    await expect(selectProvisionBuildExecution(db,{ buildUuid,branch: 'feat/site-per-d1',commit })).resolves.toMatchObject({
+      requestId: request.requestId,buildUuid,branch: 'feat/site-per-d1',commit,
+    })
+    expect(await db.prepare('SELECT build_commit FROM site_provision_dispatch_runs WHERE request_id=?')
+      .bind(request.requestId).first('build_commit')).toBe(commit)
   })
 
   it('rejects unrelated events, records retries idempotently and waits for the six-step receipt',async () => {
@@ -123,10 +142,10 @@ describe('durable provision build dispatch on native D1',() => {
       (operation_id,site_id,local_site_id,worker_group,binding_name,database_name,plan_json,plan_digest,created_at)
       SELECT request_id,site_id,local_site_id,'p1-group-1','SITE_D1_TEST','dispatch-test-db',prepared_plan_json,prepared_plan_digest,
         strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM site_provision_requests WHERE request_id=?`).bind(request.requestId).run()
-    expect(await db.prepare('SELECT state FROM site_provision_dispatches WHERE request_id=?').bind(request.requestId).first('state')).toBe('running')
+    expect(await db.prepare('SELECT state FROM site_provision_dispatch_runs WHERE request_id=?').bind(request.requestId).first('state')).toBe('needs_review')
     await db.prepare(`UPDATE site_provision_operations SET completed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE operation_id=?`)
       .bind(request.requestId).run()
-    expect(await db.prepare('SELECT state,build_outcome AS outcome FROM site_provision_dispatches WHERE request_id=?')
+    expect(await db.prepare('SELECT state,build_outcome AS outcome FROM site_provision_dispatch_runs WHERE request_id=?')
       .bind(request.requestId).first()).toEqual({ state: 'succeeded',outcome: 'success' })
     expect(await db.prepare('SELECT COUNT(*) AS n FROM site_provision_build_events').first('n')).toBe(2)
   })

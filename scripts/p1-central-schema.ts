@@ -3,6 +3,7 @@ import { siteProvisionSchemaObjects } from '../src/site-control/provisionSchema'
 import { groupReleaseSchemaObjects } from '../src/site-control/groupReleaseSchema'
 import { provisionAdmissionSchemaObjects } from '../src/site-control/provisionAdmissionSchema'
 import { provisionDispatchSchemaObjects } from '../src/site-control/provisionDispatchSchema'
+import { provisionDispatchRunSchemaObjects } from '../src/site-control/provisionDispatchRunSchema'
 import { applyP1Schema, roleSchemaDigest, type RoleSchema } from './p1-schema'
 
 export const P1_CENTRAL_V1 = '32d9ac67f25b2dec5326ed868a1e98c5b06e0de87d5312c3b69d8591507604a3'
@@ -10,18 +11,28 @@ export const P1_CENTRAL_V2 = 'a0e7820413a25bad42da857f7a60d96fb7f2997f8bf8f71e99
 export const P1_CENTRAL_V3 = 'a97d4714d6af58802fc39203f4e1ae29609330e7c66b047bc6a336410de034db'
 export const P1_CENTRAL_V4 = 'a7c3aadae00b64d214635f59147438ad9b44798f5b8fd241483b5f10728c539f'
 export const P1_CENTRAL_V5 = 'd3f650c7b33c1bd8f40e042430691b1104ae98dd891e270de42c6060a2f0ca37'
+export const P1_CENTRAL_V6_DISPATCH = 'e9b79e7fd45892c9a5b0353b32d2ab80e2c30006167e8fd58c432bc5bbbaf199'
 
 /** Upgrade only the previously reviewed complete schemas, never silently adopt
- * another schema. Fresh installs use v6; old versions pass through each additive
+ * another schema. Fresh installs use v7; old versions pass through each additive
  * change with its own atomic receipt. Interrupted upgrades resume at their
  * actual persisted version. */
 export async function applyP1CentralSchema(database: D1Database,schema: RoleSchema) {
   if (schema.role !== 'central') throw new Error('Central schema required')
+  const runObjects = new Set<string>(provisionDispatchRunSchemaObjects)
+  if (provisionDispatchRunSchemaObjects.some(name => schema.objects.filter(item => item.name === name).length !== 1)) {
+    throw new Error('Incomplete central dispatch run schema')
+  }
+  const v6: RoleSchema = { ...schema,objects: schema.objects.filter(item => !runObjects.has(item.name)) }
   const dispatchObjects = new Set<string>(provisionDispatchSchemaObjects)
-  if (provisionDispatchSchemaObjects.some(name => schema.objects.filter(item => item.name === name).length !== 1)) {
+  if (provisionDispatchSchemaObjects.some(name => v6.objects.filter(item => item.name === name).length !== 1)) {
     throw new Error('Incomplete central dispatch schema')
   }
-  const v5: RoleSchema = { ...schema,objects: schema.objects.filter(item => !dispatchObjects.has(item.name)) }
+  if (roleSchemaDigest(v6.objects.filter(item => dispatchObjects.has(item.name))) !== P1_CENTRAL_V6_DISPATCH) {
+    throw new Error('Unexpected central v6 dispatch schema')
+  }
+  const v6Digest = roleSchemaDigest(v6.objects)
+  const v5: RoleSchema = { ...v6,objects: v6.objects.filter(item => !dispatchObjects.has(item.name)) }
   if (roleSchemaDigest(v5.objects) !== P1_CENTRAL_V5) throw new Error('Unexpected central v5 base schema')
   const admissionObjects = new Set<string>(provisionAdmissionSchemaObjects)
   if (provisionAdmissionSchemaObjects.some(name => v5.objects.filter(item => item.name === name).length !== 1)) {
@@ -61,9 +72,15 @@ export async function applyP1CentralSchema(database: D1Database,schema: RoleSche
       await applyP1Schema(database,v5,'p1-central-schema-v5',{
         fromDigest: P1_CENTRAL_V4,fromOperationId: 'p1-central-schema-v4',addedObjects: provisionAdmissionSchemaObjects,
       })
+      current = { digest: P1_CENTRAL_V5,operation_id: 'p1-central-schema-v5' }
+    }
+    if (current?.digest === P1_CENTRAL_V5 && current.operation_id === 'p1-central-schema-v5') {
+      await applyP1Schema(database,v6,'p1-central-schema-v6',{
+        fromDigest: P1_CENTRAL_V5,fromOperationId: 'p1-central-schema-v5',addedObjects: provisionDispatchSchemaObjects,
+      })
     }
   }
-  return applyP1Schema(database,schema,'p1-central-schema-v6',{
-    fromDigest: P1_CENTRAL_V5,fromOperationId: 'p1-central-schema-v5',addedObjects: provisionDispatchSchemaObjects,
+  return applyP1Schema(database,schema,'p1-central-schema-v7',{
+    fromDigest: v6Digest,fromOperationId: 'p1-central-schema-v6',addedObjects: provisionDispatchRunSchemaObjects,
   })
 }

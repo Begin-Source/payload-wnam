@@ -3,6 +3,7 @@ import { provisionHashSchema,provisionUuidSchema } from './provisionPlan'
 
 const dispatchMessageSchema = z.object({
   type: z.literal('site.provision.dispatch'),requestId: provisionUuidSchema,inputDigest: provisionHashSchema,
+  buildBranch: z.string().min(1).max(255),
 }).strict()
 export type ProvisionDispatchMessage = z.infer<typeof dispatchMessageSchema>
 
@@ -23,6 +24,10 @@ const buildEventSchema = z.object({
 }).passthrough()
 export type ProvisionBuildEvent = z.infer<typeof buildEventSchema>
 export type ProvisionQueueMessage = ProvisionDispatchMessage | ProvisionBuildEvent
+
+const buildExecutionSchema = z.object({
+  buildUuid: z.string().uuid(),branch: z.string().min(1).max(255),commit: z.string().regex(/^[a-f0-9]{40}$/),
+}).strict()
 
 export type ProvisionDispatchEnvironment = {
   CENTRAL_D1: D1Database
@@ -58,12 +63,12 @@ function requireHook(value: string) {
  * messages are harmless because only one conditional claim can enter the
  * active slot. */
 export async function enqueueProvisionDispatch(database: D1Database,queue: Queue<ProvisionQueueMessage>) {
-  const row = await database.prepare(`SELECT d.request_id AS requestId,d.input_digest AS inputDigest
-    FROM site_provision_dispatches d JOIN site_provision_requests q ON q.request_id=d.request_id
+  const row = await database.prepare(`SELECT d.request_id AS requestId,d.input_digest AS inputDigest,d.build_branch AS buildBranch
+    FROM site_provision_dispatch_runs d JOIN site_provision_requests q ON q.request_id=d.request_id
     WHERE d.state='queued' AND q.state='queued'
-      AND NOT EXISTS (SELECT 1 FROM site_provision_dispatches active
+      AND NOT EXISTS (SELECT 1 FROM site_provision_dispatch_runs active
         WHERE active.state IN ('triggering_unknown','dispatched','running','needs_review'))
-    ORDER BY d.queued_at,d.request_id LIMIT 1`).first<{ requestId: string; inputDigest: string }>()
+    ORDER BY d.queued_at,d.request_id LIMIT 1`).first<{ requestId: string; inputDigest: string; buildBranch: string }>()
   if (!row) return null
   const body = dispatchMessageSchema.parse({ type: 'site.provision.dispatch',...row })
   await queue.send(body,{ contentType: 'json' })
@@ -72,7 +77,32 @@ export async function enqueueProvisionDispatch(database: D1Database,queue: Queue
 
 async function readDispatch(database: D1Database,requestId: string) {
   return database.prepare(`SELECT state,input_digest AS inputDigest,build_uuid AS buildUuid
-    FROM site_provision_dispatches WHERE request_id=?`).bind(requestId).first<DispatchRow>()
+    FROM site_provision_dispatch_runs WHERE request_id=?`).bind(requestId).first<DispatchRow>()
+}
+
+/** Select only the admission explicitly bound to this Cloudflare build. Push
+ * builds and unrelated Hook builds have no matching UUID and remain read-only.
+ * P1 automatic acceptance is intentionally limited to its synthetic account. */
+export async function selectProvisionBuildExecution(database: D1Database,value: unknown) {
+  const build = buildExecutionSchema.parse(value)
+  const row = await database.prepare(`SELECT r.request_id AS requestId,r.input_digest AS inputDigest,
+      r.build_branch AS buildBranch,r.state,r.build_commit AS buildCommit,
+      q.actor_user_id AS actorUserId,q.owner_user_id AS ownerUserId,q.tenant_id AS tenantId,q.state AS requestState
+    FROM site_provision_dispatch_runs r JOIN site_provision_requests q ON q.request_id=r.request_id
+    WHERE r.build_uuid=?`).bind(build.buildUuid).first<{ requestId: string; inputDigest: string; buildBranch: string;
+      state: string; buildCommit: string | null; actorUserId: number; ownerUserId: number; tenantId: number; requestState: string }>()
+  if (!row) return null
+  if (row.buildBranch !== build.branch || !['dispatched','running','needs_review','succeeded'].includes(row.state) ||
+    !['queued','provisioning','completed'].includes(row.requestState) || row.actorUserId !== 7 || row.ownerUserId !== 7 ||
+    ![1,2].includes(row.tenantId) || row.buildCommit && row.buildCommit !== build.commit) {
+    throw new Error('Provision build execution identity mismatch')
+  }
+  const saved = await database.prepare(`UPDATE site_provision_dispatch_runs SET build_commit=COALESCE(build_commit,?)
+    WHERE request_id=? AND build_uuid=? AND build_branch=? AND (build_commit IS NULL OR build_commit=?)`)
+    .bind(build.commit,row.requestId,build.buildUuid,build.branch,build.commit).run()
+  if (saved.meta.changes !== 1) throw new Error('Provision build execution could not be claimed')
+  return { requestId: row.requestId,inputDigest: row.inputDigest,state: row.state,requestState: row.requestState,
+    buildUuid: build.buildUuid,branch: build.branch,commit: build.commit }
 }
 
 /** Claim before the non-idempotent POST. Any response loss leaves an explicit
@@ -80,13 +110,13 @@ async function readDispatch(database: D1Database,requestId: string) {
 export async function triggerProvisionBuild(database: D1Database,message: ProvisionDispatchMessage,hook: string,
   fetcher: typeof fetch = fetch) {
   const input = dispatchMessageSchema.parse(message),attemptId = crypto.randomUUID(),hookUrl = requireHook(hook)
-  const claimed = await database.prepare(`UPDATE site_provision_dispatches SET state='triggering_unknown',attempt_id=?,
+  const claimed = await database.prepare(`UPDATE site_provision_dispatch_runs SET state='triggering_unknown',attempt_id=?,
     attempt_count=attempt_count+1,trigger_started_at=${timestamp},last_error_code='hook_result_unknown'
     WHERE request_id=? AND input_digest=? AND state='queued'
       AND EXISTS (SELECT 1 FROM site_provision_requests q WHERE q.request_id=? AND q.state='queued')
-      AND NOT EXISTS (SELECT 1 FROM site_provision_dispatches active WHERE active.request_id!=?
+      AND build_branch=? AND NOT EXISTS (SELECT 1 FROM site_provision_dispatch_runs active WHERE active.request_id!=?
         AND active.state IN ('triggering_unknown','dispatched','running','needs_review'))`)
-    .bind(attemptId,input.requestId,input.inputDigest,input.requestId,input.requestId).run()
+    .bind(attemptId,input.requestId,input.inputDigest,input.requestId,input.buildBranch,input.requestId).run()
   if (claimed.meta.changes !== 1) {
     const current = await readDispatch(database,input.requestId)
     if (!current || current.inputDigest !== input.inputDigest) throw new Error('Provision dispatch identity unavailable')
@@ -97,7 +127,8 @@ export async function triggerProvisionBuild(database: D1Database,message: Provis
     const body = await response.json() as { success?: unknown; result?: { build_uuid?: unknown; branch?: unknown } }
     const buildUuid = typeof body.result?.build_uuid === 'string' && /^[A-Za-z0-9_-]{8,100}$/.test(body.result.build_uuid) ? body.result.build_uuid : null
     if (!response.ok || body.success !== true || !buildUuid) throw new Error('Deploy hook response unavailable')
-    const saved = await database.prepare(`UPDATE site_provision_dispatches SET build_uuid=?,
+    if (typeof body.result?.branch === 'string' && body.result.branch !== input.buildBranch) throw new Error('Deploy hook branch mismatch')
+    const saved = await database.prepare(`UPDATE site_provision_dispatch_runs SET build_uuid=?,
       state=CASE WHEN state='triggering_unknown' THEN 'dispatched' ELSE state END,dispatched_at=COALESCE(dispatched_at,${timestamp}),
       last_error_code=NULL WHERE request_id=? AND attempt_id=? AND (build_uuid IS NULL OR build_uuid=?)`)
       .bind(buildUuid,input.requestId,attemptId,buildUuid).run()
@@ -142,13 +173,14 @@ export async function observeProvisionBuild(database: D1Database,value: unknown,
     if (existing.digest !== digest) throw new Error('Build event identity conflict')
     return { event: name,replayed: true as const }
   }
-  const byBuild = await database.prepare('SELECT request_id AS requestId FROM site_provision_dispatches WHERE build_uuid=?')
+  const byBuild = await database.prepare('SELECT request_id AS requestId FROM site_provision_dispatch_runs WHERE build_uuid=?')
     .bind(event.payload.buildUuid).first<{ requestId: string }>()
   let requestId = byBuild?.requestId
   if (!requestId) {
-    const attached = await database.prepare(`UPDATE site_provision_dispatches SET build_uuid=?,build_commit=?
-      WHERE state='triggering_unknown' AND build_uuid IS NULL
-      RETURNING request_id AS requestId`).bind(event.payload.buildUuid,event.payload.buildTriggerMetadata.commitHash)
+    const attached = await database.prepare(`UPDATE site_provision_dispatch_runs SET build_uuid=?,build_commit=?
+      WHERE state='triggering_unknown' AND build_uuid IS NULL AND build_branch=?
+      RETURNING request_id AS requestId`).bind(event.payload.buildUuid,event.payload.buildTriggerMetadata.commitHash,
+        event.payload.buildTriggerMetadata.branch)
       .first<{ requestId: string }>()
     requestId = attached?.requestId
   }
@@ -162,7 +194,7 @@ export async function observeProvisionBuild(database: D1Database,value: unknown,
     if (completed?.completedAt) { state = 'succeeded'; error = '' }
   }
   const outcome = name === 'succeeded' ? 'success' : name === 'canceled' ? 'canceled' : name === 'failed' ? 'failure' : null
-  const current = await database.prepare('SELECT state,build_outcome AS outcome FROM site_provision_dispatches WHERE request_id=? AND build_uuid=?')
+  const current = await database.prepare('SELECT state,build_outcome AS outcome FROM site_provision_dispatch_runs WHERE request_id=? AND build_uuid=?')
     .bind(requestId,event.payload.buildUuid).first<{ state: string; outcome: string | null }>()
   if (!current || (current.outcome && outcome && current.outcome !== outcome) ||
     (current.state === 'succeeded' && terminal && outcome !== 'success')) {
@@ -172,7 +204,7 @@ export async function observeProvisionBuild(database: D1Database,value: unknown,
     database.prepare(`INSERT INTO site_provision_build_events
       (event_key,build_uuid,event_type,event_timestamp,payload_digest,received_at) VALUES (?,?,?,?,?,${timestamp})`)
       .bind(eventKey,event.payload.buildUuid,name,event.metadata.eventTimestamp,digest),
-    database.prepare(`UPDATE site_provision_dispatches SET build_commit=COALESCE(build_commit,?),
+    database.prepare(`UPDATE site_provision_dispatch_runs SET build_commit=COALESCE(build_commit,?),
       state=CASE WHEN state IN ('succeeded','needs_review','cancelled') THEN state ELSE ? END,
       running_at=CASE WHEN ?='started' THEN COALESCE(running_at,?) ELSE running_at END,
       completed_at=CASE WHEN ? THEN COALESCE(completed_at,?) ELSE completed_at END,
@@ -187,7 +219,10 @@ export async function provisionDispatchQueue(batch: MessageBatch<unknown>,env: P
   for (const message of batch.messages) {
     try {
       const dispatch = dispatchMessageSchema.safeParse(message.body)
-      if (dispatch.success) await triggerProvisionBuild(env.CENTRAL_D1,dispatch.data,env.PROVISION_DEPLOY_HOOK_URL)
+      if (dispatch.success) {
+        if (dispatch.data.buildBranch !== env.PROVISION_BUILD_BRANCH) throw new Error('Provision dispatch branch mismatch')
+        await triggerProvisionBuild(env.CENTRAL_D1,dispatch.data,env.PROVISION_DEPLOY_HOOK_URL)
+      }
       else await observeProvisionBuild(env.CENTRAL_D1,message.body,env)
       message.ack()
     } catch {

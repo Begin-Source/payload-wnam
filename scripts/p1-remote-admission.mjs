@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 
-/** Actual P1 central UI and durable database. The synthetic request is cancelled
- * before returning; no planner, resource creation or permission change occurs. */
-export async function checkRemoteAdmission({ hub,centralQuery }) {
+/** Actual P1 central UI and durable database. Ordinary release smoke is
+ * read-only; the legacy write/cancel probe remains explicit for pre-dispatch
+ * validation only. */
+export async function checkRemoteAdmission({ hub,centralQuery,writeProbe = false }) {
   const region = hub.getByRole('region',{ name: '建站申请',exact: true })
   const invoke = (path,body) => hub.evaluate(async ({ path,body }) => {
     const response = await fetch(path,{ signal: AbortSignal.timeout(20000),...(body === undefined ? {} : {
@@ -12,7 +13,26 @@ export async function checkRemoteAdmission({ hub,centralQuery }) {
   },{ path,body })
   const before = await centralQuery('SELECT operation_id,checkpoint,completed_at FROM site_provision_operations ORDER BY operation_id')
   const schema = await centralQuery('SELECT operation_id,completed FROM p1_schema_bootstrap WHERE id=1')
-  assert.deepEqual(schema,[{ operation_id: 'p1-central-schema-v6',completed: 1 }])
+  assert.deepEqual(schema,[{ operation_id: 'p1-central-schema-v7',completed: 1 }])
+  if (!writeProbe) {
+    await region.getByLabel('所属租户',{ exact: true }).selectOption('1')
+    await region.getByRole('button',{ name: '申请建站',exact: true }).click()
+    await region.getByLabel('网站名称',{ exact: true }).fill('只读表单验收')
+    await region.getByLabel('站点 ID',{ exact: true }).fill('p1-read-only-check')
+    await region.getByLabel('负责人',{ exact: true }).selectOption('7')
+    await region.getByLabel('网站时区',{ exact: true }).fill('Europe/Berlin')
+    await region.getByRole('button',{ name: '提交申请',exact: true }).waitFor()
+    for (const [name,width,height] of [['desktop',1365,900],['mobile',390,844]]) {
+      await hub.setViewportSize({ width,height }); await region.scrollIntoViewIfNeeded()
+      assert.equal(await hub.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true)
+      await region.screenshot({ path: `.cloudflare-ci/remote-admission-${name}.png` })
+    }
+    assert.deepEqual(await centralQuery('SELECT operation_id,checkpoint,completed_at FROM site_provision_operations ORDER BY operation_id'),before)
+    await hub.setViewportSize({ width: 1365,height: 900 })
+    console.log(JSON.stringify({ event: 'p1_remote_admission_read_only_passed',checkedAt: new Date().toISOString(),remoteDeployment: true,
+      checks: ['central-v7','real-ui-options','bounded-form','desktop-mobile','no-request-write','no-provision-effects'] }))
+    return
+  }
   let input
   try {
     await region.getByLabel('所属租户',{ exact: true }).selectOption('1')

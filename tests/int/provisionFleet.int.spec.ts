@@ -13,6 +13,7 @@ import { resolveProvisionFleet,releaseProvisionFleet } from '../../scripts/site-
 import type { ReleaseSnapshot } from '../../scripts/site-operations/release'
 import { provisionAdmissionSchema } from '../../src/site-control/provisionAdmissionSchema'
 import { provisionDispatchSchema } from '../../src/site-control/provisionDispatchSchema'
+import { provisionDispatchRunSchema } from '../../src/site-control/provisionDispatchRunSchema'
 import { submitProvisionAdmission } from '../../src/site-control/provisionAdmission'
 import { planProvisionAdmission,type AdmissionPlannerDependencies } from '../../scripts/site-operations/admission-plan'
 import { resolveAdmissionFleet } from '../../scripts/site-operations/admission-fleet'
@@ -92,10 +93,11 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
     await migrateSiteControl(db)
     await db.batch(provisionAdmissionSchema.map(sql => db.prepare(sql)))
     await db.batch(provisionDispatchSchema.map(sql => db.prepare(sql)))
+    await db.batch(provisionDispatchRunSchema.map(sql => db.prepare(sql)))
     journal = new ProvisionJournal(db,{ accountId: source.plan.accountId,centralDatabaseId: centralId })
   })
   beforeEach(async () => {
-    for (const table of ['site_provision_build_events','site_provision_dispatches','site_provision_requests','site_group_releases','site_group_leases','site_provision_steps','site_provision_operations','site_runtime_access','site_runtime_registry']) await db.prepare(`DELETE FROM ${table}`).run()
+    for (const table of ['site_provision_build_events','site_provision_dispatch_runs','site_provision_dispatches','site_provision_requests','site_group_releases','site_group_leases','site_provision_steps','site_provision_operations','site_runtime_access','site_runtime_registry']) await db.prepare(`DELETE FROM ${table}`).run()
   })
   afterAll(async () => { await mf?.dispose() })
   it('assembles two groups and three completed histories through a read-only database capability',async () => {

@@ -33,7 +33,7 @@ async function row(database: D1Database,requestId: string) {
   return database.prepare(`SELECT q.request_id AS requestId,q.actor_user_id AS actorUserId,q.input_json AS inputJson,
     q.state,q.created_at AS createdAt,q.cancelled_at AS cancelledAt,o.checkpoint,o.completed_at AS completedAt,d.state AS dispatchState
     FROM site_provision_requests q LEFT JOIN site_provision_operations o ON o.operation_id=q.request_id
-    JOIN site_provision_dispatches d ON d.request_id=q.request_id WHERE q.request_id=?`)
+    JOIN site_provision_dispatch_runs d ON d.request_id=q.request_id WHERE q.request_id=?`)
     .bind(requestId).first<AdmissionRow>()
 }
 function summary(value: AdmissionRow) {
@@ -59,7 +59,7 @@ export async function listProvisionAdmissions(database: D1Database,identity: Cen
   const rows = (await database.prepare(`SELECT q.request_id AS requestId,q.actor_user_id AS actorUserId,q.input_json AS inputJson,
     q.state,q.created_at AS createdAt,q.cancelled_at AS cancelledAt,o.checkpoint,o.completed_at AS completedAt,d.state AS dispatchState
     FROM site_provision_requests q LEFT JOIN site_provision_operations o ON o.operation_id=q.request_id
-    JOIN site_provision_dispatches d ON d.request_id=q.request_id
+    JOIN site_provision_dispatch_runs d ON d.request_id=q.request_id
     WHERE q.tenant_id=? AND (?='' OR (q.created_at,q.request_id)<
       (SELECT created_at,request_id FROM site_provision_requests WHERE request_id=? AND tenant_id=?))
     ORDER BY q.created_at DESC,q.request_id DESC LIMIT 51`).bind(tenantId,after,after,tenantId).all<AdmissionRow>()).results
@@ -135,7 +135,7 @@ export async function cancelProvisionAdmission(database: D1Database,identity: Ce
     WHERE request_id=? AND state='queued' AND ${provisionActorPermission('?','q.tenant_id')}
       AND EXISTS (SELECT 1 FROM users_sessions s WHERE s._parent_id=? AND s.id=? AND julianday(s.expires_at)>julianday('now'))
       AND NOT EXISTS (SELECT 1 FROM site_provision_operations o WHERE o.operation_id=q.request_id)
-      AND EXISTS (SELECT 1 FROM site_provision_dispatches d WHERE d.request_id=q.request_id AND d.state='queued')`)
+      AND EXISTS (SELECT 1 FROM site_provision_dispatch_runs d WHERE d.request_id=q.request_id AND d.state='queued')`)
     .bind(identity.userId,requestId,identity.userId,identity.userId,identity.sessionId).run()
   await requireActor(database,identity,saved.input.tenantId)
   const current = await readProvisionAdmission(database,identity,requestId)
