@@ -9,7 +9,7 @@ import { checkMcpBrowser } from './p1-mcp-browser.mjs'
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1')
 const password = process.env.P1_TEST_PASSWORD, token = process.env.CLOUDFLARE_API_TOKEN
 assert.ok(password && password.length >= 32 && token)
-const { central,site } = p1EffectiveManifests()
+const { central,site } = await p1EffectiveManifests()
 const routes = JSON.parse(site.vars.SITE_ROUTES)
 const hosts = [new URL(P1_ORIGIN).hostname,...site.routes.map(route => route.pattern)]
 const centralQuery = async (sql,params = []) => {

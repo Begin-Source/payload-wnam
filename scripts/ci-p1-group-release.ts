@@ -6,57 +6,59 @@ import { resolve } from 'node:path'
 import { getPlatformProxy } from 'wrangler'
 import { ProvisionJournal } from '../src/site-control/provisionJournal'
 import { GroupReleaseJournal,groupReleaseId,type GroupReleaseReceipt } from '../src/site-control/groupReleaseJournal'
-import { provisionDigest } from '../src/site-control/provisionPlan'
 import type { inspectProvisionedSite } from '../src/site-runtime/provisionInspection'
 import { ProvisionCloudflare } from './site-operations/cloudflare'
 import { ProvisionGroup } from './site-operations/group'
-import { groupRoutes,parseProvisionRequest,provisionManifest } from './site-operations/manifest'
+import { groupRoutes,parseProvisionRequest } from './site-operations/manifest'
 import { releaseGroup } from './site-operations/release'
 import { parseVerificationRequest } from './site-operations/verify-request'
 import { p1ReleaseRequest,p1EffectiveManifests } from './p1-release-manifests.mjs'
 import { browserLibraryEnvironment } from './ci-browser-libs.mjs'
 import { loadProvisionFleet } from './provision-fleet-input.mjs'
-import { resolveProvisionFleet,releaseProvisionFleet } from './site-operations/fleet'
+import { releaseProvisionFleet } from './site-operations/fleet'
+import { resolveAdmissionFleet } from './site-operations/admission-fleet'
+import { fleetReleaseArtifact } from './site-operations/fleet-artifact'
 
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1'); assert.equal(process.env.P1_GROUP_RELEASE,'1')
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
 assert.equal(process.env.WORKERS_CI_COMMIT_SHA,commit); assert.equal(JSON.parse(readFileSync('.cloudflare-ci/release.json','utf8')).commit,commit)
 assert.equal(process.env.WRANGLER_CI_OVERRIDE_NAME,undefined); assert.equal(process.env.WRANGLER_CI_MATCH_TAG,undefined)
-const selection = p1ReleaseRequest(),request = parseProvisionRequest(selection.request),{ plan,baseline,central } = request
-const api = new ProvisionCloudflare(plan.accountId,process.env.CLOUDFLARE_API_TOKEN ?? ''),group = new ProvisionGroup(api,request)
-await group.resources()
+const selection = p1ReleaseRequest(),anchor = parseProvisionRequest(selection.request),{ plan: anchorPlan,baseline,central } = anchor
+const api = new ProvisionCloudflare(anchorPlan.accountId,process.env.CLOUDFLARE_API_TOKEN ?? '')
+await new ProvisionGroup(api,anchor).resources()
 type Environment = { CENTRAL_D1: D1Database; INSPECT: { inspect: (siteId: string,operationId: string) => ReturnType<typeof inspectProvisionedSite> } }
 const configPath = '.cloudflare-ci/group-release-proxy.json'
-writeFileSync(configPath,JSON.stringify({ name: 'payload-wnam-group-release-maintenance',account_id: plan.accountId,
+writeFileSync(configPath,JSON.stringify({ name: 'payload-wnam-group-release-maintenance',account_id: anchorPlan.accountId,
   compatibility_date: baseline.compatibility_date,compatibility_flags: baseline.compatibility_flags,
   d1_databases: central.d1_databases.map(database => ({ ...database,remote: true })),
-  services: [{ binding: 'INSPECT',service: plan.workerName,entrypoint: 'SiteProvisionInspectionService',remote: true }] }))
+  services: [{ binding: 'INSPECT',service: anchorPlan.workerName,entrypoint: 'SiteProvisionInspectionService',remote: true }] }))
 const proxy = await getPlatformProxy<Environment>({ configPath,remoteBindings: true,persist: false })
-const database = proxy.env.CENTRAL_D1,provisions = new ProvisionJournal(database,{ accountId: plan.accountId,centralDatabaseId: plan.centralDatabaseId })
+const database = proxy.env.CENTRAL_D1,provisions = new ProvisionJournal(database,{ accountId: anchorPlan.accountId,centralDatabaseId: anchorPlan.centralDatabaseId })
 const journal = new GroupReleaseJournal(database)
 const run = (command: string,args: string[],cwd = process.cwd(),extra: Record<string,string | undefined> = {}) => new Promise<void>((resolve,reject) => {
   const child = spawn(command,args,{ cwd,env: { ...process.env,...extra },stdio: 'inherit' })
   child.on('error',reject); child.on('exit',code => code === 0 ? resolve() : reject(new Error(`Group release subprocess failed (${code})`)))
 })
 try {
-  const original = await provisions.plan(plan.operationId),operation = await provisions.read(plan.operationId)
-  assert.deepEqual(original,plan)
-  assert.ok(operation?.completedAt && operation.checkpoint === 6 && operation.databaseId,'Selected provision must complete before ordinary group release')
-  const fleet = await resolveProvisionFleet(loadProvisionFleet('operations/fleet/p1.json'),database)
-  // This P1 controller owns its one reviewed remote group. The shared fleet
-  // coordinator supports ordered batches without silently expanding P1 scope.
+  const fleetInput = loadProvisionFleet('operations/fleet/p1.json')
+  const fleet = await resolveAdmissionFleet(fleetInput,database)
+  // The reviewed files remain the immutable starting history. Completed
+  // admissions extend that history; no file is treated as the latest request.
   assert.equal(fleet.groups.length,1)
   const managed = fleet.groups[0]
-  assert.equal(managed.workerGroup,plan.workerGroup); assert.deepEqual(managed.latestRequest,request)
-  const databaseId = operation.databaseId,site = managed.manifest,manifest = JSON.stringify(site),manifestDigest = provisionDigest(manifest)
-  assert.deepEqual(site,provisionManifest(request,databaseId))
+  assert.equal(managed.workerGroup,anchorPlan.workerGroup)
+  assert.ok(managed.operations.some(operation => operation.operationId === anchorPlan.operationId),'Reviewed P1 anchor missing')
+  const request = managed.latestRequest,{ plan } = request,group = new ProvisionGroup(api,request)
+  const operation = await provisions.read(plan.operationId)
+  assert.ok(operation?.completedAt && operation.checkpoint === 6 && operation.databaseId,'Current provision history must be complete')
+  const databaseId = operation.databaseId,site = managed.manifest,manifest = JSON.stringify(site),manifestDigest = managed.manifestDigest
   console.log(JSON.stringify({ event: 'p1_fleet_history_verified',operationId: fleet.operationId,workerGroup: managed.workerGroup,
     manifestDigest,members: groupRoutes(site).map(route => route.siteId),operations: managed.operations,mutations: false }))
   assert.equal((await api.database(databaseId)).name,plan.databaseName)
   const preflight = async () => {
-    const current = await resolveProvisionFleet(loadProvisionFleet('operations/fleet/p1.json'),database)
+    const current = await resolveAdmissionFleet(fleetInput,database)
     assert.deepEqual(current,fleet,'Fleet history changed during release')
-    await group.resources()
+    await group.resources(site)
     const registrations = (await database.prepare('SELECT site_id,local_site_id,binding_name,database_id,schema_version,admin_host FROM site_runtime_registry WHERE worker_group=? ORDER BY site_id')
       .bind(plan.workerGroup).all<{ site_id: string; local_site_id: number; binding_name: string; database_id: string; schema_version: number; admin_host: string }>()).results
     assert.deepEqual(registrations,groupRoutes(site).map(route => ({ site_id: route.siteId,local_site_id: route.localSiteId,binding_name: route.bindingName,
@@ -65,8 +67,8 @@ try {
     assert.ok(await group.inspect(site))
   }
   await preflight()
-  writeFileSync('.cloudflare-ci/p1-effective-site.json',JSON.stringify({ commit,operationId: plan.operationId,databaseId,manifestDigest,site },null,2))
-  assert.deepEqual(p1EffectiveManifests().site,site)
+  writeFileSync('.cloudflare-ci/p1-effective-site.json',JSON.stringify(fleetReleaseArtifact(commit,fleet),null,2))
+  assert.deepEqual((await p1EffectiveManifests()).site,site)
   const deploy = async (guard: () => Promise<void>,releaseId: string) => {
     await guard(); await preflight()
     const cwd = resolve('.cloudflare-ci/roles/site'),path = resolve(cwd,'wrangler.group-release.jsonc')
@@ -96,7 +98,8 @@ try {
     const verification = parseVerificationRequest({ operationId: randomUUID(),central,centralWorkerTag: request.centralWorkerTag,
       group: site,workerTag: plan.workerTag,zoneId: request.zoneId,schemaDigest: plan.schemaDigest,expectedDeploymentId: current.deploymentId,
       sites: managed.verification.sites })
-    assert.deepEqual(verification.sites,JSON.parse(readFileSync('operations/p1-verify.json','utf8')),'Fleet ownership differs from explicit P1 verification targets')
+    const originalTargets = JSON.parse(readFileSync('operations/p1-verify.json','utf8'))
+    for (const target of originalTargets) assert.deepEqual(verification.sites.find(site => site.siteId === target.siteId),target,'Original P1 ownership changed')
     assert.deepEqual(verification.sites.map(target => target.siteId),groupRoutes(site).map(route => route.siteId),'P1 verification must include every current member')
     const path = '.cloudflare-ci/site-verify-request.json'
     writeFileSync(path,JSON.stringify(verification,null,2))

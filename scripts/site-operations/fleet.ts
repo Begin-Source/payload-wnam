@@ -88,7 +88,8 @@ export async function resolveProvisionFleet(input: unknown,database: D1Database)
       seen.sites.add(route.siteId); seen.databases.add(route.databaseId); seen.localIds.add(route.localSiteId)
     }
     resolved.push({ workerGroup: group.workerGroup,workerName: last.plan.workerName,workerTag: last.plan.workerTag,manifest,
-      manifestDigest: provisionDigest(JSON.stringify(manifest)),verification,latestRequest: last,operations })
+      manifestDigest: provisionDigest(JSON.stringify(manifest)),verification,latestRequest: last,operations,
+      requests: parsed.groups.find(candidate => candidate.workerGroup === group.workerGroup)!.requests })
   }
   // Public/private buckets may be shared across groups using stable site
   // prefixes, but a bucket must never serve both roles or central storage.

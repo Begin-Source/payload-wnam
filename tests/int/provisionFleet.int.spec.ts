@@ -15,6 +15,7 @@ import { provisionAdmissionSchema } from '../../src/site-control/provisionAdmiss
 import { submitProvisionAdmission } from '../../src/site-control/provisionAdmission'
 import { planProvisionAdmission,type AdmissionPlannerDependencies } from '../../scripts/site-operations/admission-plan'
 import { resolveAdmissionFleet } from '../../scripts/site-operations/admission-fleet'
+import { fleetReleaseArtifact,validateFleetReleaseArtifact } from '../../scripts/site-operations/fleet-artifact'
 
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
 const { Miniflare } = require('miniflare')
@@ -158,13 +159,34 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
     expect(resolved.groups.map(group => group.manifest.d1_databases.length)).toEqual([4,1])
     expect(resolved.groups[0].verification.sites.map(site => site.siteId)).toEqual(['fleet-1-site-1','fleet-1-site-2','admitted-first','admitted-second'])
     expect((await resolveAdmissionFleet(input,db)).groups).toEqual(resolved.groups)
+    const artifact = fleetReleaseArtifact(commit,resolved),effective = validateFleetReleaseArtifact(artifact,input,commit)
+    expect(effective.groups.map(group => group.manifest)).toEqual(resolved.groups.map(group => group.manifest))
+    expect(effective.groups[0].verification.sites).toEqual(resolved.groups[0].verification.sites)
+    const releases = new GroupReleaseJournal(db),current = new Map<string,ReleaseSnapshot>(),uploads: string[] = []
+    for (const group of resolved.groups) current.set(group.workerGroup,{ deploymentId: randomUUID(),versionId: randomUUID(),manifestDigest: group.manifestDigest,commit: 'd'.repeat(40),releaseId: null })
+    let interrupted = true
+    const dependencies = (group: typeof resolved.groups[number]) => ({ journal: releases,
+      preflight: async () => { expect(await resolveAdmissionFleet(input,db)).toEqual(resolved) },
+      current: async () => current.get(group.workerGroup)!,
+      deploy: async (guard: () => Promise<void>,releaseId: string) => { await guard(); uploads.push(group.workerGroup)
+        expect(effective.groups.find(candidate => candidate.workerGroup === group.workerGroup)!.manifest).toEqual(group.manifest)
+        current.set(group.workerGroup,{ deploymentId: randomUUID(),versionId: randomUUID(),manifestDigest: group.manifestDigest,commit,releaseId }) },
+      afterDeploy: async () => { if (interrupted) { interrupted = false; throw new Error('Dynamic fleet upload interrupted') } },
+      verify: async (receipt: ReleaseSnapshot) => { expect(receipt).toEqual(current.get(group.workerGroup)) },acceptance: async () => {},
+    })
+    await expect(releaseProvisionFleet(resolved,commit,dependencies,async () => {})).rejects.toThrow('Dynamic fleet upload interrupted')
+    const released = await releaseProvisionFleet(resolved,commit,dependencies,async () => {})
+    expect(released.map(result => result.uploaded)).toEqual([false,true])
+    expect((await releaseProvisionFleet(resolved,commit,dependencies,async () => {})).every(result => result.reused && !result.uploaded)).toBe(true)
+    expect(uploads).toEqual(['fleet-1','fleet-2'])
+    console.log(JSON.stringify({ event: 'admission_fleet_release_recovery_passed',members: effective.groups.map(group => group.verification.sites.map(site => site.siteId)),uploads,repeatUploaded: false,remoteDeployment: false }))
     expect(await planProvisionAdmission(first.requestId,'fleet-1',deps)).toMatchObject({ reused: true,request: prepared.request })
     for (const receipt of originalReceipts) expect((await db.prepare('SELECT * FROM site_provision_steps WHERE operation_id=? AND step=?')
       .bind(receipt.operation_id,receipt.step).first())).toEqual(receipt)
     await expect(resolveProvisionFleet(input,db)).rejects.toThrow('registered member')
     await db.prepare('DELETE FROM site_provision_steps WHERE operation_id=? AND step=4').bind(second.requestId).run()
     await expect(resolveAdmissionFleet(input,db)).rejects.toThrow('receipt is missing')
-  },30000) // Five six-step native operations plus repeated full-history reads.
+  },30000) // Five native operations, complete history checks and two-group upload recovery.
   it('previews through SELECT-only D1, then prepares the same plan and rejects revoked preview authority',async () => {
     const input = await fixture({ groups: 1 }),deps = planner(input),human = await admit('readonly-planning')
     const before = (await db.prepare('SELECT * FROM site_provision_requests').all()).results

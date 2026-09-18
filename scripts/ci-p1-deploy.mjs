@@ -109,19 +109,16 @@ for (let attempt = 1; attempt <= 96; attempt++) {
   await new Promise(resolve => setTimeout(resolve,5000))
 }
 assert.ok(ready >= 3,'P1 HTTPS deployment did not become ready; forward recovery required')
-for (const mode of request.reconcile ? [] : ['--dry-run','--apply']) execFileSync('pnpm',['run','site:provision','--request',request.path,mode],{
-  env: { ...env,SITE_PROVISION_EMAIL: 'p1-isolation@example.invalid',SITE_PROVISION_PASSWORD: password },stdio: 'inherit',
-})
+// Ordinary releases resolve completed D and every later admission from central
+// history. Re-running a historical provision would reject the expanded group.
 execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-group-release.ts'],{
   env: { ...env,P1_GROUP_RELEASE: '1',P1_TEST_PASSWORD: password },stdio: 'inherit',
 })
 const groupRelease = JSON.parse(readFileSync('.cloudflare-ci/p1-group-release.json','utf8'))
 deployed.push({ role: 'site',worker: configs.site.name,deployment: groupRelease.receipt.deploymentId,
   versions: [{ version_id: groupRelease.receipt.versionId,percentage: 100 }],retained: Boolean(request.reconcile),runtimeCommit: groupRelease.receipt.commit })
-// Completed reentry must not create a resource, re-seed or revert this release.
-for (const mode of request.reconcile ? ['--apply'] : ['--dry-run','--apply']) execFileSync('pnpm',['run','site:provision','--request',request.path,mode],{ env,stdio: 'inherit' })
 const deployedDomains = await api('workers/domains')
-for (const config of Object.values(p1EffectiveManifests())) for (const route of config.routes) {
+for (const config of Object.values(await p1EffectiveManifests())) for (const route of config.routes) {
   const actual = deployedDomains.find(domain => domain.hostname === route.pattern)
   assert.equal(actual?.service,config.name); assert.equal(actual?.zone_id,P1_ZONE)
 }
