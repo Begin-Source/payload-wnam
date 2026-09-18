@@ -24,7 +24,8 @@ writeFileSync(configPath,JSON.stringify({ name: 'payload-wnam-p1-dispatch-recove
   d1_databases: central.d1_databases.map((database: { binding: string; database_name: string; database_id: string }) => ({ ...database,remote: true })) }))
 const proxy = await getPlatformProxy<{ CENTRAL_D1: D1Database }>({ configPath,remoteBindings: true,persist: false })
 try {
-  const result = await recoverProvisionDispatch(proxy.env.CENTRAL_D1,operation)
+  const { enabled: _enabled,...recovery } = operation
+  const result = await recoverProvisionDispatch(proxy.env.CENTRAL_D1,recovery)
   const report = { event: 'p1_dispatch_recovered',commit,...result }
   writeFileSync('.cloudflare-ci/p1-dispatch-recovery.json',JSON.stringify(report,null,2))
   console.log(JSON.stringify(report))
