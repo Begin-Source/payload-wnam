@@ -94,10 +94,10 @@ for (const [role,config] of Object.entries(configs)) {
     for (const [name,text] of Object.entries(config.vars).filter(([name]) => name.startsWith('PROVISION_BUILD_'))) {
       assert.ok(settings.bindings.some(binding => binding.name === name && binding.type === 'plain_text' && binding.text === text),`Missing ${name}`)
     }
-    const schedules = await api(`workers/scripts/${config.name}/schedules`)
+    const schedules = (await api(`workers/scripts/${config.name}/schedules`)).schedules
     assert.deepEqual(schedules.map(schedule => schedule.cron),[dispatchResources.selected.cron])
     const consumers = await api(`queues/${dispatchResources.queueId}/consumers`)
-    assert.ok(consumers.some(consumer => consumer.script_name === config.name &&
+    assert.ok(consumers.some(consumer => consumer.script === config.name &&
       consumer.dead_letter_queue === dispatchResources.selected.deadLetterQueue))
   }
   const deployment = (await api(`workers/scripts/${config.name}/deployments`)).deployments[0]
