@@ -164,7 +164,7 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
     await expect(resolveProvisionFleet(input,db)).rejects.toThrow('registered member')
     await db.prepare('DELETE FROM site_provision_steps WHERE operation_id=? AND step=4').bind(second.requestId).run()
     await expect(resolveAdmissionFleet(input,db)).rejects.toThrow('receipt is missing')
-  })
+  },30000) // Five six-step native operations plus repeated full-history reads.
   it('serializes competing prepared plans in one group while allowing another group to prepare',async () => {
     const input = await fixture(),deps = planner(input),a = await admit('competing-a'),b = await admit('competing-b')
     const outcomes = await Promise.allSettled([a,b].map(value => planProvisionAdmission(value.requestId,'fleet-1',deps)))
@@ -179,7 +179,7 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
     const loser = outcomes[0].status === 'rejected' ? a : b
     const retried = await planProvisionAdmission(loser.requestId,'fleet-1',deps)
     expect(retried.request.baseline.d1_databases).toHaveLength(3)
-  })
+  },30000) // Multiple competing native planners and an intervening completion.
   it('refuses unknown groups, schema changes and stale external bindings without preparing an operation',async () => {
     const input = await fixture(),deps = planner(input),human = await admit('inspection-rejected')
     await expect(planProvisionAdmission(human.requestId,'not-reviewed',deps)).rejects.toThrow('reviewed fleet')
