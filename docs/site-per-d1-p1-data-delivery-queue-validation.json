@@ -1,0 +1,97 @@
+{
+  "checkedAt": "2026-09-18T14:32:26Z",
+  "scope": "P1 Cloudflare Queue producer, site consumer, dedicated DLQ and one real remote master candidate delivery",
+  "repository": {
+    "owner": "Begin-Source",
+    "name": "payload-wnam",
+    "id": "1224379860",
+    "branch": "feat/site-per-d1",
+    "implementationCommit": "aebcde8ef7847a41d544a95b1b090923a6a87e0f",
+    "validatedCommit": "fac340a891e73c95b0864a9db53dfd7c15fd2036"
+  },
+  "cloudflare": {
+    "accountId": "d487cf34c606620b442632a72272014d",
+    "failedBuild": {
+      "id": "99e5bcea-0903-49c1-82fc-365b9d1a61d4",
+      "outcome": "failure",
+      "reason": "The new integration fixture omitted the site_quotas table; no deployment occurred",
+      "passingTestFiles": 139,
+      "passingTests": 740
+    },
+    "build": {
+      "id": "e46ec5f7-4a8c-438f-91da-fabf341871a3",
+      "outcome": "success",
+      "stoppedOn": "2026-09-18T14:30:57.015Z",
+      "testFiles": 140,
+      "tests": 742
+    },
+    "centralDeployment": {
+      "id": "5d83e093-2f39-471f-9420-2e0cce3488d9",
+      "versionId": "b9a380c6-46e4-4002-8e41-f5ab5cd56fce",
+      "createdOn": "2026-09-18T14:21:30.197183Z",
+      "percentage": 100
+    },
+    "siteDeployment": {
+      "id": "86bcbc68-c759-46c2-aeef-fcde107e7048",
+      "versionId": "30f95e76-b1a0-4a56-8aad-f2f08eae9923",
+      "createdOn": "2026-09-18T14:22:40.414838Z",
+      "percentage": 100
+    },
+    "productionDeploymentUnchanged": "3046ffb1-b8ad-47ba-a373-9be5d0526c4b"
+  },
+  "queue": {
+    "name": "payload-wnam-p1-data-group-1",
+    "id": "8e1846e9fcce4b4ba163f185063a9580",
+    "producerWorker": "payload-wnam-p1-central",
+    "consumerWorker": "payload-wnam-p1-sites",
+    "consumerId": "e65dbcb57ed84913a040dc0257057d78",
+    "batchSize": 10,
+    "maxConcurrency": 1,
+    "maxRetries": 5,
+    "maxWaitTimeMs": 5000,
+    "deadLetterQueue": {
+      "name": "payload-wnam-p1-data-group-1-dlq",
+      "id": "7d2fe1c8056e41bea82130e0b89c04a1"
+    },
+    "centralBindings": [
+      { "name": "DATA_DELIVERY_QUEUE", "type": "queue" },
+      { "name": "DATA_DELIVERY_CAPABILITY_SECRET", "type": "secret_text" }
+    ]
+  },
+  "remoteAcceptance": {
+    "operationId": "e2d85fec-c07b-4694-8f97-3d37ab55eac9",
+    "siteId": "p1-a",
+    "workerGroup": "p1-group-1",
+    "routingVersion": 155,
+    "kind": "master",
+    "state": "succeeded",
+    "attemptCount": 1,
+    "reference": {
+      "collection": "authors",
+      "recordId": "990001",
+      "revision": 1,
+      "digest": "125bb77c8d0227b332443d7daf7bd089aaaa69f2f86dc37d19e6eb465c04e53d"
+    },
+    "referenceDigest": "ce828faed10479e20a6da739828ceba702e24a36c33483aa097c99a42531eec2",
+    "receivedDigest": "ce828faed10479e20a6da739828ceba702e24a36c33483aa097c99a42531eec2",
+    "createdAt": "2026-09-18T14:22:52.769Z",
+    "completedAt": "2026-09-18T14:23:00.637Z",
+    "siteCandidate": {
+      "databaseId": "6daecf80-30f5-4010-add6-d67bb556cc42",
+      "region": "WNAM",
+      "servedByPrimary": true,
+      "digest": "125bb77c8d0227b332443d7daf7bd089aaaa69f2f86dc37d19e6eb465c04e53d"
+    }
+  },
+  "boundaries": {
+    "cloudflareQueueConnected": true,
+    "siteConsumerConnected": true,
+    "masterCandidateRemoteAccepted": true,
+    "configCandidateRemoteAccepted": false,
+    "assetCandidateRemoteAccepted": false,
+    "withdrawalRemoteAccepted": false,
+    "managerUiConnected": false,
+    "p1Accepted": false,
+    "p2Accepted": false
+  }
+}

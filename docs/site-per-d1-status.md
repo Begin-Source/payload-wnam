@@ -21,7 +21,7 @@
 | P0 完整 Payload、后台、上传、内部缓存审计 | `6f43fba` 的 454 项测试、14 项浏览器检查、部署及线上 REST/后台/R2/队列/公开缓存/流式响应检查通过；5 个 isolate 共同服务两站；[最新证据](site-per-d1-p0-runtime-optimization.json) | 可行性通过 |
 | P0 现有用量基线 | [生产基线](site-per-d1-baseline.json)含 CPU、D1 读写/存储与账本用量；供应商账单未对账，不能作为真实单篇成本 | 基线已记录，成本验收待后续 |
 | P0 冷启动、CPU 与内存 | `6f43fba` 启动 30 ms；403 请求无执行错误；CPU P95 87.913 ms；内存 P95 104,548,730 bytes、P99.9 106,280,960 bytes；[原始查询及边界](site-per-d1-p0-runtime-optimization.json) | 小规模原型通过；非容量验收 |
-| P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用和身份映射已实现；[站点 factory](site-per-d1-p1-site-config.md)、[中央 factory/成本账本](site-per-d1-p1-central-config.md)及[主数据发布/候选接收](site-per-d1-p1-master-sync.md)有原生 D1 验证；[副本应用/提示词选择](site-per-d1-p1-master-copies.md)已实现；[运行 Global/配额版本](site-per-d1-p1-config-sync.md)已实现；[媒体复制/撤回、头像与品牌图](site-per-d1-p1-assets.md)已通过原生验证；[交互式内部数据服务](site-per-d1-p1-data-service.md)已通过原生 RPC 验证；[固定引用投递日志/机器 RPC](site-per-d1-p1-data-delivery-journal.md)已部署并完成 v9 迁移；[完整中央应用](site-per-d1-p1-central-application.md)已接入并通过云端完整 Worker/后台检查；[完整站点应用](site-per-d1-p1-site-application.md)也已通过云端双站后台检查；[中央站点选择器](site-per-d1-p1-site-chooser.md)已通过实际点击进入验证；[独立远程角色](site-per-d1-p1-remote-roles.md)已部署并通过实际双站后台/SSO；[通用 D 建站与四站普通发布](site-per-d1-p1-provision-d.md)已实际通过；实际 Queue 生产者/消费者、站点应用、其余管理界面和通用多组管理待接入 | 实施中，未通过 |
+| P1 中央/站点配置、注册表、关系边界和主数据副本 | 注册表/CAS/跨库引用和身份映射已实现；[站点 factory](site-per-d1-p1-site-config.md)、[中央 factory/成本账本](site-per-d1-p1-central-config.md)及[主数据发布/候选接收](site-per-d1-p1-master-sync.md)有原生 D1 验证；[副本应用/提示词选择](site-per-d1-p1-master-copies.md)已实现；[运行 Global/配额版本](site-per-d1-p1-config-sync.md)已实现；[媒体复制/撤回、头像与品牌图](site-per-d1-p1-assets.md)已通过原生验证；[交互式内部数据服务](site-per-d1-p1-data-service.md)已通过原生 RPC 验证；[固定引用投递日志/机器 RPC](site-per-d1-p1-data-delivery-journal.md)已部署并完成 v9 迁移；[真实 Cloudflare Queue 投递与站点候选接收](site-per-d1-p1-data-delivery-queue.md)已完成主数据远程验收；[完整中央应用](site-per-d1-p1-central-application.md)和[完整站点应用](site-per-d1-p1-site-application.md)已通过云端检查；[中央站点选择器](site-per-d1-p1-site-chooser.md)、[独立远程角色](site-per-d1-p1-remote-roles.md)和通用建站均已实际通过；Config/Asset/撤回远程 Queue 验收、经理数据界面和完整多组管理仍待接入 | 实施中，未通过 |
 | P1 60 秒单次票据、host-only Cookie、实时权限撤销 | 云端原生 Service Binding、Chromium 双站 HTTPS 登录及即时撤权通过；真实中央 Payload 密码登录、JWT 签发站点票据与会话撤销已在完整中央 Worker 中通过；最新 718 项测试通过；完整站点后台、中央选择器实际点击、真实双站 SSO、实时撤权和原生退出已通过云端验证；独立远程中央和双站后台已部署，真实 HTTPS 撤权/退出通过；其余 P1 要求仍待完成 | 实施中，未通过 |
 | P1 建站、进入、暂停/恢复、MCP 明确 siteId | 中央选择器、进入 API 和完整站点接收入口已接入；[经理暂停/恢复与明确目标 API](site-per-d1-p1-lifecycle.md)及[中央 MCP](site-per-d1-p1-mcp.md)已部署并通过真实 HTTPS 验收；建站日志、准备、seed、分组发布、申请界面和真实 E 申请均已通过；[自动 Queue/Cron/Deploy Hook 派发、失败审核恢复、幂等 F 站重入与终态对账](site-per-d1-p1-dispatch.md)已完成六站云端验收。完整多组云端入口、真人交接及 P1 剩余交付仍待完成 | 实施中，未通过 |
 | P2 持久步骤链、公平调度、独立发布队列 | 未实现 | 待实施 |
@@ -49,6 +49,8 @@
 一次性固定申请和失败恢复开关已关闭，通用派发资源保持启用。P1 其余交付及 P2–P5 继续实施。
 
 ## P1 最新发布：固定引用数据投递日志
+
+后续 `aebcde8` / `fac340a` 已将该日志接入真实 Cloudflare Queue、站点消费者和专用 DLQ。Build `e46ec5f7-4a8c-438f-91da-fabf341871a3` 于 `2026-09-18T14:30:57.015Z` 成功结束，140 个测试文件、742 项测试通过；真实中央会话提交的 `p1-a` 主数据投递一次消费成功，中央回执和站点 D1 候选均已直接核验。[实现与边界](site-per-d1-p1-data-delivery-queue.md)及[机器可读证据](site-per-d1-p1-data-delivery-queue-validation.json)。Config/Asset/撤回远程投递、经理界面和完整 P1 仍未完成。
 
 `0ec4c9a` 接入中央投递日志与机器 RPC，`1cbaaad` 补齐完整云端 fixture，`0cab143` 将成功回执严格绑定到固定引用摘要；`148b296` 只重试相同源码。Cloudflare Build `51433568-41cb-464b-9af5-03528c121126` 于 `2026-09-18T12:07:23.645Z` 成功结束，138 个测试文件、738 项测试通过，完整中央/站点角色随后部署。中央 deployment `6c42c0eb-4733-48bc-98f0-2a237e88aa24`，站点 deployment `7a4a4d03-c26d-451f-a8ad-a77f5b64d37f`。
 
