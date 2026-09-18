@@ -3,6 +3,7 @@ import { provisionDigest } from '../../src/site-control/provisionPlan'
 import { ProvisionCloudflare } from './cloudflare'
 import type { GroupDeployment } from './finish'
 import type { GroupManifest, ProvisionRequest } from './manifest'
+import { provisionManifest } from './manifest'
 
 type Binding = { name: string; type: string; id?: string; text?: string; bucket_name?: string; service?: string; entrypoint?: string; environment?: string }
 type Settings = { bindings: Binding[]; compatibility_date: string; compatibility_flags: string[] }
@@ -61,8 +62,16 @@ export class ProvisionGroup {
     const { operationId: _operation,...deployment } = before
     return { ...deployment,releaseId: values[0]?.text ?? null }
   }
-  async resources() {
-    const { plan,baseline,central,centralWorkerTag,zoneId } = this.request
+  async resources(target?: GroupManifest) {
+    const { plan,central,centralWorkerTag,zoneId } = this.request
+    // A completed group's newest database is absent from its historical
+    // baseline. Check the exact derived target, never an arbitrary manifest.
+    if (target) {
+      const databaseId = target.d1_databases.find(db => db.binding === plan.bindingName)?.database_id
+      assert.ok(databaseId,'Completed target is missing its provisioned database')
+      assert.deepEqual(target,provisionManifest(this.request,databaseId),'Resource target differs from provision history')
+    }
+    const baseline = target ?? this.request.baseline
     const zone = await this.api.zone(zoneId)
     assert.equal(zone.id,zoneId); assert.equal(zone.account.id,plan.accountId); assert.equal(zone.name,'beginos.org')
     const workers = (await this.api.request<{ id: string; tag: string }[]>('workers/scripts')).result
@@ -85,8 +94,8 @@ export class ProvisionGroup {
       const actual = domains.find(domain => domain.hostname === route.pattern)
       assert.equal(actual?.service,config.name); assert.equal(actual?.zone_id,zoneId)
     }
-    const target = domains.find(domain => domain.hostname === plan.adminHost)
-    if (target) { assert.equal(target.service,plan.workerName); assert.equal(target.zone_id,zoneId) }
+    const domain = domains.find(domain => domain.hostname === plan.adminHost)
+    if (domain) { assert.equal(domain.service,plan.workerName); assert.equal(domain.zone_id,zoneId) }
     else assert.deepEqual(await this.api.domainRecords(zoneId,plan.adminHost),[],'Refusing to overwrite existing DNS')
   }
 }

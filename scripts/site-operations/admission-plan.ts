@@ -21,7 +21,8 @@ export type AdmissionPlannerDependencies = {
  * a baseline from a fleet which might already include their own new site.
  * Actual external effects remain behind the existing executor's preflight,
  * reservation, leases and six-step receipts. */
-export async function planProvisionAdmission(requestId: string,workerGroup: string,deps: AdmissionPlannerDependencies) {
+export async function planProvisionAdmission(requestId: string,workerGroup: string,deps: AdmissionPlannerDependencies,mode: 'dry-run' | 'prepare' = 'prepare') {
+  assert.ok(['dry-run','prepare'].includes(mode),'Explicit planning mode required')
   provisionUuidSchema.parse(requestId)
   assert.match(workerGroup,/^[a-z0-9-]{1,64}$/,'Explicit reviewed group required')
   const selected = parseProvisionFleet(deps.fleetInput).groups.find(group => group.workerGroup === workerGroup)
@@ -37,7 +38,7 @@ export async function planProvisionAdmission(requestId: string,workerGroup: stri
     assert.equal(saved.request.zoneId,reviewed.zoneId)
     assert.equal(saved.request.plan.schemaVersion,deps.schema.version,'Prepared request schema version changed')
     assert.equal(saved.request.plan.schemaDigest,deps.schema.digest,'Prepared request schema digest changed')
-    return { request: saved.request,raw: saved.raw,reused: true }
+    return { request: saved.request,raw: saved.raw,reused: true,mutations: false }
   }
   const fleet = await resolveAdmissionFleet(deps.fleetInput,deps.database)
   const group = fleet.groups.find(group => group.workerGroup === workerGroup)
@@ -61,6 +62,6 @@ export async function planProvisionAdmission(requestId: string,workerGroup: stri
   // The external inspection yielded; do not save a plan over a concurrently
   // completed member. Reservation/execution repeat their own atomic guards.
   assert.deepEqual(await resolveAdmissionFleet(deps.fleetInput,deps.database),fleet,'Fleet changed while planning')
-  await prepareProvisionAdmission(deps.database,raw)
-  return { request,raw,reused: false }
+  await prepareProvisionAdmission(deps.database,raw,{ preview: mode === 'dry-run' })
+  return { request,raw,reused: false,mutations: mode === 'prepare' }
 }

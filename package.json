@@ -38,6 +38,7 @@
     "ci:build": "node scripts/ci-build.mjs",
     "ci:deploy": "node scripts/ci-deploy.mjs",
     "site:provision": "node scripts/site-provision.mjs",
+    "site:plan": "node scripts/site-plan.mjs",
     "site:verify": "node scripts/site-verify.mjs"
   },
   "dependencies": {

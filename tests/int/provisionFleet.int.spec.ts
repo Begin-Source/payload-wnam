@@ -165,6 +165,28 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
     await db.prepare('DELETE FROM site_provision_steps WHERE operation_id=? AND step=4').bind(second.requestId).run()
     await expect(resolveAdmissionFleet(input,db)).rejects.toThrow('receipt is missing')
   },30000) // Five six-step native operations plus repeated full-history reads.
+  it('previews through SELECT-only D1, then prepares the same plan and rejects revoked preview authority',async () => {
+    const input = await fixture({ groups: 1 }),deps = planner(input),human = await admit('readonly-planning')
+    const before = (await db.prepare('SELECT * FROM site_provision_requests').all()).results
+    const readonly = new Proxy(db,{ get(target,key) {
+      if (key === 'prepare') return (sql: string) => { expect(sql.trim().startsWith('SELECT')).toBe(true); return target.prepare(sql) }
+      throw new Error(`Write capability ${String(key)} unavailable`)
+    } })
+    const preview = await planProvisionAdmission(human.requestId,'fleet-1',{ ...deps,database: readonly },'dry-run')
+    expect(preview.mutations).toBe(false); expect(preview.reused).toBe(false)
+    expect((await db.prepare('SELECT * FROM site_provision_requests').all()).results).toEqual(before)
+    expect(await journal.read(human.requestId)).toBeNull()
+    const other = await admit('revoked-preview')
+    await db.prepare("UPDATE users_roles SET value='site-manager' WHERE parent_id=7").run()
+    try {
+      await expect(planProvisionAdmission(other.requestId,'fleet-1',{ ...deps,database: readonly },'dry-run')).rejects.toThrow('lost permission or group is busy')
+    } finally { await db.prepare("UPDATE users_roles SET value='super-admin' WHERE parent_id=7").run() }
+    expect(await db.prepare('SELECT prepared_request_json FROM site_provision_requests WHERE request_id=?').bind(other.requestId).first('prepared_request_json')).toBeNull()
+    const prepared = await planProvisionAdmission(human.requestId,'fleet-1',deps,'prepare')
+    expect(prepared.raw).toEqual(preview.raw); expect(prepared.mutations).toBe(true)
+    expect(await planProvisionAdmission(human.requestId,'fleet-1',{ ...deps,database: readonly },'dry-run'))
+      .toMatchObject({ raw: prepared.raw,reused: true,mutations: false })
+  },30000) // Native history plus preview, preparation, resumption and revoked authority.
   it('serializes competing prepared plans in one group while allowing another group to prepare',async () => {
     const input = await fixture(),deps = planner(input),a = await admit('competing-a'),b = await admit('competing-b')
     const outcomes = await Promise.allSettled([a,b].map(value => planProvisionAdmission(value.requestId,'fleet-1',deps)))

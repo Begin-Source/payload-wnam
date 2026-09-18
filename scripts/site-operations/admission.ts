@@ -11,7 +11,7 @@ import { parseProvisionRequest } from './manifest'
  * and revoked authority. This function alone creates no infrastructure.
  * Callers must first verify the chosen current group/deployment and full fleet.
  */
-export async function prepareProvisionAdmission(database: D1Database,value: unknown) {
+export async function prepareProvisionAdmission(database: D1Database,value: unknown,options: { preview?: boolean } = {}) {
   if (optionalSiteContext()) throw new Error('Provision maintenance is central-only')
   const request = parseProvisionRequest(value),{ plan } = request
   const saved = await database.prepare('SELECT input_json,input_digest,local_site_id FROM site_provision_requests WHERE request_id=?')
@@ -24,13 +24,19 @@ export async function prepareProvisionAdmission(database: D1Database,value: unkn
     'Prepared plan differs from the human request')
   // Store original JSON property order; the existing baseline hash depends on it.
   const json = JSON.stringify(value),planJson = serializeProvisionPlan(plan),digest = provisionDigest(planJson)
-  await database.prepare(`UPDATE site_provision_requests AS q SET prepared_request_json=?,prepared_plan_json=?,prepared_plan_digest=?,prepared_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
-    WHERE request_id=? AND input_digest=? AND state='queued' AND prepared_request_json IS NULL
+  const eligible = `WHERE request_id=? AND input_digest=? AND state='queued' AND prepared_request_json IS NULL
       AND ${provisionActorPermission('q.actor_user_id','q.tenant_id')} AND ${provisionOwnerPermission('q.owner_user_id','q.tenant_id')}
       AND EXISTS (SELECT 1 FROM tenants t WHERE t.id=q.tenant_id)
       AND NOT EXISTS (SELECT 1 FROM site_provision_operations o WHERE o.operation_id=q.request_id OR (o.worker_group=? AND o.completed_at IS NULL))
       AND NOT EXISTS (SELECT 1 FROM site_provision_requests other WHERE other.request_id!=q.request_id AND other.state='queued'
-        AND json_extract(other.prepared_plan_json,'$.workerGroup')=?)`)
+        AND json_extract(other.prepared_plan_json,'$.workerGroup')=?)`
+  if (options.preview) {
+    assert.ok(await database.prepare(`SELECT 1 FROM site_provision_requests AS q ${eligible}`)
+      .bind(plan.operationId,saved.input_digest,plan.workerGroup,plan.workerGroup).first(),
+    'Provision admission changed, was cancelled, lost permission or group is busy')
+    return request
+  }
+  await database.prepare(`UPDATE site_provision_requests AS q SET prepared_request_json=?,prepared_plan_json=?,prepared_plan_digest=?,prepared_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') ${eligible}`)
     .bind(json,planJson,digest,plan.operationId,saved.input_digest,plan.workerGroup,plan.workerGroup).run()
   const prepared = await database.prepare('SELECT prepared_request_json,prepared_plan_json,prepared_plan_digest,state FROM site_provision_requests WHERE request_id=?')
     .bind(plan.operationId).first<{ prepared_request_json: string | null; prepared_plan_json: string | null; prepared_plan_digest: string | null; state: string }>()

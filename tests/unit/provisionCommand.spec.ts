@@ -1,12 +1,22 @@
 import { readFileSync } from 'node:fs'
 import { describe,expect,it } from 'vitest'
 import { provisionArguments } from '../../scripts/site-provision.mjs'
+import { planningArguments } from '../../scripts/site-plan.mjs'
 import { parseProvisionRequest,provisionManifest } from '../../scripts/site-operations/manifest'
 import { assertGroupSettings } from '../../scripts/site-operations/group'
 import { provisionDigest } from '../../src/site-control/provisionPlan'
 
 const source = () => JSON.parse(readFileSync('operations/provision/p1-c.json','utf8'))
 describe('reviewed provision command boundaries',() => {
+  it('requires a bounded admission selection and distinguishes preview from preparation',() => {
+    const requestId = 'c85c2cdd-7ee4-4f8b-ae68-811f887701e0'
+    const args = ['--request-id',requestId,'--group','p1','--fleet','operations/fleet/p1.json']
+    for (const mode of ['dry-run','prepare']) expect(planningArguments([...args,`--${mode}`]))
+      .toEqual({ requestId,workerGroup: 'p1',fleetPath: 'operations/fleet/p1.json',mode })
+    for (const invalid of [args,[...args,'--prepare','--dry-run'],[...args,'--apply'],[...args,'--prepare','--group','other'],
+      [...args,'--prepare','--token','secret'],['--request-id','../request',...args.slice(2),'--prepare'],
+      [...args.slice(0,5),'../fleet.json','--prepare'],[...args,'--prepare','--force']]) expect(() => planningArguments(invalid)).toThrow()
+  })
   it('requires an explicit mode and request, and rejects ambiguous or arbitrary options',() => {
     expect(provisionArguments(['--request','plan.json','--dry-run'])).toEqual({ request: 'plan.json',mode: 'dry-run' })
     expect(provisionArguments(['--apply','--request','plan.json'])).toEqual({ request: 'plan.json',mode: 'apply' })
