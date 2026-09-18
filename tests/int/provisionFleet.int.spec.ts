@@ -106,7 +106,7 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
     expect(fleet.groups[0].verification.sites.map(site => site.siteId)).toEqual(['fleet-1-site-1','fleet-1-site-2'])
     expect(await resolveProvisionFleet(input,readonly)).toEqual(fleet)
     expect((await db.prepare('SELECT * FROM site_provision_steps ORDER BY operation_id,step').all()).results).toEqual(before.results)
-  })
+  },30000) // Three native six-step histories, verified twice through read-only D1.
   it('refuses omitted and reordered history, changed immutable input and missing registered members',async () => {
     const input = await fixture()
     const omitted = structuredClone(input); omitted.groups[0].requests.pop()
@@ -226,5 +226,5 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
       .toEqual([{ uploaded: false,reused: true },{ uploaded: false,reused: false },{ uploaded: true,reused: false }])
     expect(await groups.read(groupReleaseId('fleet-1',commit,fleet.groups[0].manifestDigest))).toEqual(first)
     expect([...uploads.values()]).toEqual([1,1,1])
-  })
+  },30000) // Three group histories plus interrupted release and recovery.
 })

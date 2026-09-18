@@ -217,7 +217,7 @@ describe('independent central Payload configuration and native finance path', ()
   it.each([1,2,3,4])('upgrades reviewed complete central v%i to admission v5 without losing data or migration receipts',async version => {
     const db = await mf.getD1Database(`V${version}`), previous = previousSchema(version)
     await applyP1Schema(db,previous,`p1-central-schema-v${version}`)
-    await db.prepare("INSERT INTO tenants (id,name,slug) VALUES (999,'Preserved tenant','preserved-tenant')").run()
+    await db.prepare("INSERT INTO tenants (id,name,slug,domain) VALUES (999,'Preserved tenant','preserved-tenant','preserved.example.invalid')").run()
     const result = await applyP1CentralSchema(db,centralSchema)
     expect(result).toMatchObject({ operationId: 'p1-central-schema-v5',created: 7,upgradedFrom: P1_CENTRAL_V4 })
     expect(await db.prepare('SELECT name FROM tenants WHERE id=999').first('name')).toBe('Preserved tenant')
@@ -232,17 +232,22 @@ describe('independent central Payload configuration and native finance path', ()
     await db.prepare("UPDATE tenants SET name='Still writable' WHERE id=999").run()
     expect(await db.prepare('SELECT name FROM tenants WHERE id=999').first('name')).toBe('Still writable')
     await expect(applyP1Schema(db,previous,`p1-central-schema-v${version}`)).rejects.toThrow('operation conflict')
+    if (process.env.WORKERS_CI === '1') console.log(JSON.stringify({ event: 'central_admission_upgrade_verified',fromVersion: version,
+      toVersion: 5,digest: result.digest,objects: result.objects,migrationReceipts: history.length,dataPreserved: true,retryUnchanged: true,remoteDeployment: false }))
   },30000)
 
   it('fresh central v5 installs match the complete role and retain operational state on retries',async () => {
     const db = await mf.getD1Database('FRESH')
-    expect(await applyP1CentralSchema(db,centralSchema)).toMatchObject({ operationId: 'p1-central-schema-v5',objects: centralSchema.objects.length,upgradedFrom: null })
+    const result = await applyP1CentralSchema(db,centralSchema)
+    expect(result).toMatchObject({ operationId: 'p1-central-schema-v5',objects: centralSchema.objects.length,upgradedFrom: null })
     await migrateCentralRoleState(db)
     await db.prepare('UPDATE central_cost_epoch SET revision=23 WHERE id=1').run()
     await migrateCentralRoleState(db)
     expect((await applyP1CentralSchema(db,centralSchema)).created).toBe(0)
     expect(await db.prepare('SELECT revision FROM central_cost_epoch WHERE id=1').first('revision')).toBe(23)
     expect(await db.prepare('SELECT COUNT(*) AS n FROM site_control_schema_migrations').first('n')).toBe(0)
+    if (process.env.WORKERS_CI === '1') console.log(JSON.stringify({ event: 'central_admission_fresh_schema_verified',version: 5,
+      digest: result.digest,objects: result.objects,operationalCounterPreserved: true,remoteDeployment: false }))
   },30000)
 
   it('rolls back the full admission migration on DDL failure and resumes an already committed lost response',async () => {
