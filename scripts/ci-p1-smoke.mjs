@@ -5,6 +5,7 @@ import { P1_ACCOUNT, P1_ORIGIN, P1_EMAIL } from './p1-manifests.mjs'
 import { p1EffectiveManifests } from './p1-release-manifests.mjs'
 import { checkLifecycleBrowser } from './p1-lifecycle-browser.mjs'
 import { checkMcpBrowser } from './p1-mcp-browser.mjs'
+import { checkRemoteAdmission } from './p1-remote-admission.mjs'
 
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1')
 const password = process.env.P1_TEST_PASSWORD, token = process.env.CLOUDFLARE_API_TOKEN
@@ -51,6 +52,7 @@ try {
   assert.equal((await authenticated).status(),200)
   await hub.waitForURL(url => url.pathname === '/admin',{ timeout: 60000 })
   console.log(JSON.stringify({ event: 'p1_remote_central_login_passed' }))
+  await checkRemoteAdmission({ hub,centralQuery })
   const pages = {},docs = {}
   for (const route of routes) {
     const id = route.siteId
