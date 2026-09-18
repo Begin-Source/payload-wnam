@@ -29,6 +29,9 @@ export async function applyP1CentralSchema(database: D1Database,schema: RoleSche
     throw new Error('Incomplete central v9 data delivery schema')
   }
   const v8: RoleSchema = { ...schema,objects: schema.objects.filter(item => !deliveryObjects.has(item.name)) }
+  if (provisionDispatchRunV7SchemaObjects.some(name => v8.objects.filter(item => item.name === name).length !== 1)) {
+    throw new Error('Incomplete central v7 dispatch run schema')
+  }
   if (roleSchemaDigest(v8.objects) !== P1_CENTRAL_V8) throw new Error('Unexpected central v8 base schema')
   const v7Names = new Set<string>(provisionDispatchRunV7SchemaObjects)
   const v7: RoleSchema = { ...v8,objects: v8.objects

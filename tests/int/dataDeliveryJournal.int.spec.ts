@@ -27,12 +27,12 @@ describe('durable pinned site data delivery journal',() => {
       d1Databases: { CENTRAL: 'data-delivery-journal' },r2Buckets: { ARCHIVE: 'data-delivery-journal-archive' } })
     db = await mf.getD1Database('CENTRAL'); archive = await mf.getR2Bucket('ARCHIVE')
     await db.batch([
-      db.prepare('CREATE TABLE users(id INTEGER PRIMARY KEY,lock_until TEXT)'),
+      db.prepare('CREATE TABLE users(id INTEGER PRIMARY KEY,email TEXT NOT NULL,lock_until TEXT)'),
       db.prepare('CREATE TABLE users_sessions(id TEXT PRIMARY KEY,_parent_id INTEGER,expires_at TEXT)'),
       db.prepare('CREATE TABLE sites(id INTEGER PRIMARY KEY,runtime_site_id TEXT,tenant_id INTEGER)'),
     ])
     await migrateSiteControl(db); await migrateCentralMasters(db); await migrateDataDeliveries(db)
-    await db.prepare('INSERT INTO users VALUES(7,NULL)').run()
+    await db.prepare("INSERT INTO users VALUES(7,'manager@example.invalid',NULL)").run()
     await db.prepare('INSERT INTO users_sessions VALUES(?,?,?)').bind(identity.sessionId,7,new Date(Date.now()+3600000).toISOString()).run()
     await registerSite(db,{ siteId: 'a',localSiteId: 37,databaseId: '00000000-0000-4000-8000-000000000037',bindingName: 'SITE_D1_A',
       workerGroup: 'group-1',adminHost: 'cms-site-a.beginos.org',schemaVersion: 1,routingVersion: 1,migrationState: 'active',timezone: 'UTC',
