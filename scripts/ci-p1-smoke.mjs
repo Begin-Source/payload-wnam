@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { writeFileSync } from 'node:fs'
+import { readFileSync,writeFileSync } from 'node:fs'
 import { chromium } from '@playwright/test'
 import { P1_ACCOUNT, P1_ORIGIN, P1_EMAIL } from './p1-manifests.mjs'
 import { p1EffectiveManifests } from './p1-release-manifests.mjs'
@@ -11,6 +11,7 @@ assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BR
 const password = process.env.P1_TEST_PASSWORD, token = process.env.CLOUDFLARE_API_TOKEN
 assert.ok(password && password.length >= 32 && token)
 const { central,site } = await p1EffectiveManifests()
+const bootstrap = JSON.parse(readFileSync('.cloudflare-ci/p1-bootstrap.json','utf8'))
 const routes = JSON.parse(site.vars.SITE_ROUTES)
 const hosts = [new URL(P1_ORIGIN).hostname,...site.routes.map(route => route.pattern)]
 const centralQuery = async (sql,params = []) => {
@@ -19,6 +20,14 @@ const centralQuery = async (sql,params = []) => {
   })
   const result = await response.json()
   if (!response.ok || !result.success || result.result.some(item => !item.success)) throw new Error(`P1 smoke control query failed (${response.status})`)
+  return result.result[0].results
+}
+const databaseQuery = async (databaseId,sql,params = []) => {
+  const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${P1_ACCOUNT}/d1/database/${databaseId}/query`,{
+    method: 'POST',headers: { authorization: `Bearer ${token}`,'content-type': 'application/json' },body: JSON.stringify({ sql,params }),signal: AbortSignal.timeout(20000),
+  })
+  const result = await response.json()
+  if (!response.ok || !result.success || result.result.some(item => !item.success)) throw new Error(`P1 data delivery query failed (${response.status})`)
   return result.result[0].results
 }
 let browser, context, currentPage, mcp, revokeAttempted = false
@@ -62,6 +71,27 @@ try {
   assert.equal((await authenticated).status(),200)
   await hub.waitForURL(url => url.pathname === '/admin',{ timeout: 60000 })
   console.log(JSON.stringify({ event: 'p1_remote_central_login_passed' }))
+  const [deliveryRoute] = await centralQuery("SELECT routing_version AS routingVersion FROM site_runtime_registry WHERE site_id='p1-a'")
+  assert.ok(Number.isSafeInteger(deliveryRoute?.routingVersion) && deliveryRoute.routingVersion > 0)
+  const deliveryInput = { operationId: bootstrap.delivery.operationId,siteId: 'p1-a',routingVersion: deliveryRoute.routingVersion,
+    kind: 'master',reference: bootstrap.delivery.reference }
+  const deliveryRequest = await invoke(hub,'/auth/site-data-delivery',{ method: 'POST',headers: { 'content-type': 'application/json' },body: JSON.stringify(deliveryInput) })
+  assert.equal(deliveryRequest.status,200,`P1 data delivery request (${deliveryRequest.status})`)
+  let delivered
+  for (let attempt = 1; attempt <= 60; attempt++) {
+    const [row] = await centralQuery('SELECT state,attempt_count AS attemptCount,receipt_json AS receipt FROM site_data_deliveries WHERE operation_id=?',[deliveryInput.operationId])
+    if (row?.state === 'succeeded') { delivered = row; break }
+    await hub.waitForTimeout(1000)
+  }
+  assert.equal(delivered?.state,'succeeded','P1 data delivery Queue did not complete')
+  const siteA = JSON.parse(site.vars.SITE_ROUTES).find(route => route.siteId === 'p1-a')
+  const [candidate] = await databaseQuery(siteA.databaseId,`SELECT digest FROM site_master_releases
+    WHERE collection=? AND record_id=? AND revision=?`,[bootstrap.delivery.reference.collection,bootstrap.delivery.reference.recordId,bootstrap.delivery.reference.revision])
+  assert.equal(candidate?.digest,bootstrap.delivery.reference.digest)
+  const deliveryRead = await invokeRead(hub,`/auth/site-data-delivery?operationId=${deliveryInput.operationId}`)
+  assert.equal(deliveryRead.status,200); assert.equal(JSON.parse(deliveryRead.body).state,'succeeded')
+  console.log(JSON.stringify({ event: 'p1_data_delivery_queue_passed',operationId: deliveryInput.operationId,siteId: 'p1-a',
+    attemptCount: delivered.attemptCount,reference: bootstrap.delivery.reference }))
   await checkRemoteAdmission({ hub,centralQuery })
   const pages = {},docs = {}
   for (const route of routes) {
@@ -156,7 +186,7 @@ try {
   await mcp.assertRevokedSession()
   const report = { event: 'p1_remote_smoke_passed',checkedAt: new Date().toISOString(),remoteDeployment: true,
     sites: routes.map(route => route.siteId),checks: ['real-dns-tls','independent-central-site-workers','real-d1-schemas','central-password-login','chooser-sso-group','new-site-live-revocation','host-only-cookies',
-      'native-editors','same-id-20-concurrent-reads','isolated-create-update','site-password-denied','manager-pause-resume','ambiguous-lifecycle-retry','routing-version-cookie-revocation',
+      'native-editors','same-id-20-concurrent-reads','isolated-create-update','site-password-denied','data-delivery-queue-candidate-receipt','manager-pause-resume','ambiguous-lifecycle-retry','routing-version-cookie-revocation',
       'live-grant-revocation','native-logout-central-revocation','desktop-mobile','real-sdk-mcp','explicit-site-mcp','mcp-lifecycle','mcp-grant-revocation','mcp-central-logout'],browserErrors }
   writeFileSync('.cloudflare-ci/p1-remote-smoke.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
 } catch (error) {

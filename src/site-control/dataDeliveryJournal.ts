@@ -182,7 +182,11 @@ export async function acknowledgeMachineDataDelivery(database: D1Database, opera
         AND r.routing_version=d.routing_version AND r.migration_state IN ('active','provisioning'))`)
     .bind(json,iso,iso,operationId,hash,receipt.receivedDigest,now).run()
   const row = await database.prepare(`SELECT ${selection} FROM site_data_deliveries WHERE operation_id=? AND capability_hash=?`).bind(operationId,hash).first<DeliveryRow>()
-  if (!row || row.state !== 'succeeded' || row.receiptJson !== json) throw new Error('Delivery acknowledgement unavailable')
+  const saved = row?.receiptJson ? parseReceipt(JSON.parse(row.receiptJson)) : null
+  // A service-binding response can be lost after the central commit. A retry
+  // may carry a later observation time, but it must prove the same immutable
+  // reference digest; return the original durable receipt in that case.
+  if (!row || row.state !== 'succeeded' || saved?.receivedDigest !== receipt.receivedDigest) throw new Error('Delivery acknowledgement unavailable')
   return summary(row)
 }
 

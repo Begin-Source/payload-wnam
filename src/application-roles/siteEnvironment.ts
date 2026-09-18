@@ -12,6 +12,13 @@ export type SiteEnvironment = {
   [name: `SITE_D1_${string}`]: D1Database
 }
 
+export function requireSiteDeliveryEnvironment(value: unknown): ReturnType<typeof requireSiteEnvironment> {
+  const selected = requireSiteEnvironment(value)
+  if (typeof selected.env.DATA.readDelivery !== 'function' || typeof selected.env.DATA.acknowledgeDelivery !== 'function' ||
+    typeof selected.env.DATA.failDelivery !== 'function') throw new Error('Site delivery service unavailable')
+  return selected
+}
+
 /** The deployment manifest owns physical binding IDs. Registry responses must
  * match it; neither an HTTP header nor an RPC result can select arbitrary D1. */
 export function requireSiteEnvironment(value: unknown): { env: SiteEnvironment; routes: readonly SiteBinding[] } {

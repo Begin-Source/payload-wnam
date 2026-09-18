@@ -10,6 +10,7 @@ import { createSitePayloadConfig } from '../../src/site-runtime/config'
 import { ProvisionJournal } from '../../src/site-control/provisionJournal'
 import { provisionDigest } from '../../src/site-control/provisionPlan'
 import type { inspectProvisionedSite } from '../../src/site-runtime/provisionInspection'
+import { p1DataDeliverySelection,p1DataDeliverySiteManifest } from '../p1-data-delivery-resources.mjs'
 import { browserLibraryEnvironment } from '../ci-browser-libs.mjs'
 import type { RoleSchema } from '../p1-schema'
 import { ProvisionCloudflare } from './cloudflare'
@@ -105,7 +106,9 @@ const deploy = async (guard: () => Promise<void>) => {
   // deploy config next to the checked role artifact, export the plain manifest.
   writeFileSync(configPath,JSON.stringify(target,null,2))
   const deployConfig = resolve(cwd,'wrangler.provision.jsonc')
-  writeFileSync(deployConfig,JSON.stringify({ ...target,vars: { ...target.vars,PROVISION_OPERATION: plan.operationId,
+  const selectedDelivery = p1DataDeliverySelection()
+  const deployedTarget = plan.workerGroup === selectedDelivery.workerGroup ? p1DataDeliverySiteManifest(target,selectedDelivery) : target
+  writeFileSync(deployConfig,JSON.stringify({ ...deployedTarget,vars: { ...deployedTarget.vars,PROVISION_OPERATION: plan.operationId,
     PROVISION_MANIFEST: provisionDigest(JSON.stringify(target)),PROVISION_COMMIT: commit } },null,2))
   await guard()
   await new Promise<void>((resolve,reject) => {

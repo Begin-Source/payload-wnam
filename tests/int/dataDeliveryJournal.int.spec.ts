@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createRequire } from 'node:module'
 import { realpathSync } from 'node:fs'
 import { migrateSiteControl } from '../../src/site-control/schema'
@@ -11,6 +11,7 @@ import { masterReference, projectMasterData, type MasterReference } from '../../
 import { acknowledgeMachineDataDelivery, readDataDelivery, readMachineDataDelivery, recordMachineDeliveryFailure,
   requestDataDelivery } from '../../src/site-control/dataDeliveryJournal'
 import { createMachineDataDelivery } from '../../src/site-control/dataDelivery'
+import { deriveDataDeliveryCapability,requestQueuedDataDelivery,type DataDeliveryQueueMessage } from '../../src/site-control/dataDeliveryQueue'
 
 const require = createRequire(realpathSync('node_modules/wrangler/package.json'))
 const { Miniflare } = require('miniflare')
@@ -59,6 +60,8 @@ describe('durable pinned site data delivery journal',() => {
     const receipt = { receivedDigest: first.referenceDigest,receivedAt: '2026-09-18T12:01:00.000Z' }
     expect(await acknowledgeMachineDataDelivery(db,id,capability,receipt,1_000_002)).toMatchObject({ state: 'succeeded',receipt })
     expect(await acknowledgeMachineDataDelivery(db,id,capability,receipt,1_000_003)).toMatchObject({ state: 'succeeded',attemptCount: 1 })
+    expect(await acknowledgeMachineDataDelivery(db,id,capability,{ ...receipt,receivedAt: '2026-09-18T12:02:00.000Z' },1_000_004))
+      .toMatchObject({ state: 'succeeded',receipt })
     await expect(db.prepare('DELETE FROM site_data_deliveries WHERE operation_id=?').bind(id).run()).rejects.toThrow('immutable')
     await expect(db.prepare("UPDATE site_data_deliveries SET site_id='forged' WHERE operation_id=?").bind(id).run()).rejects.toThrow('immutable')
   })
@@ -75,6 +78,19 @@ describe('durable pinned site data delivery journal',() => {
     await expect(readDataDelivery(db,identity,id)).rejects.toThrow('manager')
     await expect(requestDataDelivery(db,archive,identity,input(operation('3')),'c'.repeat(64))).rejects.toThrow('manager')
     await db.prepare("UPDATE site_runtime_access SET role='manager' WHERE site_id='a' AND user_id='7'").run()
+  })
+
+  it('derives an exact retry capability, journals before Queue send and emits only pinned metadata',async () => {
+    const id = operation('5'),sent: DataDeliveryQueueMessage[] = []
+    const queue = { send: vi.fn(async (message: DataDeliveryQueueMessage) => { sent.push(message) }) } as unknown as Queue<DataDeliveryQueueMessage>
+    const secret = 'delivery-queue-test-secret-with-at-least-32-bytes'
+    const first = await requestQueuedDataDelivery(db,archive,queue,identity,input(id),secret)
+    const repeated = await requestQueuedDataDelivery(db,archive,queue,identity,input(id),secret)
+    expect(first.replayed).toBe(false); expect(repeated.replayed).toBe(true); expect(sent).toHaveLength(2)
+    expect(sent[0]).toEqual(sent[1]); expect(sent[0]).toMatchObject({ type: 'site.data.delivery',operationId: id,siteId: 'a',
+      workerGroup: 'group-1',routingVersion: 1,kind: 'master',reference })
+    expect(sent[0].capability).toBe(await deriveDataDeliveryCapability(secret,id))
+    expect(JSON.stringify(sent[0])).not.toContain(secret)
   })
 
   it('backs off bounded failures and moves the fifth failed attempt to dead letter state',async () => {

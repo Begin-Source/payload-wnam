@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { getPayload } from 'payload'
 import type { User } from '../src/payload-types'
 import { getPlatformProxy } from 'wrangler'
@@ -11,6 +12,8 @@ import { readSiteRegistration, registerSite } from '../src/site-control/registry
 import { withSiteContext } from '../src/site-runtime/context'
 import { syncSiteIdentityProjection } from '../src/site-runtime/identityProjection'
 import { OpenAIConfig } from '../src/utilities/aiOpenAIConfigImport'
+import { commitMasterRelease } from '../src/site-control/masterPublisher'
+import { masterReference,projectMasterData } from '../src/site-control/masterSnapshot'
 import { applyP1Schema, type RoleSchema } from './p1-schema'
 import { applyP1CentralSchema } from './p1-central-schema'
 import { p1BaseManifests, P1_ACCOUNT, P1_EMAIL } from './p1-manifests.mjs'
@@ -76,6 +79,9 @@ try {
   const user = users.docs[0] ? await payload.update({ collection: 'users',id: 7,user: bootstrap,data: { password,roles: ['super-admin'] } }) :
     await payload.create({ collection: 'users',user: bootstrap,data: { id: 7,email: P1_EMAIL,password,roles: ['super-admin'],tenants: [{ tenant: 1 },{ tenant: 2 }] } })
   const principal = { ...user,collection: 'users' as const }
+  const deliveryRelease = await commitMasterRelease(env.CENTRAL_D1,{ format: 1,collection: 'authors',recordId: '990001',revision: 1,tenantId: 1,
+    sourceUpdatedAt: '2026-09-18T13:00:00.000Z',data: projectMasterData('authors',{ displayName: 'P1 delivery candidate',
+      gdprRegion: 'other',gdprLawfulBasis: 'not_applicable' }),relations: {} },'p1-data-delivery-author-v1')
   const unavailable = async () => { throw new Error('No external capability during P1 bootstrap') }
   sitePayload = await getPayload({ key: 'p1-sites-bootstrap',disableOnInit: true,config: await createSitePayloadConfig({ secret,
     identity: { authenticate: unavailable,redeem: unavailable,logout: unavailable },
@@ -115,7 +121,10 @@ try {
     await env.CENTRAL_D1.prepare(`INSERT INTO site_runtime_access (site_id,user_id,role) VALUES (?,'7','manager')
       ON CONFLICT(site_id,user_id) DO UPDATE SET role='manager'`).bind(route.siteId).run()
   }
-  const report = { event: 'p1_bootstrap_passed',commit,checkedAt: new Date().toISOString(),schemas: receipts,siteIds: routes.map(route => route.siteId),syntheticUserId: 7 }
+  const operationHash = createHash('sha256').update(`p1-data-delivery:${commit}`).digest('hex')
+  const deliveryOperationId = `${operationHash.slice(0,8)}-${operationHash.slice(8,12)}-4${operationHash.slice(13,16)}-8${operationHash.slice(17,20)}-${operationHash.slice(20,32)}`
+  const report = { event: 'p1_bootstrap_passed',commit,checkedAt: new Date().toISOString(),schemas: receipts,siteIds: routes.map(route => route.siteId),syntheticUserId: 7,
+    delivery: { operationId: deliveryOperationId,reference: masterReference(deliveryRelease) } }
   writeFileSync('.cloudflare-ci/p1-bootstrap.json',JSON.stringify(report,null,2))
   console.log(JSON.stringify(report))
 } finally {

@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "workerGroup": "p1-group-1",
+  "queue": "payload-wnam-p1-data-group-1",
+  "queueId": "8e1846e9fcce4b4ba163f185063a9580",
+  "deadLetterQueue": "payload-wnam-p1-data-group-1-dlq",
+  "deadLetterQueueId": "7d2fe1c8056e41bea82130e0b89c04a1"
+}

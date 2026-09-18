@@ -65,3 +65,28 @@ export async function receiveMasterRelease(reference: MasterReference, capabilit
   const results = await database.batch(statements)
   if (results.at(-1)?.results.length !== 1) throw new Error('Provisioned master tenant mapping changed or unavailable')
 }
+
+/** Proves that the exact root and every pinned dependency are already durable
+ * in this site D1. Used only to finish an acknowledgement whose RPC response
+ * may have been lost after the site write. */
+export async function hasMasterCandidate(reference: MasterReference): Promise<boolean> {
+  try {
+    assertMasterReference(reference)
+    const database = createSiteD1Proxy(),visited = new Set<string>(),visiting = new Set<string>()
+    const visit = async (ref: MasterReference,depth: number): Promise<void> => {
+      const key = masterKey(ref)
+      if (visiting.has(key) || depth > 16 || visited.size >= 32) throw new Error('Invalid master candidate graph')
+      if (visited.has(key)) return
+      const row = await database.prepare(`SELECT snapshot_json AS snapshot,digest,operation_id AS operationId,created_at AS createdAt
+        FROM site_master_releases WHERE collection=? AND record_id=? AND revision=?`).bind(ref.collection,ref.recordId,ref.revision)
+        .first<{ snapshot: string;digest: string;operationId: string;createdAt: string }>()
+      if (!row || row.digest !== ref.digest) throw new Error('Master candidate missing')
+      const release = await verifyMasterRelease({ ...JSON.parse(row.snapshot),digest: row.digest,operationId: row.operationId,createdAt: row.createdAt })
+      visiting.add(key)
+      for (const dependency of Object.values(release.relations)) if (dependency) await visit(dependency,depth+1)
+      visiting.delete(key); visited.add(key)
+    }
+    await visit(reference,0)
+    return true
+  } catch { return false }
+}

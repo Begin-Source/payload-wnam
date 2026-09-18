@@ -5,7 +5,7 @@ import type { GroupDeployment } from './finish'
 import type { GroupManifest, ProvisionRequest } from './manifest'
 import { provisionManifest } from './manifest'
 
-type Binding = { name: string; type: string; id?: string; text?: string; bucket_name?: string; service?: string; entrypoint?: string; environment?: string }
+type Binding = { name: string; type: string; id?: string; text?: string; bucket_name?: string; queue_name?: string; service?: string; entrypoint?: string; environment?: string }
 type Settings = { bindings: Binding[]; compatibility_date: string; compatibility_flags: string[] }
 type Deployment = { id: string; versions: { version_id: string; percentage: number }[] }
 const provenanceNames = ['PROVISION_OPERATION','PROVISION_MANIFEST','PROVISION_COMMIT']
@@ -23,7 +23,10 @@ export function assertGroupSettings(actual: Settings,expected: GroupManifest) {
   const normalize = (b: Binding) => ({ name: b.name,type: b.type,...(b.type === 'plain_text' ? { text: b.text } : {}),
     ...(b.type === 'd1' ? { id: b.id } : {}),...(b.type === 'r2_bucket' ? { bucket_name: b.bucket_name } : {}),
     ...(b.type === 'service' ? { service: b.service,entrypoint: b.entrypoint,environment: b.environment ?? 'production' } : {}) })
-  assert.deepEqual(actual.bindings.filter(b => ![...provenanceNames,'RELEASE_OPERATION'].includes(b.name)).map(normalize).sort((a,b) => a.name.localeCompare(b.name)),
+  const delivery = actual.bindings.filter(b => b.name === 'DATA_DELIVERY_QUEUE')
+  assert.ok(delivery.length === 0 || expected.vars.WORKER_GROUP === 'p1-group-1' && delivery.length === 1 && delivery[0].type === 'queue' &&
+    delivery[0].queue_name === 'payload-wnam-p1-data-group-1','Unexpected data delivery queue binding')
+  assert.deepEqual(actual.bindings.filter(b => ![...provenanceNames,'RELEASE_OPERATION','DATA_DELIVERY_QUEUE'].includes(b.name)).map(normalize).sort((a,b) => a.name.localeCompare(b.name)),
     bindings.map(normalize).sort((a,b) => a.name.localeCompare(b.name)),'Group bindings differ from reviewed manifest')
   const provenance = actual.bindings.filter(b => provenanceNames.includes(b.name))
   assert.ok(provenance.length === 0 || provenance.length === 3 && provenanceNames.every(name => provenance.filter(b => b.name === name && b.type === 'plain_text').length === 1),'Incomplete group provenance')

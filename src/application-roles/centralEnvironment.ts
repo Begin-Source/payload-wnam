@@ -1,5 +1,6 @@
 import { requireCentralOrigin } from '../site-control/sessionHttp'
 import type { ProvisionDispatchEnvironment,ProvisionQueueMessage } from '../site-control/provisionDispatch'
+import type { DataDeliveryQueueMessage } from '../site-control/dataDeliveryQueue'
 export type CentralEnvironment = {
   CENTRAL_D1: D1Database
   CENTRAL_MEDIA: R2Bucket
@@ -7,6 +8,8 @@ export type CentralEnvironment = {
   CENTRAL_ORIGIN: string
   PAYLOAD_SECRET: string
   PROVISION_DISPATCH_QUEUE?: Queue<ProvisionQueueMessage>
+  DATA_DELIVERY_QUEUE?: Queue<DataDeliveryQueueMessage>
+  DATA_DELIVERY_CAPABILITY_SECRET?: string
   PROVISION_DEPLOY_HOOK_URL?: string
   PROVISION_BUILD_ACCOUNT_ID?: string
   PROVISION_BUILD_EVENT_SUBSCRIPTION_ID?: string
@@ -14,6 +17,15 @@ export type CentralEnvironment = {
   PROVISION_BUILD_BRANCH?: string
   PROVISION_BUILD_REPOSITORY?: string
   PROVISION_BUILD_REPOSITORY_OWNER?: string
+}
+
+export function requireCentralDataDeliveryEnvironment(value: unknown): CentralEnvironment & {
+  DATA_DELIVERY_QUEUE: Queue<DataDeliveryQueueMessage>; DATA_DELIVERY_CAPABILITY_SECRET: string
+} {
+  const env = requireCentralEnvironment(value)
+  if (typeof env.DATA_DELIVERY_QUEUE?.send !== 'function' || typeof env.DATA_DELIVERY_CAPABILITY_SECRET !== 'string' ||
+    env.DATA_DELIVERY_CAPABILITY_SECRET.length < 32) throw new Error('Data delivery queue unavailable')
+  return env as CentralEnvironment & { DATA_DELIVERY_QUEUE: Queue<DataDeliveryQueueMessage>; DATA_DELIVERY_CAPABILITY_SECRET: string }
 }
 
 /** Runtime has no default D1, process-secret or legacy storage fallback. */

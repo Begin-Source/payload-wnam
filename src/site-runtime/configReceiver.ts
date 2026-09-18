@@ -25,3 +25,15 @@ export async function receiveConfigRelease(ref: ConfigReference, capability: Con
   ])
   if (result[1].results.length !== 1) throw new Error('Configuration tenant mapping changed')
 }
+
+export async function hasConfigCandidate(ref: ConfigReference): Promise<boolean> {
+  try {
+    assertConfigReference(ref)
+    const row = await createSiteD1Proxy().prepare(`SELECT snapshot_json AS snapshot,digest,operation_id AS operationId,created_at AS createdAt
+      FROM site_config_releases WHERE kind=? AND site_id=? AND revision=?`).bind(ref.kind,ref.siteId,ref.revision)
+      .first<{ snapshot: string;digest: string;operationId: string;createdAt: string }>()
+    if (!row || row.digest !== ref.digest) return false
+    const release = await verifyConfigRelease({ ...JSON.parse(row.snapshot),digest: row.digest,operationId: row.operationId,createdAt: row.createdAt })
+    return canonicalMasterJSON(configReference(release)) === canonicalMasterJSON(ref)
+  } catch { return false }
+}

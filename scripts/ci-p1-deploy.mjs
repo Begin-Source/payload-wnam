@@ -7,6 +7,7 @@ import { resolve } from 'node:path'
 import { p1Manifests, P1_ACCOUNT, P1_ZONE } from './p1-manifests.mjs'
 import { p1ReleaseRequest,p1EffectiveManifests } from './p1-release-manifests.mjs'
 import { ensureP1DispatchResources,p1DispatchManifest } from './p1-dispatch-resources.mjs'
+import { ensureP1DataDeliveryResources,p1DataDeliveryCentralManifest } from './p1-data-delivery-resources.mjs'
 import { workersCiCommit } from './workers-ci-identity.mjs'
 
 const commit = execFileSync('git',['rev-parse','HEAD'],{ encoding: 'utf8' }).trim()
@@ -30,6 +31,8 @@ const api = async (path,account = true) => {
 }
 const dispatchResources = await ensureP1DispatchResources(token)
 configs.central = p1DispatchManifest(configs.central,dispatchResources)
+const dataDeliveryResources = await ensureP1DataDeliveryResources(token)
+configs.central = p1DataDeliveryCentralManifest(configs.central,dataDeliveryResources)
 console.log(JSON.stringify({ event: 'p1_dispatch_resources_ready',queueId: dispatchResources.queueId,
   deadLetterQueueId: dispatchResources.deadLetterQueueId,subscriptionId: dispatchResources.subscriptionId,
   branch: dispatchResources.selected.buildBranch,hookConfigured: true }))
@@ -78,10 +81,15 @@ for (const [role,config] of Object.entries(configs)) {
     // Reuse the exact role artifacts that passed this commit's browser checks.
     // No role rebuild, no legacy shared-app upload and no implicit CI Worker name.
     execFileSync('pnpm',['exec','opennextjs-cloudflare','deploy','--config',configPath],{ cwd,env,stdio: 'inherit' })
+    const deployedSettings = await api(`workers/scripts/${config.name}/settings`)
+    const roleSecrets = { PAYLOAD_SECRET: secrets[role],...(role === 'central' ? {
+      PROVISION_DEPLOY_HOOK_URL: dispatchResources.deployHookUrl,
+      ...(deployedSettings.bindings.some(binding => binding.name === 'DATA_DELIVERY_CAPABILITY_SECRET' && binding.type === 'secret_text') ? {} : {
+        DATA_DELIVERY_CAPABILITY_SECRET: randomBytes(32).toString('hex'),
+      }),
+    } : {}) }
     execFileSync('pnpm',['exec','wrangler','secret','bulk','--config',configPath],{
-      cwd,env,input: JSON.stringify({ PAYLOAD_SECRET: secrets[role],...(role === 'central' ? {
-        PROVISION_DEPLOY_HOOK_URL: dispatchResources.deployHookUrl,
-      } : {}) }),stdio: ['pipe','inherit','inherit'],
+      cwd,env,input: JSON.stringify(roleSecrets),stdio: ['pipe','inherit','inherit'],
     })
   }
   const settings = await api(`workers/scripts/${config.name}/settings`)
@@ -92,6 +100,8 @@ for (const [role,config] of Object.entries(configs)) {
   if (role === 'central') {
     assert.ok(settings.bindings.some(b => b.name === 'PROVISION_DISPATCH_QUEUE' && b.type === 'queue' && b.queue_name === dispatchResources.selected.queue))
     assert.ok(settings.bindings.some(b => b.name === 'PROVISION_DEPLOY_HOOK_URL' && b.type === 'secret_text'))
+    assert.ok(settings.bindings.some(b => b.name === 'DATA_DELIVERY_QUEUE' && b.type === 'queue' && b.queue_name === dataDeliveryResources.queue))
+    assert.ok(settings.bindings.some(b => b.name === 'DATA_DELIVERY_CAPABILITY_SECRET' && b.type === 'secret_text'))
     for (const [name,text] of Object.entries(config.vars).filter(([name]) => name.startsWith('PROVISION_BUILD_'))) {
       assert.ok(settings.bindings.some(binding => binding.name === name && binding.type === 'plain_text' && binding.text === text),`Missing ${name}`)
     }
@@ -143,6 +153,9 @@ execFileSync('pnpm',['exec','payload','run','scripts/ci-p1-group-release.ts'],{
 const groupRelease = JSON.parse(readFileSync('.cloudflare-ci/p1-group-release.json','utf8'))
 deployed.push({ role: 'site',worker: configs.site.name,deployment: groupRelease.receipt.deploymentId,
   versions: [{ version_id: groupRelease.receipt.versionId,percentage: 100 }],retained: Boolean(request.reconcile),runtimeCommit: groupRelease.receipt.commit })
+const dataConsumers = await api(`queues/${dataDeliveryResources.queueId}/consumers`)
+assert.ok(dataConsumers.some(consumer => consumer.script === configs.site.name &&
+  consumer.dead_letter_queue === dataDeliveryResources.deadLetterQueue),'P1 data delivery consumer unavailable')
 const deployedDomains = await api('workers/domains')
 for (const config of Object.values(await p1EffectiveManifests())) for (const route of config.routes) {
   const actual = deployedDomains.find(domain => domain.hostname === route.pattern)
