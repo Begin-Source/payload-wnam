@@ -14,6 +14,17 @@ const runAsync = (command, args, env = {}) => new Promise((resolve, reject) => {
 })
 const runPnpmAsync = (args, env = {}) => runAsync('pnpm', args, env)
 const runNodeAsync = (args, env = {}) => runAsync(process.execPath, args, env)
+const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+const reportStage = async stage => {
+  try {
+    await fetch(`https://agenthub.beginos.org/__ci-stage/${commit}/${stage}`, {
+      headers: { 'user-agent': 'Mozilla/5.0 Chrome/126 Safari/537.36', 'x-agenthub-ci-stage': '1' },
+      redirect: 'manual', signal: AbortSignal.timeout(5000),
+    })
+  } catch {
+    // Diagnostics must never replace or weaken a release gate.
+  }
+}
 
 // A failed check must never leave a previous release marker behind.
 rmSync('.cloudflare-ci/release.json', { force: true })
@@ -26,24 +37,38 @@ writeFileSync('.cloudflare-ci/wrangler.json', JSON.stringify({
 }))
 // Workers Builds has a hard 20-minute timeout. These groups use independent
 // output directories and retain every gate while avoiding idle serial time.
+await reportStage('checks-start')
 await Promise.all([
   runPnpmAsync(['run', 'ci:check'], { PAYLOAD_TEST_MODE: 'isolated', PAYLOAD_SECRET: 'isolated-test-secret' }),
   runPnpmAsync(['exec', 'playwright', 'install', '--only-shell', 'chromium']),
 ])
+await reportStage('checks-passed')
 const browserEnv = browserLibraryEnvironment()
+await reportStage('role-builds-start')
 await Promise.all([
   runNodeAsync(['scripts/ci-role-build.mjs','central']),
   runNodeAsync(['scripts/ci-role-build.mjs','site']),
 ])
+await reportStage('role-builds-passed')
+await reportStage('central-runtime-start')
 await Promise.all([
   runNodeAsync(['scripts/ci-role-central.mjs'], browserEnv),
   runNodeAsync(['scripts/ci-site-isolation.mjs']),
 ])
+await reportStage('central-runtime-passed')
+await reportStage('site-runtime-start')
 execFileSync(process.execPath, ['scripts/ci-role-site.mjs'], { stdio: 'inherit', env: { ...process.env, ...browserEnv } })
+await reportStage('site-runtime-passed')
+await reportStage('root-build-start')
 await runPnpmAsync(['exec', 'opennextjs-cloudflare', 'build'], { PAYLOAD_BUILD_PHASE: '1' })
+await reportStage('root-build-passed')
 execFileSync(process.execPath, ['scripts/ci-p0-source-encoding.mjs'], { stdio: 'inherit', env: process.env })
 execFileSync(process.execPath, ['scripts/ci-p0-bundle-report.mjs'], { stdio: 'inherit', env: process.env })
+await reportStage('bundle-passed')
+await reportStage('playwright-start')
 await runPnpmAsync(['exec', 'playwright', 'test', '--config=playwright.cloud-ci.config.ts'], browserEnv)
+await reportStage('playwright-passed')
+await reportStage('identity-start')
 execFileSync(process.execPath, ['--import=tsx', 'scripts/ci-site-identity.mjs'], { stdio: 'inherit', env: { ...process.env, ...browserEnv } })
-const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+await reportStage('identity-passed')
 writeFileSync('.cloudflare-ci/release.json', JSON.stringify({ commit, builtAt: new Date().toISOString() }))
