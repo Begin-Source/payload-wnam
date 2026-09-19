@@ -108,11 +108,14 @@ try {
     writeFileSync(path,JSON.stringify(verification,null,2))
     await run('pnpm',['run','site:verify','--request',path])
   }
+  const acceptance = async (pendingForwardRecovery = false) => {
+    await run(process.execPath,['scripts/ci-p1-smoke.mjs'],process.cwd(),{
+      ...browserLibraryEnvironment(),P1_PENDING_FORWARD_RECOVERY: pendingForwardRecovery ? '1' : undefined,
+    })
+    await verifyCurrentSites()
+  }
   const deps = { journal,current: () => group.releaseSnapshot(site),preflight,deploy,verify,
-    acceptance: async () => {
-      await run(process.execPath,['scripts/ci-p1-smoke.mjs'],process.cwd(),browserLibraryEnvironment())
-      await verifyCurrentSites()
-    } }
+    acceptance: () => acceptance() }
   const releaseId = groupReleaseId(plan.workerGroup,commit,manifestDigest),pending = await journal.pending(plan.workerGroup)
   if (selection.reconcile) {
     const selected = await journal.read(selection.reconcile.releaseId)
@@ -135,7 +138,13 @@ try {
       // cannot upload old code or reinterpret a missing source marker as failure.
       assert.equal(pending.manifest,manifest,'Prior group release used a different manifest')
       assert.equal((await deps.current()).releaseId,pending.releaseId,'Prior group upload remains unknown')
-      const recovered = await releaseGroup(plan.workerGroup,pending.commit,pending.manifest,{ ...deps,deploy: async () => { throw new Error('Prior release recovery cannot upload') } })
+      // The already-uploaded prior runtime cannot satisfy a newly added
+      // live-to-withdrawn transition check. Recover it with a separate asset
+      // that is withdrawn before its first delivery, then immediately deploy
+      // and fully validate this commit with the normal transition fixture.
+      const recovered = await releaseGroup(plan.workerGroup,pending.commit,pending.manifest,{ ...deps,
+        deploy: async () => { throw new Error('Prior release recovery cannot upload') },
+        acceptance: () => acceptance(true) })
       console.log(JSON.stringify({ event: 'p1_group_prior_release_recovered',...recovered }))
     }
     const count = await database.prepare('SELECT COUNT(*) AS n FROM site_group_releases WHERE worker_group=?').bind(plan.workerGroup).first<number>('n')

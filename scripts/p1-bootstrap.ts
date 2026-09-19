@@ -104,30 +104,32 @@ try {
       }) },configOperationId)
   }
   const png = new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6K0AAAAASUVORK5CYII=','base64'))
-  const assetRecordId = String(900000000+parseInt(commit.slice(0,7),16)%100000000)
-  const assetOperationId = `p1-data-delivery-asset-${commit.slice(0,12)}`
-  let deliveryAsset: AssetRelease
-  const existingAsset = await env.CENTRAL_D1.prepare('SELECT 1 FROM central_asset_releases WHERE record_id=? AND revision=1')
-    .bind(assetRecordId).first()
-  if (existingAsset) deliveryAsset = await readAssetRelease(env.CENTRAL_D1,{ recordId: assetRecordId,revision: 1,
-    digest: await env.CENTRAL_D1.prepare('SELECT digest FROM central_asset_releases WHERE record_id=? AND revision=1')
-      .bind(assetRecordId).first<string>('digest') ?? '' })
-  else {
-    const snapshot: AssetSnapshot = { format: 1,recordId: assetRecordId,revision: 1,tenantId: 1,
-      sourceUpdatedAt: '2026-09-18T14:00:00.000Z',alt: 'P1 Queue delivery fixture',mimeType: 'image/png',size: png.byteLength,
-      sha256: await assetBytesDigest(png),width: 1,height: 1 }
-    const snapshotJSON = assetSnapshotJSON(snapshot),digest = await masterDigest(snapshotJSON),createdAt = new Date().toISOString()
-    deliveryAsset = { ...snapshot,digest,operationId: assetOperationId,createdAt }
-    await verifyAssetBytes(deliveryAsset,png)
-    await env.MASTER_ASSET_ARCHIVE.put(assetArchiveKey(deliveryAsset),png,{ onlyIf: { etagDoesNotMatch: '*' },sha256: deliveryAsset.sha256,
-      httpMetadata: { contentType: deliveryAsset.mimeType,cacheControl: 'private, no-store' } })
-    await env.CENTRAL_D1.prepare(`INSERT INTO central_asset_releases(record_id,revision,tenant_id,digest,snapshot_json,operation_id,created_at)
-      VALUES(?,?,?,?,?,?,?)`).bind(deliveryAsset.recordId,deliveryAsset.revision,deliveryAsset.tenantId,deliveryAsset.digest,
-      snapshotJSON,deliveryAsset.operationId,deliveryAsset.createdAt).run()
-    deliveryAsset = await readAssetRelease(env.CENTRAL_D1,assetReference(deliveryAsset))
+  const ensureDeliveryAsset = async (recordId: string,operationId: string,alt: string): Promise<AssetRelease> => {
+    let asset: AssetRelease
+    const existing = await env.CENTRAL_D1.prepare('SELECT digest FROM central_asset_releases WHERE record_id=? AND revision=1')
+      .bind(recordId).first<string>('digest')
+    if (existing) asset = await readAssetRelease(env.CENTRAL_D1,{ recordId,revision: 1,digest: existing })
+    else {
+      const snapshot: AssetSnapshot = { format: 1,recordId,revision: 1,tenantId: 1,
+        sourceUpdatedAt: '2026-09-18T14:00:00.000Z',alt,mimeType: 'image/png',size: png.byteLength,
+        sha256: await assetBytesDigest(png),width: 1,height: 1 }
+      const snapshotJSON = assetSnapshotJSON(snapshot),digest = await masterDigest(snapshotJSON),createdAt = new Date().toISOString()
+      asset = { ...snapshot,digest,operationId,createdAt }
+      await verifyAssetBytes(asset,png)
+      await env.MASTER_ASSET_ARCHIVE.put(assetArchiveKey(asset),png,{ onlyIf: { etagDoesNotMatch: '*' },sha256: asset.sha256,
+        httpMetadata: { contentType: asset.mimeType,cacheControl: 'private, no-store' } })
+      await env.CENTRAL_D1.prepare(`INSERT INTO central_asset_releases(record_id,revision,tenant_id,digest,snapshot_json,operation_id,created_at)
+        VALUES(?,?,?,?,?,?,?)`).bind(asset.recordId,asset.revision,asset.tenantId,asset.digest,snapshotJSON,asset.operationId,asset.createdAt).run()
+      asset = await readAssetRelease(env.CENTRAL_D1,assetReference(asset))
+    }
+    const archived = await env.MASTER_ASSET_ARCHIVE.get(assetArchiveKey(asset))
+    assert.ok(archived); await verifyAssetBytes(asset,new Uint8Array(await archived.arrayBuffer()))
+    return asset
   }
-  const archivedAsset = await env.MASTER_ASSET_ARCHIVE.get(assetArchiveKey(deliveryAsset))
-  assert.ok(archivedAsset); await verifyAssetBytes(deliveryAsset,new Uint8Array(await archivedAsset.arrayBuffer()))
+  const deliveryAsset = await ensureDeliveryAsset(String(900000000+parseInt(commit.slice(0,7),16)%100000000),
+    `p1-data-delivery-asset-${commit.slice(0,12)}`,'P1 Queue delivery fixture')
+  const recoveryAsset = await ensureDeliveryAsset(String(800000000+parseInt(createHash('sha256').update(commit).digest('hex').slice(0,7),16)%100000000),
+    `p1-data-recovery-asset-${commit.slice(0,12)}`,'P1 Queue forward recovery fixture')
   const unavailable = async () => { throw new Error('No external capability during P1 bootstrap') }
   sitePayload = await getPayload({ key: 'p1-sites-bootstrap',disableOnInit: true,config: await createSitePayloadConfig({ secret,
     identity: { authenticate: unavailable,redeem: unavailable,logout: unavailable },
@@ -177,6 +179,7 @@ try {
       config: { operationId: deliveryOperationId('config'),reference: configReference(deliveryConfig) },
       asset: { operationId: deliveryOperationId('asset'),reference: assetReference(deliveryAsset) },
       withdrawal: { operationId: deliveryOperationId('withdrawal'),reference: assetReference(deliveryAsset) },
+      recoveryWithdrawal: { operationId: deliveryOperationId('recovery-withdrawal'),reference: assetReference(recoveryAsset) },
     } }
   writeFileSync('.cloudflare-ci/p1-bootstrap.json',JSON.stringify(report,null,2))
   console.log(JSON.stringify(report))

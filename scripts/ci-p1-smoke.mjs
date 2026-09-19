@@ -8,6 +8,8 @@ import { checkMcpBrowser } from './p1-mcp-browser.mjs'
 import { checkRemoteAdmission } from './p1-remote-admission.mjs'
 
 assert.equal(process.env.WORKERS_CI,'1'); assert.equal(process.env.WORKERS_CI_BRANCH,'feat/site-per-d1')
+assert.ok([undefined,'1'].includes(process.env.P1_PENDING_FORWARD_RECOVERY))
+const pendingForwardRecovery = process.env.P1_PENDING_FORWARD_RECOVERY === '1'
 const password = process.env.P1_TEST_PASSWORD, token = process.env.CLOUDFLARE_API_TOKEN
 assert.ok(password && password.length >= 32 && token)
 const { central,site } = await p1EffectiveManifests()
@@ -102,22 +104,28 @@ try {
     WHERE kind=? AND site_id=? AND revision=?`,[bootstrap.deliveries.config.reference.kind,
       bootstrap.deliveries.config.reference.siteId,bootstrap.deliveries.config.reference.revision])
   assert.equal(configCandidate?.digest,bootstrap.deliveries.config.reference.digest)
-  await deliver('asset',bootstrap.deliveries.asset)
-  const [assetCandidate] = await databaseQuery(siteA.databaseId,`SELECT digest FROM site_asset_releases
-    WHERE record_id=? AND revision=?`,[bootstrap.deliveries.asset.reference.recordId,bootstrap.deliveries.asset.reference.revision])
-  assert.equal(assetCandidate?.digest,bootstrap.deliveries.asset.reference.digest)
-  const withdrawnAt = '2026-09-18T14:30:00.000Z',withdrawalOperation = `p1-queue-withdraw-${bootstrap.commit.slice(0,12)}`
+  if (!pendingForwardRecovery) {
+    await deliver('asset',bootstrap.deliveries.asset)
+    const [assetCandidate] = await databaseQuery(siteA.databaseId,`SELECT digest FROM site_asset_releases
+      WHERE record_id=? AND revision=?`,[bootstrap.deliveries.asset.reference.recordId,bootstrap.deliveries.asset.reference.revision])
+    assert.equal(assetCandidate?.digest,bootstrap.deliveries.asset.reference.digest)
+  }
+  const withdrawalDelivery = pendingForwardRecovery ? bootstrap.deliveries.recoveryWithdrawal : bootstrap.deliveries.withdrawal
+  const withdrawalReference = withdrawalDelivery.reference
+  const withdrawnAt = '2026-09-18T14:30:00.000Z'
+  const withdrawalOperation = `p1-queue-${pendingForwardRecovery ? 'recovery-' : ''}withdraw-${bootstrap.commit.slice(0,12)}`
   await centralQuery(`INSERT INTO central_asset_withdrawals(record_id,revision,digest,operation_id,withdrawn_at,reason)
-    VALUES(?,?,?,?,?,'P1 Queue withdrawal fixture') ON CONFLICT DO NOTHING`,[bootstrap.deliveries.asset.reference.recordId,
-      bootstrap.deliveries.asset.reference.revision,bootstrap.deliveries.asset.reference.digest,withdrawalOperation,withdrawnAt])
+    VALUES(?,?,?,?,?,'P1 Queue withdrawal fixture') ON CONFLICT DO NOTHING`,[withdrawalReference.recordId,
+      withdrawalReference.revision,withdrawalReference.digest,withdrawalOperation,withdrawnAt])
   const [centralWithdrawal] = await centralQuery(`SELECT operation_id AS operationId,digest FROM central_asset_withdrawals
-    WHERE record_id=? AND revision=?`,[bootstrap.deliveries.asset.reference.recordId,bootstrap.deliveries.asset.reference.revision])
-  assert.deepEqual(centralWithdrawal,{ operationId: withdrawalOperation,digest: bootstrap.deliveries.asset.reference.digest })
-  await deliver('asset',bootstrap.deliveries.withdrawal)
+    WHERE record_id=? AND revision=?`,[withdrawalReference.recordId,withdrawalReference.revision])
+  assert.deepEqual(centralWithdrawal,{ operationId: withdrawalOperation,digest: withdrawalReference.digest })
+  await deliver('asset',withdrawalDelivery)
   const [siteWithdrawal] = await databaseQuery(siteA.databaseId,`SELECT operation_id AS operationId,digest FROM site_asset_withdrawals
-    WHERE record_id=? AND revision=?`,[bootstrap.deliveries.asset.reference.recordId,bootstrap.deliveries.asset.reference.revision])
-  assert.deepEqual(siteWithdrawal,{ operationId: withdrawalOperation,digest: bootstrap.deliveries.asset.reference.digest })
-  console.log(JSON.stringify({ event: 'p1_data_delivery_matrix_passed',siteId: 'p1-a',kinds: ['master','config','asset','withdrawal'] }))
+    WHERE record_id=? AND revision=?`,[withdrawalReference.recordId,withdrawalReference.revision])
+  assert.deepEqual(siteWithdrawal,{ operationId: withdrawalOperation,digest: withdrawalReference.digest })
+  console.log(JSON.stringify({ event: 'p1_data_delivery_matrix_passed',siteId: 'p1-a',
+    kinds: pendingForwardRecovery ? ['master','config','withdrawal'] : ['master','config','asset','withdrawal'],pendingForwardRecovery }))
   await checkRemoteAdmission({ hub,centralQuery })
   const pages = {},docs = {}
   for (const route of routes) {
