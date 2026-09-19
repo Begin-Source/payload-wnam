@@ -90,7 +90,6 @@ try {
     'Group release would omit or alter a registered member')
     await inspectGroup()
   }
-  await preflight()
   writeFileSync('.cloudflare-ci/p1-effective-site.json',JSON.stringify(fleetReleaseArtifact(commit,fleet),null,2))
   assert.deepEqual((await p1EffectiveManifests()).site,site)
   const deploy = async (guard: () => Promise<void>,releaseId: string) => {

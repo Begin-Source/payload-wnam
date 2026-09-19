@@ -35,6 +35,18 @@ const databaseQuery = async (databaseId,sql,params = []) => {
 let browser, context, currentPage, mcp, revokeAttempted = false
 const pendingRevocations = new Set()
 const browserErrors = [],failedAssets = []
+const mapConcurrent = async (items,limit,worker) => {
+  const results = new Array(items.length)
+  let next = 0
+  await Promise.all(Array.from({ length: Math.min(limit,items.length) },async () => {
+    for (;;) {
+      const index = next++
+      if (index >= items.length) return
+      results[index] = await worker(items[index],index)
+    }
+  }))
+  return results
+}
 const invoke = (page,path,init = {}) => page.evaluate(async ({ path,init }) => {
   const response = await fetch(path,init)
   return { status: response.status,cacheControl: response.headers.get('cache-control'),body: await response.text() }
@@ -133,7 +145,10 @@ try {
   } else {
   await checkRemoteAdmission({ hub,centralQuery })
   const pages = {},docs = {}
-  for (const route of routes) {
+  // Each site has its own host-only session cookie and independent D1. Open the
+  // editors together so a six-site group does not spend the Cloudflare build
+  // budget waiting on the same navigation and asset waterfall six times.
+  await mapConcurrent(routes,3,async route => {
     const id = route.siteId
     const page = currentPage = await context.newPage()
     await page.goto(`${P1_ORIGIN}/admin`)
@@ -165,7 +180,7 @@ try {
     assert.equal(await page.locator('input[name=name]').inputValue(),`Remote site ${id}`)
     await page.screenshot({ path: `.cloudflare-ci/remote-${id}-desktop.png`,fullPage: true })
     console.log(JSON.stringify({ event: 'p1_remote_site_editor_passed',siteId: id }))
-  }
+  })
   const results = await Promise.all(Array.from({ length: 20 },(_,index) => {
     const id = routes[index % routes.length].siteId
     return invokeRead(pages[id],`/api/categories/${docs[id].id}?depth=0`).then(result => ({ id,result }))
@@ -177,19 +192,20 @@ try {
   const cookies = (await context.cookies()).filter(cookie => cookie.name === '__Host-site-session')
   assert.deepEqual(cookies.map(cookie => cookie.domain).sort(),hosts.slice(1).sort())
   assert.ok(cookies.every(cookie => cookie.httpOnly && cookie.secure && cookie.sameSite === 'Strict' && cookie.path === '/'))
-  for (const { siteId: id } of routes.filter(route => route.siteId !== 'p1-b')) {
+  await mapConcurrent(routes.filter(route => route.siteId !== 'p1-b'),3,async ({ siteId: id }) => {
     currentPage = pages[id]
     await currentPage.setViewportSize({ width: 390,height: 844 })
     assert.equal(await currentPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),true)
     await currentPage.screenshot({ path: `.cloudflare-ci/remote-${id}-mobile.png`,fullPage: true })
-  }
+  })
   for (const { siteId: id } of routes.filter(route => !['p1-a','p1-b'].includes(route.siteId))) {
     pendingRevocations.add(id)
     await centralQuery('DELETE FROM site_runtime_access WHERE site_id=? AND user_id=?',[id,'7'])
     assert.equal((await invokeRead(pages[id],'/api/categories/990001')).status,403)
     assert.equal((await invoke(pages[id],'/api/categories/990001',{ method: 'PATCH',headers: { 'content-type': 'application/json' },body: JSON.stringify({ name: 'Denied' }) })).status,403)
     const others = routes.filter(route => route.siteId !== id).map(route => route.siteId)
-    for (const other of others) assert.equal((await invokeRead(pages[other],'/api/categories/990001')).status,200)
+    const unaffected = await Promise.all(others.map(other => invokeRead(pages[other],'/api/categories/990001')))
+    for (const result of unaffected) assert.equal(result.status,200)
     await centralQuery("INSERT INTO site_runtime_access (site_id,user_id,role) VALUES (?,'7','manager') ON CONFLICT(site_id,user_id) DO UPDATE SET role='manager'",[id])
     pendingRevocations.delete(id)
     console.log(JSON.stringify({ event: 'p1_new_site_revocation_passed',siteId: id,otherSitesUnaffected: others }))

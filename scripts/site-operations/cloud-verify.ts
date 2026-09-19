@@ -26,6 +26,18 @@ assert.equal(process.env.CLOUDFLARE_ACCOUNT_ID,group.account_id)
 const schema = JSON.parse(readFileSync('.cloudflare-ci/role-site-a-schema.json','utf8')) as RoleSchema
 const api = new ProvisionCloudflare(group.account_id,process.env.CLOUDFLARE_API_TOKEN ?? '')
 type Deployment = { id: string; versions: { version_id: string; percentage: number }[] }
+const mapConcurrent = async <Input,Output>(items: Input[],limit: number,worker: (item: Input,index: number) => Promise<Output>) => {
+  const results = new Array<Output>(items.length)
+  let next = 0
+  await Promise.all(Array.from({ length: Math.min(limit,items.length) },async () => {
+    for (;;) {
+      const index = next++
+      if (index >= items.length) return
+      results[index] = await worker(items[index],index)
+    }
+  }))
+  return results
+}
 const deployment = async () => {
   const value = (await api.request<{ deployments: Deployment[] }>(`workers/scripts/${group.name}/deployments`)).result.deployments[0]
   assert.ok(value && value.id === request.expectedDeploymentId && value.versions.length === 1 && value.versions[0].percentage === 100,'Verification deployment changed')
@@ -68,8 +80,10 @@ try {
   const centralDb = proxy.env.CENTRAL_D1,routes = groupRoutes(group)
   const registered = (await centralDb.prepare('SELECT site_id FROM site_runtime_registry WHERE worker_group=? ORDER BY site_id').bind(group.vars.WORKER_GROUP).all<{ site_id: string }>()).results
   assert.deepEqual(registered.map(row => row.site_id),routes.map(route => route.siteId).sort(),'Current manifest omits a registered site')
-  const reports = []
-  for (const target of request.sites) {
+  // Every target owns an independent D1 database. Verify them concurrently so
+  // adding sites does not make the read-only release gate grow linearly until
+  // Cloudflare terminates the build.
+  const reports = await mapConcurrent(request.sites,3,async target => {
     const site = await readSiteRegistration(centralDb,target.siteId),binding = routes.find(route => route.siteId === target.siteId)!
     assert.ok(site && site.workerGroup === group.vars.WORKER_GROUP && site.localSiteId === binding.localSiteId && site.databaseId === binding.databaseId &&
       site.bindingName === binding.bindingName && site.schemaVersion === binding.schemaVersion,'Verification registration mismatch')
@@ -89,10 +103,11 @@ try {
       publicBucket: proxy.env.SITE_PUBLIC,privateBucket: proxy.env.SITE_PRIVATE })
     assert.ok(JSON.stringify(await readSiteRegistration(centralDb,site.siteId)) === JSON.stringify(site),'Registration changed during verification')
     assert.deepEqual(runtimeProofSnapshot(await proxy.env.INSPECT.verify(site.siteId)),runtime,'Runtime changed during verification')
-    reports.push({ ...report,runtime,identityProjections: projections.length })
+    const result = { ...report,runtime,identityProjections: projections.length }
     console.log(JSON.stringify({ event: 'site_verification_target_passed',operationId: request.operationId,siteId: site.siteId,tables: report.tables.length,
       contentDigest: report.contentDigest,media: report.media,taskRows: report.tasks.reduce((n,table) => n+table.rows,0) }))
-  }
+    return result
+  })
   assert.deepEqual(await deployment(),before)
   assertGroupSettings((await api.request<Parameters<typeof assertGroupSettings>[0]>(`workers/scripts/${group.name}/settings`)).result,group)
   const report = { event: 'site_verification_passed',operationId: request.operationId,checkedAt: new Date().toISOString(),commit,
