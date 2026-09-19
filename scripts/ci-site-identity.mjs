@@ -10,13 +10,26 @@ import { verifySiteDataRPC } from './ci-site-data-fixture.mjs'
 if (process.env.WORKERS_CI !== '1') throw new Error('Identity runtime bundling/tests run only in Cloudflare Builds')
 const require = createRequire(realpathSync(resolve('node_modules/wrangler/package.json')))
 const { Miniflare } = require('miniflare')
+const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+const reportStage = async stage => {
+  try {
+    await fetch(`https://agenthub.beginos.org/__ci-stage/${commit}/identity-${stage}`, {
+      headers: { 'user-agent': 'Mozilla/5.0 Chrome/126 Safari/537.36', 'x-agenthub-ci-stage': '1' },
+      redirect: 'manual', signal: AbortSignal.timeout(5000),
+    })
+  } catch {
+    // Read-only diagnostics must never replace or weaken an identity gate.
+  }
+}
 const paths = {}
 for (const role of ['central', 'site']) {
+  await reportStage(`${role}-bundle-start`)
   const outputDir = resolve(`.cloudflare-ci/site-identity-${role}`)
   execFileSync('pnpm', ['exec', 'wrangler', 'deploy', '--dry-run', '--config', `tests/runtime/wrangler-identity-${role}.jsonc`, '--outdir', outputDir], { stdio: 'inherit' })
   const entries = readdirSync(outputDir).filter(name => /\.m?js$/.test(name))
   assert.equal(entries.length, 1, `Expected one ${role} runtime entry`)
   paths[role] = resolve(outputDir, entries[0])
+  await reportStage(`${role}-bundle-passed`)
 }
 const loginToken = randomBytes(32).toString('hex')
 const mf = new Miniflare({ host: '127.0.0.1', port: 0, https: true, workers: [
@@ -97,12 +110,14 @@ try {
   // Exercise actual Chromium form navigation, CSP, redirect and cookie rules.
   // Use real HTTPS and redirects, mapping only fixture hosts to the local listener.
   console.log(JSON.stringify({ event: 'site_identity_rpc_transport_passed', concurrentRedemptions: 20, concurrentSiteRequests: 20 }))
+  await reportStage('rpc-passed')
   const browserEvents = []
   const listener = await mf.ready
   assert.equal(listener.protocol, 'https:')
   const browserHosts = ['agenthub.beginos.org', 'cms-site-a.beginos.org', 'cms-site-b.beginos.org', 'public.example']
   const hostRules = browserHosts.map(host => 'MAP ' + host + ':443 127.0.0.1:' + listener.port).join(',')
   const browser = await chromium.launch({ headless: true, args: ['--no-proxy-server', '--host-resolver-rules=' + hostRules] })
+  await reportStage('browser-started')
   try {
     const context = await browser.newContext({ ignoreHTTPSErrors: true, serviceWorkers: 'block' })
     await context.addCookies([{ name: 'fixture-central', value: loginToken, domain: 'agenthub.beginos.org', path: '/', secure: true, httpOnly: true, sameSite: 'Strict' }])
@@ -135,7 +150,9 @@ try {
     console.log(JSON.stringify({ event: 'site_identity_browser_failure', exchanges: browserEvents }))
     throw error
   } finally { await browser.close() }
+  await reportStage('browser-passed')
   await verifySiteDataRPC({ mf,db,site,cookieA,cookieB })
+  await reportStage('data-passed')
   await db.prepare("UPDATE site_runtime_access SET role = 'viewer' WHERE site_id = 'a'").run()
   assert.equal((await (await me('a', cookieA)).json()).siteRole, 'viewer')
   await db.prepare("DELETE FROM site_runtime_access WHERE site_id = 'a'").run()
@@ -154,7 +171,7 @@ try {
   assert.equal((await me('b', renewedCookie)).status, 403)
   assert.equal((await site.fetch('https://public.example/article')).status, 200)
   const report = { event: 'site_identity_workerd_rpc', ok: true,
-    commit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+    commit,
     workers: 2, databases: 3, concurrentRedemptions: 20, concurrentSiteRequests: 20,
     checks: ['named RPC capability', 'no RPC issuer', 'HTTP capability denied', 'POST handoff', 'Chromium form/CSP/cookie navigation', 'single-use ticket',
       'host/origin binding', 'explicit local site ID mapping', 'credential-free projections', 'live role changes', 'immediate revocation', 'site logout',
@@ -162,4 +179,9 @@ try {
     scope: 'Cloudflare Builds native workerd service bindings and D1; synthetic central login and site identity collection; Chromium direct HTTPS to isolated workerd via host resolver mapping; not deployed independent Payload configs or production browser acceptance' }
   writeFileSync('.cloudflare-ci/site-identity.json', JSON.stringify(report, null, 2))
   console.log(JSON.stringify(report))
-} finally { await mf.dispose() }
+  await reportStage('checks-passed')
+} finally {
+  await reportStage('dispose-start')
+  await mf.dispose()
+  await reportStage('dispose-passed')
+}
