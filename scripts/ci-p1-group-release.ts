@@ -67,6 +67,18 @@ try {
   console.log(JSON.stringify({ event: 'p1_fleet_history_verified',operationId: fleet.operationId,workerGroup: managed.workerGroup,
     manifestDigest,members: groupRoutes(site).map(route => route.siteId),operations: managed.operations,mutations: false }))
   assert.equal((await api.database(databaseId)).name,plan.databaseName)
+  const inspectGroup = async () => {
+    for (let attempt = 1; attempt <= 6; attempt++) {
+      try {
+        assert.ok(await bounded(group.inspect(site),20_000,'P1 group preflight inspection'))
+        return
+      } catch (error) {
+        if (attempt === 6) throw error
+        console.log(JSON.stringify({ event: 'p1_group_preflight_wait',attempt,reason: error instanceof Error ? error.name : 'error' }))
+        await new Promise(resolve => setTimeout(resolve,5000))
+      }
+    }
+  }
   const preflight = async () => {
     const current = await resolveAdmissionFleet(fleetInput,database)
     assert.deepEqual(current,fleet,'Fleet history changed during release')
@@ -76,7 +88,7 @@ try {
     assert.deepEqual(registrations,groupRoutes(site).map(route => ({ site_id: route.siteId,local_site_id: route.localSiteId,binding_name: route.bindingName,
       database_id: route.databaseId,schema_version: route.schemaVersion,admin_host: `cms-site-${route.siteId}.beginos.org` })).sort((a,b) => a.site_id.localeCompare(b.site_id)),
     'Group release would omit or alter a registered member')
-    assert.ok(await group.inspect(site))
+    await inspectGroup()
   }
   await preflight()
   writeFileSync('.cloudflare-ci/p1-effective-site.json',JSON.stringify(fleetReleaseArtifact(commit,fleet),null,2))
