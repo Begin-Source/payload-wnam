@@ -45,10 +45,12 @@ await Promise.all([
 await reportStage('checks-passed')
 const browserEnv = browserLibraryEnvironment()
 await reportStage('role-builds-start')
-await Promise.all([
-  runNodeAsync(['scripts/ci-role-build.mjs','central']),
-  runNodeAsync(['scripts/ci-role-build.mjs','site']),
-])
+// Parallel Next/OpenNext role builds remain unstable despite separate output
+// directories: one process can fail during /404 prerender while the other
+// succeeds. Keep build processes serial and use concurrency only for the
+// independent checks/browser installation above.
+await runNodeAsync(['scripts/ci-role-build.mjs','central'])
+await runNodeAsync(['scripts/ci-role-build.mjs','site'])
 await reportStage('role-builds-passed')
 await reportStage('central-runtime-start')
 // These checks each boot a native workerd/Miniflare runtime over the same
