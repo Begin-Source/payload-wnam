@@ -112,7 +112,11 @@ try {
     await run(process.execPath,['scripts/ci-p1-smoke.mjs'],process.cwd(),{
       ...browserLibraryEnvironment(),P1_PENDING_FORWARD_RECOVERY: pendingForwardRecovery ? '1' : undefined,
     })
-    await verifyCurrentSites()
+    // A prior runtime is accepted only far enough to close its interrupted
+    // journal entry. The current runtime immediately receives the full browser,
+    // MCP and six-database acceptance below, avoiding duplicate work that can
+    // exceed Cloudflare Builds' total execution limit.
+    if (!pendingForwardRecovery) await verifyCurrentSites()
   }
   const deps = { journal,current: () => group.releaseSnapshot(site),preflight,deploy,verify,
     acceptance: () => acceptance() }

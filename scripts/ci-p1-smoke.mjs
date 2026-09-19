@@ -126,6 +126,11 @@ try {
   assert.deepEqual(siteWithdrawal,{ operationId: withdrawalOperation,digest: withdrawalReference.digest })
   console.log(JSON.stringify({ event: 'p1_data_delivery_matrix_passed',siteId: 'p1-a',
     kinds: pendingForwardRecovery ? ['master','config','withdrawal'] : ['master','config','asset','withdrawal'],pendingForwardRecovery }))
+  if (pendingForwardRecovery) {
+    const report = { event: 'p1_pending_forward_recovery_passed',checkedAt: new Date().toISOString(),remoteDeployment: true,
+      siteId: 'p1-a',checks: ['real-dns-tls','central-password-login','data-delivery-queue-master-config-withdrawal'] }
+    writeFileSync('.cloudflare-ci/p1-pending-forward-recovery.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
+  } else {
   await checkRemoteAdmission({ hub,centralQuery })
   const pages = {},docs = {}
   for (const route of routes) {
@@ -223,6 +228,7 @@ try {
       'native-editors','same-id-20-concurrent-reads','isolated-create-update','site-password-denied','data-delivery-queue-master-config-asset-withdrawal','manager-pause-resume','ambiguous-lifecycle-retry','routing-version-cookie-revocation',
       'live-grant-revocation','native-logout-central-revocation','desktop-mobile','real-sdk-mcp','explicit-site-mcp','mcp-lifecycle','mcp-grant-revocation','mcp-central-logout'],browserErrors }
   writeFileSync('.cloudflare-ci/p1-remote-smoke.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
+  }
 } catch (error) {
   const dom = currentPage ? await currentPage.evaluate(() => ({ host: location.hostname,path: location.pathname,title: document.title,text: document.body.innerText.slice(0,600) })).catch(() => null) : null
   console.log(JSON.stringify({ event: 'p1_remote_smoke_failed',dom,failedAssets,browserErrors: browserErrors.slice(-10) }))
