@@ -5,6 +5,16 @@ const ACCOUNT = 'd487cf34c606620b442632a72272014d'
 const WORKER = 'payload-wnam'
 const DATABASE = 'f2aac41b-418d-47de-8bb3-edda485b1e2b'
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+const reportStage = async stage => {
+  try {
+    await fetch(`https://agenthub.beginos.org/__ci-stage/${commit}/deploy-${stage}`, {
+      headers: { 'user-agent': 'Mozilla/5.0 Chrome/126 Safari/537.36', 'x-agenthub-ci-stage': '1' },
+      redirect: 'manual', signal: AbortSignal.timeout(5000),
+    })
+  } catch {
+    // Read-only diagnostics must never replace or weaken a deploy gate.
+  }
+}
 const marker = JSON.parse(readFileSync('.cloudflare-ci/release.json', 'utf8'))
 if (marker.commit !== commit || !existsSync('.open-next/worker.js')) {
   throw new Error('No successful Cloudflare build for this commit. Run ci:build in Workers Builds.')
@@ -37,9 +47,18 @@ if (!settings.bindings.some(b => b.type === 'r2_bucket' && b.name === 'R2' && b.
 const previous = await api(`workers/scripts/${WORKER}/deployments`)
 writeFileSync('.cloudflare-ci/previous-deployment.json', JSON.stringify(previous))
 console.log(JSON.stringify({ event: 'release_preflight', commit, worker: WORKER, previous: previous.deployments?.[0]?.id }))
+await reportStage('preflight-passed')
 const run = args => execFileSync('pnpm', args, { stdio: 'inherit', env: process.env })
+await reportStage('time-travel-start')
 run(['exec', 'wrangler', 'd1', 'time-travel', 'info', WORKER])
+await reportStage('time-travel-passed')
+await reportStage('migration-start')
 run(['run', 'deploy:database'])
+await reportStage('migration-passed')
+await reportStage('worker-upload-start')
 run(['exec', 'opennextjs-cloudflare', 'deploy'])
+await reportStage('worker-upload-passed')
 
+await reportStage('smoke-start')
 execFileSync(process.execPath, ['scripts/ci-smoke.mjs'], { stdio: 'inherit', env: process.env })
+await reportStage('smoke-passed')
