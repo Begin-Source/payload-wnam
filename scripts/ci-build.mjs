@@ -51,10 +51,12 @@ await Promise.all([
 ])
 await reportStage('role-builds-passed')
 await reportStage('central-runtime-start')
-await Promise.all([
-  runNodeAsync(['scripts/ci-role-central.mjs'], browserEnv),
-  runNodeAsync(['scripts/ci-site-isolation.mjs']),
-])
+// These checks each boot a native workerd/Miniflare runtime over the same
+// installed Next server modules. Running them together intermittently corrupts
+// module initialization (`next/server` is then observed as a non-constructor),
+// while serial execution adds only a few seconds.
+await runNodeAsync(['scripts/ci-role-central.mjs'], browserEnv)
+await runNodeAsync(['scripts/ci-site-isolation.mjs'])
 await reportStage('central-runtime-passed')
 await reportStage('site-runtime-start')
 execFileSync(process.execPath, ['scripts/ci-role-site.mjs'], { stdio: 'inherit', env: { ...process.env, ...browserEnv } })
