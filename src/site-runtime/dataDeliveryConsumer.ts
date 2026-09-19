@@ -16,10 +16,13 @@ function sameDelivery(actual: MachineDataDelivery,message: DataDeliveryQueueMess
     canonicalMasterJSON(actual.reference) === canonicalMasterJSON(message.reference)
 }
 
-async function candidateExists(message: DataDeliveryQueueMessage,env: SiteEnvironment) {
+async function candidateExists(message: DataDeliveryQueueMessage,env: SiteEnvironment,delivery?: MachineDataDelivery) {
   if (message.kind === 'master') return hasMasterCandidate(message.reference as MasterReference)
   if (message.kind === 'config') return hasConfigCandidate(message.reference as ConfigReference)
-  return hasAssetCandidate(message.reference as AssetReference,{ publicBucket: env.SITE_PUBLIC,privateBucket: env.SITE_PRIVATE })
+  if (!delivery) return false
+  const transfer = delivery.value as AssetTransfer
+  return hasAssetCandidate(message.reference as AssetReference,{ publicBucket: env.SITE_PUBLIC,privateBucket: env.SITE_PRIVATE },
+    Boolean(transfer.withdrawal))
 }
 
 async function receive(delivery: MachineDataDelivery,env: SiteEnvironment) {
@@ -43,6 +46,10 @@ async function processDataDelivery(message: DataDeliveryQueueMessage,env: SiteEn
   return withSiteContext({ siteId: binding.siteId,localSiteId: binding.localSiteId,
     binding: env[binding.bindingName as `SITE_D1_${string}`],requestHost: host,routingVersion: route.routingVersion,
     currentRoutingVersion: () => route.routingVersion,identity: null },async () => {
+    // Master and config references fully describe their durable candidate, so a
+    // redelivered Queue message can acknowledge them without another central
+    // read. An asset reference is shared by its live bytes and later withdrawal;
+    // claim the pinned transfer before deciding which state is already durable.
     let exists = await candidateExists(message,env)
     if (exists) {
       const completed = await env.DATA.acknowledgeDelivery!(message.operationId,message.capability,
@@ -52,8 +59,11 @@ async function processDataDelivery(message: DataDeliveryQueueMessage,env: SiteEn
     const claimed = await env.DATA.readDelivery!(message.operationId,message.capability)
     if (!claimed.ok || !sameDelivery(claimed.value,message)) throw new Error('Delivery claim unavailable')
     if (!exists) {
+      exists = await candidateExists(message,env,claimed.value)
+    }
+    if (!exists) {
       await receive(claimed.value,env)
-      exists = await candidateExists(message,env)
+      exists = await candidateExists(message,env,claimed.value)
     }
     if (!exists) throw new Error('Delivery candidate not durable')
     const acknowledged = await env.DATA.acknowledgeDelivery!(message.operationId,message.capability,

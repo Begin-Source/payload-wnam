@@ -9,6 +9,7 @@ import { commitMasterRelease,exportMasterBundle } from '../../src/site-control/m
 import { migrateSiteControl } from '../../src/site-control/schema'
 import { registerSite } from '../../src/site-control/registry'
 import { masterReference,masterDigest,projectMasterData,canonicalMasterJSON } from '../../src/site-control/masterSnapshot'
+import { assetBytesDigest,assetReference,assetSnapshotJSON,type AssetRelease,type AssetTransfer } from '../../src/site-control/assetSnapshot'
 import { dataDeliveryQueueMessage } from '../../src/site-control/dataDeliveryQueue'
 import { siteDataDeliveryQueue } from '../../src/site-runtime/dataDeliveryConsumer'
 import type { SiteEnvironment } from '../../src/application-roles/siteEnvironment'
@@ -85,6 +86,47 @@ describe('site data delivery Queue consumer',() => {
     expect(readDelivery).toHaveBeenCalledOnce()
     expect(failDelivery).toHaveBeenCalledOnce()
     expect(acknowledgeDelivery).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not mistake live asset bytes for the later withdrawal of the same reference',async () => {
+    const bytes = new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j6K0AAAAASUVORK5CYII=','base64'))
+    const snapshot = { format: 1 as const,recordId: '200',revision: 1,tenantId: 1,sourceUpdatedAt: '2026-09-18T13:00:00.000Z',
+      alt: 'Queued asset',mimeType: 'image/png' as const,size: bytes.length,sha256: await assetBytesDigest(bytes),width: 1,height: 1 }
+    const release: AssetRelease = { ...snapshot,digest: await masterDigest(assetSnapshotJSON(snapshot)),operationId: 'asset-release',
+      createdAt: '2026-09-18T13:00:00.000Z' }
+    const reference = assetReference(release),referenceDigest = await masterDigest(canonicalMasterJSON(reference))
+    const liveOperation = '20000000-0000-4000-8000-000000000001'
+    const withdrawalOperation = '20000000-0000-4000-8000-000000000002'
+    const transfer = (withdrawal: AssetTransfer['withdrawal']): AssetTransfer => ({ siteId: 'a',localSiteId: 37,routingVersion: 1,
+      centralTenantId: 1,release,withdrawal,bytes: withdrawal ? null : bytes })
+    const deliveries = new Map<string,MachineDataDelivery>([
+      [liveOperation,{ operationId: liveOperation,siteId: 'a',workerGroup: 'group-1',routingVersion: 1,kind: 'asset',reference,
+        referenceDigest,value: transfer(null),attemptCount: 1 }],
+      [withdrawalOperation,{ operationId: withdrawalOperation,siteId: 'a',workerGroup: 'group-1',routingVersion: 1,kind: 'asset',reference,
+        referenceDigest,value: transfer({ ...reference,operationId: 'withdraw-asset',withdrawnAt: '2026-09-18T14:30:00.000Z',
+          reason: 'Queue withdrawal fixture' }),attemptCount: 1 }],
+    ])
+    const summary = (operationId: string): DataDeliverySummary => ({ operationId,siteId: 'a',actorUserId: '7',workerGroup: 'group-1',
+      routingVersion: 1,kind: 'asset',reference,state: 'queued',attemptCount: 0,createdAt: '2026-09-18T13:00:00.000Z',
+      updatedAt: '2026-09-18T13:00:00.000Z',completedAt: null,lastErrorCode: null,receipt: null })
+    const route = { siteId: 'a',localSiteId: 37,databaseId: '00000000-0000-4000-8000-000000000037',bindingName: 'SITE_D1_A',
+      workerGroup: 'group-1',adminHost: 'cms-site-a.beginos.org',schemaVersion: 1,routingVersion: 1,migrationState: 'active' as const }
+    const readDelivery = vi.fn(async (id: string) => ({ ok: true as const,value: deliveries.get(id)! }))
+    const acknowledgeDelivery = vi.fn(async (id: string) => ({ ok: true as const,value: { ...summary(id),state: 'succeeded' as const,
+      receipt: { receivedDigest: referenceDigest,receivedAt: '2026-09-18T14:31:00.000Z' } } }))
+    const env = { CENTRAL_ORIGIN: 'https://p1-hub.beginos.org',PAYLOAD_SECRET: 'queue-test-secret-that-is-long-enough',WORKER_GROUP: 'group-1',
+      SITE_ROUTES: JSON.stringify([{ siteId: 'a',localSiteId: 37,databaseId: route.databaseId,bindingName: 'SITE_D1_A',schemaVersion: 1 }]),
+      SITE_D1_A: site,SITE_PUBLIC: sitePublic,SITE_PRIVATE: sitePrivate,ROUTING: { resolve: vi.fn(async () => route) },
+      IDENTITY: { authenticate: vi.fn(),redeem: vi.fn(),logout: vi.fn() },DATA: { readMaster: vi.fn(),readConfig: vi.fn(),readAsset: vi.fn(),
+        readDelivery,acknowledgeDelivery,failDelivery: vi.fn() } } as unknown as SiteEnvironment
+    for (const [id,secret] of [[liveOperation,'c'.repeat(64)],[withdrawalOperation,'d'.repeat(64)]]) {
+      const message = queueMessage(await dataDeliveryQueueMessage(summary(id),secret))
+      await siteDataDeliveryQueue({ queue: 'payload-wnam-p1-data-group-1',messages: [message] } as unknown as MessageBatch<unknown>,env)
+      expect(message.ack).toHaveBeenCalledOnce(); expect(message.retry).not.toHaveBeenCalled()
+    }
+    expect(readDelivery).toHaveBeenCalledTimes(2)
+    expect(await site.prepare('SELECT operation_id AS operationId,digest FROM site_asset_withdrawals WHERE record_id=? AND revision=?')
+      .bind(reference.recordId,reference.revision).first()).toEqual({ operationId: 'withdraw-asset',digest: reference.digest })
   })
 
   it('rejects a changed group or reference before touching the site database',async () => {

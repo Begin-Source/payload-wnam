@@ -69,10 +69,11 @@ export async function receiveAssetCandidate(reference: AssetReference,transfer: 
     ])
     if (results[1].results.length !== 1) throw new Error('Asset candidate tenant mapping changed')
   }
-  if (!await hasAssetCandidate(ref,storage)) throw new Error('Asset candidate receipt unavailable')
+  if (!await hasAssetCandidate(ref,storage,Boolean(withdrawal))) throw new Error('Asset candidate receipt unavailable')
 }
 
-export async function hasAssetCandidate(reference: AssetReference,storage: AssetCandidateStorage): Promise<boolean> {
+export async function hasAssetCandidate(reference: AssetReference,storage: AssetCandidateStorage,
+  expectedWithdrawal?: boolean): Promise<boolean> {
   try {
     assertAssetReference(reference)
     const context = requireSiteContext(),db = createSiteD1Proxy()
@@ -85,10 +86,11 @@ export async function hasAssetCandidate(reference: AssetReference,storage: Asset
       .bind(reference.recordId,reference.revision).first<string>('digest')
     const key = objectKey(context.siteId,release)
     if (withdrawal) {
-      if (withdrawal !== reference.digest) return false
+      if (expectedWithdrawal === false || withdrawal !== reference.digest) return false
       const [privateObject,publicObject] = await Promise.all([storage.privateBucket.head(key),storage.publicBucket.head(key)])
       return Boolean(privateObject?.customMetadata?.assetWithdrawn === '1' && publicObject?.customMetadata?.assetWithdrawn === '1')
     }
+    if (expectedWithdrawal === true) return false
     const object = await storage.privateBucket.get(key)
     if (!object || object.customMetadata?.assetDigest !== reference.digest) return false
     await verifyAssetBytes(release,new Uint8Array(await object.arrayBuffer()))
