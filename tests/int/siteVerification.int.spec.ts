@@ -35,6 +35,7 @@ describe('read-only site verification with native D1 and R2',() => {
       db.prepare('CREATE TABLE private_media(id INTEGER PRIMARY KEY,site_id INTEGER,filename TEXT,filesize INTEGER)'),
       db.prepare('CREATE TABLE payload_jobs(id INTEGER PRIMARY KEY,input TEXT)'),
       db.prepare('CREATE TABLE site_asset_withdrawals(record_id TEXT,revision INTEGER)'),
+      db.prepare('CREATE TABLE site_config_releases(kind TEXT,site_id TEXT,tenant_id INTEGER)'),
     ])
     schema = { role: 'site-a',objects: (await db.prepare("SELECT name,type,sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT GLOB 'sqlite_*' AND name NOT GLOB '_cf_*' ORDER BY name").all<RoleSchema['objects'][number]>()).results }
     digest = roleSchemaDigest(schema.objects)
@@ -45,6 +46,7 @@ describe('read-only site verification with native D1 and R2',() => {
       db.prepare("INSERT INTO users VALUES(1,'7'),(2,'8')"),db.prepare("INSERT INTO categories VALUES(1,103,'Original',NULL),(2,103,'Child',1)"),
       db.prepare("INSERT INTO media VALUES(1,103,'public.txt',NULL,3,NULL,NULL)"),db.prepare("INSERT INTO private_media VALUES(1,103,'private.txt',3)"),
       db.prepare('INSERT INTO payload_jobs VALUES(1,?)').bind(JSON.stringify({ siteId: 'historical',localSiteId: 103 })),
+      db.prepare("INSERT INTO site_config_releases VALUES('llm-prompts','',0)"),
     ])
     await publicBucket.put('sites/historical/public.txt','pub'); await privateBucket.put('sites/historical/private.txt','pri')
   })
@@ -56,7 +58,7 @@ describe('read-only site verification with native D1 and R2',() => {
       const value = Reflect.get(target,key); return typeof value === 'function' ? value.bind(target) : value
     } })
     const report = await verifySiteDatabase({ ...options(),database: readOnly })
-    expect(report.tables).toHaveLength(8); expect(report.media).toMatchObject({ objects: 2,pendingMedia: 0,withdrawnMedia: 0 })
+    expect(report.tables).toHaveLength(9); expect(report.media).toMatchObject({ objects: 2,pendingMedia: 0,withdrawnMedia: 0 })
     expect(report.tasks).toEqual([expect.objectContaining({ table: 'payload_jobs',rows: 1 })])
     expect(await verifySiteDatabase({ ...options(),database: readOnly })).toEqual(report)
     expect(JSON.stringify(report)).not.toContain('Original')
@@ -74,6 +76,16 @@ describe('read-only site verification with native D1 and R2',() => {
     await db.prepare('UPDATE categories SET site_id=103 WHERE id=1').run()
     await db.prepare('UPDATE payload_jobs SET input=?').bind(JSON.stringify({ args: { siteId: 'another-site' } })).run()
     await expect(verifySiteDatabase(options())).rejects.toThrow('Task references another')
+  })
+  it('accepts unscoped known global configuration releases and rejects invalid configuration scope',async () => {
+    await db.prepare("UPDATE site_config_releases SET site_id='another-site'").run()
+    await expect(verifySiteDatabase(options())).rejects.toThrow('Global configuration release carries a site scope')
+    await db.prepare("UPDATE site_config_releases SET site_id='',kind='unknown'").run()
+    await expect(verifySiteDatabase(options())).rejects.toThrow('Unknown global configuration kind')
+    await db.prepare("UPDATE site_config_releases SET kind='llm-prompts',tenant_id=1").run()
+    await expect(verifySiteDatabase(options())).rejects.toThrow('Global configuration release carries a tenant scope')
+    await db.prepare("UPDATE site_config_releases SET kind='site-quotas',tenant_id=5").run()
+    await expect(verifySiteDatabase(options())).rejects.toThrow('Cross-site row')
   })
   it('rejects missing private objects and unsafe paths without reading another site prefix',async () => {
     await privateBucket.delete('sites/historical/private.txt')

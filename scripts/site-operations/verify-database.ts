@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
+import { configFields } from '../../src/site-control/configSnapshot'
 import type { SiteRegistration } from '../../src/site-control/registry'
 import { roleSchemaDigest,type RoleSchema } from '../p1-schema'
 
@@ -75,6 +76,12 @@ export async function verifySiteDatabase(options: Options) {
             const value = row[field.name]
             if (value == null) continue
             if (/(^|_)site_id$/.test(field.name)) {
+              if (table.name === 'site_config_releases' && field.name === 'site_id' && row.kind !== 'site-quotas') {
+                assert.ok(typeof row.kind === 'string' && Object.hasOwn(configFields,row.kind),'Unknown global configuration kind')
+                assert.equal(value,'','Global configuration release carries a site scope')
+                assert.equal(row.tenant_id,0,'Global configuration release carries a tenant scope')
+                continue
+              }
               const expected = /INT|NUM|REAL/i.test(field.type) ? site.localSiteId : site.siteId
               assert.equal(value,expected,`Cross-site row in ${table.name}.${field.name}`)
             }
