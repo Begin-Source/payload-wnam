@@ -2,20 +2,15 @@
 
 import React, { useEffect, useState } from 'react'
 
+import { AgentWorkbench } from '@/components/AgentWorkbench'
 import { ContentCalendarBoard } from '@/components/ContentCalendarBoard'
 import { ContentLifecycleBoard } from '@/components/ContentLifecycleBoard'
 
 type DashboardStats = {
-  sites: number
-  sitesActive: number
-  clickEvents: number
-  clicksOnly: number
-  articlesPublished: number
-  pagesPublished: number
-  workflowActive: number
-  keywords: number
-  commissions: number
-  rankings: number
+  view: 'executive' | 'operations' | 'finance' | 'system' | 'public'
+  heading: string
+  description: string
+  metrics: Array<{ key: string; label: string; value: number }>
 }
 
 const cardStyle: React.CSSProperties = {
@@ -38,7 +33,7 @@ function StatCard({ label, value }: { label: string; value: number }): React.Rea
 }
 
 /**
- * Admin 首页运营看板：站点、点击、内容与工作流等汇总（数据来自 `/api/admin/dashboard-stats`）。
+ * Admin 首页按当前角色返回独立投影，避免财务、系统管理员或普通用户收到无关字段。
  */
 export function BeforeDashboardMilestone(): React.ReactElement {
   const [data, setData] = useState<DashboardStats | null>(null)
@@ -78,9 +73,9 @@ export function BeforeDashboardMilestone(): React.ReactElement {
       }}
     >
       <div style={{ marginBottom: '0.75rem' }}>
-        <strong>运营看板</strong>
+        <strong>{data?.heading ?? '工作台'}</strong>
         <p style={{ margin: '0.35rem 0 0', opacity: 0.85, fontSize: '0.9rem' }}>
-          以下为当前账号可访问租户范围内的汇总；通知公告请在侧栏「首页」→「通知公告」中维护。
+          {data?.description ?? '正在读取当前账号的工作范围…'}
         </p>
       </div>
 
@@ -91,27 +86,29 @@ export function BeforeDashboardMilestone(): React.ReactElement {
         </p>
       )}
       {!loading && !error && data && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(9.5rem, 1fr))',
-            gap: '0.75rem',
-          }}
-        >
-          <StatCard label="站点总数" value={data.sites} />
-          <StatCard label="运行中站点" value={data.sitesActive} />
-          <StatCard label="点击事件" value={data.clickEvents} />
-          <StatCard label="其中点击" value={data.clicksOnly} />
-          <StatCard label="已发布文章" value={data.articlesPublished} />
-          <StatCard label="已发布页面" value={data.pagesPublished} />
-          <StatCard label="工作流进行中" value={data.workflowActive} />
-          <StatCard label="关键词" value={data.keywords} />
-          <StatCard label="佣金记录" value={data.commissions} />
-          <StatCard label="排名快照" value={data.rankings} />
-        </div>
+        <>
+          {data.metrics.length > 0 && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(9.5rem, 1fr))',
+                gap: '0.75rem',
+              }}
+            >
+              {data.metrics.map((metric) => (
+                <StatCard key={metric.key} label={metric.label} value={metric.value} />
+              ))}
+            </div>
+          )}
+          {data.view !== 'public' && <AgentWorkbench />}
+          {(data.view === 'executive' || data.view === 'operations') && (
+            <>
+              <ContentLifecycleBoard />
+              <ContentCalendarBoard />
+            </>
+          )}
+        </>
       )}
-      <ContentLifecycleBoard />
-      <ContentCalendarBoard />
     </div>
   )
 }
