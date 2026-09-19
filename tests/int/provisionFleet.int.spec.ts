@@ -95,10 +95,10 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
     await db.batch(provisionDispatchSchema.map(sql => db.prepare(sql)))
     await db.batch(provisionDispatchRunSchema.map(sql => db.prepare(sql)))
     journal = new ProvisionJournal(db,{ accountId: source.plan.accountId,centralDatabaseId: centralId })
-  })
+  },15000) // Native D1 setup and schema migration can exceed Vitest's default timeout.
   beforeEach(async () => {
     for (const table of ['site_provision_build_events','site_provision_dispatch_attempts','site_provision_dispatch_runs','site_provision_dispatches','site_provision_requests','site_group_releases','site_group_leases','site_provision_steps','site_provision_operations','site_runtime_access','site_runtime_registry']) await db.prepare(`DELETE FROM ${table}`).run()
-  })
+  },15000) // Native D1 cleanup can exceed Vitest's default timeout on shared runners.
   afterAll(async () => { await mf?.dispose() })
   it('assembles two groups and three completed histories through a read-only database capability',async () => {
     const input = await fixture(),before = await db.prepare('SELECT * FROM site_provision_steps ORDER BY operation_id,step').all()
@@ -122,7 +122,7 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
     await expect(resolveProvisionFleet(changed,db)).rejects.toThrow('immutable stored plan')
     await db.prepare("UPDATE site_runtime_registry SET binding_name='SITE_D1_FOREIGN' WHERE site_id='fleet-1-site-1'").run()
     await expect(resolveProvisionFleet(input,db)).rejects.toThrow('registered member')
-  })
+  },15000) // Three native six-step histories and four rejected fleet resolutions.
   it('requires complete receipts and refuses a runtime registration older than activation',async () => {
     const input = await fixture({ groups: 1 })
     await db.prepare("UPDATE site_runtime_registry SET routing_version=1 WHERE site_id='fleet-1-site-1'").run()
@@ -133,10 +133,10 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
   },15000) // Two native six-step histories and two complete receipt scans.
   it('rejects cross-group public/private storage aliasing even when each group is individually distinct',async () => {
     await expect(resolveProvisionFleet(await fixture({ bucketCollision: true }),db)).rejects.toThrow('public/private bucket collision')
-  })
+  },15000) // Three native six-step histories plus cross-group bucket validation.
   it('rejects two group identities targeting the same Worker',async () => {
     await expect(resolveProvisionFleet(await fixture({ workerCollision: true }),db)).rejects.toThrow('multiple fleet groups')
-  })
+  },15000) // Three native six-step histories plus Worker identity collision validation.
   it('keeps paused sites addressable but blocks migrating or retired group members',async () => {
     const input = await fixture()
     await db.prepare("UPDATE site_runtime_registry SET migration_state='paused' WHERE site_id='fleet-1-site-1'").run()
@@ -145,7 +145,7 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
       await db.prepare("UPDATE site_runtime_registry SET migration_state=? WHERE site_id='fleet-1-site-1'").bind(state).run()
       await expect(resolveProvisionFleet(input,db)).rejects.toThrow('unavailable site')
     }
-  })
+  },15000) // Three native six-step histories and repeated migration-state checks.
   it('plans consecutive admissions from complete current history and retains both in later fleet releases',async () => {
     const input = await fixture(),deps = planner(input)
     const originalReceipts = (await db.prepare('SELECT * FROM site_provision_steps ORDER BY operation_id,step').all()).results
@@ -252,7 +252,7 @@ describe('provision fleet assembly and ordered native D1 releases',() => {
     const changed = structuredClone(input); changed.groups[0].requests[0].plan.workerTag = 'f'.repeat(32)
     await expect(planProvisionAdmission(human.requestId,'fleet-1',{ ...deps,fleetInput: changed })).rejects.toThrow('Worker tag changed')
     expect((await journal.read(human.requestId))?.checkpoint).toBe(0)
-  })
+  },15000) // Three native six-step histories and prepared-operation identity checks.
   it('stops a batch on failed acceptance and resumes without re-uploading either group',async () => {
     const fleet = await resolveProvisionFleet(await fixture({ groups: 3 }),db),groups = new GroupReleaseJournal(db)
     const uploads = new Map<string,number>(),current = new Map<string,ReleaseSnapshot>(),reported: string[] = []

@@ -62,7 +62,7 @@ describe('central site management MCP with real SDK client and native D1',() => 
       results.forEach((result,index) => expect(result.structuredContent).toMatchObject({ siteId: index%2 ? 'b' : 'a',role: 'manager',routingVersion: 1 }))
       expect((await second.callTool({ name: 'get_site',arguments: { siteId: 'a' } })).structuredContent).toMatchObject({ status: 403 })
     } finally { await first.close(); await second.close() }
-  })
+  },15000) // Two SDK handshakes and twenty concurrent native D1 authorization reads.
   it('never guesses a site or accepts infrastructure, role or user overrides',async () => {
     const value = await client()
     try {
