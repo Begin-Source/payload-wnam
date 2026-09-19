@@ -43,6 +43,14 @@ const run = (command: string,args: string[],cwd = process.cwd(),extra: Record<st
   const child = spawn(command,args,{ cwd,env: { ...process.env,...extra },stdio: 'inherit' })
   child.on('error',reject); child.on('exit',code => code === 0 ? resolve() : reject(new Error(`Group release subprocess failed (${code})`)))
 })
+const bounded = async <T>(operation: Promise<T>,milliseconds: number,label: string): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([operation,new Promise<never>((_,reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${milliseconds}ms`)),milliseconds)
+    })])
+  } finally { if (timer) clearTimeout(timer) }
+}
 try {
   const fleetInput = loadProvisionFleet('operations/fleet/p1.json')
   const fleet = await resolveAdmissionFleet(fleetInput,database)
@@ -82,15 +90,15 @@ try {
     await guard(); await run('pnpm',['exec','opennextjs-cloudflare','deploy','--config',path],cwd); await guard()
   }
   const verify = async (receipt: GroupReleaseReceipt) => {
-    for (let attempt = 1; attempt <= 96; attempt++) {
+    for (let attempt = 1; attempt <= 12; attempt++) {
       try {
         assert.deepEqual(await group.releaseSnapshot(site),receipt)
-        const proofs = await verifyGroupRuntime(site,receipt,database,siteId => proxy.env.INSPECT.verify(siteId))
+        const proofs = await bounded(verifyGroupRuntime(site,receipt,database,siteId => proxy.env.INSPECT.verify(siteId)),20_000,'P1 group runtime verification')
         assert.deepEqual(await group.releaseSnapshot(site),receipt,'Group changed during member verification')
         console.log(JSON.stringify({ event: 'p1_group_binding_verified',attempt,proofs,releaseId: receipt.releaseId,deploymentId: receipt.deploymentId }))
         return
       } catch (error) {
-        if (attempt === 96) throw error
+        if (attempt === 12) throw error
         console.log(JSON.stringify({ event: 'p1_group_verification_wait',attempt,reason: error instanceof Error ? error.name : 'error' }))
         await new Promise(resolve => setTimeout(resolve,5000))
       }
