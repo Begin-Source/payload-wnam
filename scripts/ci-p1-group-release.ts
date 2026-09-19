@@ -158,18 +158,29 @@ try {
     writeFileSync('.cloudflare-ci/p1-group-release.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report))
   } else {
     if (pending && pending.releaseId !== releaseId) {
-      // A newer CI script may finish acceptance of an earlier proven upload. It
-      // cannot upload old code or reinterpret a missing source marker as failure.
+      // A newer CI script may finish acceptance of an earlier proven upload or
+      // remove an intent whose expected deployment provably never changed.
       assert.equal(pending.manifest,manifest,'Prior group release used a different manifest')
-      assert.equal((await deps.current()).releaseId,pending.releaseId,'Prior group upload remains unknown')
       // The already-uploaded prior runtime cannot satisfy a newly added
       // live-to-withdrawn transition check. Recover it with a separate asset
       // that is withdrawn before its first delivery, then immediately deploy
       // and fully validate this commit with the normal transition fixture.
-      const recovered = await releaseGroup(plan.workerGroup,pending.commit,pending.manifest,{ ...deps,
-        deploy: async () => { throw new Error('Prior release recovery cannot upload') },
-        acceptance: () => acceptance(true) })
-      console.log(JSON.stringify({ event: 'p1_group_prior_release_recovered',...recovered }))
+      const deployed = await deps.current()
+      if (deployed.releaseId === pending.releaseId) {
+        const recovered = await releaseGroup(plan.workerGroup,pending.commit,pending.manifest,{ ...deps,
+          deploy: async () => { throw new Error('Prior release recovery cannot upload') },
+          acceptance: () => acceptance(true) })
+        console.log(JSON.stringify({ event: 'p1_group_prior_release_recovered',...recovered }))
+      } else {
+        assert.equal(pending.receipt,null,'Prior release has a receipt but is no longer deployed')
+        assert.equal(deployed.deploymentId,pending.expectedDeploymentId,'Prior group upload remains unknown')
+        const lease = await journal.claim(plan.workerGroup)
+        try { await journal.abandonUnuploaded(lease,pending.releaseId,deployed.deploymentId) }
+        finally { await journal.release(lease) }
+        assert.deepEqual(await deps.current(),deployed,'Group changed while abandoning an unuploaded release')
+        console.log(JSON.stringify({ event: 'p1_group_prior_unuploaded_abandoned',releaseId: pending.releaseId,workerGroup: plan.workerGroup,
+          expectedDeploymentId: pending.expectedDeploymentId }))
+      }
     }
     const count = await database.prepare('SELECT COUNT(*) AS n FROM site_group_releases WHERE worker_group=?').bind(plan.workerGroup).first<number>('n')
     const inject = count === 0

@@ -78,6 +78,17 @@ export class GroupReleaseJournal {
       .bind(json,parsed.releaseId,...this.parameters(lease)).run()
     assert.deepEqual((await this.read(parsed.releaseId))?.receipt,parsed,'Group upload receipt conflict or lease lost')
   }
+  /** Remove an intent only when the external deployment is still the exact
+   * deployment observed before upload. A receipt or changed deployment makes
+   * the external result ambiguous and must remain pending for reconciliation. */
+  async abandonUnuploaded(lease: GroupLease,releaseId: string,currentDeploymentId: string) {
+    provisionHashSchema.parse(releaseId); provisionUuidSchema.parse(currentDeploymentId)
+    const row = await this.database.prepare(`DELETE FROM site_group_releases
+      WHERE release_id=? AND worker_group=? AND expected_deployment_id=? AND receipt_json IS NULL AND completed_at IS NULL AND EXISTS (
+        SELECT 1 FROM site_group_leases WHERE worker_group=? AND lease_owner=? AND lease_epoch=? AND lease_until>${now}) RETURNING release_id`)
+      .bind(releaseId,lease.workerGroup,currentDeploymentId,...this.parameters(lease)).first()
+    assert.ok(row,'Unuploaded group release cannot be abandoned')
+  }
   async finish(lease: GroupLease,releaseId: string) {
     provisionHashSchema.parse(releaseId)
     const row = await this.database.prepare(`UPDATE site_group_releases SET completed_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
