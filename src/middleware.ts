@@ -9,6 +9,8 @@ import {
 } from '@/utilities/normalizeRequestHost'
 
 const LOCAL_LABELS = new Set(['localhost', '127.0.0.1', '::1'])
+const LEGACY_CENTRAL_HOST = 'hub.beginos.org'
+const CANONICAL_CENTRAL_ORIGIN = 'https://agenthub.beginos.org'
 
 /** Hosts that still serve `(welcome)/` at `/` (comma-separated, `normalizeHostForMatch` per label). */
 function publicWelcomeRootHostsSet(): Set<string> {
@@ -109,6 +111,12 @@ function defaultLocaleFromMeta(meta: SiteLocaleMeta | null): string {
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
+  if (normalizeHostForMatch(request.headers.get('host')) === LEGACY_CENTRAL_HOST) {
+    return NextResponse.redirect(
+      new URL(`${pathname}${request.nextUrl.search}`, CANONICAL_CENTRAL_ORIGIN),
+      308,
+    )
+  }
   const label = hostNameLabel(request.headers.get('host'))
   const isLocal = Boolean(label && LOCAL_LABELS.has(label))
 

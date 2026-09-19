@@ -16,7 +16,7 @@
 
 ## 浏览器路径
 
-1. 用户从 `https://hub.beginos.org` 同源 POST `/auth/enter-site`，表单只能包含 siteId。`centralIdentityFromPayload` 调用中央 `payload.auth`，禁用自动登录，只接受验证后的 users/local-jwt 与原 `_sid`；API key、匿名身份、客户端提供的 userId/sessionId 均不能签发。
+1. 用户从正式入口 `https://agenthub.beginos.org` 同源 POST `/auth/enter-site`，表单只能包含 siteId。`centralIdentityFromPayload` 调用中央 `payload.auth`，禁用自动登录，只接受验证后的 users/local-jwt 与原 `_sid`；API key、匿名身份、客户端提供的 userId/sessionId 均不能签发。
 2. 中央 broker 再读原会话和当前站点权限。响应为自动提交的 POST 表单，目标是注册表对应的专用主机 `/auth/site-login`，另有无脚本时的继续按钮。票据在表单体中，不放进 URL；响应 no-store、strict-origin（仅发送来源，不含路径/查询）、禁止嵌入，CSP 只允许当前 nonce 脚本及目标表单 origin。
 3. 站点入口必须先建立可信 SiteContext，再调用 `siteSessionGateway`。它验证 canonical URL 与上下文主机，拒绝查询参数，仅接受来自中央 origin 的 POST。表单流实际读取最多 512 bytes，不信任 Content-Length，不接受重复或额外字段。
 4. 通过 Service Binding 兑换成功后，站点设置 `__Host-site-session`（Secure、HttpOnly、SameSite=Strict、Path=/、无 Domain），并 303 到固定 `/admin`，不接受 returnTo/open redirect。

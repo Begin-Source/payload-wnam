@@ -24,7 +24,7 @@ const mf = new Miniflare({ host: '127.0.0.1', port: 0, https: true, workers: [
     serviceBindings: { IDENTITY: { name: 'central', entrypoint: 'SiteIdentityService' },DATA: { name: 'central',entrypoint: 'SiteDataService' } },
     r2Buckets: { SITE_PUBLIC: 'data-public',SITE_PRIVATE: 'data-private' },
     d1Databases: { SITE_A: 'identity-site-a', SITE_B: 'identity-site-b' } },
-  { name: 'central', routes: ['hub.beginos.org/*'], modules: true, scriptPath: paths.central, compatibilityDate: '2025-08-15', compatibilityFlags: ['nodejs_compat'],
+  { name: 'central', routes: ['agenthub.beginos.org/*'], modules: true, scriptPath: paths.central, compatibilityDate: '2025-08-15', compatibilityFlags: ['nodejs_compat'],
     bindings: { FIXTURE_LOGIN_TOKEN: loginToken }, d1Databases: { CENTRAL_D1: 'identity-central' },r2Buckets: { MASTER_ASSET_ARCHIVE: 'data-archive' } },
 ] })
 try {
@@ -52,7 +52,7 @@ try {
     origin, 'content-type': 'application/x-www-form-urlencoded', ...(cookie ? { cookie } : {}),
   }, body })
   const issue = async target => {
-    const response = await central.fetch('https://hub.beginos.org/auth/enter-site', form('https://hub.beginos.org', `siteId=${target}`, `fixture-central=${loginToken}`))
+    const response = await central.fetch('https://agenthub.beginos.org/auth/enter-site', form('https://agenthub.beginos.org', `siteId=${target}`, `fixture-central=${loginToken}`))
     assert.equal(response.status, 200, 'Central fixture issuance failed')
     assert.match(response.headers.get('cache-control'), /no-store/)
     const html = await response.text()
@@ -60,10 +60,10 @@ try {
     assert.ok(ticket, 'POST handoff ticket absent')
     return ticket
   }
-  const redeem = (target, ticket, origin = 'https://hub.beginos.org') => site.fetch(`https://cms-site-${target}.beginos.org/auth/site-login`, form(origin, `ticket=${ticket}`))
+  const redeem = (target, ticket, origin = 'https://agenthub.beginos.org') => site.fetch(`https://cms-site-${target}.beginos.org/auth/site-login`, form(origin, `ticket=${ticket}`))
   const me = (target, cookie, init = {}) => site.fetch(`https://cms-site-${target}.beginos.org/api/me`, { ...init, headers: { cookie, ...init.headers } })
-  assert.equal((await central.fetch('https://hub.beginos.org/auth/enter-site', form('https://hub.beginos.org', 'siteId=a&userId=7', `fixture-central=${loginToken}`))).status, 400)
-  assert.equal((await central.fetch('https://hub.beginos.org/auth/enter-site', form('https://hub.beginos.org', 'siteId=a'))).status, 401)
+  assert.equal((await central.fetch('https://agenthub.beginos.org/auth/enter-site', form('https://agenthub.beginos.org', 'siteId=a&userId=7', `fixture-central=${loginToken}`))).status, 400)
+  assert.equal((await central.fetch('https://agenthub.beginos.org/auth/enter-site', form('https://agenthub.beginos.org', 'siteId=a'))).status, 401)
   const ticketA = await issue('a')
   assert.equal((await redeem('b', ticketA)).status, 403)
   assert.equal((await redeem('a', ticketA, 'https://cms-site-b.beginos.org')).status, 403)
@@ -100,12 +100,12 @@ try {
   const browserEvents = []
   const listener = await mf.ready
   assert.equal(listener.protocol, 'https:')
-  const browserHosts = ['hub.beginos.org', 'cms-site-a.beginos.org', 'cms-site-b.beginos.org', 'public.example']
+  const browserHosts = ['agenthub.beginos.org', 'cms-site-a.beginos.org', 'cms-site-b.beginos.org', 'public.example']
   const hostRules = browserHosts.map(host => 'MAP ' + host + ':443 127.0.0.1:' + listener.port).join(',')
   const browser = await chromium.launch({ headless: true, args: ['--no-proxy-server', '--host-resolver-rules=' + hostRules] })
   try {
     const context = await browser.newContext({ ignoreHTTPSErrors: true, serviceWorkers: 'block' })
-    await context.addCookies([{ name: 'fixture-central', value: loginToken, domain: 'hub.beginos.org', path: '/', secure: true, httpOnly: true, sameSite: 'Strict' }])
+    await context.addCookies([{ name: 'fixture-central', value: loginToken, domain: 'agenthub.beginos.org', path: '/', secure: true, httpOnly: true, sameSite: 'Strict' }])
     let unexpectedURL = false
     context.on('response', response => {
       const request = response.request(), url = new URL(request.url()), headers = request.headers()
@@ -114,7 +114,7 @@ try {
     })
     for (const target of ['a', 'b']) {
       const page = await context.newPage()
-      await page.goto('https://hub.beginos.org/')
+      await page.goto('https://agenthub.beginos.org/')
       await page.locator('input[name=siteId]').fill(target)
       await page.getByRole('button', { name: 'Open site' }).click()
       await page.waitForURL('https://cms-site-' + target + '.beginos.org/admin')

@@ -10,7 +10,7 @@ declare namespace Cloudflare {
 		D1: D1Database;
 		CONTENT_WORKFLOW_QUEUE: Queue;
 		ASSETS: Fetcher;
-		PIPELINE_BASE_URL: "https://payload-wnam.sunnybuilds.workers.dev";
+		PIPELINE_BASE_URL: "https://agenthub.beginos.org";
 		PAYLOAD_SUPER_ADMIN_EMAILS: string;
 		NEXT_PUBLIC_ADMIN_BRAND_NAME: string;
 		OPENAI_API_KEY: string;

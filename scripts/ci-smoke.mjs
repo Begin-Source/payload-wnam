@@ -5,9 +5,9 @@ const cases = [
   ['https://s2.beginos.org/en/reviews', 200, /<main[\s>]/],
   ['https://s2.beginos.org/sitemap.xml', 200, /<(?:urlset|sitemapindex)[\s>]/],
   ['https://s1.beginos.org/en', 200, /<h1[\s>]/],
-  ['https://hub.beginos.org/admin/login', 200, /<title>Login/],
-  ['https://payload-wnam.sunnybuilds.workers.dev/api/pipeline/tick', 401, /error/],
-  ['https://hub.beginos.org/api/site-blueprints/versions', 403, /errors/],
+  ['https://agenthub.beginos.org/admin/login', 200, /<title>Login/],
+  ['https://agenthub.beginos.org/api/pipeline/tick', 401, /error/],
+  ['https://agenthub.beginos.org/api/site-blueprints/versions', 403, /errors/],
 ]
 for (const [url, status, pattern] of cases) {
   let error

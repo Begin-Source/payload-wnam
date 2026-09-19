@@ -26,7 +26,7 @@
     "binding": "ASSETS",
   },
   "vars": {
-    "PIPELINE_BASE_URL": "https://payload-wnam.sunnybuilds.workers.dev",
+    "PIPELINE_BASE_URL": "https://agenthub.beginos.org",
   },
   "d1_databases": [
     {

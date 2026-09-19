@@ -64,7 +64,7 @@ for (const [role,config] of Object.entries(configs)) {
     }
   }
 }
-const productionDomain = domains.find(domain => domain.hostname === 'hub.beginos.org')
+const productionDomain = domains.find(domain => domain.hostname === 'agenthub.beginos.org')
 assert.equal(productionDomain?.service,'payload-wnam')
 console.log(JSON.stringify({ event: 'p1_preflight_passed',commit,account: P1_ACCOUNT,production }))
 const password = randomBytes(32).toString('hex')
@@ -161,7 +161,7 @@ for (const config of Object.values(await p1EffectiveManifests())) for (const rou
   const actual = deployedDomains.find(domain => domain.hostname === route.pattern)
   assert.equal(actual?.service,config.name); assert.equal(actual?.zone_id,P1_ZONE)
 }
-assert.equal(deployedDomains.find(domain => domain.hostname === 'hub.beginos.org')?.service,'payload-wnam')
+assert.equal(deployedDomains.find(domain => domain.hostname === 'agenthub.beginos.org')?.service,'payload-wnam')
 
 assert.equal((await api('workers/scripts/payload-wnam/deployments')).deployments[0].id,production)
 if (request.reconcile) assert.equal((await api(`workers/scripts/${configs.central.name}/deployments`)).deployments[0].id,request.reconcile.centralDeploymentId)

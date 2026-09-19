@@ -11,7 +11,7 @@ let mf: { getD1Database: (name: string) => Promise<D1Database>; dispose: () => P
 let db: D1Database
 const identity = { userId: '7', sessionId: 'central-session-seven' }
 const other = { userId: '8', sessionId: 'central-session-eight' }
-const url = 'https://hub.beginos.org/auth/sites'
+const url = 'https://agenthub.beginos.org/auth/sites'
 
 describe('central granted site directory on native D1', () => {
   beforeAll(async () => {
@@ -68,7 +68,7 @@ describe('central granted site directory on native D1', () => {
     for (const query of ['?userId=8','?after=invalid/value','?q=a&q=b',`?q=${'x'.repeat(121)}`]) {
       expect((await centralSiteDirectory(new Request(url+query),options)).status).toBe(400)
     }
-    expect((await centralSiteDirectory(new Request('https://evil.example/auth/sites',{ headers: { 'x-forwarded-host': 'hub.beginos.org' } }),options)).status).toBe(404)
+    expect((await centralSiteDirectory(new Request('https://evil.example/auth/sites',{ headers: { 'x-forwarded-host': 'agenthub.beginos.org' } }),options)).status).toBe(404)
     expect((await centralSiteDirectory(new Request(url,{ method: 'POST' }),options)).status).toBe(405)
     expect((await centralSiteDirectory(new Request(url),{ ...options,authenticate: async () => null })).status).toBe(401)
   })

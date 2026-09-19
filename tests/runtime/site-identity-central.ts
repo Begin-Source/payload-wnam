@@ -9,7 +9,7 @@ export { SiteDataService } from '../../src/site-control/dataService'
  */
 export default {
   fetch(request: Request, env: { CENTRAL_D1: D1Database; FIXTURE_LOGIN_TOKEN: string }) {
-    if (request.method === 'GET' && request.url === 'https://hub.beginos.org/') {
+    if (request.method === 'GET' && request.url === 'https://agenthub.beginos.org/') {
       return new Response('<!doctype html><html><body><form method="post" action="/auth/enter-site"><input name="siteId" value="a"><button type="submit">Open site</button></form></body></html>', {
         headers: { 'content-type': 'text/html', 'cache-control': 'no-store', 'referrer-policy': 'strict-origin',
           'content-security-policy': "default-src 'none'; form-action 'self'; frame-ancestors 'none'" },

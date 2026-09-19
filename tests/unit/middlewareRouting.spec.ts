@@ -3,6 +3,17 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 import { middleware } from '@/middleware'
 afterEach(() => vi.unstubAllGlobals())
+it('redirects the legacy central host to the formal Agent Hub domain', async () => {
+  const response = await middleware(
+    new NextRequest('https://hub.beginos.org/admin/login?next=%2Fadmin', {
+      headers: { host: 'hub.beginos.org' },
+    }),
+  )
+  expect(response.status).toBe(308)
+  expect(response.headers.get('location')).toBe(
+    'https://agenthub.beginos.org/admin/login?next=%2Fadmin',
+  )
+})
 it('uses one bounded lookup for locale and CMS redirect decisions', async () => {
   const fetchMock = vi.fn(async () => Response.json({ ok: true, publicLocales: ['en'], defaultPublicLocale: 'en', redirect: { toPath: '/en/new', statusCode: 302 } }))
   vi.stubGlobal('fetch', fetchMock)

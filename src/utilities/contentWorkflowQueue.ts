@@ -40,5 +40,5 @@ export function contentWorkflowOrigin(env: {
   PAYLOAD_PUBLIC_SERVER_URL?: string
 }): string {
   const raw = env.PIPELINE_BASE_URL?.trim() || env.PAYLOAD_PUBLIC_SERVER_URL?.trim()
-  return (raw || 'https://payload-wnam.sunnybuilds.workers.dev').replace(/\/$/, '')
+  return (raw || 'https://agenthub.beginos.org').replace(/\/$/, '')
 }

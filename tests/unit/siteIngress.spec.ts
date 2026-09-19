@@ -10,7 +10,7 @@ const route = (siteId = 'a', version = 1): SiteRoute => ({ siteId, localSiteId: 
   workerGroup: 'group-1', adminHost: `cms-site-${siteId}.beginos.org`, schemaVersion: 1, routingVersion: version, migrationState: 'active' })
 function bindings(): SiteEnvironment {
   const routes = ['a','b'].map(id => route(id))
-  return { CENTRAL_ORIGIN: 'https://hub.beginos.org', PAYLOAD_SECRET: 'independent-site-runtime-test-secret', WORKER_GROUP: 'group-1', SITE_ROUTES: JSON.stringify(routes),
+  return { CENTRAL_ORIGIN: 'https://agenthub.beginos.org', PAYLOAD_SECRET: 'independent-site-runtime-test-secret', WORKER_GROUP: 'group-1', SITE_ROUTES: JSON.stringify(routes),
     SITE_D1_A: { prepare: vi.fn() } as unknown as D1Database, SITE_D1_B: { prepare: vi.fn() } as unknown as D1Database,
     SITE_PUBLIC: { get: vi.fn(), put: vi.fn() } as unknown as R2Bucket, SITE_PRIVATE: { get: vi.fn(), put: vi.fn() } as unknown as R2Bucket,
     DATA: { readMaster: vi.fn(), readConfig: vi.fn(), readAsset: vi.fn() },
@@ -78,7 +78,7 @@ describe('complete site application ingress', () => {
     expect((await siteFetch(new Request(`https://${route().adminHost}/api/categories`, { method: 'POST', headers: { origin: 'https://evil.example' } }), env, ctx, next)).status).toBe(403)
     const anonymous = await siteFetch(new Request(`https://${route().adminHost}/admin/login`), env, ctx, next)
     expect(anonymous.status).toBe(303)
-    expect(anonymous.headers.get('location')).toBe('https://hub.beginos.org/admin')
+    expect(anonymous.headers.get('location')).toBe('https://agenthub.beginos.org/admin')
     expect(next).not.toHaveBeenCalled()
   })
   it('fences an in-flight scope when another request observes a newer paused route', async () => {

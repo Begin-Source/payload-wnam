@@ -115,7 +115,7 @@ flowchart TD
 
 ## 5. 统一登录与站点后台
 
-- `hub.beginos.org` 为中央管理入口，显示员工有权限的网站和汇总。
+- `agenthub.beginos.org` 为正式中央管理入口，显示员工有权限的网站和汇总；`hub.beginos.org` 仅作为迁移期兼容入口并重定向到正式域名。
 - 选择站点后进入 `cms-site-<siteId>.beginos.org`，通过路由保留站点 Payload 的 `/admin` 和 API 路径。
 - 中央签发有效期 60 秒、只能兑换一次且绑定目标站点的登录票据。
 - 站点使用 host-only Cookie，后台会话不扩散到公开网站域名。
