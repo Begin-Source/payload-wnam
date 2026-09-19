@@ -62,6 +62,12 @@ await reportStage('site-runtime-start')
 execFileSync(process.execPath, ['scripts/ci-role-site.mjs'], { stdio: 'inherit', env: { ...process.env, ...browserEnv } })
 await reportStage('site-runtime-passed')
 await reportStage('root-build-start')
+// Cloudflare restores build outputs across commits. Next's incremental server
+// chunks are not safe to mix with a changed Payload/import-map graph, and can
+// fail during page-data collection after a successful compile. Role artifacts
+// live under .cloudflare-ci/roles and remain untouched.
+rmSync('.next', { recursive: true, force: true })
+rmSync('.open-next', { recursive: true, force: true })
 await runPnpmAsync(['exec', 'opennextjs-cloudflare', 'build'], { PAYLOAD_BUILD_PHASE: '1' })
 await reportStage('root-build-passed')
 execFileSync(process.execPath, ['scripts/ci-p0-source-encoding.mjs'], { stdio: 'inherit', env: process.env })
