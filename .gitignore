@@ -68,3 +68,7 @@ docs/pipeline-debug.local.log
 docs/pipeline-debug.local.txt
 # Cloudflare CI test bindings and release metadata
 .cloudflare-ci/
+# 其他环境变量文件（如 .env.production）也不提交
+.env.*
+.dev.vars.*
+!.dev.vars.example
